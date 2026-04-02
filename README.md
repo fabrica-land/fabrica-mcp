@@ -10,10 +10,21 @@ Built on the [Model Context Protocol](https://modelcontextprotocol.io) (MCP).
 
 ## Quick Start
 
+First, clone and build:
+
+```bash
+git clone https://github.com/fabrica-land/fabrica-mcp.git
+cd fabrica-mcp
+npm install
+npm run build
+```
+
+Then configure your MCP client to use the built server:
+
 **Claude Code:**
 
 ```bash
-claude mcp add fabrica -- npx @fabrica-land/mcp
+claude mcp add fabrica -- node /absolute/path/to/fabrica-mcp/dist/index.js
 ```
 
 **Claude Desktop** (`claude_desktop_config.json`):
@@ -22,8 +33,8 @@ claude mcp add fabrica -- npx @fabrica-land/mcp
 {
   "mcpServers": {
     "fabrica": {
-      "command": "npx",
-      "args": ["@fabrica-land/mcp"]
+      "command": "node",
+      "args": ["/absolute/path/to/fabrica-mcp/dist/index.js"]
     }
   }
 }
@@ -35,22 +46,14 @@ claude mcp add fabrica -- npx @fabrica-land/mcp
 {
   "mcpServers": {
     "fabrica": {
-      "command": "npx",
-      "args": ["@fabrica-land/mcp"]
+      "command": "node",
+      "args": ["/absolute/path/to/fabrica-mcp/dist/index.js"]
     }
   }
 }
 ```
 
-**From source:**
-
-```bash
-git clone https://github.com/fabrica-land/fabrica-mcp.git
-cd fabrica-mcp
-npm install
-npm run build
-node dist/index.js
-```
+Replace `/absolute/path/to/fabrica-mcp` with the actual path where you cloned the repo.
 
 ## Available Tools
 
