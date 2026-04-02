@@ -16,29 +16,18 @@ Fabrica tokenizes real property (land) as ERC-1155 NFTs on Ethereum. A legal tru
 
 ---
 
-## Project Goal
+## Project Status
 
-Build 6 MCP tools that wrap Fabrica's existing public APIs:
-
-| Tool | Purpose |
-|---|---|
-| `search_properties` | Search/filter tokenized properties by location, size, score, listings |
-| `get_property` | Full property detail: legal, valuation, ownership, loans, media |
-| `get_lending_market` | Lending overview: active loans, pool stats, yields, events |
-| `get_portfolio` | Wallet holdings, credit history, loan positions |
-| `get_protocol_stats` | Protocol-wide metrics: TVL, properties, loan volume |
-| `get_property_map` | GeoJSON boundary data for mapping/spatial analysis |
-
-All tools are read-only. No authentication required. Data comes from two public sources described below.
+Phase 1 is implemented. All 6 tools are working with live data from production APIs.
 
 ---
 
 ## Tech Stack
 
 - TypeScript (strict mode)
-- `@modelcontextprotocol/sdk` for the MCP server
+- `@modelcontextprotocol/sdk` for the MCP server (uses `McpServer` class with `zod` schemas)
 - `graphql-request` for GraphQL clients
-- `tsup` for building
+- `tsup` for building (ESM, no DTS — TypeScript 6 deprecation issue with DTS generation)
 - stdio transport (standard for MCP)
 - Published as `@fabrica-land/mcp` on npm
 
@@ -48,15 +37,15 @@ All tools are read-only. No authentication required. Data comes from two public 
 
 ```
 src/
-  index.ts          # MCP server entrypoint
+  index.ts          # MCP server entrypoint — registers all 6 tools
   tools/
     properties.ts   # search_properties, get_property, get_property_map
     lending.ts      # get_lending_market
     portfolio.ts    # get_portfolio
     protocol.ts     # get_protocol_stats
   clients/
-    graphql.ts      # Fabrica GraphQL API client
-    subgraph.ts     # Goldsky subgraph client
+    graphql.ts      # Fabrica GraphQL API client (primary data source)
+    subgraph.ts     # MetaStreet pool subgraph client (pool TVL/utilization only)
   types/
     index.ts        # Shared TypeScript interfaces
 ```
@@ -65,80 +54,49 @@ src/
 
 ## Data Sources
 
-### 1. Fabrica GraphQL API
+### 1. Fabrica GraphQL API (Primary)
 
-The primary backend API. All queries below are PUBLIC (no auth required).
+**Endpoint:** `https://api.fabrica.land/graphql` (Apollo Server, public, no auth)
 
-**Public Queries (no auth):**
+This is the main data source. The Apollo API routes subgraph data internally, so most onchain data is available through it. All queries are public.
 
-- `token(network?, contractAddress?, tokenId?, slug?)` — Single property by ID or slug
-- `tokens(network?, contractAddress?, ownedBy?, testnets?, premints?, burned?, minListings?, minScore?, sort?)` — List/filter properties
-- `wallet(walletAddress, testnets?, premints?, network?, contractAddress?)` — Wallet holdings, credit history, value
-- `user(walletAddress, network?)` — User profile
-- `loans(network?, networkIn?, contractAddress?, first?, skip?)` — All loans with terms
-- `loanStartedEvents(network?, networkIn?, first?, skip?)` — Loan initiation events
-- `loanRepaidEvents(network?, networkIn?, first?, skip?)` — Loan repayment events
-- `loanLiquidatedEvents(network?, networkIn?, first?, skip?)` — Loan liquidation events
-- `marketplaceListings(networkName, contractAddress, tokenId, marketplace?, status?)` — Active sale listings
-- `marketplaceBids(networkName, contractAddress, tokenId, minAmount?, marketplace?, status?)` — Active bids
-- `marketplaceDisclosures(cid)` — Disclosure packages
+**Important API Behaviors (learned during implementation):**
+
+- **`tokens` query has NO `first`/`skip` pagination.** Returns all matching tokens. Pagination is client-side.
+- **Nested fields `loans`, `marketplaceListings`, `marketplaceBids` are NOT available on list queries** (tokens list, wallet.tokens). They error with "loans is not available on list queries." Use scalar fields like `supplyUnderLoan`, `marketplacePrice`, `loanOfferCount` instead. These nested fields only work on single `token()` queries.
+- **`loans` query requires `network` or `networkIn`** — it errors without one. Use `network: "ethereum"` as default.
+- **`loanStartedEvents`, `loanRepaidEvents`, `loanLiquidatedEvents` require `first!` and `skip!`** (non-nullable).
+- **WalletModel uses `address` not `walletAddress`** and `creditHistory` not `walletCreditHistory`. `displayName` is on the nested `user` field.
+- **LoanModel uses `loanStatus` not `status`**, `principalScaled` not `principalAmount`, `aprPercent` not `interestRate`, `maturityDate` not `repaymentDate`. Marketplace types are all `MarketplaceOrderModel`.
+- **Score is a raw integer** (e.g. 73242). Kept as-is in tool responses. The `minScore` filter on the `tokens` query also expects this integer scale.
+- **`estimatedValue` is a string decimal** (e.g. "396647.43"). `acres` is also a string.
+
+**Public Queries:**
+
+- `token(network?, contractAddress?, tokenId?, slug?)` — Single property (supports all nested fields)
+- `tokens(burned?, contractAddress?, minListings?, minScore?, ownedBy?, premints?, sort?, testnets?)` — List/filter properties (limited nested fields)
+- `wallet(walletAddress!, ...)` — Wallet holdings, credit history, value
+- `user(walletAddress!, network?)` — User profile
+- `loans(network?, networkIn?, first?, skip?, contractAddress?)` — All loans
+- `loanStartedEvents(first!, skip!, network?, networkIn?)` — Loan initiation events
+- `loanRepaidEvents(first!, skip!, network?, networkIn?)` — Repayment events
+- `loanLiquidatedEvents(first!, skip!, network?, networkIn?)` — Liquidation events
+- `marketplaceListings(networkName!, contractAddress!, tokenId!, marketplace?, status?)` — Sale listings
+- `marketplaceBids(networkName!, contractAddress!, tokenId!, ...)` — Bids
+- `countyBounds(fips!)` — County boundary GeoJSON by FIPS code
 - `scoringDescriptors()` — Confidence score rules
-- `countyBounds(fips)` — County boundary GeoJSON by FIPS code
-- `balances(network?, networkIn?, first?, skip?)` — Token balances
 
-**Key Return Types:**
+**Key Enums:** `TokenSortField` (price, score), `LoanStatus` (Active, Default, Liquidated, Liquidating, Repaid), `LoanProvider` (MetaStreet, NFTfi), `MarketplaceOrderStatus` (active, canceled, expired, filled, pending)
 
-`TokenModel` fields: tokenId, network, contractAddress, name, vanityName, propertyLink, coordinates, geoJson, isPremint, isClaimedPremint, isBurned, lastOwner, configuration, definition, operatingAgreement, metadataUri, supply, majorOwner, balances, transfers, score, scoringCheckResults, validator, marketplaceBids, marketplaceListings, pricing, estimatedValue, imageUrlDark, imageUrlLight, marketplacePrice, cardDisplayValuation, loanOffers, metaStreetLiquidity, loans, fiatTransactions, booleanTraits, decimalTraits, stringTraits, acres, country, countryCode, region, regionCode, postCode, district, place, locality, neighborhood, street, address, activity
+### 2. MetaStreet Pool Subgraph (Supplementary)
 
-`WalletModel` fields: walletAddress, displayName, profilePath, tokens, activity, walletCreditHistory, walletValue, loanOfferCount, marketplaceOrderCount
+**Endpoint:** `https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-mainnet/3.13.2/gn`
 
-`LoanModel` fields: loanId, collateralToken, borrower, lender, principalAmount, principalAsset, interestRate, repaymentDate, status, createdAt, liquidatedAt
+Used only for MetaStreet pool TVL, utilization, and loan count data. The Fabrica pool ID is `0x842ffbf1ad5314503904626122376f71603a3cf9`.
 
-**Queries requiring auth (NOT used in Phase 1):** onRamp, offRamp, clientConfig, buildUnsignedMarketplaceOrder, getMarketplaceFulfillmentPermission, all mutations.
+Pool values are in 18-decimal format (divide by 10^18 for USDC amounts). Currency is USDC (6 decimals, but pool stores in 18-decimal scaled format).
 
-**Reference repo:** `fabrica-land/fabrica-v3-api` (NestJS + GraphQL). Key files for schema reference:
-- `src/token/token.resolver.ts` — Token query definitions
-- `src/token/token.model.ts` — Token field definitions
-- `src/loan/loan.resolver.ts` — Loan query definitions
-- `src/wallet/wallet.resolver.ts` — Wallet query definitions
-- `src/marketplace/marketplace.resolver.ts` — Marketplace query definitions
-
-### 2. Goldsky Subgraph (Onchain Data)
-
-Raw onchain data indexed from Ethereum. Public GraphQL endpoint.
-
-**Endpoints:**
-- Ethereum mainnet: `https://api.goldsky.com/api/public/project_cmgx8wuc60031tlp27berclwq/subgraphs/fabrica-ethereum/v1.2.1/gn`
-- Sepolia testnet: `https://api.goldsky.com/api/public/project_cmgx8wuc60031tlp27berclwq/subgraphs/fabrica-sepolia/v1.2.1/gn`
-- Base Sepolia: `https://api.goldsky.com/api/public/project_cmgx8wuc60031tlp27berclwq/subgraphs/fabrica-base-sepolia/v1.2.1/gn`
-
-**MetaStreet Pool subgraph (for lending pool data):**
-- Ethereum: `https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-mainnet/3.13.2/gn`
-- Sepolia: `https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-sepolia/3.13.1/gn`
-
-**Key Entities:**
-
-`Token`: id, contractAddress, tokenId, uri, creator, supply, balances, sales, configuration, configurationUrl, definition, definitionUrl, operatingAgreement, booleanTraits, decimalTraits, stringTraits, mintTimestamp, network
-
-`Loan`: id, loanId, loanContract, borrower, lender, loanProvider, loanPrincipalAmount, loanDuration, loanStartTime, loanMaturityDate, loanInterestRateForDurationInBasisPoints, loanAdminFeeInBasisPoints, loanStatus (ActiveOrDefault/Liquidating/Liquidated/Repaid), nftCollateralContract, nftCollateralId, pool, ticks, useds, maximumRepaymentAmount, amountPaidToLender, adminFeePaid, erc20Denomination, network
-
-`Pool` (MetaStreet): id, implementation, collateralToken, currencyToken, totalValueLocked, totalValueUsed, totalValueAvailable, durations, rates, maxBorrows, loansOriginated, loansActive, loansRepaid, loansLiquidated, adminFeeRate, ticks, deposits, loans
-
-`User`: id, address, network, borrowing, lending, tokens, created, promissoryNotes, obligationReceipts
-
-`Transfer`: token, from, to, operator, value, transactionHash, blockNumber, blockTimestamp
-
-`Sale`: token, seller, buyer, currencyAddress, currencyAmount, supply
-
-`LoanStartedEvent`: loan, borrower, lender, loanPrincipalAmount, loanDuration, loanStartTime, loanInterestRateForDurationInBasisPoints, network, transactionHash, blockNumber, blockTimestamp
-
-`LoanRepaidEvent`: loan, borrower, lender, amountPaidToLender, adminFee, revenueShare, loanPrincipalAmount, network
-
-`LoanLiquidatedEvent`: loan, borrower, lender, newOwner, loanLiquidationDate, loanPrincipalAmount, proceeds, network
-
-**Filtering:** All entities support `_eq`, `_not`, `_gt`, `_lt`, `_gte`, `_lte`, `_in`, `_not_in`, `_contains`, `_starts_with`, `_ends_with` (and `_nocase` variants). Sorting via `orderBy` + `orderDirection`. Pagination via `first` (max 1000) + `skip`.
-
-**Reference repo:** `fabrica-land/fabrica-v3-subgraph`. Key file: `schema.graphql`
+**Note:** The Fabrica subgraph (`fabrica-ethereum/v1.2.1`) is offline. All Fabrica data comes through the Apollo GraphQL API.
 
 ---
 
@@ -160,19 +118,6 @@ Raw onchain data indexed from Ethereum. Public GraphQL endpoint.
 - FabricaToken: `0xCE53C17A82bd67aD835d3e2ADBD3e062058B8F81`
 - FabricaValidator: `0x40Ac72C5C7712566eB5552fb1aB2093FA07B9682`
 
-**Contract interface reference:** `fabrica-land/fabrica-contracts/src/IFabricaToken.sol`
-
-Key view function:
-```solidity
-function _property(uint256 tokenId) external view returns (
-    uint256 supply,
-    string memory operatingAgreement,
-    string memory definition,
-    string memory configuration,
-    address validator
-);
-```
-
 ---
 
 ## MCP Tool Design Principles
@@ -185,31 +130,9 @@ function _property(uint256 tokenId) external view returns (
 
 4. **Composable.** Tools should chain naturally. An agent should be able to search_properties, pick one, then get_property on it, then check get_lending_market for that borrower.
 
-5. **Lean queries.** Only request GraphQL fields that the tool actually returns. Don't fetch entire token objects when you need 5 fields.
+5. **Lean queries.** Only request GraphQL fields that the tool actually returns. Don't fetch entire token objects when you need 5 fields. Respect the API's list query restrictions.
 
----
-
-## Reference Repos
-
-Access other Fabrica repos for deeper context when needed:
-
-```bash
-# List files in a repo
-gh api "repos/fabrica-land/<repo>/git/trees/main?recursive=1" --jq '.tree[].path'
-
-# Read a specific file
-gh api repos/fabrica-land/<repo>/contents/<path> --jq '.content' | base64 -d
-```
-
-| Repo | What's There | When to Read |
-|---|---|---|
-| `fabrica-land/fabrica-v3-api` | Backend GraphQL API (NestJS). Resolvers, models, types. Has `CLAUDE.md`. | To understand exact query signatures, field types, filtering options |
-| `fabrica-land/fabrica-v3-subgraph` | The Graph subgraph. Schema, mappings, event handlers. | To understand onchain data model, entity relationships, event indexing |
-| `fabrica-land/fabrica-contracts` | Solidity smart contracts (ERC-1155). Has `CLAUDE.md`. | To understand onchain data structures, view functions, events |
-| `fabrica-land/docs` | Public documentation (docs.fabrica.land). Property lifecycle, lending, legal. | To understand user-facing concepts, trust structure, lending mechanics |
-| `fabrica-land/fabrica-connectors` | Legal trust agreement (v4.2). | To understand trust structure, beneficiary rights, ownership rules |
-| `fabrica-land/fabrica-v3-rules` | Jurisdiction rules, county configs. Has `CLAUDE.md`. | To understand county-level data, deed templates, FIPS codes |
-| `fabrica-land/soil-app` | Frontend (Next.js). Has `AGENTS.md` for voice/tone. | To see how the frontend queries the API, what fields it uses |
+6. **Score as raw integer.** Confidence scores are returned as raw integers from the API (e.g. 73242). Do not normalize to 0-1 or 0-100.
 
 ---
 
@@ -220,8 +143,8 @@ gh api repos/fabrica-land/<repo>/contents/<path> --jq '.content' | base64 -d
 - Keep functions concise. No blank lines between statements inside functions.
 - Error handling: catch errors, return helpful messages to the agent, never throw raw errors.
 - Use environment variables for configuration with sensible defaults:
-  - `FABRICA_API_URL` (default: production GraphQL endpoint)
-  - `FABRICA_SUBGRAPH_URL` (default: mainnet Goldsky endpoint)
+  - `FABRICA_API_URL` (default: `https://api.fabrica.land/graphql`)
+  - `FABRICA_METASTREET_SUBGRAPH_URL` (default: Goldsky mainnet endpoint)
 - ESM modules. Target Node 20+.
 - Build with tsup. Output to `dist/`.
 
@@ -229,11 +152,11 @@ gh api repos/fabrica-land/<repo>/contents/<path> --jq '.content' | base64 -d
 
 ## Distribution
 
-The MCP server should be installable with zero config:
+The MCP server is installable with zero config:
 
 **Claude Code:**
 ```bash
-claude mcp add fabrica-mcp -- npx @fabrica-land/mcp
+claude mcp add fabrica -- npx @fabrica-land/mcp
 ```
 
 **Claude Desktop (`claude_desktop_config.json`):**
@@ -260,7 +183,31 @@ claude mcp add fabrica-mcp -- npx @fabrica-land/mcp
 }
 ```
 
-The `bin` field in package.json should point to `dist/index.js` with a node shebang. The `files` field should include only `dist/`.
+The `bin` field in package.json points to `dist/index.js` with a node shebang. The `files` field includes only `dist/`.
+
+---
+
+## Reference Repos
+
+Access other Fabrica repos for deeper context when needed:
+
+```bash
+# List files in a repo
+gh api "repos/fabrica-land/<repo>/git/trees/main?recursive=1" --jq '.tree[].path'
+
+# Read a specific file
+gh api repos/fabrica-land/<repo>/contents/<path> --jq '.content' | base64 -d
+```
+
+| Repo | What's There | When to Read |
+|---|---|---|
+| `fabrica-land/fabrica-v3-api` | Backend GraphQL API (NestJS). Resolvers, models, types. Has `CLAUDE.md`. | To understand exact query signatures, field types, filtering options |
+| `fabrica-land/fabrica-v3-subgraph` | The Graph subgraph. Schema, mappings, event handlers. | To understand onchain data model, entity relationships, event indexing |
+| `fabrica-land/fabrica-contracts` | Solidity smart contracts (ERC-1155). Has `CLAUDE.md`. | To understand onchain data structures, view functions, events |
+| `fabrica-land/docs` | Public documentation (docs.fabrica.land). Property lifecycle, lending, legal. | To understand user-facing concepts, trust structure, lending mechanics |
+| `fabrica-land/fabrica-connectors` | Legal trust agreement (v4.2). | To understand trust structure, beneficiary rights, ownership rules |
+| `fabrica-land/fabrica-v3-rules` | Jurisdiction rules, county configs. Has `CLAUDE.md`. | To understand county-level data, deed templates, FIPS codes |
+| `fabrica-land/soil-app` | Frontend (Next.js). Has `AGENTS.md` for voice/tone. | To see how the frontend queries the API, what fields it uses |
 
 ---
 
