@@ -6,6 +6,8 @@ import { getLendingMarket } from "./tools/lending.js";
 import { getPortfolio } from "./tools/portfolio.js";
 import { getProtocolStats } from "./tools/protocol.js";
 import { explainConfidenceScore } from "./tools/scoring.js";
+import { getBorrowQuote } from "./tools/borrowing.js";
+import { getActivity } from "./tools/activity.js";
 
 const server = new McpServer({
   name: "fabrica-mcp",
@@ -108,6 +110,35 @@ server.tool(
   },
   async (args) => ({
     content: [{ type: "text", text: JSON.stringify(await explainConfidenceScore(args), null, 2) }],
+  }),
+);
+
+// --- get_borrow_quote ---
+server.tool(
+  "get_borrow_quote",
+  "Get borrowing options for a specific tokenized property: MetaStreet pool liquidity (max loan amount, durations), peer-to-peer loan offers, and existing loan status. Use this to answer 'How much can I borrow against this property?' or 'What APR would I get?'",
+  {
+    tokenId: z.string().optional().describe("The token ID of the property"),
+    slug: z.string().optional().describe("Property slug from the URL"),
+  },
+  async (args) => ({
+    content: [{ type: "text", text: JSON.stringify(await getBorrowQuote(args), null, 2) }],
+  }),
+);
+
+// --- get_activity ---
+server.tool(
+  "get_activity",
+  "Get the activity feed for a property or wallet: mints, transfers, sales, loans started/repaid/liquidated, configuration changes, and more. Use this for transaction history and event timelines.",
+  {
+    tokenId: z.string().optional().describe("Property token ID (for property activity)"),
+    slug: z.string().optional().describe("Property slug (for property activity)"),
+    address: z.string().optional().describe("Wallet address (for wallet activity)"),
+    type: z.string().optional().describe("Filter by activity type (e.g. 'loan', 'transfer', 'sale', 'mint')"),
+    limit: z.number().optional().describe("Max results (default 20, max 100)"),
+  },
+  async (args) => ({
+    content: [{ type: "text", text: JSON.stringify(await getActivity(args), null, 2) }],
   }),
 );
 

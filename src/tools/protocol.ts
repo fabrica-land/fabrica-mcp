@@ -1,4 +1,4 @@
-import { getTokens, getLoans } from "../clients/graphql.js";
+import { getTokens, getAllLoans, DEFAULT_MIN_SCORE, filterSpamTokens } from "../clients/graphql.js";
 import { getFabricaPool, FABRICA_TOKEN_ADDRESS, FABRICA_POOL_ADDRESS } from "../clients/subgraph.js";
 
 function formatUsd(value: string | null | undefined): string | null {
@@ -16,18 +16,16 @@ function formatPoolValue(raw: string, decimals: number): string {
 export async function getProtocolStats() {
   try {
     const [tokens, loans, pool] = await Promise.all([
-      getTokens({ burned: false, premints: false }),
-      getLoans({ first: 1000 }),
+      getTokens({ burned: false, premints: false, minScore: DEFAULT_MIN_SCORE }),
+      getAllLoans(),
       getFabricaPool(),
     ]);
-    const activeTokens = tokens.filter(t => !t.isBurned && !t.isPremint);
+    const activeTokens = filterSpamTokens(tokens.filter(t => !t.isBurned && !t.isPremint));
     const statesRepresented = new Set(activeTokens.map(t => t.regionCode).filter(Boolean));
     const totalEstimatedValue = activeTokens.reduce(
       (sum, t) => sum + parseFloat(t.estimatedValue || "0"), 0,
     );
-    const activeListingsCount = activeTokens.reduce(
-      (count, t) => count + (t.marketplaceListings?.filter(l => l.status === "active").length ?? 0), 0,
-    );
+    const activeListingsCount = activeTokens.filter(t => t.marketplacePrice !== null).length;
     const activeLoans = loans.filter(l => l.loanStatus === "Active");
     const repaidLoans = loans.filter(l => l.loanStatus === "Repaid");
     const liquidatedLoans = loans.filter(l => l.loanStatus === "Liquidated");

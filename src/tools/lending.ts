@@ -1,5 +1,5 @@
 import {
-  getLoans,
+  getAllLoans,
   getLoanStartedEvents,
   getLoanRepaidEvents,
   getLoanLiquidatedEvents,
@@ -59,7 +59,7 @@ export async function getLendingMarket(args: Record<string, unknown>) {
   const limit = Math.min((args.limit as number | undefined) ?? 20, 100);
   try {
     const [allLoans, pool, startedEvents, repaidEvents, liquidatedEvents] = await Promise.all([
-      getLoans({ first: 1000 }),
+      getAllLoans(),
       getFabricaPool(),
       getLoanStartedEvents(10),
       getLoanRepaidEvents(10),

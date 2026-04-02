@@ -62,6 +62,8 @@ node dist/index.js
 | `get_portfolio` | Wallet holdings, credit history, loan positions |
 | `get_protocol_stats` | Protocol-wide metrics: TVL, properties, loan volume |
 | `get_property_map` | GeoJSON boundary data for mapping and spatial analysis |
+| `get_borrow_quote` | Borrowing options for a property: pool liquidity, loan offers, current loans |
+| `get_activity` | Activity feed for a property or wallet: transfers, loans, sales, mints |
 | `explain_confidence_score` | Decode the 5-digit confidence score into verification categories |
 
 ## Example Conversations
@@ -75,6 +77,10 @@ node dist/index.js
 > "Show me the portfolio for wallet 0x23bc...fce4 — what properties do they own?"
 
 > "Give me protocol-wide stats for Fabrica — how many properties, total loan volume, repayment rate?"
+
+> "How much can I borrow against property token 12743610130101631987?"
+
+> "Show me all recent activity for wallet 0x23bc...fce4"
 
 > "Explain the confidence score 73242 — what does each digit mean?"
 

@@ -11,9 +11,23 @@ import type {
 
 const DEFAULT_API_URL = "https://api.fabrica.land/graphql";
 
+/** Minimum confidence score to filter out spam/invalid tokens. Matches the frontend threshold. */
+export const DEFAULT_MIN_SCORE = 2142;
+
+/** Token names that indicate spam or errored metadata */
+const SPAM_NAME_PATTERNS = ["SyntaxError", "Error", "BadGatewayException"];
+
 const client = new GraphQLClient(
   process.env.FABRICA_API_URL ?? DEFAULT_API_URL,
 );
+
+/** Filter out tokens with spam/error names that indicate bad metadata */
+export function filterSpamTokens(tokens: TokenModel[]): TokenModel[] {
+  return tokens.filter(t => {
+    const name = t.name ?? t.vanityName ?? "";
+    return !SPAM_NAME_PATTERNS.some(pattern => name.includes(pattern));
+  });
+}
 
 // --- Token queries ---
 
@@ -225,6 +239,7 @@ const WALLET_FIELDS = gql`
       amountPaidToLenderScaled loanRepaidDate
     }
     marketplaceOffersMade { marketplaceId tokenId side status price symbol }
+    activity { activity source time timestamp network tokenId transactionHash currencyAmount currencySymbol usdAmount }
   }
 `;
 
@@ -237,33 +252,36 @@ export async function getWallet(walletAddress: string): Promise<WalletModel | nu
       }
     }
   `;
-  try {
-    const data = await client.request<{ wallet: WalletModel }>(query, { walletAddress });
-    return data.wallet;
-  } catch {
-    return null;
-  }
+  const data = await client.request<{ wallet: WalletModel | null }>(query, { walletAddress });
+  return data.wallet;
 }
 
 // --- Loan queries ---
+
+const LOAN_FIELDS = gql`
+  fragment LoanFields on LoanModel {
+    loanId loanStatus loanProvider loanType
+    principalScaled currencySymbol
+    aprPercent interestForDurationPercent
+    durationFormatted maturityDate startTime
+    maxRepaymentScaled
+    borrower { address user { displayName } }
+    lender { address user { displayName } }
+    token { tokenId name acres region regionCode district estimatedValue }
+    collateralId collateralContract
+    networkName
+    amountPaidToLenderScaled loanRepaidDate loanLiquidationDate
+  }
+`;
 
 export async function getLoans(
   filters: { network?: string; first?: number; skip?: number } = {},
 ): Promise<LoanModel[]> {
   const query = gql`
+    ${LOAN_FIELDS}
     query GetLoans($network: String, $networkIn: [String!], $first: Int, $skip: Int) {
       loans(network: $network, networkIn: $networkIn, first: $first, skip: $skip) {
-        loanId loanStatus loanProvider loanType
-        principalScaled currencySymbol
-        aprPercent interestForDurationPercent
-        durationFormatted maturityDate startTime
-        maxRepaymentScaled
-        borrower { address user { displayName } }
-        lender { address user { displayName } }
-        token { tokenId name acres region regionCode district estimatedValue }
-        collateralId collateralContract
-        networkName
-        amountPaidToLenderScaled loanRepaidDate loanLiquidationDate
+        ...LoanFields
       }
     }
   `;
@@ -273,6 +291,20 @@ export async function getLoans(
     skip: filters.skip ?? 0,
   });
   return data.loans;
+}
+
+/** Fetch all loans by paginating through the API */
+export async function getAllLoans(network = "ethereum"): Promise<LoanModel[]> {
+  const pageSize = 100;
+  const allLoans: LoanModel[] = [];
+  let skip = 0;
+  for (;;) {
+    const batch = await getLoans({ network, first: pageSize, skip });
+    allLoans.push(...batch);
+    if (batch.length < pageSize) break;
+    skip += pageSize;
+  }
+  return allLoans;
 }
 
 // --- Loan event queries ---

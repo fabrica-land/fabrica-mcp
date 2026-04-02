@@ -1,4 +1,4 @@
-import { getTokens, getToken, getCountyBounds } from "../clients/graphql.js";
+import { getTokens, getToken, getCountyBounds, DEFAULT_MIN_SCORE, filterSpamTokens } from "../clients/graphql.js";
 import type { TokenModel } from "../types/index.js";
 
 function formatUsd(value: string | null | undefined): string | null {
@@ -52,12 +52,13 @@ export async function searchProperties(args: Record<string, unknown>) {
   const offset = (args.offset as number | undefined) ?? 0;
   try {
     let tokens = await getTokens({
-      minScore: minScore ?? undefined,
+      minScore: minScore ?? DEFAULT_MIN_SCORE,
       hasListings: hasListings ?? undefined,
       ownedBy,
       burned: false,
       premints: false,
     });
+    tokens = filterSpamTokens(tokens);
     if (region) {
       const upper = region.toUpperCase();
       tokens = tokens.filter(t => t.regionCode?.toUpperCase() === upper);
