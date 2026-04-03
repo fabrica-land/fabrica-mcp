@@ -39,6 +39,8 @@ interface TokenFilters {
   ownedBy?: string;
   burned?: boolean;
   premints?: boolean;
+  testnets?: boolean;
+  contractAddress?: string;
   sort?: string;
 }
 
@@ -80,12 +82,16 @@ export async function getTokens(filters: TokenFilters): Promise<TokenModel[]> {
   if (filters.ownedBy) variables.ownedBy = filters.ownedBy;
   if (filters.burned !== undefined) variables.burned = filters.burned;
   if (filters.premints !== undefined) variables.premints = filters.premints;
+  if (filters.testnets !== undefined) variables.testnets = filters.testnets;
+  if (filters.contractAddress) variables.contractAddress = filters.contractAddress;
   if (filters.sort) variables.sort = filters.sort;
   const query = gql`
     ${TOKENS_LIST_FIELDS}
     query GetTokens(
       $burned: Boolean
       $premints: Boolean
+      $testnets: Boolean
+      $contractAddress: String
       $minListings: Int
       $minScore: Int
       $ownedBy: String
@@ -94,6 +100,8 @@ export async function getTokens(filters: TokenFilters): Promise<TokenModel[]> {
       tokens(
         burned: $burned
         premints: $premints
+        testnets: $testnets
+        contractAddress: $contractAddress
         minListings: $minListings
         minScore: $minScore
         ownedBy: $ownedBy

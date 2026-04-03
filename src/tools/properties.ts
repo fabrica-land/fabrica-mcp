@@ -1,6 +1,6 @@
 import { getTokens, getToken, getCountyBounds, DEFAULT_MIN_SCORE, filterSpamTokens } from "../clients/graphql.js";
 import type { TokenModel } from "../types/index.js";
-import { NETWORK_LABEL, MAINNET_WARNING } from "../config.js";
+import { NETWORK_LABEL, MAINNET_WARNING, IS_MAINNET, CONTRACTS } from "../config.js";
 
 function formatUsd(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -58,6 +58,8 @@ export async function searchProperties(args: Record<string, unknown>) {
       ownedBy,
       burned: false,
       premints: false,
+      testnets: IS_MAINNET ? false : true,
+      contractAddress: IS_MAINNET ? undefined : CONTRACTS.fabricaToken,
     });
     tokens = filterSpamTokens(tokens);
     if (region) {

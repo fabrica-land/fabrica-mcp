@@ -1,6 +1,6 @@
 import { getTokens, getAllLoans, DEFAULT_MIN_SCORE, filterSpamTokens } from "../clients/graphql.js";
-import { getFabricaPools, aggregatePoolStats, FABRICA_TOKEN_ADDRESS } from "../clients/subgraph.js";
-import { CONTRACTS, NETWORK_LABEL, MAINNET_WARNING } from "../config.js";
+import { getFabricaPools, aggregatePoolStats } from "../clients/subgraph.js";
+import { CONTRACTS, NETWORK_LABEL, MAINNET_WARNING, IS_MAINNET } from "../config.js";
 
 function formatUsd(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -17,7 +17,13 @@ function formatPoolValue(raw: string, decimals: number): string {
 export async function getProtocolStats() {
   try {
     const [tokens, loans, pools] = await Promise.all([
-      getTokens({ burned: false, premints: false, minScore: DEFAULT_MIN_SCORE }),
+      getTokens({
+        burned: false,
+        premints: false,
+        minScore: DEFAULT_MIN_SCORE,
+        testnets: IS_MAINNET ? false : true,
+        contractAddress: IS_MAINNET ? undefined : CONTRACTS.fabricaToken,
+      }),
       getAllLoans(),
       getFabricaPools(),
     ]);
