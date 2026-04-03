@@ -6,6 +6,7 @@ type ImageTheme = "dark" | "light";
 const MEDIA_BASE_URL = process.env.FABRICA_MEDIA_URL ?? "https://media.fabrica.land";
 
 function buildMediaUrl(
+  contractAddress: string,
   target: string,
   theme: ImageTheme,
   width: number,
@@ -16,7 +17,7 @@ function buildMediaUrl(
     width: String(width),
     height: String(height),
   });
-  return `${MEDIA_BASE_URL}/${NETWORK}/${CONTRACTS.fabricaToken}/${target}/image?${params}`;
+  return `${MEDIA_BASE_URL}/${NETWORK}/${contractAddress}/${target}/image?${params}`;
 }
 
 async function fetchImageAsBase64(url: string): Promise<{ data: string; mimeType: string }> {
@@ -44,7 +45,7 @@ export async function getPropertyImage(args: Record<string, unknown>) {
     if (!token) {
       return { error: `No property found with ${tokenId ? `token ID ${tokenId}` : `slug ${slug}`}` };
     }
-    const url = buildMediaUrl(token.tokenId, theme, width, height);
+    const url = buildMediaUrl(token.contractAddress, token.tokenId, theme, width, height);
     const image = await fetchImageAsBase64(url);
     return {
       tokenId: token.tokenId,
@@ -65,7 +66,7 @@ export async function getPortfolioImage(args: Record<string, unknown>) {
     return { error: "Wallet address is required" };
   }
   try {
-    const url = buildMediaUrl(address, theme, width, height);
+    const url = buildMediaUrl(CONTRACTS.fabricaToken, address, theme, width, height);
     const image = await fetchImageAsBase64(url);
     return {
       address,

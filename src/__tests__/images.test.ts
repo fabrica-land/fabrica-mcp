@@ -64,6 +64,25 @@ describe("getPropertyImage", () => {
     expect(fetchUrl).toContain("ethereum");
     expect(fetchUrl).toContain("123/image");
     expect(fetchUrl).toContain("theme=light");
+    expect(fetchUrl).toContain("0x5cbeb7A0df7Ed85D82a472FD56d81ed550f3Ea95");
+  });
+
+  it("uses token contractAddress in media URL", async () => {
+    const altContract = "0xALTERNATIVEcontractAddress00000000000000";
+    mockGetToken.mockResolvedValue({
+      tokenId: "789",
+      name: "Alt Contract Token",
+      vanityName: null,
+      contractAddress: altContract,
+    });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      headers: new Headers({ "content-type": "image/png" }),
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+    });
+    await getPropertyImage({ tokenId: "789" });
+    const fetchUrl = mockFetch.mock.calls[0][0] as string;
+    expect(fetchUrl).toContain(altContract);
   });
 
   it("clamps dimensions to valid range", async () => {
