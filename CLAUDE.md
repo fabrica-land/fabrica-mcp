@@ -1,35 +1,14 @@
 # Fabrica MCP Server
 
-An MCP (Model Context Protocol) server that gives AI agents read-only access to tokenized real property data on the Fabrica protocol. Phase 1 is read-only, wrapping existing public APIs. No new backend infrastructure.
+An MCP server giving AI agents read-only access to tokenized real property data on the Fabrica protocol.
 
 ## What is Fabrica?
 
-Fabrica tokenizes real property (land) as ERC-1155 NFTs on Ethereum. A legal trust holds title at the county level. The token controls the trust. Transfer the token, transfer ownership. This is a legal mechanism that retrofits existing property law.
+Fabrica tokenizes real property (land) as ERC-1155 NFTs on Ethereum. A legal trust holds title at the county level. The token controls the trust. Transfer the token, transfer ownership.
 
-- 600+ properties tokenized across the US
-- 23 regulatory licenses covering all 50 states
-- Lending integrations with NFTfi (peer-to-peer) and MetaStreet (pool-based)
-- Marketplace via Seaport protocol
 - Platform: https://fabrica.land
 - Docs: https://docs.fabrica.land
 - Dune: https://dune.com/fabrica/dashboard
-
----
-
-## Project Status
-
-Phase 1 is implemented. All 6 tools are working with live data from production APIs.
-
----
-
-## Tech Stack
-
-- TypeScript (strict mode)
-- `@modelcontextprotocol/sdk` for the MCP server (uses `McpServer` class with `zod` schemas)
-- `graphql-request` for GraphQL clients
-- `tsup` for building (ESM, no DTS — TypeScript 6 deprecation issue with DTS generation)
-- stdio transport (standard for MCP)
-- Published as `@fabrica-land/mcp` on npm
 
 ---
 
@@ -37,18 +16,34 @@ Phase 1 is implemented. All 6 tools are working with live data from production A
 
 ```
 src/
-  index.ts          # MCP server entrypoint — registers all 6 tools
+  config.ts           # Network config, contract addresses, legal notices
+  index.ts            # MCP server entrypoint — registers all 9 tools
   tools/
-    properties.ts   # search_properties, get_property, get_property_map
-    lending.ts      # get_lending_market
-    portfolio.ts    # get_portfolio
-    protocol.ts     # get_protocol_stats
+    properties.ts     # search_properties, get_property, get_property_map
+    lending.ts        # get_lending_market
+    portfolio.ts      # get_portfolio
+    protocol.ts       # get_protocol_stats
+    scoring.ts        # explain_confidence_score
+    borrowing.ts      # get_borrow_quote
+    activity.ts       # get_activity
   clients/
-    graphql.ts      # Fabrica GraphQL API client (primary data source)
-    subgraph.ts     # MetaStreet pool subgraph client (pool TVL/utilization only)
+    graphql.ts        # Fabrica GraphQL API client (primary data source)
+    subgraph.ts       # MetaStreet pool subgraph client (dynamic pool discovery)
   types/
-    index.ts        # Shared TypeScript interfaces
+    index.ts          # Shared TypeScript interfaces
+  __tests__/          # vitest test suite
 ```
+
+---
+
+## Tech Stack
+
+- TypeScript (strict mode), ESM, Node 20+
+- `@modelcontextprotocol/sdk` (`McpServer` class with `zod` schemas, stdio transport)
+- `graphql-request` for GraphQL clients
+- `tsup` for building (ESM, `dts: false` due to TS6 deprecation)
+- `vitest` for testing
+- Not yet published to npm — installed from source
 
 ---
 
@@ -58,83 +53,99 @@ src/
 
 **Endpoint:** `https://api.fabrica.land/graphql` (Apollo Server, public, no auth)
 
-This is the main data source. The Apollo API routes subgraph data internally, so most onchain data is available through it. All queries are public.
+The Apollo API routes subgraph data internally, so all onchain and offchain property data is available through it.
 
-**Important API Behaviors (learned during implementation):**
+**Key API behaviors:**
 
 - **`tokens` query has NO `first`/`skip` pagination.** Returns all matching tokens. Pagination is client-side.
-- **Nested fields `loans`, `marketplaceListings`, `marketplaceBids` are NOT available on list queries** (tokens list, wallet.tokens). They error with "loans is not available on list queries." Use scalar fields like `supplyUnderLoan`, `marketplacePrice`, `loanOfferCount` instead. These nested fields only work on single `token()` queries.
-- **`loans` query requires `network` or `networkIn`** — it errors without one. Use `network: "ethereum"` as default.
+- **Nested fields `loans`, `marketplaceListings`, `marketplaceBids` are NOT available on list queries** (tokens list, wallet.tokens). Use scalar fields (`supplyUnderLoan`, `marketplacePrice`, `loanOfferCount`) instead. Nested fields only work on single `token()` queries.
+- **`loans` query requires `network` or `networkIn`** — errors without one.
 - **`loanStartedEvents`, `loanRepaidEvents`, `loanLiquidatedEvents` require `first!` and `skip!`** (non-nullable).
-- **WalletModel uses `address` not `walletAddress`** and `creditHistory` not `walletCreditHistory`. `displayName` is on the nested `user` field.
-- **LoanModel uses `loanStatus` not `status`**, `principalScaled` not `principalAmount`, `aprPercent` not `interestRate`, `maturityDate` not `repaymentDate`. Marketplace types are all `MarketplaceOrderModel`.
-- **Score is a raw integer** (e.g. 73242). Kept as-is in tool responses. The `minScore` filter on the `tokens` query also expects this integer scale.
+- **Score is a raw integer** (e.g. 73242). Kept as-is. The `minScore` filter expects this integer scale.
 - **`estimatedValue` is a string decimal** (e.g. "396647.43"). `acres` is also a string.
 
-**Public Queries:**
-
-- `token(network?, contractAddress?, tokenId?, slug?)` — Single property (supports all nested fields)
-- `tokens(burned?, contractAddress?, minListings?, minScore?, ownedBy?, premints?, sort?, testnets?)` — List/filter properties (limited nested fields)
-- `wallet(walletAddress!, ...)` — Wallet holdings, credit history, value
-- `user(walletAddress!, network?)` — User profile
-- `loans(network?, networkIn?, first?, skip?, contractAddress?)` — All loans
-- `loanStartedEvents(first!, skip!, network?, networkIn?)` — Loan initiation events
-- `loanRepaidEvents(first!, skip!, network?, networkIn?)` — Repayment events
-- `loanLiquidatedEvents(first!, skip!, network?, networkIn?)` — Liquidation events
-- `marketplaceListings(networkName!, contractAddress!, tokenId!, marketplace?, status?)` — Sale listings
-- `marketplaceBids(networkName!, contractAddress!, tokenId!, ...)` — Bids
-- `countyBounds(fips!)` — County boundary GeoJSON by FIPS code
-- `scoringDescriptors()` — Confidence score rules
-
-**Key Enums:** `TokenSortField` (price, score), `LoanStatus` (Active, Default, Liquidated, Liquidating, Repaid), `LoanProvider` (MetaStreet, NFTfi), `MarketplaceOrderStatus` (active, canceled, expired, filled, pending)
+**Field naming (differs from what you might guess):**
+- WalletModel: `address` (not `walletAddress`), `creditHistory` (not `walletCreditHistory`), `displayName` on nested `user`
+- LoanModel: `loanStatus` (not `status`), `principalScaled` (not `principalAmount`), `aprPercent` (not `interestRate`), `maturityDate` (not `repaymentDate`)
 
 ### 2. MetaStreet Pool Subgraph (Supplementary)
 
-**Endpoint:** `https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-mainnet/3.13.2/gn`
+**Mainnet:** `https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-mainnet/3.13.2/gn`
+**Sepolia:** `https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-sepolia/3.13.2/gn`
 
-Used only for MetaStreet pool TVL, utilization, and loan count data. The Fabrica pool ID is `0x842ffbf1ad5314503904626122376f71603a3cf9`.
+Used for MetaStreet pool TVL, utilization, and loan count data. **Pools are discovered dynamically** by querying all pools that accept the Fabrica collateral token — no hardcoded pool IDs. Mainnet has 1+ pools, Sepolia has 2. Pool values are in 18-decimal format.
 
-Pool values are in 18-decimal format (divide by 10^18 for USDC amounts). Currency is USDC (6 decimals, but pool stores in 18-decimal scaled format).
+---
 
-**Note:** The Fabrica subgraph (`fabrica-ethereum/v1.2.1`) is offline. All Fabrica data comes through the Apollo GraphQL API.
+## Network Support
+
+Configured via `FABRICA_NETWORK` env var (default: `ethereum`).
+
+| | Ethereum Mainnet | Sepolia Testnet |
+|---|---|---|
+| Properties | Real US land parcels | Test tokens only |
+| Legal consequences | Yes — trustee role, taxes, liabilities | None |
+| MetaStreet | Active (1+ pools) | Active (2 pools) |
+| NFTfi | Active | Not available |
+| Legal notices in responses | Yes | No |
+
+On mainnet, the server's `instructions` field tells agents to inform users about real-world legal consequences and to review the trust instrument attached to tokens before advising on acquisition.
 
 ---
 
 ## Smart Contract Addresses
 
+Defined in `src/config.ts`. MetaStreet pools are discovered dynamically from the subgraph.
+
 **Ethereum Mainnet:**
 - FabricaToken (ERC-1155): `0x5cbeb7A0df7Ed85D82a472FD56d81ed550f3Ea95`
 - FabricaValidator: `0x170511f95560A1F280c29026f73a9cD6a4bA8ab0`
-- MetaStreet Pool: `0x842Ffbf1AD5314503904626122376f71603A3Cf9`
-- MetaStreet Wrapper: `0x4512b49d3081e1D258EebEF7c435f2310e7d3090`
-- NFTfi V2.3 Loan: `0xd0a40eB7FD94eE97102BA8e9342243A2b2E22207`
-- NFTfi V3 Loan: `0x9F10D706D789e4c76A1a6434cd1A9841c875C0A6`
+- NFTfi V2.3: `0xd0a40eB7FD94eE97102BA8e9342243A2b2E22207`
+- NFTfi V3: `0x9F10D706D789e4c76A1a6434cd1A9841c875C0A6`
 
 **Sepolia Testnet:**
 - FabricaToken: `0xb52ED2Dc8EBD49877De57De3f454Fd71b75bc1fD`
 - FabricaValidator: `0xAAA7FDc1A573965a2eD47Ab154332b6b55098008`
 
-**Base Sepolia:**
-- FabricaToken: `0xCE53C17A82bd67aD835d3e2ADBD3e062058B8F81`
-- FabricaValidator: `0x40Ac72C5C7712566eB5552fb1aB2093FA07B9682`
+---
+
+## Spam Filtering
+
+Tokens on the smart contract include spam/errored entries. The MCP filters them out:
+
+- **`minScore: 2142`** — default threshold matching the frontend, filters out tokens without basic validation
+- **Name filtering** — client-side exclusion of tokens with names like `SyntaxError`, `Error`, `BadGatewayException`
+- Default query filters: `burned: false`, `premints: false`, `testnets: false` (mainnet) / `true` (sepolia)
+
+The `minScore` can be overridden by users in `search_properties`.
+
+---
+
+## Confidence Score
+
+A 5-digit positional integer where each digit represents a verification group:
+
+| Position | Group | Max | Weight |
+|---|---|---|---|
+| Ten-thousands | Recovery status | 7 | ×10000 |
+| Thousands | Past title & load | 5 | ×1000 |
+| Hundreds | Ownership | 3 | ×100 |
+| Tens | On-chain history | 4 | ×10 |
+| Ones | Basic validation | 2 | ×1 |
+
+**Max score: 75342.** Recovery digit: 7=normal, 6=under review, 5=recovery, 1=voided.
 
 ---
 
 ## MCP Tool Design Principles
 
-1. **Concise responses.** LLMs have limited context. Return structured summaries, not raw API dumps. Trim unnecessary fields. Format monetary values as human-readable strings ("$12,500" not "12500000000").
-
-2. **Helpful errors.** "No property found with token ID 12345" not stack traces. Empty results are not errors.
-
-3. **Sensible defaults.** Default to mainnet, default limit 20, default to non-burned active tokens.
-
-4. **Composable.** Tools should chain naturally. An agent should be able to search_properties, pick one, then get_property on it, then check get_lending_market for that borrower.
-
-5. **Lean queries.** Only request GraphQL fields that the tool actually returns. Don't fetch entire token objects when you need 5 fields. Respect the API's list query restrictions.
-
-6. **Score as raw integer.** Confidence scores are returned as raw integers from the API (e.g. 73242). Do not normalize to 0-1 or 0-100.
-
-7. **Network-aware.** The server operates on a single network set via `FABRICA_NETWORK` env var (default: `ethereum`). On mainnet, tool responses include legal notices and the server instructs agents to inform users about real-world legal consequences. On sepolia, properties are test-only. NFTfi lending is not available on Sepolia.
+1. **Concise responses.** Return structured summaries, not raw API dumps. Format monetary values as "$12,500".
+2. **Helpful errors.** "No property found with token ID 12345" not stack traces.
+3. **Sensible defaults.** Default limit 20, non-burned active tokens, spam filtered.
+4. **Composable.** Tools chain naturally: search → get_property → get_borrow_quote.
+5. **Lean queries.** Only request fields that the tool returns. Respect list query restrictions.
+6. **Score as raw integer.** Never normalize confidence scores.
+7. **Network-aware.** Single network per session. Mainnet responses include legal notices.
 
 ---
 
@@ -143,77 +154,52 @@ Pool values are in 18-decimal format (divide by 10^18 for USDC amounts). Currenc
 - Strict TypeScript. No `any`. No `as` casts.
 - Prefer `const` and immutable patterns.
 - Keep functions concise. No blank lines between statements inside functions.
-- Error handling: catch errors, return helpful messages to the agent, never throw raw errors.
-- Use environment variables for configuration with sensible defaults:
-  - `FABRICA_NETWORK` (default: `ethereum`; also supports `sepolia` for testnet)
+- Error handling: catch errors, return helpful messages, never throw raw errors.
+- Environment variables with sensible defaults:
+  - `FABRICA_NETWORK` (default: `ethereum`)
   - `FABRICA_API_URL` (default: `https://api.fabrica.land/graphql`)
   - `FABRICA_METASTREET_SUBGRAPH_URL` (default: auto-selected per network)
-- ESM modules. Target Node 20+.
-- Build with tsup. Output to `dist/`.
+
+---
+
+## Testing
+
+Run tests with `npm test` (vitest). Tests cover config, scoring, spam filtering, pool aggregation, legal notices, formatting, and input validation. Tests mock the GraphQL clients — no live API calls.
 
 ---
 
 ## Distribution
 
-The MCP server is installable with zero config:
+Not yet published to npm. Install from source:
 
-**Claude Code:**
 ```bash
-claude mcp add fabrica -- npx @fabrica-land/mcp
+git clone https://github.com/fabrica-land/fabrica-mcp.git
+cd fabrica-mcp && npm install && npm run build
 ```
 
-**Claude Desktop (`claude_desktop_config.json`):**
-```json
-{
-  "mcpServers": {
-    "fabrica": {
-      "command": "npx",
-      "args": ["@fabrica-land/mcp"]
-    }
-  }
-}
-```
-
-**Cursor (`.cursor/mcp.json`):**
-```json
-{
-  "mcpServers": {
-    "fabrica": {
-      "command": "npx",
-      "args": ["@fabrica-land/mcp"]
-    }
-  }
-}
-```
-
-The `bin` field in package.json points to `dist/index.js` with a node shebang. The `files` field includes only `dist/`.
+Then configure your MCP client with `node /path/to/fabrica-mcp/dist/index.js`.
 
 ---
 
 ## Reference Repos
 
-Access other Fabrica repos for deeper context when needed:
-
 ```bash
-# List files in a repo
 gh api "repos/fabrica-land/<repo>/git/trees/main?recursive=1" --jq '.tree[].path'
-
-# Read a specific file
 gh api repos/fabrica-land/<repo>/contents/<path> --jq '.content' | base64 -d
 ```
 
 | Repo | What's There | When to Read |
 |---|---|---|
-| `fabrica-land/fabrica-v3-api` | Backend GraphQL API (NestJS). Resolvers, models, types. Has `CLAUDE.md`. | To understand exact query signatures, field types, filtering options |
-| `fabrica-land/fabrica-v3-subgraph` | The Graph subgraph. Schema, mappings, event handlers. | To understand onchain data model, entity relationships, event indexing |
-| `fabrica-land/fabrica-contracts` | Solidity smart contracts (ERC-1155). Has `CLAUDE.md`. | To understand onchain data structures, view functions, events |
-| `fabrica-land/docs` | Public documentation (docs.fabrica.land). Property lifecycle, lending, legal. | To understand user-facing concepts, trust structure, lending mechanics |
-| `fabrica-land/fabrica-connectors` | Legal trust agreement (v4.2). | To understand trust structure, beneficiary rights, ownership rules |
-| `fabrica-land/fabrica-v3-rules` | Jurisdiction rules, county configs. Has `CLAUDE.md`. | To understand county-level data, deed templates, FIPS codes |
-| `fabrica-land/soil-app` | Frontend (Next.js). Has `AGENTS.md` for voice/tone. | To see how the frontend queries the API, what fields it uses |
+| `fabrica-land/fabrica-v3-api` | Backend GraphQL API (NestJS). Has `CLAUDE.md`. | Query signatures, field types, auth guards, mutations |
+| `fabrica-land/fabrica-contracts` | Solidity smart contracts (ERC-1155). Has `CLAUDE.md`. | Onchain data structures, view functions, events |
+| `fabrica-land/docs` | Public documentation (docs.fabrica.land). | User-facing concepts, trust structure, lending mechanics |
+| `fabrica-land/soil-app` | Frontend (Next.js). Has `AGENTS.md`. | How the frontend queries the API, signing flows |
+| `fabrica-land/fabrica-connectors` | Legal trust agreement (v4.2). | Trust structure, beneficiary rights |
+| `fabrica-land/fabrica-v3-rules` | Jurisdiction rules, county configs. Has `CLAUDE.md`. | County-level data, deed templates, FIPS codes |
 
 ---
 
-## Linear Project
+## Linear Projects
 
-Tickets for this project are tracked in Linear under the "Fabrica MCP Server" project (Engineering team). Check there for detailed specs on each tool including exact input schemas, return formats, and acceptance criteria.
+- **Fabrica MCP Server** — Phase 1 read-only tools (complete)
+- **MCP Write Operations** — Phase 2 transactional tools (backlog, requires backend wallet-signature auth)
