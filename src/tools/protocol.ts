@@ -1,5 +1,6 @@
 import { getTokens, getAllLoans, DEFAULT_MIN_SCORE, filterSpamTokens } from "../clients/graphql.js";
-import { getFabricaPool, FABRICA_TOKEN_ADDRESS, FABRICA_POOL_ADDRESS } from "../clients/subgraph.js";
+import { getFabricaPools, aggregatePoolStats } from "../clients/subgraph.js";
+import { CONTRACTS, NETWORK_LABEL, MAINNET_WARNING, IS_MAINNET } from "../config.js";
 
 function formatUsd(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -15,10 +16,16 @@ function formatPoolValue(raw: string, decimals: number): string {
 
 export async function getProtocolStats() {
   try {
-    const [tokens, loans, pool] = await Promise.all([
-      getTokens({ burned: false, premints: false, minScore: DEFAULT_MIN_SCORE }),
+    const [tokens, loans, pools] = await Promise.all([
+      getTokens({
+        burned: false,
+        premints: false,
+        minScore: DEFAULT_MIN_SCORE,
+        testnets: IS_MAINNET ? false : true,
+        contractAddress: IS_MAINNET ? undefined : CONTRACTS.fabricaToken,
+      }),
       getAllLoans(),
-      getFabricaPool(),
+      getFabricaPools(),
     ]);
     const activeTokens = filterSpamTokens(tokens.filter(t => !t.isBurned && !t.isPremint));
     const statesRepresented = new Set(activeTokens.map(t => t.regionCode).filter(Boolean));
@@ -33,17 +40,20 @@ export async function getProtocolStats() {
     const repaymentRate = (repaidLoans.length + liquidatedLoans.length) > 0
       ? ((repaidLoans.length / (repaidLoans.length + liquidatedLoans.length)) * 100)
       : 100;
-    const poolStats = pool ? {
-      totalValueLocked: formatPoolValue(pool.totalValueLocked, 18),
-      totalValueUsed: formatPoolValue(pool.totalValueUsed, 18),
-      totalValueAvailable: formatPoolValue(pool.totalValueAvailable, 18),
-      utilization: pool.totalValueLocked !== "0"
-        ? `${((parseFloat(pool.totalValueUsed) / parseFloat(pool.totalValueLocked)) * 100).toFixed(1)}%`
+    const agg = aggregatePoolStats(pools);
+    const poolStats = agg ? {
+      poolCount: agg.poolCount,
+      pools: pools.map(p => p.id),
+      totalValueLocked: formatPoolValue(agg.totalValueLocked, 18),
+      totalValueUsed: formatPoolValue(agg.totalValueUsed, 18),
+      totalValueAvailable: formatPoolValue(agg.totalValueAvailable, 18),
+      utilization: agg.totalValueLocked !== "0"
+        ? `${((parseFloat(agg.totalValueUsed) / parseFloat(agg.totalValueLocked)) * 100).toFixed(1)}%`
         : "0%",
-      loansOriginated: parseInt(pool.loansOriginated),
-      loansActive: parseInt(pool.loansActive),
-      loansRepaid: parseInt(pool.loansRepaid),
-      loansLiquidated: parseInt(pool.loansLiquidated),
+      loansOriginated: agg.loansOriginated,
+      loansActive: agg.loansActive,
+      loansRepaid: agg.loansRepaid,
+      loansLiquidated: agg.loansLiquidated,
     } : null;
     return {
       protocol: {
@@ -51,14 +61,14 @@ export async function getProtocolStats() {
         description: "Tokenized real property (land) as ERC-1155 NFTs on Ethereum",
         website: "https://fabrica.land",
         docs: "https://docs.fabrica.land",
-        network: "Ethereum mainnet",
+        network: NETWORK_LABEL,
         tokenStandard: "ERC-1155",
       },
+      ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
       contracts: {
-        fabricaToken: FABRICA_TOKEN_ADDRESS,
-        metaStreetPool: FABRICA_POOL_ADDRESS,
-        nftfiV2: "0xd0a40eB7FD94eE97102BA8e9342243A2b2E22207",
-        nftfiV3: "0x9F10D706D789e4c76A1a6434cd1A9841c875C0A6",
+        fabricaToken: CONTRACTS.fabricaToken,
+        nftfiV2: CONTRACTS.nftfiV2,
+        nftfiV3: CONTRACTS.nftfiV3,
       },
       properties: {
         totalTokenized: activeTokens.length,
@@ -73,7 +83,7 @@ export async function getProtocolStats() {
         liquidatedLoans: liquidatedLoans.length,
         totalLoanVolume: formatUsd(String(totalLoanVolume)),
         repaymentRate: `${repaymentRate.toFixed(0)}%`,
-        pool: poolStats,
+        metaStreetPools: poolStats,
       },
       marketplace: {
         activeListings: activeListingsCount,

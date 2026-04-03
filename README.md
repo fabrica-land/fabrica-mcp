@@ -87,14 +87,43 @@ Replace `/absolute/path/to/fabrica-mcp` with the actual path where you cloned th
 
 > "Explain the confidence score 73242 — what does each digit mean?"
 
+## Network Selection
+
+By default, the MCP server connects to **Ethereum Mainnet** where properties represent real parcels of US land with real legal consequences. To experiment with test properties first, set `FABRICA_NETWORK=sepolia`:
+
+**Claude Code (Sepolia):**
+
+```bash
+claude mcp add fabrica -e FABRICA_NETWORK=sepolia -- node /absolute/path/to/fabrica-mcp/dist/index.js
+```
+
+**Claude Desktop (Sepolia):**
+
+```json
+{
+  "mcpServers": {
+    "fabrica": {
+      "command": "node",
+      "args": ["/absolute/path/to/fabrica-mcp/dist/index.js"],
+      "env": { "FABRICA_NETWORK": "sepolia" }
+    }
+  }
+}
+```
+
+> **Mainnet notice:** On mainnet, the MCP server instructs AI agents to inform users that operations have real-world legal and financial consequences — including accepting the role of trustee, potential property liabilities, and tax implications. Agents are directed to review the trust instrument attached to tokens before advising on acquisition.
+>
+> **Sepolia:** Test properties only — no real-world implications. NFTfi lending is not available on Sepolia.
+
 ## Configuration
 
 All optional — sensible defaults are built in:
 
 | Variable | Default | Description |
 |---|---|---|
+| `FABRICA_NETWORK` | `ethereum` | Network to operate on (`ethereum` or `sepolia`) |
 | `FABRICA_API_URL` | `https://api.fabrica.land/graphql` | Fabrica GraphQL API |
-| `FABRICA_METASTREET_SUBGRAPH_URL` | Goldsky mainnet endpoint | MetaStreet pool subgraph |
+| `FABRICA_METASTREET_SUBGRAPH_URL` | Auto-selected per network | MetaStreet pool subgraph |
 
 ## Links
 

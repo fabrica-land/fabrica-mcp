@@ -1,5 +1,6 @@
 import { getTokens, getToken, getCountyBounds, DEFAULT_MIN_SCORE, filterSpamTokens } from "../clients/graphql.js";
 import type { TokenModel } from "../types/index.js";
+import { NETWORK_LABEL, MAINNET_WARNING, IS_MAINNET, CONTRACTS } from "../config.js";
 
 function formatUsd(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -57,6 +58,8 @@ export async function searchProperties(args: Record<string, unknown>) {
       ownedBy,
       burned: false,
       premints: false,
+      testnets: IS_MAINNET ? false : true,
+      contractAddress: IS_MAINNET ? undefined : CONTRACTS.fabricaToken,
     });
     tokens = filterSpamTokens(tokens);
     if (region) {
@@ -75,9 +78,17 @@ export async function searchProperties(args: Record<string, unknown>) {
     const total = tokens.length;
     const page = tokens.slice(offset, offset + limit);
     if (page.length === 0) {
-      return { total: 0, properties: [], message: "No properties found matching your filters." };
+      return {
+        network: NETWORK_LABEL,
+        ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
+        total: 0,
+        properties: [],
+        message: "No properties found matching your filters.",
+      };
     }
     return {
+      network: NETWORK_LABEL,
+      ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
       total,
       showing: `${offset + 1}-${offset + page.length} of ${total}`,
       properties: page.map(tokenToSummary),
@@ -102,12 +113,11 @@ function getRecoveryStatus(score: number | null): { value: number; label: string
 export async function getProperty(args: Record<string, unknown>) {
   const tokenId = args.tokenId as string | undefined;
   const slug = args.slug as string | undefined;
-  const network = args.network as string | undefined;
   if (!tokenId && !slug) {
     return { error: "Either tokenId or slug is required" };
   }
   try {
-    const token = await getToken({ tokenId, slug, network });
+    const token = await getToken({ tokenId, slug });
     if (!token) {
       return { error: `No property found with ${tokenId ? `token ID ${tokenId}` : `slug ${slug}`}` };
     }
@@ -126,6 +136,7 @@ export async function getProperty(args: Record<string, unknown>) {
       warnings.push("Property has supply currently in default");
     }
     return {
+      ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
       tokenId: token.tokenId,
       network: token.network,
       contractAddress: token.contractAddress,

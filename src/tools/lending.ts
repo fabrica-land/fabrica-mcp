@@ -4,7 +4,7 @@ import {
   getLoanRepaidEvents,
   getLoanLiquidatedEvents,
 } from "../clients/graphql.js";
-import { getFabricaPool } from "../clients/subgraph.js";
+import { getFabricaPools, aggregatePoolStats } from "../clients/subgraph.js";
 import type { LoanModel } from "../types/index.js";
 
 function formatUsd(value: string | null | undefined): string | null {
@@ -58,9 +58,9 @@ export async function getLendingMarket(args: Record<string, unknown>) {
   const since = args.since as string | undefined;
   const limit = Math.min((args.limit as number | undefined) ?? 20, 100);
   try {
-    const [allLoans, pool, startedEvents, repaidEvents, liquidatedEvents] = await Promise.all([
+    const [allLoans, pools, startedEvents, repaidEvents, liquidatedEvents] = await Promise.all([
       getAllLoans(),
-      getFabricaPool(),
+      getFabricaPools(),
       getLoanStartedEvents(10),
       getLoanRepaidEvents(10),
       getLoanLiquidatedEvents(10),
@@ -99,17 +99,20 @@ export async function getLendingMarket(args: Record<string, unknown>) {
     const repaymentRate = allLoans.length > 0
       ? ((repaidLoans.length / (repaidLoans.length + liquidatedLoans.length)) * 100) || 100
       : 100;
-    const poolStats = pool ? {
-      totalValueLocked: formatPoolValue(pool.totalValueLocked, 18),
-      totalValueUsed: formatPoolValue(pool.totalValueUsed, 18),
-      totalValueAvailable: formatPoolValue(pool.totalValueAvailable, 18),
-      utilization: pool.totalValueLocked !== "0"
-        ? `${((parseFloat(pool.totalValueUsed) / parseFloat(pool.totalValueLocked)) * 100).toFixed(1)}%`
+    const agg = aggregatePoolStats(pools);
+    const poolStats = agg ? {
+      poolCount: agg.poolCount,
+      pools: pools.map(p => p.id),
+      totalValueLocked: formatPoolValue(agg.totalValueLocked, 18),
+      totalValueUsed: formatPoolValue(agg.totalValueUsed, 18),
+      totalValueAvailable: formatPoolValue(agg.totalValueAvailable, 18),
+      utilization: agg.totalValueLocked !== "0"
+        ? `${((parseFloat(agg.totalValueUsed) / parseFloat(agg.totalValueLocked)) * 100).toFixed(1)}%`
         : "0%",
-      loansOriginated: parseInt(pool.loansOriginated),
-      loansActive: parseInt(pool.loansActive),
-      loansRepaid: parseInt(pool.loansRepaid),
-      loansLiquidated: parseInt(pool.loansLiquidated),
+      loansOriginated: agg.loansOriginated,
+      loansActive: agg.loansActive,
+      loansRepaid: agg.loansRepaid,
+      loansLiquidated: agg.loansLiquidated,
       currency: "USDC",
     } : null;
     const recentEvents = [

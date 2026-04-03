@@ -8,16 +8,22 @@ import { getProtocolStats } from "./tools/protocol.js";
 import { explainConfidenceScore } from "./tools/scoring.js";
 import { getBorrowQuote } from "./tools/borrowing.js";
 import { getActivity } from "./tools/activity.js";
+import { NETWORK_LABEL, IS_MAINNET, MAINNET_LEGAL_NOTICE } from "./config.js";
+
+const MAINNET_PREAMBLE = IS_MAINNET
+  ? " IMPORTANT: This server is connected to Ethereum Mainnet. Fabrica tokens represent real property in the United States with real legal consequences. Before acquiring any token, you MUST inform the user that: (1) they will become the beneficial owner and trustee of a real property trust, (2) they may incur legal liabilities and tax obligations, (3) they should review the trust instrument and operating agreement attached to the token. The operating agreement URL is included in property details — fetch and review it to advise the user on the terms."
+  : " This server is connected to Sepolia Testnet. Properties here are for testing only — no real-world legal or financial implications.";
 
 const server = new McpServer({
   name: "fabrica-mcp",
   version: "0.1.0",
+  instructions: `Fabrica MCP Server — read-only access to tokenized real property data on the Fabrica protocol. Network: ${NETWORK_LABEL}.${MAINNET_PREAMBLE}`,
 });
 
 // --- search_properties ---
 server.tool(
   "search_properties",
-  "Search tokenized real properties on the Fabrica protocol. Returns a list of properties matching the given filters. Each property is a real parcel of land in the US, legally tokenized as an ERC-1155 NFT.",
+  `Search tokenized real properties on the Fabrica protocol (${NETWORK_LABEL}). Returns a list of properties matching the given filters.${IS_MAINNET ? " Each result represents a REAL parcel of land in the US, legally tokenized as an ERC-1155 NFT." : " These are test properties on Sepolia — no real-world implications."}`,
   {
     region: z.string().optional().describe("US state code (e.g. 'TX', 'CA', 'NV')"),
     minAcres: z.number().optional().describe("Minimum parcel size in acres"),
@@ -37,11 +43,10 @@ server.tool(
 // --- get_property ---
 server.tool(
   "get_property",
-  "Get comprehensive details about a specific tokenized property on Fabrica, including legal description, valuation, confidence score breakdown, ownership history, loan history, marketplace activity, and media.",
+  `Get comprehensive details about a specific tokenized property on Fabrica (${NETWORK_LABEL}), including legal description, valuation, confidence score breakdown, ownership history, loan history, marketplace activity, and media.${IS_MAINNET ? " The operating agreement URL in the response links to the legal trust instrument — review it before advising on acquisition." : ""}`,
   {
     tokenId: z.string().optional().describe("The token ID of the property"),
     slug: z.string().optional().describe("Property slug from the URL (e.g. 'us/nevada/elko-county/elko/apn-063025003')"),
-    network: z.string().optional().describe("Network name (default: 'ethereum')"),
   },
   async (args) => ({
     content: [{ type: "text", text: JSON.stringify(await getProperty(args), null, 2) }],
