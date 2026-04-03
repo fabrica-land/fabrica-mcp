@@ -1,5 +1,5 @@
 import { getTokens, getAllLoans, DEFAULT_MIN_SCORE, filterSpamTokens } from "../clients/graphql.js";
-import { getFabricaPool } from "../clients/subgraph.js";
+import { getFabricaPools, aggregatePoolStats, FABRICA_TOKEN_ADDRESS } from "../clients/subgraph.js";
 import { CONTRACTS, NETWORK_LABEL, MAINNET_WARNING } from "../config.js";
 
 function formatUsd(value: string | null | undefined): string | null {
@@ -16,10 +16,10 @@ function formatPoolValue(raw: string, decimals: number): string {
 
 export async function getProtocolStats() {
   try {
-    const [tokens, loans, pool] = await Promise.all([
+    const [tokens, loans, pools] = await Promise.all([
       getTokens({ burned: false, premints: false, minScore: DEFAULT_MIN_SCORE }),
       getAllLoans(),
-      getFabricaPool(),
+      getFabricaPools(),
     ]);
     const activeTokens = filterSpamTokens(tokens.filter(t => !t.isBurned && !t.isPremint));
     const statesRepresented = new Set(activeTokens.map(t => t.regionCode).filter(Boolean));
@@ -34,17 +34,20 @@ export async function getProtocolStats() {
     const repaymentRate = (repaidLoans.length + liquidatedLoans.length) > 0
       ? ((repaidLoans.length / (repaidLoans.length + liquidatedLoans.length)) * 100)
       : 100;
-    const poolStats = pool ? {
-      totalValueLocked: formatPoolValue(pool.totalValueLocked, 18),
-      totalValueUsed: formatPoolValue(pool.totalValueUsed, 18),
-      totalValueAvailable: formatPoolValue(pool.totalValueAvailable, 18),
-      utilization: pool.totalValueLocked !== "0"
-        ? `${((parseFloat(pool.totalValueUsed) / parseFloat(pool.totalValueLocked)) * 100).toFixed(1)}%`
+    const agg = aggregatePoolStats(pools);
+    const poolStats = agg ? {
+      poolCount: agg.poolCount,
+      pools: pools.map(p => p.id),
+      totalValueLocked: formatPoolValue(agg.totalValueLocked, 18),
+      totalValueUsed: formatPoolValue(agg.totalValueUsed, 18),
+      totalValueAvailable: formatPoolValue(agg.totalValueAvailable, 18),
+      utilization: agg.totalValueLocked !== "0"
+        ? `${((parseFloat(agg.totalValueUsed) / parseFloat(agg.totalValueLocked)) * 100).toFixed(1)}%`
         : "0%",
-      loansOriginated: parseInt(pool.loansOriginated),
-      loansActive: parseInt(pool.loansActive),
-      loansRepaid: parseInt(pool.loansRepaid),
-      loansLiquidated: parseInt(pool.loansLiquidated),
+      loansOriginated: agg.loansOriginated,
+      loansActive: agg.loansActive,
+      loansRepaid: agg.loansRepaid,
+      loansLiquidated: agg.loansLiquidated,
     } : null;
     return {
       protocol: {
@@ -58,7 +61,6 @@ export async function getProtocolStats() {
       ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
       contracts: {
         fabricaToken: CONTRACTS.fabricaToken,
-        metaStreetPool: CONTRACTS.metaStreetPool,
         nftfiV2: CONTRACTS.nftfiV2,
         nftfiV3: CONTRACTS.nftfiV3,
       },
@@ -75,7 +77,7 @@ export async function getProtocolStats() {
         liquidatedLoans: liquidatedLoans.length,
         totalLoanVolume: formatUsd(String(totalLoanVolume)),
         repaymentRate: `${repaymentRate.toFixed(0)}%`,
-        pool: poolStats,
+        metaStreetPools: poolStats,
       },
       marketplace: {
         activeListings: activeListingsCount,

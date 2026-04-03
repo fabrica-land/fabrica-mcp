@@ -19,19 +19,18 @@ export const CONTRACTS = IS_MAINNET
   ? {
     fabricaToken: "0x5cbeb7A0df7Ed85D82a472FD56d81ed550f3Ea95",
     fabricaValidator: "0x170511f95560A1F280c29026f73a9cD6a4bA8ab0",
-    metaStreetPool: "0x842Ffbf1AD5314503904626122376f71603A3Cf9",
-    metaStreetWrapper: "0x4512b49d3081e1D258EebEF7c435f2310e7d3090",
     nftfiV2: "0xd0a40eB7FD94eE97102BA8e9342243A2b2E22207",
     nftfiV3: "0x9F10D706D789e4c76A1a6434cd1A9841c875C0A6",
   }
   : {
     fabricaToken: "0xb52ED2Dc8EBD49877De57De3f454Fd71b75bc1fD",
     fabricaValidator: "0xAAA7FDc1A573965a2eD47Ab154332b6b55098008",
-    metaStreetPool: "0x842ffbf1ad5314503904626122376f71603a3cf9", // MetaStreet pool on Sepolia
-    metaStreetWrapper: null,
     nftfiV2: null, // NFTfi is not available on Sepolia
     nftfiV3: null,
   };
+
+// MetaStreet pool addresses are discovered dynamically from the subgraph
+// by querying all pools that accept the Fabrica token as collateral.
 
 /**
  * Legal disclaimer for mainnet operations.

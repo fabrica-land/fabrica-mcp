@@ -76,7 +76,13 @@ export async function searchProperties(args: Record<string, unknown>) {
     const total = tokens.length;
     const page = tokens.slice(offset, offset + limit);
     if (page.length === 0) {
-      return { total: 0, properties: [], message: "No properties found matching your filters." };
+      return {
+        network: NETWORK_LABEL,
+        ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
+        total: 0,
+        properties: [],
+        message: "No properties found matching your filters.",
+      };
     }
     return {
       network: NETWORK_LABEL,
