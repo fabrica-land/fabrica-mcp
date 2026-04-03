@@ -17,7 +17,7 @@ Fabrica tokenizes real property (land) as ERC-1155 NFTs on Ethereum. A legal tru
 ```
 src/
   config.ts           # Network config, contract addresses, legal notices
-  index.ts            # MCP server entrypoint — registers all 9 tools
+  index.ts            # MCP server entrypoint — registers all 11 tools
   tools/
     properties.ts     # search_properties, get_property, get_property_map
     lending.ts        # get_lending_market
@@ -26,6 +26,7 @@ src/
     scoring.ts        # explain_confidence_score
     borrowing.ts      # get_borrow_quote
     activity.ts       # get_activity
+    images.ts         # get_property_image, get_portfolio_image
   clients/
     graphql.ts        # Fabrica GraphQL API client (primary data source)
     subgraph.ts       # MetaStreet pool subgraph client (dynamic pool discovery)
@@ -74,6 +75,14 @@ The Apollo API routes subgraph data internally, so all onchain and offchain prop
 **Sepolia:** `https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-sepolia/3.13.2/gn`
 
 Used for MetaStreet pool TVL, utilization, and loan count data. **Pools are discovered dynamically** by querying all pools that accept the Fabrica collateral token — no hardcoded pool IDs. Mainnet has 1+ pools, Sepolia has 2. Pool values are in 18-decimal format.
+
+### 3. Fabrica Media Service (Images)
+
+**Endpoint:** `https://media.fabrica.land/{network}/{contractAddress}/{tokenIdOrWalletAddress}/image`
+
+Public, no auth. Returns a 308 redirect to a Mapbox Static Images API URL. Supports query params: `theme` (dark/light), `width`, `height`. Used by `get_property_image` and `get_portfolio_image` tools — the MCP fetches the image and returns it inline as base64.
+
+Override with `FABRICA_MEDIA_URL` env var.
 
 ---
 
@@ -159,6 +168,7 @@ A 5-digit positional integer where each digit represents a verification group:
   - `FABRICA_NETWORK` (default: `ethereum`)
   - `FABRICA_API_URL` (default: `https://api.fabrica.land/graphql`)
   - `FABRICA_METASTREET_SUBGRAPH_URL` (default: auto-selected per network)
+  - `FABRICA_MEDIA_URL` (default: `https://media.fabrica.land`)
 
 ---
 
