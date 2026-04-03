@@ -8,6 +8,7 @@ import { getProtocolStats } from "./tools/protocol.js";
 import { explainConfidenceScore } from "./tools/scoring.js";
 import { getBorrowQuote } from "./tools/borrowing.js";
 import { getActivity } from "./tools/activity.js";
+import { getPropertyImage, getPortfolioImage } from "./tools/images.js";
 import { NETWORK_LABEL, IS_MAINNET, MAINNET_LEGAL_NOTICE } from "./config.js";
 
 const MAINNET_PREAMBLE = IS_MAINNET
@@ -145,6 +146,55 @@ server.tool(
   async (args) => ({
     content: [{ type: "text", text: JSON.stringify(await getActivity(args), null, 2) }],
   }),
+);
+
+// --- get_property_image ---
+server.tool(
+  "get_property_image",
+  "Get a static map image of a tokenized property showing its parcel boundary (or pin marker if no boundary available). Returns an inline image. Supports dark/light themes and custom dimensions.",
+  {
+    tokenId: z.string().optional().describe("The token ID of the property"),
+    slug: z.string().optional().describe("Property slug from the URL"),
+    theme: z.enum(["dark", "light"]).optional().describe("Map theme (default: 'dark')"),
+    width: z.number().optional().describe("Image width in pixels (100-1280, default 640)"),
+    height: z.number().optional().describe("Image height in pixels (100-1280, default 640)"),
+  },
+  async (args) => {
+    const result = await getPropertyImage(args);
+    if ("error" in result) {
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    }
+    return {
+      content: [
+        { type: "text", text: `Property: ${result.name} (${result.tokenId})` },
+        { type: "image", data: result.image.data, mimeType: result.image.mimeType },
+      ],
+    };
+  },
+);
+
+// --- get_portfolio_image ---
+server.tool(
+  "get_portfolio_image",
+  "Get a static map image showing all properties owned by a wallet, plotted as points on a single map. Returns an inline image. Supports dark/light themes and custom dimensions.",
+  {
+    address: z.string().describe("Ethereum wallet address (0x...)"),
+    theme: z.enum(["dark", "light"]).optional().describe("Map theme (default: 'dark')"),
+    width: z.number().optional().describe("Image width in pixels (100-1280, default 640)"),
+    height: z.number().optional().describe("Image height in pixels (100-1280, default 640)"),
+  },
+  async (args) => {
+    const result = await getPortfolioImage(args);
+    if ("error" in result) {
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    }
+    return {
+      content: [
+        { type: "text", text: `Portfolio map for ${result.address}` },
+        { type: "image", data: result.image.data, mimeType: result.image.mimeType },
+      ],
+    };
+  },
 );
 
 async function main() {

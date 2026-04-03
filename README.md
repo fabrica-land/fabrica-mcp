@@ -68,6 +68,8 @@ Replace `/absolute/path/to/fabrica-mcp` with the actual path where you cloned th
 | `get_borrow_quote` | Borrowing options for a property: pool liquidity, loan offers, current loans |
 | `get_activity` | Activity feed for a property or wallet: transfers, loans, sales, mints |
 | `explain_confidence_score` | Decode the 5-digit confidence score into verification categories |
+| `get_property_image` | Static map image of a property's parcel boundary (inline, dark/light themes) |
+| `get_portfolio_image` | Map image showing all properties owned by a wallet (inline, dark/light themes) |
 
 ## Example Conversations
 
@@ -86,6 +88,10 @@ Replace `/absolute/path/to/fabrica-mcp` with the actual path where you cloned th
 > "Show me all recent activity for wallet 0x23bc...fce4"
 
 > "Explain the confidence score 73242 — what does each digit mean?"
+
+> "Show me a map of property token 12743610130101631987"
+
+> "Show me a map of all properties in this wallet's portfolio"
 
 ## Network Selection
 
@@ -124,6 +130,7 @@ All optional — sensible defaults are built in:
 | `FABRICA_NETWORK` | `ethereum` | Network to operate on (`ethereum` or `sepolia`) |
 | `FABRICA_API_URL` | `https://api.fabrica.land/graphql` | Fabrica GraphQL API |
 | `FABRICA_METASTREET_SUBGRAPH_URL` | Auto-selected per network | MetaStreet pool subgraph |
+| `FABRICA_MEDIA_URL` | `https://media.fabrica.land` | Fabrica media service for map images |
 
 ## Links
 
