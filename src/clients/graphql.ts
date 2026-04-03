@@ -8,6 +8,7 @@ import type {
   LoanLiquidatedEvent,
   CountyBoundsModel,
 } from "../types/index.js";
+import { NETWORK } from "../config.js";
 
 const DEFAULT_API_URL = "https://api.fabrica.land/graphql";
 
@@ -191,7 +192,7 @@ export async function getToken(
     const data = await client.request<{ token: TokenModel }>(query, {
       tokenId: params.tokenId,
       slug: params.slug,
-      network: params.network ?? "ethereum",
+      network: params.network ?? NETWORK,
     });
     return data.token;
   } catch {
@@ -286,7 +287,7 @@ export async function getLoans(
     }
   `;
   const data = await client.request<{ loans: LoanModel[] }>(query, {
-    network: filters.network ?? "ethereum",
+    network: filters.network ?? NETWORK,
     first: filters.first ?? 100,
     skip: filters.skip ?? 0,
   });
@@ -294,7 +295,7 @@ export async function getLoans(
 }
 
 /** Fetch all loans by paginating through the API */
-export async function getAllLoans(network = "ethereum"): Promise<LoanModel[]> {
+export async function getAllLoans(network = NETWORK): Promise<LoanModel[]> {
   const pageSize = 100;
   const allLoans: LoanModel[] = [];
   let skip = 0;
@@ -325,7 +326,7 @@ export async function getLoanStartedEvents(
   const data = await client.request<{ loanStartedEvents: LoanStartedEvent[] }>(query, {
     first,
     skip,
-    networkIn: ["ethereum"],
+    networkIn: [NETWORK],
   });
   return data.loanStartedEvents;
 }
@@ -345,7 +346,7 @@ export async function getLoanRepaidEvents(
   const data = await client.request<{ loanRepaidEvents: LoanRepaidEvent[] }>(query, {
     first,
     skip,
-    networkIn: ["ethereum"],
+    networkIn: [NETWORK],
   });
   return data.loanRepaidEvents;
 }
@@ -365,7 +366,7 @@ export async function getLoanLiquidatedEvents(
   const data = await client.request<{ loanLiquidatedEvents: LoanLiquidatedEvent[] }>(query, {
     first,
     skip,
-    networkIn: ["ethereum"],
+    networkIn: [NETWORK],
   });
   return data.loanLiquidatedEvents;
 }

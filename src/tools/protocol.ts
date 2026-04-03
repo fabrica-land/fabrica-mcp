@@ -1,5 +1,6 @@
 import { getTokens, getAllLoans, DEFAULT_MIN_SCORE, filterSpamTokens } from "../clients/graphql.js";
-import { getFabricaPool, FABRICA_TOKEN_ADDRESS, FABRICA_POOL_ADDRESS } from "../clients/subgraph.js";
+import { getFabricaPool } from "../clients/subgraph.js";
+import { CONTRACTS, NETWORK_LABEL, MAINNET_WARNING } from "../config.js";
 
 function formatUsd(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -51,14 +52,15 @@ export async function getProtocolStats() {
         description: "Tokenized real property (land) as ERC-1155 NFTs on Ethereum",
         website: "https://fabrica.land",
         docs: "https://docs.fabrica.land",
-        network: "Ethereum mainnet",
+        network: NETWORK_LABEL,
         tokenStandard: "ERC-1155",
       },
+      ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
       contracts: {
-        fabricaToken: FABRICA_TOKEN_ADDRESS,
-        metaStreetPool: FABRICA_POOL_ADDRESS,
-        nftfiV2: "0xd0a40eB7FD94eE97102BA8e9342243A2b2E22207",
-        nftfiV3: "0x9F10D706D789e4c76A1a6434cd1A9841c875C0A6",
+        fabricaToken: CONTRACTS.fabricaToken,
+        metaStreetPool: CONTRACTS.metaStreetPool,
+        nftfiV2: CONTRACTS.nftfiV2,
+        nftfiV3: CONTRACTS.nftfiV3,
       },
       properties: {
         totalTokenized: activeTokens.length,

@@ -134,6 +134,8 @@ Pool values are in 18-decimal format (divide by 10^18 for USDC amounts). Currenc
 
 6. **Score as raw integer.** Confidence scores are returned as raw integers from the API (e.g. 73242). Do not normalize to 0-1 or 0-100.
 
+7. **Network-aware.** The server operates on a single network set via `FABRICA_NETWORK` env var (default: `ethereum`). On mainnet, tool responses include legal notices and the server instructs agents to inform users about real-world legal consequences. On sepolia, properties are test-only. NFTfi lending is not available on Sepolia.
+
 ---
 
 ## Code Style
@@ -143,8 +145,9 @@ Pool values are in 18-decimal format (divide by 10^18 for USDC amounts). Currenc
 - Keep functions concise. No blank lines between statements inside functions.
 - Error handling: catch errors, return helpful messages to the agent, never throw raw errors.
 - Use environment variables for configuration with sensible defaults:
+  - `FABRICA_NETWORK` (default: `ethereum`; also supports `sepolia` for testnet)
   - `FABRICA_API_URL` (default: `https://api.fabrica.land/graphql`)
-  - `FABRICA_METASTREET_SUBGRAPH_URL` (default: Goldsky mainnet endpoint)
+  - `FABRICA_METASTREET_SUBGRAPH_URL` (default: auto-selected per network)
 - ESM modules. Target Node 20+.
 - Build with tsup. Output to `dist/`.
 

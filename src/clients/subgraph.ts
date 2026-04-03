@@ -1,16 +1,23 @@
 import { GraphQLClient, gql } from "graphql-request";
 import type { SubgraphPool } from "../types/index.js";
+import { CONTRACTS, IS_MAINNET } from "../config.js";
+
+const METASTREET_MAINNET_URL =
+  "https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-mainnet/3.13.2/gn";
+const METASTREET_SEPOLIA_URL =
+  "https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-sepolia/3.13.2/gn";
 
 const METASTREET_POOL_URL =
   process.env.FABRICA_METASTREET_SUBGRAPH_URL ??
-  "https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-mainnet/3.13.2/gn";
+  (IS_MAINNET ? METASTREET_MAINNET_URL : METASTREET_SEPOLIA_URL);
 
-const FABRICA_TOKEN_ADDRESS = "0x5cbeb7a0df7ed85d82a472fd56d81ed550f3ea95";
-const FABRICA_POOL_ADDRESS = "0x842ffbf1ad5314503904626122376f71603a3cf9";
+const FABRICA_TOKEN_ADDRESS = CONTRACTS.fabricaToken;
+const FABRICA_POOL_ADDRESS = CONTRACTS.metaStreetPool;
 
 const poolClient = new GraphQLClient(METASTREET_POOL_URL);
 
 export async function getFabricaPool(): Promise<SubgraphPool | null> {
+  if (!FABRICA_POOL_ADDRESS) return null;
   const query = gql`
     query GetPool($id: ID!) {
       pool(id: $id) {
