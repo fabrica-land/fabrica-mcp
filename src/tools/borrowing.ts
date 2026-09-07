@@ -23,7 +23,7 @@ export async function getBorrowQuote(args: Record<string, unknown>) {
     if (!token) {
       return { error: `No property found with ${tokenId ? `token ID ${tokenId}` : `slug ${slug}`}` };
     }
-    const ms = token.metaStreetLiquidity;
+    const ms = token.poolLendingLiquidity;
     const activeLoans = token.loans?.filter(l => l.loanStatus === "Active") ?? [];
     const loanOffers = token.loanOffers ?? [];
     const hasActiveLoan = activeLoans.length > 0 || parseInt(token.supplyUnderLoan || "0") > 0;

@@ -1,0 +1,1497 @@
+type ActivityModel {
+  activity: ActivityType!
+  currencyAddress: String
+  currencyAmount: String
+  currencyDecimals: Int
+  currencySymbol: String
+  durationSeconds: String
+  from: WalletModel
+  fromAddress: String @deprecated(reason: "User ActivityModel#from#address, instead")
+  network: String!
+  newValue: String
+  source: ActivitySource!
+  sourceId: String
+  sourceIndex: String
+  supply: String
+  time: String!
+  timestamp: Int!
+  to: WalletModel
+  toAddress: String @deprecated(reason: "User ActivityModel#to#address, instead")
+  token: TokenModel
+  tokenContract: String
+  tokenId: String
+  transactionHash: String
+  transactionLogIndex: String
+  usdAmount: String
+}
+
+enum ActivitySource {
+  Fabrica
+  NftFi
+  PoolLending
+  Seaport
+}
+
+enum ActivityType {
+  AuctionBid
+  AuctionClaimed
+  AuctionEnded
+  AuctionStarted
+  Burn
+  ConfigurationUpdated
+  LoanDefaulted
+  LoanLiquidated
+  LoanRefinanced
+  LoanRenegotiated
+  LoanRepaid
+  LoanStarted
+  MarketplaceBidCanceled
+  MarketplaceBidExpired
+  MarketplaceBidStarted
+  MarketplaceBidUpdated
+  MarketplaceListingCanceled
+  MarketplaceListingExpired
+  MarketplaceListingStarted
+  MarketplaceListingUpdated
+  MarketplaceSold
+  MediaChanged
+  Mint
+  OperatingAgreementUpdated
+  ScoreChanged
+  Transfer
+  Unknown
+  UserDescriptionChanged
+  ValidatorUpdated
+}
+
+"""
+Why Token.poolLendingLiquidity.appraisalBlockReason is non-null. Sanitized server-side: this field is publicly queryable without auth, so the ENG-3813 fraud/fishy gate is never distinguishable via this enum — it resolves to null, the same as no gate at all.
+"""
+enum AppraisalBlockReason {
+  """
+  Reserved for a future internal reason explicitly judged safe to disclose. Not currently produced.
+  """
+  OTHER
+
+  """Tax status was verified and is past-due."""
+  TAX_DELINQUENT
+
+  """Tax status was never verified, or a prior verification expired."""
+  TAX_STATUS_UNKNOWN
+}
+
+type AuctionBidModel {
+  amount: String!
+  amountUsd: String
+  bidder: String!
+  isCurrentUser: Boolean
+  isHighest: Boolean!
+  placedAt: String!
+  transactionHash: String!
+}
+
+type AuctionBidTransactionModel {
+  data: String!
+  to: String!
+  value: String!
+}
+
+type AuctionModel {
+  auctionId: String!
+  bids: [AuctionBidModel!]
+  contractAddress: String!
+  currencyAddress: String!
+  currentBidUsd: String
+  currentBidder: String
+  deadlineAt: String
+  isUserWinning: Boolean
+  minimumNextBidUsd: String
+  status: AuctionStatus!
+  totalBids: Int!
+  winnerAddress: String
+}
+
+enum AuctionStatus {
+  Active
+  Claimed
+  Ended
+}
+
+type AuthorizationMessageModel {
+  message: String!
+  timestamp: String!
+}
+
+type BalanceModel {
+  balance: String!
+  contractAddress: String!
+  holder: WalletModel!
+  network: String!
+  owner: WalletModel!
+  tokenId: String!
+}
+
+input BuildMarketplaceOrderInputModel {
+  contractAddress: String!
+  disclosurePackageId: String
+  durationDays: Int!
+  maker: String!
+  network: String!
+  price: String!
+  restrictedTo: [String!]
+  side: MarketplaceOrderSide!
+  supply: String!
+  symbol: String!
+  tokenId: String!
+}
+
+type ClientApiModel {
+  baseUrl: String!
+  clientBearerTokens: [String!]!
+  version: String!
+}
+
+type ClientBlockchainNetworkModel {
+  alchemyRpcUrl: String!
+  blockExplorerBaseUrl: String!
+  chainId: Float!
+  currencies: [ClientCurrencyModel!]!
+}
+
+type ClientCoinflowModel {
+  achChargeLimit: String!
+  cashOutEnabled: Boolean!
+  env: String!
+  maxCashAmountUsd: String!
+  merchantId: String!
+}
+
+type ClientCoinflowNetworkModel {
+  enabledRails: [CoinflowPaymentRail!]!
+}
+
+type ClientConfigModel {
+  api: ClientApiModel!
+  coinflow: ClientCoinflowModel!
+  dynamicXyz: ClientDynamicXyzModel!
+  intercom: ClientIntercomModel!
+  mapbox: ClientMapboxModel!
+  media: ClientMediaModel!
+  networks: [ClientNetworkModel!]!
+  regrid: ClientRegridModel!
+  resend: ClientResendModel!
+  soil: ClientSoilModel!
+}
+
+type ClientCurrencyModel {
+  address: String!
+  coinGeckoId: String!
+  scale: Int!
+  symbol: String!
+}
+
+type ClientDynamicXyzModel {
+  cookieAuthDomain: String!
+  envId: String!
+}
+
+type ClientIntercomModel {
+  apiKey: String!
+}
+
+type ClientMapboxModel {
+  apiAccessToken: String!
+}
+
+type ClientMarketplaceNetworkModel {
+  feeBps: Int!
+  feeRecipient: String!
+  settlementContractAddress: String
+}
+
+type ClientMediaModel {
+  baseUrl: String!
+}
+
+type ClientNetworkModel {
+  blockchain: ClientBlockchainNetworkModel!
+  coinflow: ClientCoinflowNetworkModel!
+  marketplace: ClientMarketplaceNetworkModel!
+  name: String!
+  nftfi: ClientNftfiNetworkModel!
+  openSea: ClientOpenSeaNetworkModel!
+  poolLending: ClientPoolLendingNetworkModel!
+  resend: ClientResendNetworkModel!
+  seaport: ClientSeaportNetworkModel!
+  testnet: Boolean!
+  token: ClientTokenNetworkModel!
+}
+
+type ClientNftfiNetworkModel {
+  apiBaseUri: String!
+  enabled: Boolean!
+  refinanceEnabled: Boolean!
+  versions: [ClientNftfiVersionModel!]!
+}
+
+type ClientNftfiVersionModel {
+  bnplAchEnabled: Boolean!
+  bnplContractAddress: String!
+  escrowContractAddress: String!
+  loanContractAddress: String!
+  loanCoordinatorAddress: String!
+  refinanceContractAddress: String!
+  version: String!
+}
+
+type ClientOpenSeaNetworkModel {
+  apiBaseUrl: String!
+  assetsBaseUrl: String!
+}
+
+type ClientPoolLendingNetworkModel {
+  enabled: Boolean!
+  escrowContractAddress: String @deprecated(reason: "Use escrowContractAddresses; a single escrow is not derivable with multiple pools.")
+  escrowContractAddresses: [String!]!
+  refinanceEnabled: Boolean!
+}
+
+type ClientRegridModel {
+  apiKey: String!
+}
+
+type ClientResendModel {
+  apiKey: String!
+  claimFormTo: String!
+}
+
+type ClientResendNetworkModel {
+  fromAddresses: ClientSendersModel!
+  replyToAddress: String!
+}
+
+type ClientSeaportNetworkModel {
+  versions: [ClientSeaportVersionNetworkModel!]!
+}
+
+type ClientSeaportVersionNetworkModel {
+  contractAddress: String!
+  version: String!
+}
+
+type ClientSendersModel {
+  Clerk: String!
+  Courier: String!
+  Herald: String!
+  Steward: String!
+}
+
+type ClientSoilModel {
+  revalidationTokens: [String!]!
+}
+
+type ClientTokenNetworkModel {
+  fabricaTokenAddress: String!
+}
+
+enum CoinflowPaymentRail {
+  ACH
+  CardPayment
+  Wire
+}
+
+input CollectedFieldInput {
+  key: String!
+  value: String!
+}
+
+type CollectedFieldModel {
+  key: String!
+  value: String!
+}
+
+type ConfigurationDocumentModel {
+  description: String
+  order: String
+  source: String!
+  type: String!
+}
+
+type ConfigurationMediaModel {
+  cameraOrientation: String
+  captureLocation: CoordinatesModel
+  description: String
+  focalLength: Int
+  imageDirection: Float
+  imageDirectionRef: String
+  metadata: JSONObject
+  order: String
+  source: String!
+  takenAt: String
+  type: String
+}
+
+type ConfigurationModel {
+  documents: [ConfigurationDocumentModel!]
+  holdingEntityDate: String
+  media: [ConfigurationMediaModel!]
+  partner: String
+  partnerId: String
+  proofOfTitle: ProofOfTitleModel
+  propertyNickName: String
+  userDescription: String
+  vendor: String
+  vendorId: String
+}
+
+type CoordinatesModel {
+  lat: Float!
+  lon: Float!
+}
+
+type CountyBoundsModel {
+  geoJson: JSONObject!
+}
+
+type DefinitionModel {
+  claim: String!
+  coordinates: CoordinatesModel!
+  geoJson: JSONObject
+  holdingEntity: String!
+  offchainRegistrar: OffchainRegistrarModel!
+}
+
+enum EthereumCurrency {
+  DAI
+  ETH
+  USDC
+  WETH
+}
+
+enum FeeType {
+  OnRamp
+}
+
+input FeesFilterInput {
+  includeApproved: Boolean
+  includePaid: Boolean
+}
+
+type FeesModel {
+  collector: String!
+  fees: [TokenFeeModel!]!
+  totalAmount: String!
+}
+
+type FiatTransactionModel {
+  action: String!
+  contractAddress: String
+  createdAt: String!
+  declineCode: String
+  declineDescription: String
+  eta: String!
+  expiration: String
+  fees: String!
+  gasFees: String!
+  id: String!
+  memo: String
+  method: String!
+  network: String!
+  phase: FiatTransactionPhase!
+  poolAddress: String
+  rail: String!
+  signature: String
+  status: String!
+  subtotal: String!
+  tickRaw: String
+  tokenId: String
+  total: String!
+  updatedAt: String!
+  walletAddress: String!
+}
+
+enum FiatTransactionPhase {
+  BankFailed
+  ConvertingToUsdc
+  DepositReverted
+  EnteringTick
+  Expired
+  WaitingOnBank
+}
+
+"""
+The `JSONObject` scalar type represents JSON objects as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
+"""
+scalar JSONObject
+
+type LoanLiquidatedEventModel {
+  blockNumber: String!
+  blockTimestamp: String!
+  borrower: String!
+  lender: String
+  loanId: String!
+  loanLiquidationDate: String!
+  loanMaturityDate: String!
+  loanPrincipalAmount: String!
+  newOwner: String
+  nftCollateralContract: String!
+  nftCollateralId: String!
+  proceeds: String
+  transactionHash: String!
+}
+
+type LoanModel {
+  amountPaidToLender: String
+  amountPaidToLenderScaled: String
+  aprBps: Int
+  aprPercent: Float
+  bnplContract: String
+  borrower: WalletModel!
+  collateralContract: String!
+  collateralId: String!
+  collateralWrapper: String
+  currency: String!
+  currencySymbol: String
+  durationFormatted: String!
+  durationSeconds: String!
+  encodedLoanReceipt: String
+  erc20TransferManager: String!
+  interestForDurationBps: Int!
+  interestForDurationPercent: Float!
+  lender: WalletModel
+  livePayoffScaled: String
+  loanContract: String!
+  loanId: String!
+  loanLiquidationDate: String
+  loanProvider: LoanProvider!
+  loanRepaidDate: String
+  loanStatus: LoanStatus!
+  loanType: LoanType!
+  marketplaceFeeBps: Int!
+  marketplaceFeePaid: String
+  marketplaceFeePaidScaled: String
+  marketplaceFeePercent: Float!
+  maturityDate: String!
+  maxRepayment: String!
+  maxRepaymentScaled: String!
+  networkName: String!
+  obligationReceipt: ObligationReceiptModel
+  payBackContract: String!
+  payoffAsOf: String
+  principal: String!
+  principalScaled: String!
+  promissoryNotes: [PromissoryNoteModel!]!
+  referralFeeBps: Int
+  referralFeePercent: Float
+  refinanceContract: String
+  revenueShareBps: Int
+  revenueSharePaid: String
+  revenueSharePaidScaled: String
+  revenueSharePartner: String
+  revenueSharePercent: Float
+  startTime: String!
+  thirdPartyRepayable: Boolean!
+  token: TokenModel
+  totalRenegotiationAdminFeesPaid: String!
+  totalRenegotiationAdminFeesPaidScaled: String!
+  totalRenegotiationFeesPaid: String!
+  totalRenegotiationFeesPaidScaled: String!
+}
+
+type LoanOfferModel {
+  aprBps: Int
+  aprPercent: Float
+  borrower: WalletModel!
+  collateralContract: String!
+  collateralId: String!
+  currency: String!
+  currencySymbol: String
+  durationFormatted: String!
+  durationSeconds: Float!
+  effectiveAprBps: Int
+  effectiveAprPercent: Float
+  interestForDurationBps: Int
+  interestForDurationPercent: Float
+  lender: WalletModel!
+  loanContract: String!
+  loanProvider: LoanProvider!
+  loanType: LoanType!
+  marketplaceFeeBps: Int!
+  marketplaceFeePercent: Float!
+  maxRepayment: String!
+  maxRepaymentScaled: String!
+  networkName: String!
+  nonce: String
+  offerExpiry: String!
+  offerId: String!
+  offeredDate: String
+  originationFee: String!
+  originationFeeScaled: String!
+  principal: String!
+  principalScaled: String!
+  token: TokenModel
+}
+
+enum LoanProvider {
+  NFTfi
+  PoolLending
+}
+
+type LoanRepaidEventModel {
+  adminFee: String!
+  amountPaidToLender: String!
+  blockNumber: String!
+  blockTimestamp: String!
+  borrower: String!
+  lender: String
+  loanERC20Denomination: String!
+  loanId: String!
+  loanPrincipalAmount: String!
+  nftCollateralContract: String!
+  nftCollateralId: String!
+  revenueShare: String!
+  revenueSharePartner: String!
+  transactionHash: String!
+}
+
+type LoanStartedEventModel {
+  blockNumber: String!
+  blockTimestamp: String!
+  borrower: String!
+  lender: String
+  loanAdminFeeInBasisPoints: Int!
+  loanContract: String!
+  loanDuration: String!
+  loanERC20Denomination: String!
+  loanId: String!
+  loanInterestRateForDurationInBasisPoints: Int!
+  loanPrincipalAmount: String!
+  loanProvider: LoanProvider!
+  loanStartTime: String!
+  loanType: LoanType!
+  maximumRepaymentAmount: String!
+  nftCollateralContract: String!
+  nftCollateralId: String!
+  nftCollateralWrapper: String!
+  referralFeeInBasisPoints: Int!
+  revenueShareInBasisPoints: Int!
+  revenueSharePartner: String!
+  transactionHash: String!
+}
+
+enum LoanStatus {
+  Active
+  Default
+  Liquidated
+  Liquidating
+  Repaid
+}
+
+enum LoanType {
+  Fixed
+  Prorated
+}
+
+enum Marketplace {
+  Fabrica
+}
+
+type MarketplaceDisclosureModel {
+  cid: String!
+  id: String!
+  mimeType: String!
+  name: String!
+  url: String!
+}
+
+type MarketplaceDisclosurePackageModel {
+  cid: String!
+  createdAt: String!
+  disclosures: [MarketplaceDisclosureModel!]!
+  id: String!
+}
+
+type MarketplaceFulfillmentPermissionModel {
+  disclosurePackageId: String!
+  expiry: Int!
+  extraData: String!
+  orderHash: String!
+  settlementParams: MarketplaceSettlementParamsModel
+  signature: String!
+}
+
+enum MarketplaceOrderBlockReason {
+  AWAITING_ALLOWANCE
+  LEGACY_POOL
+  UNDERWATER
+}
+
+type MarketplaceOrderEncumbranceModel {
+  blockReason: MarketplaceOrderBlockReason
+  buyable: Boolean!
+  loanId: String!
+  poolAddress: String!
+  requiredAllowanceScaled: String!
+  settlementContract: String
+}
+
+input MarketplaceOrderInputModel {
+  considerationToken: String!
+  contractAddress: String!
+  decimals: Int!
+  definitionUrl: String
+  disclosurePackageId: String
+  endTime: String!
+  expectMatch: Boolean
+  feeBps: String!
+  icon: String
+  maker: WalletInputModel
+  makerAddress: String!
+  marketplace: Marketplace!
+  marketplaceId: String!
+  network: String!
+  permalink: String
+  price: String!
+  restrictedTo: [WalletInputModel!]
+  restrictedToAddresses: [String!]
+  seaportOrder: SeaportOrderInputModel!
+  side: MarketplaceOrderSide!
+  signature: String
+  startTime: String!
+  status: String!
+  supply: String!
+  symbol: EthereumCurrency!
+  tokenId: String!
+  usdPrice: String!
+}
+
+type MarketplaceOrderModel {
+  considerationToken: String!
+  contractAddress: String!
+  decimals: Int!
+  definitionUrl: String
+  disclosurePackage: [MarketplaceDisclosureModel!]
+  disclosurePackageId: String
+  encumbrance: MarketplaceOrderEncumbranceModel
+  endTime: String
+  feeBps: String!
+  icon: String
+  maker: WalletModel!
+  makerAddress: String!
+  marketplace: Marketplace!
+  marketplaceId: String!
+  matchTransactionHash: String
+  network: String!
+  permalink: String
+  price: String!
+  requiresConfirmation: Boolean
+  restrictedTo: [WalletModel!]
+  restrictedToAddresses: [String!]
+  seaportOrder: SeaportOrderModel!
+  side: MarketplaceOrderSide!
+  signature: String
+  signedLegalDescription: String
+  startTime: String!
+  status: MarketplaceOrderStatus!
+  supply: String!
+  symbol: EthereumCurrency!
+  token: TokenModel!
+  tokenId: String!
+  usdPrice: String
+}
+
+enum MarketplaceOrderSide {
+  buy
+  sell
+}
+
+enum MarketplaceOrderStatus {
+  active
+  canceled
+  encumbered
+  expired
+  filled
+  pending
+}
+
+type MarketplaceSettlementParamsModel {
+  contractAddress: String!
+  encodedLoanReceipt: String!
+  poolAddress: String!
+}
+
+type Mutation {
+  addMarketplaceOrder(order: MarketplaceOrderInputModel!): MarketplaceOrderModel!
+  cancelMarketplaceOrder(orderHash: String!): MarketplaceOrderModel!
+  cancelOffRamp(contractAddress: String!, network: String!, tokenId: String!): OffRampModel!
+  createMarketplaceDisclosurePackage(disclosures: [String!]!): MarketplaceDisclosurePackageModel!
+  placeBid(amount: String!, auctionId: String!, bidder: String!, network: String!): AuctionBidTransactionModel!
+  sendMessage(input: SendMessageInput!): Boolean!
+  startOffRamp(contractAddress: String!, email: String!, network: String!, tokenId: String!): OffRampModel!
+  submitOffRampAuthorization(contractAddress: String!, message: String!, network: String!, signature: String!, tokenId: String!): OffRampModel!
+  submitOffRampInfo(contractAddress: String!, info: OffRampInfoInput!, network: String!, tokenId: String!): OffRampModel!
+}
+
+type ObligationReceiptModel {
+  nftCollateralContract: String!
+  nftCollateralId: String!
+  receiptTokenId: String!
+}
+
+input OffRampInfoInput {
+  collectedFields: [CollectedFieldInput!]
+  grantee: WorkflowSignerInput
+  mailTaxAddressLine1: String!
+  mailTaxAddressLine2: String
+  mailTaxAddressLine3: String!
+}
+
+type OffRampModel {
+  collectedFields: [CollectedFieldModel!]!
+  contractAddress: String!
+  createdAt: String!
+  email: String
+  erecordingDaysToWait: Int
+  grantee: WorkflowSignerModel
+  id: String!
+  mailTaxAddressLine1: String
+  mailTaxAddressLine2: String
+  mailTaxAddressLine3: String
+  network: String!
+  notaryNote: String
+  status: WorkflowStatus!
+  steps: [OffRampStepModel!]!
+  tokenId: String!
+  updatedAt: String!
+  userProvidedFields: [UserProvidedFieldModel!]!
+  witnessesRequired: Boolean
+}
+
+enum OffRampStepKey {
+  BurnToken
+  CollectInfoFromUser
+  DocSetup
+  PropertyResearch
+  RecordingDocuments
+  ResearchReview
+  SignAndNotarize
+  SignatureVerification
+}
+
+type OffRampStepModel {
+  completed: String
+  expectedCompletion: String
+  expectedDurationSeconds: Int
+  key: OffRampStepKey!
+  order: Int!
+  started: String
+  status: WorkflowStepStatus!
+  substeps: [OffRampStepModel!]
+  text: String!
+  textCompleted: String!
+  userActions: [UserActionModel!]
+  visibility: Boolean!
+}
+
+type OffchainRegistrarModel {
+  admin: String!
+  adminId: String!
+  country: String!
+  propertyId: String!
+}
+
+type OnRampModel {
+  collectedFields: [CollectedFieldModel!]!
+  contractAddress: String!
+  createdAt: String!
+  email: String
+  geography: [String!]
+  grantor: WorkflowSignerModel
+  id: String!
+  network: String!
+  status: WorkflowStatus!
+  steps: [OnRampStepModel!]!
+  tokenId: String!
+  updatedAt: String!
+  userProvidedFields: [UserProvidedFieldModel!]!
+  walletAddress: String
+}
+
+enum OnRampStepKey {
+  Celebration
+  CollectInfoFromUser
+  DocSetup
+  GenerateDescription
+  GenerateImage
+  GetFeeApproval
+  Minting
+  PropertyResearch
+  RecordingAndMinting
+  RecordingDocuments
+  ResearchInfoFromServices
+  ResearchReview
+  SignAndNotarize
+}
+
+type OnRampStepModel {
+  completed: String
+  expectedCompletion: String
+  expectedDurationSeconds: Int
+  key: OnRampStepKey!
+  order: Int!
+  started: String
+  status: WorkflowStepStatus!
+  substeps: [OnRampStepModel!]
+  text: String!
+  textCompleted: String!
+  userActions: [UserActionModel!]
+  visibility: Boolean!
+}
+
+type PoolLendingCollateralTokenModel {
+  address: String!
+  name: String!
+}
+
+type PoolLendingCurrencyTokenModel {
+  address: String!
+  decimals: Int
+  symbol: String
+}
+
+type PoolLendingDepositModel {
+  depositedAmount: String!
+  id: String!
+  redemptions: [PoolLendingRedemptionModel!]!
+  shares: String!
+  tickRaw: String!
+}
+
+type PoolLendingLiquidityModel {
+  activeLoan: PoolLendingLoanModel
+
+  """
+  Why the pool-lending oracle appraisal is forced to 0, or null. Non-null ONLY for the two tax-status reasons — every other cause (the ENG-3813 fraud/fishy gate included) resolves to null, since this field is publicly queryable without auth. null does not by itself mean borrowing is available: check maxPrincipalUsdc.
+  """
+  appraisalBlockReason: AppraisalBlockReason
+  durations: [Int!]!
+
+  """
+  `maxPrincipalUsdc` divided by 1e6, as a decimal string in whole currency units; may carry a fractional part (e.g. 1.5). Same caveats: advertised signed-appraisal / oracle capacity, not router-sourceable liquidity.
+  """
+  maxPrincipalScaled: String!
+
+  """
+  Advertised borrowing capacity in the currency token (USDC, 6 decimals): the largest principal any single pool forecasts from its tick liquidity against that pool's collateral price (`oracleValuation.quote.price` or `onchainValuation.usablePriceUsdc6`), net of the active loan on that pool. Pools with no usable price contribute zero. This is an off-chain forecast, not the amount the MetaStreet router can actually source — the router's on-chain sourcing can come out lower and the two can disagree; quote the real amount before presenting it as borrowable.
+  """
+  maxPrincipalUsdc: String!
+  pools: [PoolLendingPoolModel!]!
+}
+
+type PoolLendingLoanModel {
+  borrowerAddress: String!
+  collateralTokenIds: [String!]!
+  duration: String!
+  id: String!
+  interests: [String!]!
+  loanReceipt: String!
+  maturity: String!
+  poolAddress: String!
+  principal: String!
+  repayment: String!
+  ticks: [String!]!
+  timestamp: String!
+  useds: [String!]!
+}
+
+"""
+The subgraph's `OnchainPrice` row for this token under the pool's validator: the RAW canonical price the FabricaAttributeOracle fact store holds, before any eligibility gate. This is NOT the price the pool lends against — use `onchainValuation.usablePriceUsdc6` for that. Only populated for OnchainOracle pools inside `Token.poolLendingLiquidity`.
+"""
+type PoolLendingOnchainPriceModel {
+  """Publisher confidence in basis points (0–10000)."""
+  confidenceScore: Int
+
+  """
+  Keeper cycle the price was written in. A `cycle` below `oracleFeed.minValidCycle` was invalidated by `CycleInvalidated`.
+  """
+  cycle: String
+
+  """
+  Raw canonical source price in USDC (6 decimals) per unit of token supply, as written to the fact store. Informational only: it can be stale, invalidated or otherwise ineligible. Null until the first `PriceWritten` for a registered token, or while the indexer is unavailable (see `oracleFeed.indexerUnavailableReason`).
+  """
+  priceUsdc6: String
+
+  """Id of the source the canonical price was taken from."""
+  sourceId: Int
+
+  """Unix seconds at which the publisher valued the token."""
+  valuedAt: String
+}
+
+"""
+What the aggregator answers for THIS token right now — the exact inputs an OnchainOracle pool uses at execution. This, not `onchainPrice.priceUsdc6`, is the price the pool lends against. Only populated inside `Token.poolLendingLiquidity`.
+"""
+type PoolLendingOnchainValuationModel {
+  """
+  Why `usablePriceUsdc6` is null: the first failed aggregator gate (`heartbeat`, `registry`, `recovery`, `currency`, `min_sources`, `dispersion`, `land_use`) or an API-side read failure (`price_unavailable`, `eligibility_unavailable`, `oracle_state_unavailable`). Null when `usablePriceUsdc6` is set.
+  """
+  failedCheck: String
+
+  """
+  The aggregator's live `price()` in USDC (6 decimals) per unit of token supply, after every eligibility check passed: the price the pool lends against and the input to `maxPrincipalUsdc`. Differs from `onchainPrice.priceUsdc6` (the raw canonical source price) by design. Null whenever a check fails or the oracle could not be read; `failedCheck` then names why.
+  """
+  usablePriceUsdc6: String
+}
+
+"""
+The validator's heartbeat surface for an OnchainOracle pool. While `isStale` is true the aggregator refuses every price and the pool cannot originate or refinance. The subgraph-sourced fields (`lastHeartbeat`, `currentCycle`, `minValidCycle`) are null when the indexer could not be read (see `indexerUnavailableReason`) or has no row for the validator yet; `isStale` and `maxSilence` are read live on-chain and always reported. Only populated inside `Token.poolLendingLiquidity`.
+"""
+type PoolLendingOracleFeedModel {
+  """
+  The validator's current keeper cycle, from the subgraph. Null while the indexer is unavailable or before the first write.
+  """
+  currentCycle: String
+
+  """
+  `indexer_unavailable` when the subgraph rows (`onchainPrice` and the subgraph-sourced fields here) could not be read — an indexer outage or rate limit. The aggregator's live verdict (`isStale`, `onchainValuation`) is unaffected and borrowing capacity is preserved. Null when the subgraph was read.
+  """
+  indexerUnavailableReason: String
+
+  """
+  The fact store's live heartbeat verdict, negated: true when `block.timestamp > lastHeartbeat + maxSilence` on-chain right now. This is the exact gate the aggregator applies; while true the pool refuses every loan and contributes zero to `maxPrincipalUsdc`. Also true when the on-chain read itself failed (fail-closed).
+  """
+  isStale: Boolean!
+
+  """
+  Unix seconds of the last keeper heartbeat, from the subgraph (may lag the chain by the indexing delay). Null before the first heartbeat or while the indexer is unavailable. Do not derive staleness from this and the wall clock — use `isStale`.
+  """
+  lastHeartbeat: String
+
+  """
+  Seconds of silence after `lastHeartbeat` before the feed is stale, read live from the fact store's `maxSilence()`.
+  """
+  maxSilence: String!
+
+  """
+  Lowest keeper cycle still considered valid, from the subgraph. A price whose `cycle` is below this was invalidated. Null while the indexer is unavailable or before the first write.
+  """
+  minValidCycle: String
+}
+
+"""
+The API's EIP-712 appraisal for a SignedQuote pool. The `quote` is always returned; the `signature` is present only when the API signs (null for premints and fraud-blocked tokens, whose quote is display-only and which the pool refuses). The borrower packs quote + signature into `oracleContext`. `quote.price` is the collateral price in the currency token (USDC, 6 decimals) and the input to `maxPrincipalUsdc` for SignedQuote pools. Never populated for OnchainOracle pools.
+"""
+type PoolLendingOracleValuationModel {
+  """
+  The EIP-712 quote payload. `price` is the appraised collateral value in the currency token (USDC, 6 decimals); a `0` price means the API found no valid valuation (fail-closed) and the pool will refuse the loan.
+  """
+  quote: PoolLendingQuoteModel!
+
+  """
+  The API signer's EIP-712 signature over `quote`, required in `oracleContext` to borrow. Null when the API deliberately does not sign: premints (no token yet) and fraud-blocked tokens, whose quote is returned for display only.
+  """
+  signature: String
+}
+
+type PoolLendingPoolModel {
+  address: String!
+  collateralToken: PoolLendingCollateralTokenModel!
+  currencyToken: PoolLendingCurrencyTokenModel!
+  durations: [Float!]!
+  fiatTransactions: [FiatTransactionModel!]
+  loansActive: String!
+  network: String!
+
+  """
+  Raw canonical source price from the subgraph (informational). Null for SignedQuote pools, on depositor-side reads, and while the indexer is unavailable. Not the price the pool lends against — see `onchainValuation`.
+  """
+  onchainPrice: PoolLendingOnchainPriceModel
+
+  """
+  The aggregator's live verdict: `usablePriceUsdc6` is the price the pool lends against (null with `failedCheck` set when refused). Null for SignedQuote pools and on depositor-side reads.
+  """
+  onchainValuation: PoolLendingOnchainValuationModel
+
+  """
+  The validator's heartbeat surface (`isStale` gates every loan). Null for SignedQuote pools and on depositor-side reads.
+  """
+  oracleFeed: PoolLendingOracleFeedModel
+
+  """
+  The appraisal quote (and, when the API signs, its EIP-712 signature) for a SignedQuote pool. Null by design for OnchainOracle pools (ENG-3894) — switch on `pricing` before reading it — and unset on depositor-side reads (`Query.poolLendingPools`).
+  """
+  oracleValuation: PoolLendingOracleValuationModel
+
+  """
+  The pool's `priceOracle()` (a FabricaOracleAggregator) for OnchainOracle pools; null for SignedQuote pools.
+  """
+  priceOracleAddress: String
+
+  """
+  How this pool values collateral. Inside `Token.poolLendingLiquidity`: SignedQuote pools populate `oracleValuation`; OnchainOracle pools populate `onchainPrice`, `oracleFeed` and `onchainValuation` and leave `oracleValuation` null. Depositor-side reads (`Query.poolLendingPools`) leave all of them unset.
+  """
+  pricing: PoolLendingPricing!
+  rates: [Float!]!
+  ticks: [PoolLendingTickModel!]!
+}
+
+type PoolLendingPoolsResultModel {
+  blockTimestamp: String
+  pools: [PoolLendingPoolModel!]!
+}
+
+"""
+How a pool values its collateral. Consumers must switch on this field. Inside `Token.poolLendingLiquidity` (borrower-side), SignedQuote pools populate `oracleValuation` while OnchainOracle pools leave `oracleValuation` null by design (ENG-3894) and populate `onchainPrice`, `oracleFeed` and `onchainValuation` instead. Depositor-side reads (`Query.poolLendingPools`) leave every valuation field unset.
+"""
+enum PoolLendingPricing {
+  """
+  The pool's price oracle is a FabricaOracleAggregator that reads the FabricaAttributeOracle fact store at execution time. No signed quote exists (the API never signs for such a pool), `oracleContext` is empty on borrow/refinance, and `oracleValuation` is null. `onchainPrice`, `oracleFeed` and `onchainValuation` are populated only inside `Token.poolLendingLiquidity`.
+  """
+  OnchainOracle
+
+  """
+  The API returns an EIP-712 appraisal quote (`oracleValuation.quote`, inside `Token.poolLendingLiquidity`) and signs it only when the token is borrowable: `oracleValuation.signature` is null for premints and fraud-blocked tokens, whose quote is display-only and which the pool refuses. The borrower packs quote + signature into `oracleContext` and the pool's price oracle verifies the signature on-chain. `onchainPrice`, `oracleFeed` and `onchainValuation` are null.
+  """
+  SignedQuote
+}
+
+type PoolLendingQuoteModel {
+  currency: String!
+  duration: Int!
+  price: String!
+  timestamp: Int!
+  token: String!
+  tokenId: String!
+}
+
+type PoolLendingRedemptionModel {
+  redemptionId: String!
+  shares: String!
+}
+
+type PoolLendingTickModel {
+  accrualRate: String
+  accrualTimestamp: Int
+  accrued: String
+  available: String!
+  pending: String!
+  raw: String!
+  redemptionPending: String!
+  shares: String!
+  value: String!
+}
+
+type PricingModel {
+  confidence: String
+  currency: String!
+  modelVersion: String!
+  scope: String!
+  source: String!
+  timestamp: String!
+  value: String
+}
+
+type PromissoryNoteModel {
+  noteTokenId: String!
+}
+
+type ProofOfTitleModel {
+  document: String
+  documentId: String
+  documentName: String
+  source: String
+}
+
+type Query {
+  balances(first: Int! = 100, network: String, networkIn: [String!], skip: Int! = 0): [BalanceModel!]!
+  buildUnsignedMarketplaceOrder(orderData: BuildMarketplaceOrderInputModel!): MarketplaceOrderModel!
+  clientConfig: ClientConfigModel!
+  countyBounds(fips: String!): CountyBoundsModel
+  getMarketplaceFulfillmentPermission(disclosurePackageId: String, orderHash: String!, taker: String!): MarketplaceFulfillmentPermissionModel!
+  getOffRampAuthorizationMessage(contractAddress: String!, network: String!, tokenId: String!): AuthorizationMessageModel!
+  loanLiquidatedEvents(first: Int! = 100, network: String, networkIn: [String!], skip: Int! = 0): [LoanLiquidatedEventModel!]!
+  loanRepaidEvents(first: Int! = 100, network: String, networkIn: [String!], skip: Int! = 0): [LoanRepaidEventModel!]!
+  loanStartedEvents(first: Int! = 100, network: String, networkIn: [String!], skip: Int! = 0): [LoanStartedEventModel!]!
+  loans(contractAddress: String, first: Int, network: String, networkIn: [String!], skip: Int): [LoanModel!]!
+  marketplaceBids(contractAddress: String!, marketplace: Marketplace, minAmount: String, networkName: String!, status: MarketplaceOrderStatus, tokenId: String!): [MarketplaceOrderModel!]!
+  marketplaceDisclosures(cid: String!): [MarketplaceDisclosureModel!]!
+  marketplaceListings(contractAddress: String!, marketplace: Marketplace, networkName: String!, status: MarketplaceOrderStatus, tokenId: String!): [MarketplaceOrderModel!]!
+  offRamp(contractAddress: String!, network: String!, tokenId: String!): OffRampModel!
+  onRamp(contractAddress: String!, network: String!, tokenId: String!): OnRampModel!
+  poolLendingPool(address: String!, network: String!): PoolLendingPoolModel
+  poolLendingPools(addresses: [String!], network: String!): PoolLendingPoolsResultModel!
+  scoringDescriptors: [ScoringGroupModel!]!
+  token(contractAddress: String, network: String, slug: String, tokenId: String): TokenModel!
+  tokens(burned: Boolean, contractAddress: String, minListings: Int, minScore: Int, network: String, ownedBy: String, premints: Boolean, sort: TokenSortField, testnets: Boolean): [TokenModel!]!
+  user(network: String, walletAddress: String!): UserModel!
+  wallet(burned: Boolean, contractAddress: String, minListings: Int, minScore: Int, network: String, premints: Boolean, sort: TokenSortField, testnets: Boolean, walletAddress: String!): WalletModel!
+}
+
+type ScoringCheckResultModel {
+  checkName: String!
+  group: String!
+  title: String!
+  value: Boolean!
+}
+
+type ScoringGroupModel {
+  description: String!
+  groupName: String!
+  maxScore: Int!
+  title: String!
+}
+
+input SeaportConsiderationInputModel {
+  endAmount: String!
+  identifierOrCriteria: String!
+  itemType: Int!
+  recipient: String!
+  startAmount: String!
+  token: String!
+}
+
+type SeaportConsiderationModel {
+  endAmount: String!
+  identifierOrCriteria: String!
+  itemType: Int!
+  recipient: String!
+  startAmount: String!
+  token: String!
+}
+
+input SeaportOfferInputModel {
+  endAmount: String!
+  identifierOrCriteria: String!
+  itemType: Int!
+  startAmount: String!
+  token: String!
+}
+
+type SeaportOfferModel {
+  endAmount: String!
+  identifierOrCriteria: String!
+  itemType: Int!
+  startAmount: String!
+  token: String!
+}
+
+input SeaportOrderInputModel {
+  conduitKey: String!
+  consideration: [SeaportConsiderationInputModel!]!
+  counter: String!
+  endTime: Int!
+  offer: [SeaportOfferInputModel!]!
+  offerer: String!
+  orderType: Int!
+  salt: String!
+  startTime: Int!
+  totalOriginalConsiderationItems: String!
+  zone: String!
+  zoneHash: String!
+}
+
+type SeaportOrderModel {
+  conduitKey: String!
+  consideration: [SeaportConsiderationModel!]!
+  counter: String!
+  endTime: Int!
+  offer: [SeaportOfferModel!]!
+  offerer: String!
+  orderType: Int!
+  salt: String!
+  startTime: Int!
+  totalOriginalConsiderationItems: String!
+  zone: String!
+  zoneHash: String!
+}
+
+input SendMessageInput {
+  contractAddress: String
+  message: String!
+  network: String!
+  recipient: String!
+  sender: String!
+  tokenId: String
+}
+
+type Subscription {
+  offRamp(contractAddress: String!, network: String!, tokenId: String!): OffRampModel!
+  onRamp(contractAddress: String!, network: String!, tokenId: String!): OnRampModel!
+  token(tokenId: String!): TokenModel!
+  tokenActivity(contractAddress: String!, network: String!, tokenId: String!): ActivityModel!
+}
+
+type TokenFeeModel {
+  amount: String!
+  approved: Boolean!
+  approvedAt: String
+  contractAddress: String!
+  createdAt: String!
+  currency: String!
+  network: String!
+  paid: Boolean!
+  paidAt: String
+  tokenId: String!
+  type: FeeType!
+}
+
+type TokenModel {
+  acres: String
+  activity(excludeAuctionBids: Boolean, limit: Int): [ActivityModel!]!
+  address: String
+  animationUrl: String!
+  auctions(status: AuctionStatus, status_in: [AuctionStatus!]): [AuctionModel!]
+  balances: [BalanceModel!]
+  booleanTraits: [TraitBooleanModel!]
+  cardDisplayValuation: String!
+  configuration: ConfigurationModel
+  configurationUrl: String
+  contractAddress: String!
+  coordinates: CoordinatesModel!
+  country: String
+  countryCode: String
+  decimalTraits: [TraitDecimalModel!]
+  definition: DefinitionModel
+  definitionUrl: String
+  district: String
+  duplicateParcelCount: Int
+  estimatedValue: String!
+  fees(filter: FeesFilterInput): FeesModel!
+  fiatTransactions: [FiatTransactionModel!]!
+  fishy: Boolean!
+  geoJson: JSONObject
+  imageUrlDark: String
+  imageUrlLight: String
+  inAuction: Boolean!
+  isBurned: Boolean!
+  isClaimedPremint: Boolean!
+  isPremint: Boolean!
+  lastOwner: WalletModel
+  loanOfferCount: Int!
+  loanOffers: [LoanOfferModel!]!
+  loans: [LoanModel!]!
+  locality: String
+  majorOwner: String @deprecated(reason: "Use majorityOwnerAddress")
+  majorityOwner: UserModel
+  majorityOwnerAddress: String
+  marketplaceBidCount(marketplace: Marketplace, minAmount: String, status: String): Int!
+  marketplaceBids(marketplace: Marketplace, minAmount: String, status: MarketplaceOrderStatus): [MarketplaceOrderModel!]
+  marketplaceListings(marketplace: Marketplace, status: MarketplaceOrderStatus): [MarketplaceOrderModel!]
+  marketplacePrice: String
+  metadataUri: String
+  mintedAt: String
+  name: String
+  neighborhood: String
+  network: String!
+  offRamp: OffRampModel
+  offRampStatus: String
+  onRamp: OnRampModel
+  operatingAgreement: String
+  operatingAgreementName: String
+  operatingAgreementUrl: String
+  place: String
+  poolLendingLiquidity: PoolLendingLiquidityModel
+  postCode: String
+  pricing: [PricingModel!]!
+  propertyLink: String!
+  region: String
+  regionCode: String
+  score: Int
+  scoringCheckResults: [ScoringCheckResultModel!]!
+  slug: String!
+  street: String
+  stringTraits: [TraitStringModel!]
+  supply: String!
+  supplyInDefault: String!
+  supplyLiquidating: String!
+  supplyUnderAuction: String!
+  supplyUnderLoan: String!
+  tokenId: String!
+  transfers: [TransferModel!]
+  validator: String
+  valuationReportUrl: String
+  vanityName: String
+}
+
+enum TokenSortField {
+  price
+  score
+}
+
+type TraitBooleanModel {
+  displayName: String!
+  key: String!
+  value: Boolean
+}
+
+type TraitDecimalModel {
+  displayName: String!
+  key: String!
+  value: Float
+}
+
+type TraitStringModel {
+  displayName: String!
+  key: String!
+  value: String
+}
+
+type TransferModel {
+  blockNumber: String!
+  blockTimestamp: String!
+  from: WalletModel
+  operator: String!
+  to: WalletModel
+  token: String
+  transactionHash: String!
+  value: String!
+}
+
+type UserActionModel {
+  amount: String
+  automateCollection: Boolean
+  contractAuthorized: String
+  currency: String
+  detail: String
+  disposition: String!
+  key: String!
+  label: String
+  mimeType: String
+  order: Int!
+  prompt: String!
+  url: String
+}
+
+input UserInputModel {
+  avatarUrl: String
+  displayName: String!
+  profilePath: String
+  profileUrl: String
+}
+
+type UserModel {
+  address: String
+  avatarUrl: String
+  contactable: Boolean!
+  displayName: String!
+  poolLendingDeposits(network: String!, poolAddress: String!): [PoolLendingDepositModel!]!
+  profilePath: String
+  profileUrl: String
+}
+
+type UserProvidedFieldModel {
+  autofocus: Boolean!
+  key: String!
+  max: String
+  maxlength: Int
+  min: String
+  options: [String!]
+  pattern: String
+  placeholder: String
+  required: Boolean!
+  size: Int
+  step: Int
+  type: String!
+}
+
+type WalletCreditHistoryModel {
+  activeLoans: WalletLoanCreditBucketModel!
+  defaultedLoans: WalletLoanCreditBucketModel!
+  liquidatedLoans: WalletLoanCreditBucketModel!
+  repaidLoans: WalletLoanCreditBucketModel!
+  tokens: WalletTokenCreditBucketModel!
+  totalLoans: WalletLoanCreditBucketModel!
+}
+
+input WalletInputModel {
+  address: String!
+  user: UserInputModel!
+}
+
+type WalletLoanCreditBucketModel {
+  averageDurationDays: String!
+  loanCount: String!
+  totalPaidValue: String!
+  totalPrincipalValue: String!
+}
+
+type WalletModel {
+  activity(limit: Int): [ActivityModel!]!
+  address: String!
+  burned: Boolean
+  contractAddress: String
+  creditHistory: WalletCreditHistoryModel!
+  fees(filter: FeesFilterInput): FeesModel!
+  loanOffersMade(network: String): [LoanOfferModel!]
+  loansMade(network: String): [LoanModel!]
+  loansTaken(network: String): [LoanModel!]
+  marketplaceOffersMade(network: String): [MarketplaceOrderModel!]
+  minListings: Int
+  minScore: Int
+  network: String
+  premints: Boolean
+  propertyCountUnderLoan: String!
+  sort: TokenSortField
+  testnets: Boolean
+  tokenCount: String!
+  tokens: [TokenModel!]!
+  totalAcres: String!
+  totalCollateralValue: String!
+  totalOutstandingLoansUSDC: String!
+  totalValue: String!
+  user: UserModel!
+}
+
+type WalletTokenCreditBucketModel {
+  tokenCount: String!
+  totalEstimatedValue: String!
+}
+
+input WorkflowSignerInput {
+  email: String
+  firstName: String
+  fullName: String
+  jurisdiction: String
+  lastName: String
+  middleName: String
+  name: String
+  qualifier: String
+  role: String
+  signerType: WorkflowSignerType!
+  signers: [WorkflowSignerInput!]
+  type: String
+}
+
+type WorkflowSignerModel {
+  email: String
+  firstName: String
+  fullName: String
+  jurisdiction: String
+  lastName: String
+  middleName: String
+  name: String
+  qualifier: String
+  role: String
+  signerType: WorkflowSignerType!
+  signers: [WorkflowSignerModel!]
+  type: String
+}
+
+enum WorkflowSignerType {
+  Concurrent
+  Entity
+  Individual
+}
+
+enum WorkflowStatus {
+  Canceled
+  Complete
+  InProgress
+}
+
+enum WorkflowStepStatus {
+  Complete
+  Failed
+  InProgress
+  NotStarted
+}
