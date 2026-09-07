@@ -15,11 +15,19 @@ const MAINNET_PREAMBLE = IS_MAINNET
   ? " IMPORTANT: This server is connected to Ethereum Mainnet. Fabrica tokens represent real property in the United States with real legal consequences. Before acquiring any token, you MUST inform the user that: (1) they will become the beneficial owner and trustee of a real property trust, (2) they may incur legal liabilities and tax obligations, (3) they should review the trust instrument and operating agreement attached to the token. The operating agreement URL is included in property details — fetch and review it to advise the user on the terms."
   : " This server is connected to Sepolia Testnet. Properties here are for testing only — no real-world legal or financial implications.";
 
-const server = new McpServer({
-  name: "fabrica-mcp",
-  version: "0.1.0",
-  instructions: `Fabrica MCP Server — read-only access to tokenized real property data on the Fabrica protocol. Network: ${NETWORK_LABEL}.${MAINNET_PREAMBLE}`,
-});
+// `instructions` belongs in the SDK's ServerOptions (second argument), not in the
+// Implementation record. Passed in the first argument it rode along inside
+// `serverInfo`, where no client reads it, so the mainnet legal preamble never
+// reached an agent.
+const server = new McpServer(
+  {
+    name: "fabrica-mcp",
+    version: "0.1.0",
+  },
+  {
+    instructions: `Fabrica MCP Server — read-only access to tokenized real property data on the Fabrica protocol. Network: ${NETWORK_LABEL}.${MAINNET_PREAMBLE}`,
+  },
+);
 
 // --- search_properties ---
 server.tool(

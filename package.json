@@ -12,6 +12,7 @@
   ],
   "scripts": {
     "build": "tsup",
+    "typecheck": "tsc --noEmit",
     "dev": "tsup --watch",
     "start": "node dist/index.js",
     "test": "vitest run",
