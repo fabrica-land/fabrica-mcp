@@ -40,7 +40,7 @@ export interface TokenModel {
   loanOffers: LoanOfferModel[];
   loanOfferCount: number;
   loans: LoanModel[];
-  metaStreetLiquidity: MetaStreetLiquidityModel | null;
+  poolLendingLiquidity: PoolLendingLiquidityModel | null;
   configuration: ConfigurationModel | null;
   definition: DefinitionModel | null;
   operatingAgreement: string | null;
@@ -200,14 +200,14 @@ export interface OffchainRegistrar {
   propertyId: string;
 }
 
-export interface MetaStreetLiquidityModel {
+export interface PoolLendingLiquidityModel {
   maxPrincipalScaled: string;
   maxPrincipalUsdc: string;
-  durations: string[];
-  activeLoan: MetaStreetLoanModel | null;
+  durations: number[];
+  activeLoan: PoolLendingLoanModel | null;
 }
 
-export interface MetaStreetLoanModel {
+export interface PoolLendingLoanModel {
   id: string;
   poolAddress: string;
   borrowerAddress: string;

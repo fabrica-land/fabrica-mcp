@@ -80,7 +80,7 @@ function makeDetailToken(overrides: Partial<TokenModel> = {}): TokenModel {
     loans: [],
     loanOffers: [],
     loanOfferCount: 0,
-    metaStreetLiquidity: null,
+    poolLendingLiquidity: null,
     marketplaceListings: [],
     marketplaceBids: [],
     activity: [],

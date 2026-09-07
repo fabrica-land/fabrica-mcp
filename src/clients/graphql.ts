@@ -1,4 +1,4 @@
-import { GraphQLClient, gql } from "graphql-request";
+import { ClientError, GraphQLClient, gql } from "graphql-request";
 import type {
   TokenModel,
   WalletModel,
@@ -21,6 +21,42 @@ const SPAM_NAME_PATTERNS = ["SyntaxError", "Error", "BadGatewayException"];
 const client = new GraphQLClient(
   process.env.FABRICA_API_URL ?? DEFAULT_API_URL,
 );
+
+/**
+ * The API answered with a GraphQL `errors[]` payload. This means the request itself
+ * is wrong — a selection set that has drifted from the schema, a bad variable type,
+ * a server-side resolver failure. It NEVER means "the record does not exist": a
+ * missing record comes back as a successful response with a null field. Callers must
+ * keep the two apart, or a schema break gets reported to the agent as "not found".
+ */
+export class FabricaApiError extends Error {
+  readonly graphQLErrors: readonly string[];
+  constructor(messages: readonly string[]) {
+    super(`Fabrica API rejected the query: ${messages.join("; ")}`);
+    this.name = "FabricaApiError";
+    this.graphQLErrors = messages;
+  }
+}
+
+/**
+ * Issue a request, converting graphql-request's `ClientError` into a `FabricaApiError`
+ * whose message is the API's own error text rather than a serialized request dump.
+ * Anything else (network, timeout) propagates unchanged.
+ */
+async function request<T>(
+  document: string,
+  variables: Record<string, unknown>,
+): Promise<T> {
+  try {
+    return await client.request<T>(document, variables);
+  } catch (error) {
+    if (error instanceof ClientError) {
+      const messages = error.response.errors?.map(e => e.message) ?? [];
+      if (messages.length > 0) throw new FabricaApiError(messages);
+    }
+    throw error;
+  }
+}
 
 /** Filter out tokens with spam/error names that indicate bad metadata */
 export function filterSpamTokens(tokens: TokenModel[]): TokenModel[] {
@@ -75,6 +111,33 @@ const TOKENS_LIST_FIELDS = gql`
   }
 `;
 
+const GET_TOKENS_QUERY = gql`
+  ${TOKENS_LIST_FIELDS}
+  query GetTokens(
+    $burned: Boolean
+    $premints: Boolean
+    $testnets: Boolean
+    $contractAddress: String
+    $minListings: Int
+    $minScore: Int
+    $ownedBy: String
+    $sort: TokenSortField
+  ) {
+    tokens(
+      burned: $burned
+      premints: $premints
+      testnets: $testnets
+      contractAddress: $contractAddress
+      minListings: $minListings
+      minScore: $minScore
+      ownedBy: $ownedBy
+      sort: $sort
+    ) {
+      ...TokenListFields
+    }
+  }
+`;
+
 export async function getTokens(filters: TokenFilters): Promise<TokenModel[]> {
   const variables: Record<string, unknown> = {};
   if (filters.minScore !== undefined) variables.minScore = filters.minScore;
@@ -85,33 +148,7 @@ export async function getTokens(filters: TokenFilters): Promise<TokenModel[]> {
   if (filters.testnets !== undefined) variables.testnets = filters.testnets;
   if (filters.contractAddress) variables.contractAddress = filters.contractAddress;
   if (filters.sort) variables.sort = filters.sort;
-  const query = gql`
-    ${TOKENS_LIST_FIELDS}
-    query GetTokens(
-      $burned: Boolean
-      $premints: Boolean
-      $testnets: Boolean
-      $contractAddress: String
-      $minListings: Int
-      $minScore: Int
-      $ownedBy: String
-      $sort: TokenSortField
-    ) {
-      tokens(
-        burned: $burned
-        premints: $premints
-        testnets: $testnets
-        contractAddress: $contractAddress
-        minListings: $minListings
-        minScore: $minScore
-        ownedBy: $ownedBy
-        sort: $sort
-      ) {
-        ...TokenListFields
-      }
-    }
-  `;
-  const data = await client.request<{ tokens: TokenModel[] }>(query, variables);
+  const data = await request<{ tokens: TokenModel[] }>(GET_TOKENS_QUERY, variables);
   return data.tokens;
 }
 
@@ -177,7 +214,7 @@ const TOKEN_DETAIL_FIELDS = gql`
     }
     loanOffers { offerId principalScaled currencySymbol durationFormatted aprPercent lender { address } }
     loanOfferCount
-    metaStreetLiquidity { maxPrincipalScaled maxPrincipalUsdc durations activeLoan { id principal repayment duration maturity } }
+    poolLendingLiquidity { maxPrincipalScaled maxPrincipalUsdc durations activeLoan { id principal repayment duration maturity } }
     marketplaceListings { marketplaceId side status price usdPrice symbol supply makerAddress startTime endTime }
     marketplaceBids { marketplaceId side status price usdPrice symbol supply makerAddress startTime endTime }
     activity { activity source time timestamp network tokenId transactionHash currencyAmount currencySymbol usdAmount }
@@ -185,27 +222,24 @@ const TOKEN_DETAIL_FIELDS = gql`
   }
 `;
 
+const GET_TOKEN_QUERY = gql`
+  ${TOKEN_DETAIL_FIELDS}
+  query GetToken($tokenId: String, $slug: String, $network: String) {
+    token(tokenId: $tokenId, slug: $slug, network: $network) {
+      ...TokenDetailFields
+    }
+  }
+`;
+
 export async function getToken(
   params: { tokenId?: string; slug?: string; network?: string },
 ): Promise<TokenModel | null> {
-  const query = gql`
-    ${TOKEN_DETAIL_FIELDS}
-    query GetToken($tokenId: String, $slug: String, $network: String) {
-      token(tokenId: $tokenId, slug: $slug, network: $network) {
-        ...TokenDetailFields
-      }
-    }
-  `;
-  try {
-    const data = await client.request<{ token: TokenModel }>(query, {
-      tokenId: params.tokenId,
-      slug: params.slug,
-      network: params.network ?? NETWORK,
-    });
-    return data.token;
-  } catch {
-    return null;
-  }
+  const data = await request<{ token: TokenModel | null }>(GET_TOKEN_QUERY, {
+    tokenId: params.tokenId,
+    slug: params.slug,
+    network: params.network ?? NETWORK,
+  });
+  return data.token;
 }
 
 // --- Wallet query ---
@@ -252,16 +286,17 @@ const WALLET_FIELDS = gql`
   }
 `;
 
-export async function getWallet(walletAddress: string): Promise<WalletModel | null> {
-  const query = gql`
-    ${WALLET_FIELDS}
-    query GetWallet($walletAddress: String!) {
-      wallet(walletAddress: $walletAddress) {
-        ...WalletFields
-      }
+const GET_WALLET_QUERY = gql`
+  ${WALLET_FIELDS}
+  query GetWallet($walletAddress: String!) {
+    wallet(walletAddress: $walletAddress) {
+      ...WalletFields
     }
-  `;
-  const data = await client.request<{ wallet: WalletModel | null }>(query, { walletAddress });
+  }
+`;
+
+export async function getWallet(walletAddress: string): Promise<WalletModel | null> {
+  const data = await request<{ wallet: WalletModel | null }>(GET_WALLET_QUERY, { walletAddress });
   return data.wallet;
 }
 
@@ -283,18 +318,19 @@ const LOAN_FIELDS = gql`
   }
 `;
 
+const GET_LOANS_QUERY = gql`
+  ${LOAN_FIELDS}
+  query GetLoans($network: String, $networkIn: [String!], $first: Int, $skip: Int) {
+    loans(network: $network, networkIn: $networkIn, first: $first, skip: $skip) {
+      ...LoanFields
+    }
+  }
+`;
+
 export async function getLoans(
   filters: { network?: string; first?: number; skip?: number } = {},
 ): Promise<LoanModel[]> {
-  const query = gql`
-    ${LOAN_FIELDS}
-    query GetLoans($network: String, $networkIn: [String!], $first: Int, $skip: Int) {
-      loans(network: $network, networkIn: $networkIn, first: $first, skip: $skip) {
-        ...LoanFields
-      }
-    }
-  `;
-  const data = await client.request<{ loans: LoanModel[] }>(query, {
+  const data = await request<{ loans: LoanModel[] }>(GET_LOANS_QUERY, {
     network: filters.network ?? NETWORK,
     first: filters.first ?? 100,
     skip: filters.skip ?? 0,
@@ -318,20 +354,21 @@ export async function getAllLoans(network = NETWORK): Promise<LoanModel[]> {
 
 // --- Loan event queries ---
 
+const GET_LOAN_STARTED_EVENTS_QUERY = gql`
+  query GetLoanStartedEvents($first: Int!, $skip: Int!, $networkIn: [String!]) {
+    loanStartedEvents(first: $first, skip: $skip, networkIn: $networkIn) {
+      loanId borrower lender loanPrincipalAmount loanDuration loanStartTime
+      loanInterestRateForDurationInBasisPoints loanProvider
+      nftCollateralId transactionHash blockTimestamp
+    }
+  }
+`;
+
 export async function getLoanStartedEvents(
   first = 10,
   skip = 0,
 ): Promise<LoanStartedEvent[]> {
-  const query = gql`
-    query GetLoanStartedEvents($first: Int!, $skip: Int!, $networkIn: [String!]) {
-      loanStartedEvents(first: $first, skip: $skip, networkIn: $networkIn) {
-        loanId borrower lender loanPrincipalAmount loanDuration loanStartTime
-        loanInterestRateForDurationInBasisPoints loanProvider
-        nftCollateralId transactionHash blockTimestamp
-      }
-    }
-  `;
-  const data = await client.request<{ loanStartedEvents: LoanStartedEvent[] }>(query, {
+  const data = await request<{ loanStartedEvents: LoanStartedEvent[] }>(GET_LOAN_STARTED_EVENTS_QUERY, {
     first,
     skip,
     networkIn: [NETWORK],
@@ -339,19 +376,20 @@ export async function getLoanStartedEvents(
   return data.loanStartedEvents;
 }
 
+const GET_LOAN_REPAID_EVENTS_QUERY = gql`
+  query GetLoanRepaidEvents($first: Int!, $skip: Int!, $networkIn: [String!]) {
+    loanRepaidEvents(first: $first, skip: $skip, networkIn: $networkIn) {
+      loanId borrower lender loanPrincipalAmount amountPaidToLender adminFee
+      nftCollateralId transactionHash blockTimestamp
+    }
+  }
+`;
+
 export async function getLoanRepaidEvents(
   first = 10,
   skip = 0,
 ): Promise<LoanRepaidEvent[]> {
-  const query = gql`
-    query GetLoanRepaidEvents($first: Int!, $skip: Int!, $networkIn: [String!]) {
-      loanRepaidEvents(first: $first, skip: $skip, networkIn: $networkIn) {
-        loanId borrower lender loanPrincipalAmount amountPaidToLender adminFee
-        nftCollateralId transactionHash blockTimestamp
-      }
-    }
-  `;
-  const data = await client.request<{ loanRepaidEvents: LoanRepaidEvent[] }>(query, {
+  const data = await request<{ loanRepaidEvents: LoanRepaidEvent[] }>(GET_LOAN_REPAID_EVENTS_QUERY, {
     first,
     skip,
     networkIn: [NETWORK],
@@ -359,19 +397,20 @@ export async function getLoanRepaidEvents(
   return data.loanRepaidEvents;
 }
 
+const GET_LOAN_LIQUIDATED_EVENTS_QUERY = gql`
+  query GetLoanLiquidatedEvents($first: Int!, $skip: Int!, $networkIn: [String!]) {
+    loanLiquidatedEvents(first: $first, skip: $skip, networkIn: $networkIn) {
+      loanId borrower lender loanPrincipalAmount loanLiquidationDate
+      nftCollateralId transactionHash blockTimestamp
+    }
+  }
+`;
+
 export async function getLoanLiquidatedEvents(
   first = 10,
   skip = 0,
 ): Promise<LoanLiquidatedEvent[]> {
-  const query = gql`
-    query GetLoanLiquidatedEvents($first: Int!, $skip: Int!, $networkIn: [String!]) {
-      loanLiquidatedEvents(first: $first, skip: $skip, networkIn: $networkIn) {
-        loanId borrower lender loanPrincipalAmount loanLiquidationDate
-        nftCollateralId transactionHash blockTimestamp
-      }
-    }
-  `;
-  const data = await client.request<{ loanLiquidatedEvents: LoanLiquidatedEvent[] }>(query, {
+  const data = await request<{ loanLiquidatedEvents: LoanLiquidatedEvent[] }>(GET_LOAN_LIQUIDATED_EVENTS_QUERY, {
     first,
     skip,
     networkIn: [NETWORK],
@@ -381,18 +420,30 @@ export async function getLoanLiquidatedEvents(
 
 // --- County bounds ---
 
-export async function getCountyBounds(fips: string): Promise<CountyBoundsModel | null> {
-  const query = gql`
-    query GetCountyBounds($fips: String!) {
-      countyBounds(fips: $fips) {
-        geoJson
-      }
+const GET_COUNTY_BOUNDS_QUERY = gql`
+  query GetCountyBounds($fips: String!) {
+    countyBounds(fips: $fips) {
+      geoJson
     }
-  `;
-  try {
-    const data = await client.request<{ countyBounds: CountyBoundsModel | null }>(query, { fips });
-    return data.countyBounds;
-  } catch {
-    return null;
   }
+`;
+
+export async function getCountyBounds(fips: string): Promise<CountyBoundsModel | null> {
+  const data = await request<{ countyBounds: CountyBoundsModel | null }>(GET_COUNTY_BOUNDS_QUERY, { fips });
+  return data.countyBounds;
 }
+
+/**
+ * Every document this client sends to the Fabrica API, for the schema-drift test.
+ * A query that is not listed here is not covered — add new documents as they are written.
+ */
+export const API_DOCUMENTS: ReadonlyArray<{ name: string; document: string }> = [
+  { name: "GetTokens", document: GET_TOKENS_QUERY },
+  { name: "GetToken", document: GET_TOKEN_QUERY },
+  { name: "GetWallet", document: GET_WALLET_QUERY },
+  { name: "GetLoans", document: GET_LOANS_QUERY },
+  { name: "GetLoanStartedEvents", document: GET_LOAN_STARTED_EVENTS_QUERY },
+  { name: "GetLoanRepaidEvents", document: GET_LOAN_REPAID_EVENTS_QUERY },
+  { name: "GetLoanLiquidatedEvents", document: GET_LOAN_LIQUIDATED_EVENTS_QUERY },
+  { name: "GetCountyBounds", document: GET_COUNTY_BOUNDS_QUERY },
+];

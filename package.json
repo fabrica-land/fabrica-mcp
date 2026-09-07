@@ -15,7 +15,8 @@
     "dev": "tsup --watch",
     "start": "node dist/index.js",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "schema:refresh": "node scripts/refresh-api-schema.mjs"
   },
   "keywords": [
     "mcp",

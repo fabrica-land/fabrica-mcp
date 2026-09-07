@@ -206,9 +206,9 @@ export async function getProperty(args: Record<string, unknown>) {
           apr: o.aprPercent !== null ? `${o.aprPercent.toFixed(1)}%` : null,
           duration: o.durationFormatted,
         })) ?? [],
-        metaStreetLiquidity: token.metaStreetLiquidity ? {
-          maxPrincipal: `${token.metaStreetLiquidity.maxPrincipalScaled} USDC`,
-          hasActiveLoan: token.metaStreetLiquidity.activeLoan !== null,
+        metaStreetLiquidity: token.poolLendingLiquidity ? {
+          maxPrincipal: `${token.poolLendingLiquidity.maxPrincipalScaled} USDC`,
+          hasActiveLoan: token.poolLendingLiquidity.activeLoan !== null,
         } : null,
       },
       marketplace: {
@@ -285,20 +285,27 @@ export async function getPropertyMap(args: Record<string, unknown>) {
         },
       });
     }
+    const warnings: string[] = [];
     if (includeCountyBounds && token.definition?.offchainRegistrar?.propertyId) {
       const fips = token.definition.offchainRegistrar.propertyId.slice(0, 5);
       if (fips && /^\d{5}$/.test(fips)) {
-        const countyData = await getCountyBounds(fips);
-        if (countyData?.geoJson) {
-          features.push({
-            type: "Feature",
-            properties: {
-              type: "county",
-              name: token.district,
-              fips,
-            },
-            geometry: countyData.geoJson,
-          });
+        // The county outline is a decorative extra layer, so a failure here degrades the
+        // map rather than failing the call — but it is reported, never swallowed.
+        try {
+          const countyData = await getCountyBounds(fips);
+          if (countyData?.geoJson) {
+            features.push({
+              type: "Feature",
+              properties: {
+                type: "county",
+                name: token.district,
+                fips,
+              },
+              geometry: countyData.geoJson,
+            });
+          }
+        } catch (e) {
+          warnings.push(`County outline for FIPS ${fips} unavailable: ${e instanceof Error ? e.message : String(e)}`);
         }
       }
     }
@@ -312,6 +319,7 @@ export async function getPropertyMap(args: Record<string, unknown>) {
     return {
       type: "FeatureCollection",
       features,
+      ...(warnings.length > 0 ? { warnings } : {}),
     };
   } catch (e) {
     return { error: `Failed to get property map: ${e instanceof Error ? e.message : String(e)}` };
