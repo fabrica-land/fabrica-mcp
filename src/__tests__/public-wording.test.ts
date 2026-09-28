@@ -133,8 +133,8 @@ describe("get_borrow_quote wording", () => {
     const pool = result.lendingPool as Record<string, unknown>;
     expect(pool.name).toBe(LENDING_POOL_NAME);
     expect(pool.available).toBe(true);
-    expect(pool.maxBorrow).toBe("2500 USDC");
-    expect(result.summary).toContain("Up to 2500 USDC");
+    expect(pool.maxBorrow).toBe("2,500 USDC");
+    expect(result.summary).toContain("Up to 2,500 USDC");
     expect(result.summary).toContain(LENDING_POOL_NAME);
     expect(JSON.stringify(result)).not.toMatch(/metastreet/i);
   });

@@ -48,3 +48,13 @@ export function loanVolumeByCurrency(loans: ReadonlyArray<{ principalScaled: str
     return [symbol, `${total.toLocaleString("en-US", { maximumFractionDigits: digits })} ${symbol}`];
   }));
 }
+
+/**
+ * Whole-USDC amount for a borrowing ceiling ("up to"), rounded down so it never overstates:
+ * "325.684574" → "325 USDC", "2500" → "2,500 USDC".
+ */
+export function formatUsdcCeiling(amount: string | null | undefined): string | null {
+  const value = Number.parseFloat(amount ?? "");
+  if (!Number.isFinite(value)) return null;
+  return `${Math.floor(value).toLocaleString("en-US")} USDC`;
+}

@@ -30,10 +30,10 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
   return node;
 }
 
-/** "12345.6 USDC" → "Up to 12,346 USDC"; nothing when there is no capacity. */
+/** "2,500 USDC" → "Up to 2,500 USDC", rounded down like the server; nothing when there is no capacity. */
 function borrowCapacity(maxPrincipal: unknown): string | null {
-  const amount = Number.parseFloat(str(maxPrincipal) ?? "");
-  return Number.isFinite(amount) && amount > 0 ? `Up to ${amount.toLocaleString("en-US", { maximumFractionDigits: 0 })} USDC` : null;
+  const amount = Math.floor(Number.parseFloat((str(maxPrincipal) ?? "").replace(/,/g, "")));
+  return Number.isFinite(amount) && amount > 0 ? `Up to ${amount.toLocaleString("en-US")} USDC` : null;
 }
 
 // Buttons may only open Fabrica's own pages over https.
