@@ -42,7 +42,7 @@ import { getAllLoans, getToken } from "../clients/graphql.js";
 import { getProtocolStats } from "../tools/protocol.js";
 import { getLendingMarket } from "../tools/lending.js";
 import { getBorrowQuote } from "../tools/borrowing.js";
-import { formatLoanProvider, LENDING_POOL_NAME } from "../labels.js";
+import { formatLoanProvider, formatActivitySource, LENDING_POOL_NAME } from "../labels.js";
 import { IS_MAINNET } from "../config.js";
 
 beforeEach(() => {
@@ -62,6 +62,18 @@ describe("formatLoanProvider", () => {
   it("passes through unknown providers and nulls", () => {
     expect(formatLoanProvider("Other")).toBe("Other");
     expect(formatLoanProvider(null)).toBeNull();
+  });
+});
+
+describe("formatActivitySource", () => {
+  it("labels lending sources like loan providers", () => {
+    expect(formatActivitySource("PoolLending")).toBe("Pool-based lending");
+    expect(formatActivitySource("NftFi")).toBe("Peer-to-peer (NFTfi, retired integration)");
+  });
+
+  it("passes marketplace sources through", () => {
+    expect(formatActivitySource("Fabrica")).toBe("Fabrica");
+    expect(formatActivitySource("Seaport")).toBe("Seaport");
   });
 });
 

@@ -1,5 +1,6 @@
 import { getToken, getWallet } from "../clients/graphql.js";
 import type { ActivityModel } from "../types/index.js";
+import { formatActivitySource } from "../labels.js";
 
 function formatUsd(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -11,7 +12,7 @@ function formatUsd(value: string | null | undefined): string | null {
 function formatActivity(a: ActivityModel) {
   return {
     type: a.activity,
-    source: a.source,
+    source: formatActivitySource(a.source),
     time: a.time,
     tokenId: a.tokenId ?? null,
     amount: a.usdAmount ? formatUsd(a.usdAmount) : (a.currencyAmount ? `${a.currencyAmount} ${a.currencySymbol ?? ""}`.trim() : null),

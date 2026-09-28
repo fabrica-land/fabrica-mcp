@@ -15,8 +15,18 @@ export function formatLoanProvider(provider: string | null | undefined): string 
     case "MetaStreet": // older API name for pool loans
       return "Pool-based lending";
     case "NFTfi":
+    case "NftFi": // spelling used by the activity feed
       return "Peer-to-peer (NFTfi, retired integration)";
     default:
       return provider;
   }
+}
+
+/**
+ * Human-readable source for an activity-feed entry. Lending sources get the
+ * same labels as loan providers; marketplace sources (Fabrica, Seaport) pass
+ * through unchanged.
+ */
+export function formatActivitySource(source: string | null | undefined): string | null {
+  return formatLoanProvider(source);
 }
