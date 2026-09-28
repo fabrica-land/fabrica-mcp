@@ -23,7 +23,7 @@ const CORS_HEADERS: Record<string, string> = {
 
 const MAX_BODY_BYTES = 1024 * 1024;
 
-class PayloadTooLargeError extends Error {}
+export class PayloadTooLargeError extends Error {}
 
 /** Vercel's Node runtime pre-parses JSON bodies onto `req.body`; plain Node does not. */
 export type McpHttpRequest = IncomingMessage & { body?: unknown };
@@ -33,9 +33,18 @@ function sendJsonRpcError(res: ServerResponse, status: number, code: number, mes
   res.end(JSON.stringify({ jsonrpc: "2.0", error: { code, message }, id: null }));
 }
 
-async function readJsonBody(req: McpHttpRequest): Promise<unknown> {
-  if (Number(req.headers["content-length"] ?? 0) > MAX_BODY_BYTES) throw new PayloadTooLargeError();
-  if (req.body !== undefined && typeof req.body !== "string" && !Buffer.isBuffer(req.body)) return req.body;
+function assertWithinLimit(bytes: number): void {
+  if (bytes > MAX_BODY_BYTES) throw new PayloadTooLargeError();
+}
+
+export async function readJsonBody(req: McpHttpRequest): Promise<unknown> {
+  assertWithinLimit(Number(req.headers["content-length"] ?? 0));
+  if (req.body !== undefined && typeof req.body !== "string" && !Buffer.isBuffer(req.body)) {
+    // Pre-parsed (Vercel): the request may have been chunked with no Content-Length,
+    // so measure the parsed body itself.
+    assertWithinLimit(Buffer.byteLength(JSON.stringify(req.body) ?? ""));
+    return req.body;
+  }
   const chunks: Buffer[] = [];
   if (typeof req.body === "string") chunks.push(Buffer.from(req.body));
   else if (Buffer.isBuffer(req.body)) chunks.push(req.body);
@@ -48,8 +57,9 @@ async function readJsonBody(req: McpHttpRequest): Promise<unknown> {
       chunks.push(buffer);
     }
   }
-  const raw = Buffer.concat(chunks).toString("utf8");
-  if (raw.length > MAX_BODY_BYTES) throw new PayloadTooLargeError();
+  const body = Buffer.concat(chunks);
+  assertWithinLimit(body.byteLength);
+  const raw = body.toString("utf8");
   return raw ? JSON.parse(raw) : undefined;
 }
 

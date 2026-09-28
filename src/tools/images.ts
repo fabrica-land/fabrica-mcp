@@ -4,6 +4,8 @@ import { NETWORK, CONTRACTS } from "../config.js";
 type ImageTheme = "dark" | "light";
 
 const MEDIA_BASE_URL = process.env.FABRICA_MEDIA_URL ?? "https://media.fabrica.land";
+/** Origin of the configured media service (parcel map images). */
+export const MEDIA_ORIGIN = new URL(MEDIA_BASE_URL).origin;
 
 export function buildMediaUrl(
   contractAddress: string,

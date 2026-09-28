@@ -1,5 +1,5 @@
 import type { ConfigurationMedia } from "../types/index.js";
-import { buildMediaUrl } from "./images.js";
+import { buildMediaUrl, MEDIA_ORIGIN } from "./images.js";
 
 const IPFS_GATEWAY = "https://ipfs.fabrica.land/ipfs/";
 
@@ -10,7 +10,7 @@ const IPFS_GATEWAY = "https://ipfs.fabrica.land/ipfs/";
  * Owner photos come from the IPFS gateway; the parcel map comes from the media service,
  * which redirects to Mapbox Static Images.
  */
-export const WIDGET_IMAGE_ORIGINS = ["https://ipfs.fabrica.land", "https://media.fabrica.land", "https://api.mapbox.com"];
+export const WIDGET_IMAGE_ORIGINS = [...new Set(["https://ipfs.fabrica.land", MEDIA_ORIGIN, "https://api.mapbox.com"])];
 
 function isAllowedImageUrl(url: string): boolean {
   try {
