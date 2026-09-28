@@ -75,7 +75,9 @@ describe("hosted HTTP transport", () => {
   });
 
   it("links get_property to the property card MCP App and serves it self-contained", async () => {
+    const previous = process.env.FABRICA_MCP_APPS;
     process.env.FABRICA_MCP_APPS = "enabled";
+    try {
     const client = new Client({ name: "http-test", version: "0.0.0" });
     await client.connect(new StreamableHTTPClientTransport(new URL(url)));
     const { tools } = await client.listTools();
@@ -91,6 +93,9 @@ describe("hosted HTTP transport", () => {
     expect(html).not.toMatch(/<script[^>]+src=/);
     expect(JSON.stringify(card?._meta)).toContain("https://ipfs.fabrica.land");
     await client.close();
-    delete process.env.FABRICA_MCP_APPS;
+    } finally {
+      if (previous === undefined) delete process.env.FABRICA_MCP_APPS;
+      else process.env.FABRICA_MCP_APPS = previous;
+    }
   });
 });

@@ -126,7 +126,7 @@ describe("get_borrow_quote wording", () => {
       estimatedValue: "10000",
       supplyUnderLoan: "0",
       loans: [],
-      poolLendingLiquidity: { maxPrincipalUsdc: "2500000000", maxPrincipalScaled: "2500", durations: ["30 days"], activeLoan: null },
+      poolLendingLiquidity: { maxPrincipalUsdc: "2500000000", maxPrincipalScaled: "2500", durations: [30, 60], activeLoan: null },
     } as never);
     const result = await getBorrowQuote({ tokenId: "1" }) as Record<string, unknown>;
     expect(result.metaStreet).toBeUndefined();
@@ -152,5 +152,20 @@ describe("get_borrow_quote wording", () => {
     const pool = result.lendingPool as Record<string, unknown>;
     expect(pool.available).toBe(false);
     expect(pool.reason).toContain(LENDING_POOL_NAME);
+  });
+
+  it("treats zero pool capacity as unavailable", async () => {
+    vi.mocked(getToken).mockResolvedValue({
+      tokenId: "3",
+      name: "Zero Lot",
+      estimatedValue: "1000",
+      supplyUnderLoan: "0",
+      loans: [],
+      poolLendingLiquidity: { maxPrincipalUsdc: "0", maxPrincipalScaled: "0", durations: [30], activeLoan: null },
+    } as never);
+    const result = await getBorrowQuote({ tokenId: "3" }) as Record<string, unknown>;
+    const pool = result.lendingPool as Record<string, unknown>;
+    expect(pool.available).toBe(false);
+    expect(result.summary).not.toContain("Up to");
   });
 });

@@ -4,7 +4,7 @@ An MCP server giving AI agents read-only access to tokenized real property data 
 
 ## What is Fabrica?
 
-Fabrica tokenizes real property (land) as ERC-1155 NFTs on Ethereum. A legal trust holds title at the county level. The token controls the trust. Transfer the token, transfer ownership.
+Fabrica tokenizes real property (land) as ERC-1155 NFTs on Ethereum. A legal trust holds title at the county level, and the token represents the beneficial interest in that trust: owning the token means owning the beneficial interest in the trust that holds the property.
 
 - Platform: https://fabrica.land
 - Docs: https://docs.fabrica.land
@@ -102,12 +102,12 @@ Configured via `FABRICA_NETWORK` env var (default: `ethereum`).
 | | Ethereum Mainnet | Sepolia Testnet |
 |---|---|---|
 | Properties | Real US land parcels | Test tokens only |
-| Legal consequences | Yes — trustee role, taxes, liabilities | None |
+| Legal consequences | Yes: beneficial interest in a trust, holder is trustee by default, taxes, liabilities | None |
 | Fabrica lending pool | Active (1+ pools) | Active (2 pools) |
 | NFTfi (peer-to-peer) | Retired integration; historical loans only | Not available |
 | Legal notices in responses | Yes | No |
 
-On mainnet, the server's `instructions` field tells agents to inform users about real-world legal consequences and to review the trust instrument attached to tokens before advising on acquisition.
+On mainnet, the server's `instructions` carry `MAINNET_LEGAL_NOTICE` (src/config.ts): the legal facts, stated as a notice, never as directions to the model.
 
 ---
 

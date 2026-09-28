@@ -30,10 +30,23 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
   return node;
 }
 
-/** "12345.6 USDC" → "Can borrow up to 12,346 USDC"; nothing when there is no capacity. */
+/** "12345.6 USDC" → "Up to 12,346 USDC"; nothing when there is no capacity. */
 function borrowCapacity(maxPrincipal: unknown): string | null {
   const amount = Number.parseFloat(str(maxPrincipal) ?? "");
-  return Number.isFinite(amount) && amount > 0 ? `Can borrow up to ${amount.toLocaleString("en-US", { maximumFractionDigits: 0 })} USDC` : null;
+  return Number.isFinite(amount) && amount > 0 ? `Up to ${amount.toLocaleString("en-US", { maximumFractionDigits: 0 })} USDC` : null;
+}
+
+// Buttons may only open Fabrica's own pages over https.
+const FABRICA_HOSTS = new Set(["fabrica.land", "testnets.fabrica.land"]);
+
+function fabricaUrl(link: string | null): string | null {
+  if (!link) return null;
+  try {
+    const url = new URL(link);
+    return url.protocol === "https:" && FABRICA_HOSTS.has(url.hostname) ? url.toString() : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -68,7 +81,8 @@ function actions(link: string, listingPrice: string | null, isPremint: boolean):
 }
 
 function openOnFabrica(url: string | null): void {
-  if (url) void app.openLink({ url });
+  const safe = fabricaUrl(url);
+  if (safe) void app.openLink({ url: safe }).catch(() => undefined);
 }
 
 function slide(src: string, tag: string, fallbackText: string, link: string | null): HTMLButtonElement {
@@ -109,7 +123,7 @@ function render(): void {
   const marketplace = obj(data.marketplace);
   const media = obj(data.media);
   const recovery = obj(data.recoveryStatus);
-  const link = str(data.propertyLink);
+  const link = fabricaUrl(str(data.propertyLink));
   const isTestnet = str(data.network) === "sepolia";
 
   const gallery = el("div", "gallery");
@@ -139,7 +153,9 @@ function render(): void {
     fact("Confidence score", score !== null ? `${score}${recoveryLabel && recoveryLabel !== "Normal" ? ` · ${recoveryLabel}` : ""}` : null),
     fact("Estimated value", str(valuation.estimatedValue)),
     fact("Listed for sale", str(listing.price)),
-    fact("Lending", activeLoans.length > 0 ? `${activeLoans.length} active loan${activeLoans.length > 1 ? "s" : ""}` : borrowCapacity(poolLiquidity.maxPrincipal)),
+    activeLoans.length > 0
+      ? fact("Lending", `${activeLoans.length} active loan${activeLoans.length > 1 ? "s" : ""}`)
+      : fact("Borrow capacity (estimate)", borrowCapacity(poolLiquidity.maxPrincipal)),
   ].filter((node): node is HTMLDivElement => node !== null);
   facts.append(...factNodes);
 

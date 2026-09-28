@@ -11,6 +11,13 @@ function formatUsd(value: string | null | undefined): string | null {
   return `$${num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
+/** USD when the API supplies a USD price; otherwise the native amount and currency, never a guessed "$". */
+function formatOrderPrice(usdPrice: string | null, price: string | null, symbol: string | null): string | null {
+  const usd = formatUsd(usdPrice);
+  if (usd) return usd;
+  return price ? `${price} ${symbol ?? ""}`.trim() : null;
+}
+
 function formatScore(score: number | null): number | null {
   if (score === null) return null;
   return score;
@@ -214,13 +221,13 @@ export async function getProperty(args: Record<string, unknown>) {
       },
       marketplace: {
         listings: activeListings.map(l => ({
-          price: formatUsd(l.usdPrice ?? l.price),
+          price: formatOrderPrice(l.usdPrice, l.price, l.symbol),
           symbol: l.symbol,
           expiresAt: l.endTime,
           seller: shortenAddress(l.makerAddress),
         })),
         bids: activeBids.map(b => ({
-          price: formatUsd(b.usdPrice ?? b.price),
+          price: formatOrderPrice(b.usdPrice, b.price, b.symbol),
           symbol: b.symbol,
           bidder: shortenAddress(b.makerAddress),
         })),
@@ -240,7 +247,6 @@ export async function getProperty(args: Record<string, unknown>) {
         txHash: a.transactionHash,
       })) ?? [],
       mintedAt: token.mintedAt,
-      geoJson: token.geoJson ?? token.definition?.geoJson ?? null,
     };
   } catch (e) {
     return { error: `Failed to get property: ${e instanceof Error ? e.message : String(e)}` };

@@ -30,3 +30,21 @@ export function formatLoanProvider(provider: string | null | undefined): string 
 export function formatActivitySource(source: string | null | undefined): string | null {
   return formatLoanProvider(source);
 }
+
+/**
+ * Total loan principal per currency. Principal amounts are in each loan's own currency
+ * (USDC, WETH, ...), so they are never summed across currencies or labeled as dollars.
+ */
+export function loanVolumeByCurrency(loans: ReadonlyArray<{ principalScaled: string | null; currencySymbol: string | null }>): Record<string, string> {
+  const totals = new Map<string, number>();
+  for (const loan of loans) {
+    const amount = Number.parseFloat(loan.principalScaled ?? "");
+    if (!Number.isFinite(amount)) continue;
+    const symbol = loan.currencySymbol ?? "unknown currency";
+    totals.set(symbol, (totals.get(symbol) ?? 0) + amount);
+  }
+  return Object.fromEntries([...totals].map(([symbol, total]) => {
+    const digits = symbol === "USDC" || symbol === "USDT" || symbol === "DAI" ? 0 : 4;
+    return [symbol, `${total.toLocaleString("en-US", { maximumFractionDigits: digits })} ${symbol}`];
+  }));
+}

@@ -18,10 +18,12 @@
     "build:vercel": "node scripts/build-vercel.mjs",
     "pretypecheck": "npm run build:ui",
     "typecheck": "tsc --noEmit && tsc -p ui --noEmit",
+    "predev": "npm run build:ui",
     "dev": "tsup --watch",
     "start": "node dist/index.js",
     "pretest": "npm run build:ui",
     "test": "vitest run",
+    "pretest:watch": "npm run build:ui",
     "test:watch": "vitest",
     "schema:refresh": "node scripts/refresh-api-schema.mjs"
   },

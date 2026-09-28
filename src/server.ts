@@ -82,7 +82,7 @@ export function createServer(): McpServer {
 
   const getPropertyConfig = {
     title: "Get property details",
-    description: `Get comprehensive details about a specific tokenized property on Fabrica (${NETWORK_LABEL}), including legal description, valuation, confidence score breakdown, ownership history, loan history, marketplace activity, and media.${IS_MAINNET ? " The response includes the URL of the operating agreement (the trust instrument) that governs the token." : ""}`,
+    description: `Get comprehensive details about a specific tokenized property on Fabrica (${NETWORK_LABEL}), including legal description, valuation, confidence score breakdown, current ownership and holders, active loans, marketplace listings and offers, recent activity, photos and a parcel map image link. Boundary geometry is returned by get_property_map.${IS_MAINNET ? " The response includes the URL of the operating agreement (the trust instrument) that governs the token." : ""}`,
     inputSchema: {
       tokenId: z.string().optional().describe("The token ID of the property"),
       slug: z.string().optional().describe("Property slug from the URL (e.g. 'us/nevada/elko-county/elko/apn-063025003')"),
@@ -176,7 +176,7 @@ export function createServer(): McpServer {
     "get_borrow_quote",
     {
       title: "Get borrow quote",
-      description: "Get borrowing options for a specific tokenized property: Fabrica lending pool liquidity (max loan amount, durations) and existing loan status. Answers questions such as 'How much can I borrow against this property?' or 'What APR would I get?'",
+      description: "Get borrowing options for a specific tokenized property: Fabrica lending pool liquidity (max loan amount, durations) and existing loan status. Answers questions such as 'How much can I borrow against this property?'. The amount is an estimate; the rate is set by a live quote when borrowing.",
       inputSchema: {
         tokenId: z.string().optional().describe("The token ID of the property"),
         slug: z.string().optional().describe("Property slug from the URL"),

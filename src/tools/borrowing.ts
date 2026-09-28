@@ -43,7 +43,9 @@ export async function getBorrowQuote(args: Record<string, unknown>) {
         borrower: shortenAddress(l.borrower?.address),
       }));
     }
-    if (pool) {
+    const capacity = pool ? Number.parseFloat(pool.maxPrincipalScaled ?? "0") : 0;
+    const hasCapacity = pool !== null && pool !== undefined && Number.isFinite(capacity) && capacity > 0;
+    if (pool && hasCapacity) {
       result.lendingPool = {
         name: LENDING_POOL_NAME,
         available: true,
@@ -64,13 +66,15 @@ export async function getBorrowQuote(args: Record<string, unknown>) {
       result.lendingPool = {
         name: LENDING_POOL_NAME,
         available: false,
-        reason: `No ${LENDING_POOL_NAME} liquidity available for this property`,
+        reason: pool
+          ? `The ${LENDING_POOL_NAME} currently shows no borrowing capacity for this property`
+          : `No ${LENDING_POOL_NAME} liquidity available for this property`,
       };
     }
     result.summary = hasActiveLoan
       ? "This property already has an active loan. Additional borrowing may be limited."
-      : pool
-        ? `Up to ${pool.maxPrincipalScaled} USDC advertised by the ${LENDING_POOL_NAME}, subject to available pool liquidity.`
+      : pool && hasCapacity
+        ? `Up to ${pool.maxPrincipalScaled} USDC advertised by the ${LENDING_POOL_NAME}. This is an estimate; the amount and rate are set by a live quote when borrowing.`
         : "No borrowing options currently available for this property.";
     return result;
   } catch (e) {

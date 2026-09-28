@@ -148,7 +148,7 @@ claude mcp add fabrica -e FABRICA_NETWORK=sepolia -- node /absolute/path/to/fabr
 }
 ```
 
-> **Mainnet notice:** On mainnet, the MCP server instructs AI agents to inform users that operations have real-world legal and financial consequences — including accepting the role of trustee, potential property liabilities, and tax implications. Agents are directed to review the trust instrument attached to tokens before advising on acquisition.
+> **Mainnet notice:** On mainnet, the server instructions carry a legal notice stated as facts: the properties are real US land, each held in a trust; owning a token means owning the beneficial interest in the trust that holds the property; the trustee is designated by the token holder and is, by default, the holder; and acquiring, transferring, listing or borrowing against a token has legal, tax and liability consequences set out in the trust agreement attached to it.
 >
 > **Sepolia:** Test properties only, no real-world implications.
 

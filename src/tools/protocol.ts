@@ -1,7 +1,7 @@
 import { getTokens, getAllLoans, DEFAULT_MIN_SCORE, filterSpamTokens } from "../clients/graphql.js";
 import { getFabricaPools, aggregatePoolStats } from "../clients/subgraph.js";
 import { CONTRACTS, NETWORK_LABEL, MAINNET_WARNING, IS_MAINNET } from "../config.js";
-import { LENDING_POOL_NAME } from "../labels.js";
+import { LENDING_POOL_NAME, loanVolumeByCurrency } from "../labels.js";
 
 function formatUsd(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -37,7 +37,6 @@ export async function getProtocolStats() {
     const activeLoans = loans.filter(l => l.loanStatus === "Active");
     const repaidLoans = loans.filter(l => l.loanStatus === "Repaid");
     const liquidatedLoans = loans.filter(l => l.loanStatus === "Liquidated");
-    const totalLoanVolume = loans.reduce((sum, l) => sum + parseFloat(l.principalScaled || "0"), 0);
     const agg = aggregatePoolStats(pools);
     const poolStats = agg ? {
       name: LENDING_POOL_NAME,
@@ -85,7 +84,7 @@ export async function getProtocolStats() {
         activeLoans: activeLoans.length,
         repaidLoans: repaidLoans.length,
         liquidatedLoans: liquidatedLoans.length,
-        totalLoanVolume: formatUsd(String(totalLoanVolume)),
+        loanVolumeByCurrency: loanVolumeByCurrency(loans),
         lendingPools: poolStats,
       },
       marketplace: {
