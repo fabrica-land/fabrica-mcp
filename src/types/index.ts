@@ -93,7 +93,7 @@ export interface UserModel {
 export interface LoanModel {
   loanId: string;
   loanStatus: "Active" | "Default" | "Liquidated" | "Liquidating" | "Repaid";
-  loanProvider: "MetaStreet" | "NFTfi";
+  loanProvider: "PoolLending" | "NFTfi";
   loanType: "Fixed" | "Prorated";
   principal: string;
   principalScaled: string;
@@ -142,7 +142,7 @@ export interface MarketplaceOrderModel {
 export interface LoanOfferModel {
   offerId: string;
   lender: WalletModel;
-  loanProvider: "MetaStreet" | "NFTfi";
+  loanProvider: "PoolLending" | "NFTfi";
   principalScaled: string;
   currencySymbol: string | null;
   durationFormatted: string;

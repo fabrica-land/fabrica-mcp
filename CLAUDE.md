@@ -33,7 +33,7 @@ src/
     images.ts         # get_property_image, get_portfolio_image
   clients/
     graphql.ts        # Fabrica GraphQL API client (primary data source)
-    subgraph.ts       # MetaStreet pool subgraph client (dynamic pool discovery)
+    subgraph.ts       # Lending pool subgraph client (dynamic pool discovery)
   types/
     index.ts          # Shared TypeScript interfaces
   __tests__/          # vitest test suite
@@ -73,12 +73,12 @@ The Apollo API routes subgraph data internally, so all onchain and offchain prop
 - WalletModel: `address` (not `walletAddress`), `creditHistory` (not `walletCreditHistory`), `displayName` on nested `user`
 - LoanModel: `loanStatus` (not `status`), `principalScaled` (not `principalAmount`), `aprPercent` (not `interestRate`), `maturityDate` (not `repaymentDate`)
 
-### 2. MetaStreet Pool Subgraph (Supplementary)
+### 2. Lending Pool Subgraph (Supplementary)
 
 **Mainnet:** `https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-mainnet/3.13.2/gn`
 **Sepolia:** `https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-sepolia/3.13.2/gn`
 
-Used for MetaStreet pool TVL, utilization, and loan count data. **Pools are discovered dynamically** by querying all pools that accept the Fabrica collateral token — no hardcoded pool IDs. Mainnet has 1+ pools, Sepolia has 2. Pool values are in 18-decimal format.
+Used for Fabrica lending pool TVL, utilization, and loan count data. The subgraph, the env var and some internal identifiers keep the MetaStreet name for historical reasons; public-facing text says Fabrica lending pool. **Pools are discovered dynamically** by querying all pools that accept the Fabrica collateral token — no hardcoded pool IDs. Mainnet has 1+ pools, Sepolia has 2. Pool values are in 18-decimal format.
 
 ### 3. Fabrica Media Service (Images)
 
@@ -98,8 +98,8 @@ Configured via `FABRICA_NETWORK` env var (default: `ethereum`).
 |---|---|---|
 | Properties | Real US land parcels | Test tokens only |
 | Legal consequences | Yes — trustee role, taxes, liabilities | None |
-| MetaStreet | Active (1+ pools) | Active (2 pools) |
-| NFTfi | Active | Not available |
+| Fabrica lending pool | Active (1+ pools) | Active (2 pools) |
+| NFTfi (peer-to-peer) | Retired integration; historical loans only | Not available |
 | Legal notices in responses | Yes | No |
 
 On mainnet, the server's `instructions` field tells agents to inform users about real-world legal consequences and to review the trust instrument attached to tokens before advising on acquisition.
@@ -108,13 +108,13 @@ On mainnet, the server's `instructions` field tells agents to inform users about
 
 ## Smart Contract Addresses
 
-Defined in `src/config.ts`. MetaStreet pools are discovered dynamically from the subgraph.
+Defined in `src/config.ts`. Lending pools are discovered dynamically from the subgraph.
 
 **Ethereum Mainnet:**
 - FabricaToken (ERC-1155): `0x5cbeb7A0df7Ed85D82a472FD56d81ed550f3Ea95`
 - FabricaValidator: `0x170511f95560A1F280c29026f73a9cD6a4bA8ab0`
-- NFTfi V2.3: `0xd0a40eB7FD94eE97102BA8e9342243A2b2E22207`
-- NFTfi V3: `0x9F10D706D789e4c76A1a6434cd1A9841c875C0A6`
+- NFTfi V2.3 (retired integration, historical loans only): `0xd0a40eB7FD94eE97102BA8e9342243A2b2E22207`
+- NFTfi V3 (retired integration, historical loans only): `0x9F10D706D789e4c76A1a6434cd1A9841c875C0A6`
 
 **Sepolia Testnet:**
 - FabricaToken: `0xb52ED2Dc8EBD49877De57De3f454Fd71b75bc1fD`
@@ -205,3 +205,14 @@ Then configure your MCP client with `node /path/to/fabrica-mcp/dist/index.js`.
 | https://api.fabrica.land/graphql | The public GraphQL API (introspection enabled). `schema/api-schema.graphql` is a checked-in snapshot; refresh with `npm run schema:refresh` |
 | `fabrica-land/fabrica-contracts` | Solidity smart contracts (ERC-1155): onchain data structures, view functions, events |
 | `fabrica-land/fabrica-connectors` | The trust agreement: trust structure, beneficiary rights |
+
+---
+
+## Public Wording Rules
+
+Tool descriptions and outputs are read by agents and repeated to people, so they follow Fabrica's public wording:
+
+- The in-app pool is the **Fabrica lending pool** (pool-based lending). Do not present MetaStreet as a live venue in descriptions or output text; code identifiers may keep the name.
+- NFTfi is a **retired** peer-to-peer integration. Mention it only as historical and labeled (see `src/labels.ts`).
+- Never output a platform-wide or aggregate repayment rate. Loan counts are fine. A single wallet's own repayment percentage shown next to its counts (`get_portfolio`) is fine.
+- Never call Fabrica's code "open source".

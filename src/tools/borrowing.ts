@@ -1,4 +1,5 @@
 import { getToken } from "../clients/graphql.js";
+import { LENDING_POOL_NAME, formatLoanProvider } from "../labels.js";
 
 function formatUsd(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -23,7 +24,7 @@ export async function getBorrowQuote(args: Record<string, unknown>) {
     if (!token) {
       return { error: `No property found with ${tokenId ? `token ID ${tokenId}` : `slug ${slug}`}` };
     }
-    const ms = token.poolLendingLiquidity;
+    const pool = token.poolLendingLiquidity;
     const activeLoans = token.loans?.filter(l => l.loanStatus === "Active") ?? [];
     const hasActiveLoan = activeLoans.length > 0 || parseInt(token.supplyUnderLoan || "0") > 0;
     const result: Record<string, unknown> = {
@@ -35,38 +36,41 @@ export async function getBorrowQuote(args: Record<string, unknown>) {
     if (hasActiveLoan) {
       result.currentLoans = activeLoans.map(l => ({
         loanId: l.loanId,
-        provider: l.loanProvider,
+        provider: formatLoanProvider(l.loanProvider),
         principal: `${l.principalScaled} ${l.currencySymbol ?? ""}`.trim(),
         apr: l.aprPercent !== null ? `${l.aprPercent.toFixed(1)}%` : null,
         maturityDate: l.maturityDate,
         borrower: shortenAddress(l.borrower?.address),
       }));
     }
-    if (ms) {
-      result.metaStreet = {
+    if (pool) {
+      result.lendingPool = {
+        name: LENDING_POOL_NAME,
         available: true,
-        maxBorrow: ms.maxPrincipalUsdc ? `${ms.maxPrincipalUsdc} USDC` : `${ms.maxPrincipalScaled} USDC`,
-        durations: ms.durations ?? [],
-        hasExistingLoan: ms.activeLoan !== null,
-        ...(ms.activeLoan ? {
+        // maxPrincipalScaled is whole USDC; maxPrincipalUsdc is raw 6-decimal units.
+        maxBorrow: `${pool.maxPrincipalScaled} USDC`,
+        durations: pool.durations ?? [],
+        hasExistingLoan: pool.activeLoan !== null,
+        ...(pool.activeLoan ? {
           existingLoan: {
-            principal: ms.activeLoan.principal,
-            repayment: ms.activeLoan.repayment,
-            duration: ms.activeLoan.duration,
-            maturity: ms.activeLoan.maturity,
+            principal: pool.activeLoan.principal,
+            repayment: pool.activeLoan.repayment,
+            duration: pool.activeLoan.duration,
+            maturity: pool.activeLoan.maturity,
           },
         } : {}),
       };
     } else {
-      result.metaStreet = {
+      result.lendingPool = {
+        name: LENDING_POOL_NAME,
         available: false,
-        reason: "No MetaStreet liquidity available for this property",
+        reason: `No ${LENDING_POOL_NAME} liquidity available for this property`,
       };
     }
     result.summary = hasActiveLoan
       ? "This property already has an active loan. Additional borrowing may be limited."
-      : ms
-        ? `Up to ${ms.maxPrincipalUsdc ?? ms.maxPrincipalScaled} USDC available via MetaStreet pool.`
+      : pool
+        ? `Up to ${pool.maxPrincipalScaled} USDC advertised by the ${LENDING_POOL_NAME}, subject to available pool liquidity.`
         : "No borrowing options currently available for this property.";
     return result;
   } catch (e) {

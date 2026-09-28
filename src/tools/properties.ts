@@ -1,6 +1,7 @@
 import { getTokens, getToken, getCountyBounds, DEFAULT_MIN_SCORE, filterSpamTokens } from "../clients/graphql.js";
 import type { TokenModel } from "../types/index.js";
 import { NETWORK_LABEL, MAINNET_WARNING, IS_MAINNET, CONTRACTS } from "../config.js";
+import { LENDING_POOL_NAME, formatLoanProvider } from "../labels.js";
 
 function formatUsd(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -193,7 +194,7 @@ export async function getProperty(args: Record<string, unknown>) {
       lending: {
         activeLoans: activeLoans.map(l => ({
           loanId: l.loanId,
-          provider: l.loanProvider,
+          provider: formatLoanProvider(l.loanProvider),
           principal: `${l.principalScaled} ${l.currencySymbol ?? ""}`.trim(),
           apr: l.aprPercent !== null ? `${l.aprPercent.toFixed(1)}%` : null,
           duration: l.durationFormatted,
@@ -201,7 +202,8 @@ export async function getProperty(args: Record<string, unknown>) {
           borrower: shortenAddress(l.borrower?.address),
           lender: shortenAddress(l.lender?.address),
         })),
-        metaStreetLiquidity: token.poolLendingLiquidity ? {
+        lendingPoolLiquidity: token.poolLendingLiquidity ? {
+          name: LENDING_POOL_NAME,
           maxPrincipal: `${token.poolLendingLiquidity.maxPrincipalScaled} USDC`,
           hasActiveLoan: token.poolLendingLiquidity.activeLoan !== null,
         } : null,
