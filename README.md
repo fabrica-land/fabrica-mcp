@@ -10,7 +10,39 @@ Built on the [Model Context Protocol](https://modelcontextprotocol.io) (MCP).
 
 ## Quick Start
 
-First, clone and build:
+### Hosted (recommended): nothing to install
+
+Point any MCP client at the hosted server:
+
+| Network | URL |
+|---|---|
+| Ethereum Mainnet (real parcels) | `https://mcp.fabrica.land/mcp` |
+| Sepolia Testnet (test properties) | `https://mcp-testnet.fabrica.land/mcp` |
+
+**Claude (claude.ai and desktop):** Settings → Connectors → Add custom connector → paste the URL.
+
+**Claude Code:**
+
+```bash
+claude mcp add --transport http fabrica https://mcp.fabrica.land/mcp
+claude mcp add --transport http fabrica-testnet https://mcp-testnet.fabrica.land/mcp
+```
+
+**Cursor** (`.cursor/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "fabrica": { "url": "https://mcp.fabrica.land/mcp" }
+  }
+}
+```
+
+Any other client that supports remote MCP servers (Streamable HTTP) works the same way. Add both URLs as two separate servers if you want to try things on testnet before mainnet: the network is fixed per URL, so an agent can never reach mainnet through the testnet server.
+
+### Run locally (stdio)
+
+Clone and build:
 
 ```bash
 git clone https://github.com/fabrica-land/fabrica-mcp.git
@@ -28,19 +60,6 @@ claude mcp add fabrica -- node /absolute/path/to/fabrica-mcp/dist/index.js
 ```
 
 **Claude Desktop** (`claude_desktop_config.json`):
-
-```json
-{
-  "mcpServers": {
-    "fabrica": {
-      "command": "node",
-      "args": ["/absolute/path/to/fabrica-mcp/dist/index.js"]
-    }
-  }
-}
-```
-
-**Cursor** (`.cursor/mcp.json`):
 
 ```json
 {
@@ -95,7 +114,7 @@ Replace `/absolute/path/to/fabrica-mcp` with the actual path where you cloned th
 
 ## Network Selection
 
-By default, the MCP server connects to **Ethereum Mainnet** where properties represent real parcels of US land with real legal consequences. To experiment with test properties first, set `FABRICA_NETWORK=sepolia`:
+The hosted servers are split by URL (see Quick Start). A local server connects to **Ethereum Mainnet** by default, where properties represent real parcels of US land with real legal consequences. To experiment with test properties first, set `FABRICA_NETWORK=sepolia`:
 
 **Claude Code (Sepolia):**
 
@@ -131,6 +150,10 @@ All optional — sensible defaults are built in:
 | `FABRICA_API_URL` | `https://api.fabrica.land/graphql` | Fabrica GraphQL API |
 | `FABRICA_METASTREET_SUBGRAPH_URL` | Auto-selected per network | MetaStreet pool subgraph |
 | `FABRICA_MEDIA_URL` | `https://media.fabrica.land` | Fabrica media service for map images |
+
+## Hosting
+
+The hosted servers run on Vercel from this repository: one Vercel project per network, both built with `npm run build:vercel` (see `vercel.json`), which emits a single stateless Streamable HTTP function at `/mcp` and a landing page at `/`. Set `FABRICA_NETWORK` in each project's environment (`ethereum` or `sepolia`). The same handler (`src/http.ts`) can run behind any Node HTTP server.
 
 ## Links
 

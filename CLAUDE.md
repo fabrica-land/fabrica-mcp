@@ -17,7 +17,10 @@ Fabrica tokenizes real property (land) as ERC-1155 NFTs on Ethereum. A legal tru
 ```
 src/
   config.ts           # Network config, contract addresses, legal notices
-  index.ts            # MCP server entrypoint — registers all 11 tools
+  server.ts           # createServer(): registers all 11 tools
+  index.ts            # stdio entrypoint (local installs)
+  http.ts             # stateless Streamable HTTP handler (hosted)
+  vercel.ts           # Vercel function entry, bundled by scripts/build-vercel.mjs
   tools/
     properties.ts     # search_properties, get_property, get_property_map
     lending.ts        # get_lending_market
@@ -180,7 +183,9 @@ Run tests with `npm test` (vitest). Tests cover config, scoring, spam filtering,
 
 ## Distribution
 
-Not yet published to npm. Install from source:
+**Hosted:** `https://mcp.fabrica.land/mcp` (mainnet) and `https://mcp-testnet.fabrica.land/mcp` (Sepolia). Two Vercel projects on this repo, each with `FABRICA_NETWORK` set in its environment; `npm run build:vercel` writes a Build Output API bundle (`.vercel/output`). Stateless: a fresh server and transport per POST, JSON responses, no sessions. Keep it that way unless a feature truly needs sessions.
+
+**Local:** not yet published to npm. Install from source:
 
 ```bash
 git clone https://github.com/fabrica-land/fabrica-mcp.git
