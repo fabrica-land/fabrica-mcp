@@ -212,7 +212,6 @@ const TOKEN_DETAIL_FIELDS = gql`
       collateralId
       amountPaidToLenderScaled loanRepaidDate loanLiquidationDate
     }
-    loanOffers { offerId principalScaled currencySymbol durationFormatted aprPercent lender { address } }
     loanOfferCount
     poolLendingLiquidity { maxPrincipalScaled maxPrincipalUsdc durations activeLoan { id principal repayment duration maturity } }
     marketplaceListings { marketplaceId side status price usdPrice symbol supply makerAddress startTime endTime }

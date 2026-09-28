@@ -25,7 +25,6 @@ export async function getBorrowQuote(args: Record<string, unknown>) {
     }
     const ms = token.poolLendingLiquidity;
     const activeLoans = token.loans?.filter(l => l.loanStatus === "Active") ?? [];
-    const loanOffers = token.loanOffers ?? [];
     const hasActiveLoan = activeLoans.length > 0 || parseInt(token.supplyUnderLoan || "0") > 0;
     const result: Record<string, unknown> = {
       tokenId: token.tokenId,
@@ -64,26 +63,11 @@ export async function getBorrowQuote(args: Record<string, unknown>) {
         reason: "No MetaStreet liquidity available for this property",
       };
     }
-    if (loanOffers.length > 0) {
-      result.peerToPeerOffers = {
-        count: loanOffers.length,
-        offers: loanOffers.slice(0, 10).map(o => ({
-          principal: `${o.principalScaled} ${o.currencySymbol ?? ""}`.trim(),
-          apr: o.aprPercent !== null ? `${o.aprPercent.toFixed(1)}%` : null,
-          duration: o.durationFormatted,
-          lender: shortenAddress(o.lender?.address),
-        })),
-      };
-    } else {
-      result.peerToPeerOffers = { count: 0, offers: [] };
-    }
     result.summary = hasActiveLoan
       ? "This property already has an active loan. Additional borrowing may be limited."
       : ms
-        ? `Up to ${ms.maxPrincipalUsdc ?? ms.maxPrincipalScaled} USDC available via MetaStreet pool${loanOffers.length > 0 ? `, plus ${loanOffers.length} peer-to-peer offer(s)` : ""}.`
-        : loanOffers.length > 0
-          ? `${loanOffers.length} peer-to-peer loan offer(s) available. No MetaStreet pool liquidity.`
-          : "No borrowing options currently available for this property.";
+        ? `Up to ${ms.maxPrincipalUsdc ?? ms.maxPrincipalScaled} USDC available via MetaStreet pool.`
+        : "No borrowing options currently available for this property.";
     return result;
   } catch (e) {
     return { error: `Failed to get borrow quote: ${e instanceof Error ? e.message : String(e)}` };

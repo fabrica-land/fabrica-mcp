@@ -37,7 +37,6 @@ export interface TokenModel {
   pricing: PricingModel[];
   estimatedValue: string;
   cardDisplayValuation: string;
-  loanOffers: LoanOfferModel[];
   loanOfferCount: number;
   loans: LoanModel[];
   poolLendingLiquidity: PoolLendingLiquidityModel | null;
