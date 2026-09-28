@@ -197,25 +197,11 @@ Then configure your MCP client with `node /path/to/fabrica-mcp/dist/index.js`.
 
 ---
 
-## Reference Repos
+## Public References
 
-```bash
-gh api "repos/fabrica-land/<repo>/git/trees/main?recursive=1" --jq '.tree[].path'
-gh api repos/fabrica-land/<repo>/contents/<path> --jq '.content' | base64 -d
-```
-
-| Repo | What's There | When to Read |
-|---|---|---|
-| `fabrica-land/fabrica-v3-api` | Backend GraphQL API (NestJS). Has `CLAUDE.md`. | Query signatures, field types, auth guards, mutations |
-| `fabrica-land/fabrica-contracts` | Solidity smart contracts (ERC-1155). Has `CLAUDE.md`. | Onchain data structures, view functions, events |
-| `fabrica-land/docs` | Public documentation (docs.fabrica.land). | User-facing concepts, trust structure, lending mechanics |
-| `fabrica-land/soil-app` | Frontend (Next.js). Has `AGENTS.md`. | How the frontend queries the API, signing flows |
-| `fabrica-land/fabrica-connectors` | Legal trust agreement (v4.2). | Trust structure, beneficiary rights |
-| `fabrica-land/fabrica-v3-rules` | Jurisdiction rules, county configs. Has `CLAUDE.md`. | County-level data, deed templates, FIPS codes |
-
----
-
-## Linear Projects
-
-- **Fabrica MCP Server** — Phase 1 read-only tools (complete)
-- **MCP Write Operations** — Phase 2 transactional tools (backlog, requires backend wallet-signature auth)
+| Source | What's There |
+|---|---|
+| https://docs.fabrica.land | User-facing concepts, trust structure, lending mechanics |
+| https://api.fabrica.land/graphql | The public GraphQL API (introspection enabled). `schema/api-schema.graphql` is a checked-in snapshot; refresh with `npm run schema:refresh` |
+| `fabrica-land/fabrica-contracts` | Solidity smart contracts (ERC-1155): onchain data structures, view functions, events |
+| `fabrica-land/fabrica-connectors` | The trust agreement: trust structure, beneficiary rights |

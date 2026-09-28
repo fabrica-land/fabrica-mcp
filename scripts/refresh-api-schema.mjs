@@ -7,13 +7,13 @@
  * change: run this, then run the tests and fix whatever the diff broke.
  *
  * Usage:
- *   npm run schema:refresh                       # api-test.fabrica.land (staging)
+ *   npm run schema:refresh                       # api.fabrica.land (public API)
  *   FABRICA_API_URL=<url> npm run schema:refresh
  */
 import { writeFileSync } from "node:fs";
 import { buildClientSchema, getIntrospectionQuery, printSchema } from "graphql";
 
-const url = process.env.FABRICA_API_URL ?? "https://api-test.fabrica.land/graphql";
+const url = process.env.FABRICA_API_URL ?? "https://api.fabrica.land/graphql";
 const out = new URL("../schema/api-schema.graphql", import.meta.url);
 const response = await fetch(url, {
   method: "POST",
