@@ -25,11 +25,11 @@ export const CONTRACTS = IS_MAINNET
   : {
     fabricaToken: "0xb52ED2Dc8EBD49877De57De3f454Fd71b75bc1fD",
     fabricaValidator: "0xAAA7FDc1A573965a2eD47Ab154332b6b55098008",
-    nftfiV2: null, // NFTfi is not available on Sepolia
+    nftfiV2: null, // NFTfi (retired peer-to-peer integration) was never on Sepolia
     nftfiV3: null,
   };
 
-// MetaStreet pool addresses are discovered dynamically from the subgraph
+// Lending pool addresses are discovered dynamically from the subgraph
 // by querying all pools that accept the Fabrica token as collateral.
 
 /**

@@ -6,6 +6,7 @@ import {
 } from "../clients/graphql.js";
 import { getFabricaPools, aggregatePoolStats } from "../clients/subgraph.js";
 import type { LoanModel } from "../types/index.js";
+import { LENDING_POOL_NAME, formatLoanProvider } from "../labels.js";
 
 function formatUsd(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -27,7 +28,7 @@ function formatPoolValue(raw: string, decimals: number): string {
 function loanSummary(loan: LoanModel) {
   return {
     loanId: loan.loanId,
-    provider: loan.loanProvider,
+    provider: formatLoanProvider(loan.loanProvider),
     status: loan.loanStatus,
     principal: `${loan.principalScaled} ${loan.currencySymbol ?? ""}`.trim(),
     apr: loan.aprPercent !== null ? `${loan.aprPercent.toFixed(1)}%` : null,
@@ -96,11 +97,9 @@ export async function getLendingMarket(args: Record<string, unknown>) {
     const avgApr = activeLoans.length > 0
       ? activeLoans.reduce((sum, l) => sum + (l.aprPercent ?? 0), 0) / activeLoans.length
       : 0;
-    const repaymentRate = allLoans.length > 0
-      ? ((repaidLoans.length / (repaidLoans.length + liquidatedLoans.length)) * 100) || 100
-      : 100;
     const agg = aggregatePoolStats(pools);
     const poolStats = agg ? {
+      name: LENDING_POOL_NAME,
       poolCount: agg.poolCount,
       pools: pools.map(p => p.id),
       totalValueLocked: formatPoolValue(agg.totalValueLocked, 18),
@@ -122,7 +121,7 @@ export async function getLendingMarket(args: Record<string, unknown>) {
         loanId: e.loanId,
         principal: e.loanPrincipalAmount,
         borrower: shortenAddress(e.borrower),
-        provider: e.loanProvider,
+        provider: formatLoanProvider(e.loanProvider),
         collateralTokenId: e.nftCollateralId,
       })),
       ...repaidEvents.map(e => ({
@@ -154,7 +153,6 @@ export async function getLendingMarket(args: Record<string, unknown>) {
         repaidLoans: repaidLoans.length,
         liquidatedLoans: liquidatedLoans.length,
         totalVolume: formatUsd(String(totalVolume)),
-        repaymentRate: `${repaymentRate.toFixed(0)}%`,
         averageAPR: avgApr > 0 ? `${avgApr.toFixed(1)}%` : "N/A",
       },
       poolStats,

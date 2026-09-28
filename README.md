@@ -80,11 +80,11 @@ Replace `/absolute/path/to/fabrica-mcp` with the actual path where you cloned th
 |---|---|
 | `search_properties` | Search tokenized properties by location, size, score, listing status |
 | `get_property` | Full property details: legal, valuation, ownership, loans, media |
-| `get_lending_market` | Lending overview: active loans, pool stats, yields, events |
+| `get_lending_market` | Lending overview: loan counts, loans, Fabrica lending pool stats, average APR, events |
 | `get_portfolio` | Wallet holdings, credit history, loan positions |
-| `get_protocol_stats` | Protocol-wide metrics: TVL, properties, loan volume |
+| `get_protocol_stats` | Protocol-wide metrics: properties, estimated value, loan volume and counts, lending pool TVL |
 | `get_property_map` | GeoJSON boundary data for mapping and spatial analysis |
-| `get_borrow_quote` | Borrowing options for a property: pool liquidity, loan offers, current loans |
+| `get_borrow_quote` | Borrowing options for a property: Fabrica lending pool liquidity, durations, current loans |
 | `get_activity` | Activity feed for a property or wallet: transfers, loans, sales, mints |
 | `explain_confidence_score` | Decode the 5-digit confidence score into verification categories |
 | `get_property_image` | Static map image of a property's parcel boundary (inline, dark/light themes) |
@@ -94,13 +94,13 @@ Replace `/absolute/path/to/fabrica-mcp` with the actual path where you cloned th
 
 > "Find me all tokenized properties in Texas"
 
-> "What's the current yield on Fabrica's lending market? How does repayment history look?"
+> "What's the current average APR on Fabrica's lending market? How much liquidity does the lending pool have?"
 
 > "Do a full due diligence report on property token 12743610130101631987"
 
 > "Show me the portfolio for wallet 0x23bc...fce4 — what properties do they own?"
 
-> "Give me protocol-wide stats for Fabrica — how many properties, total loan volume, repayment rate?"
+> "Give me protocol-wide stats for Fabrica: how many properties, in which states, and total loan volume?"
 
 > "How much can I borrow against property token 12743610130101631987?"
 
@@ -138,7 +138,7 @@ claude mcp add fabrica -e FABRICA_NETWORK=sepolia -- node /absolute/path/to/fabr
 
 > **Mainnet notice:** On mainnet, the MCP server instructs AI agents to inform users that operations have real-world legal and financial consequences — including accepting the role of trustee, potential property liabilities, and tax implications. Agents are directed to review the trust instrument attached to tokens before advising on acquisition.
 >
-> **Sepolia:** Test properties only — no real-world implications. NFTfi lending is not available on Sepolia.
+> **Sepolia:** Test properties only, no real-world implications.
 
 ## Configuration
 
@@ -148,7 +148,7 @@ All optional — sensible defaults are built in:
 |---|---|---|
 | `FABRICA_NETWORK` | `ethereum` | Network to operate on (`ethereum` or `sepolia`) |
 | `FABRICA_API_URL` | `https://api.fabrica.land/graphql` | Fabrica GraphQL API |
-| `FABRICA_METASTREET_SUBGRAPH_URL` | Auto-selected per network | MetaStreet pool subgraph |
+| `FABRICA_METASTREET_SUBGRAPH_URL` | Auto-selected per network | Subgraph for the lending pool contracts (the variable keeps its original name) |
 | `FABRICA_MEDIA_URL` | `https://media.fabrica.land` | Fabrica media service for map images |
 
 ## Hosting

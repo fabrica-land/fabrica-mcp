@@ -1,4 +1,5 @@
 import { getWallet } from "../clients/graphql.js";
+import { formatLoanProvider } from "../labels.js";
 
 function formatUsd(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -60,7 +61,7 @@ export async function getPortfolio(args: Record<string, unknown>) {
           outstandingLoans: formatUsd(wallet.totalOutstandingLoansUSDC),
           loans: activeBorrowed.map(l => ({
             loanId: l.loanId,
-            provider: l.loanProvider,
+            provider: formatLoanProvider(l.loanProvider),
             principal: `${l.principalScaled} ${l.currencySymbol ?? ""}`.trim(),
             apr: l.aprPercent !== null ? `${l.aprPercent.toFixed(1)}%` : null,
             duration: l.durationFormatted,
@@ -72,7 +73,7 @@ export async function getPortfolio(args: Record<string, unknown>) {
           activeLoans: activelyLent.length,
           loans: activelyLent.map(l => ({
             loanId: l.loanId,
-            provider: l.loanProvider,
+            provider: formatLoanProvider(l.loanProvider),
             principal: `${l.principalScaled} ${l.currencySymbol ?? ""}`.trim(),
             apr: l.aprPercent !== null ? `${l.aprPercent.toFixed(1)}%` : null,
             borrower: shortenAddress(l.borrower?.address),

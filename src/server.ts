@@ -65,7 +65,7 @@ export function createServer(): McpServer {
   // --- get_lending_market ---
   server.tool(
     "get_lending_market",
-    "Get an overview of the Fabrica lending market: active loans, pool liquidity, yields, and recent loan events. Fabrica properties can be used as collateral for loans via NFTfi (peer-to-peer) and MetaStreet (pool-based) protocols.",
+    "Get an overview of the Fabrica lending market: loan counts, loans, Fabrica lending pool liquidity and utilization, average APR, and recent loan events. Owners borrow against their properties through the Fabrica lending pool (pool-based lending). Loan records also include historical peer-to-peer loans made through a former integration that is now retired.",
     {
       status: z.enum(["active", "repaid", "liquidated", "all"]).optional().describe("Filter loans by status (default: 'all')"),
       borrower: z.string().optional().describe("Filter by borrower wallet address"),
@@ -93,7 +93,7 @@ export function createServer(): McpServer {
   // --- get_protocol_stats ---
   server.tool(
     "get_protocol_stats",
-    "Get protocol-wide statistics for the Fabrica real property tokenization platform: total properties, TVL, lending volume, repayment rates, geographic distribution, and contract addresses.",
+    "Get protocol-wide statistics for the Fabrica real property tokenization platform: total properties, estimated value, lending volume and loan counts, Fabrica lending pool TVL and utilization, geographic distribution, and contract addresses.",
     {},
     async () => ({
       content: [{ type: "text", text: JSON.stringify(await getProtocolStats(), null, 2) }],
@@ -130,7 +130,7 @@ export function createServer(): McpServer {
   // --- get_borrow_quote ---
   server.tool(
     "get_borrow_quote",
-    "Get borrowing options for a specific tokenized property: MetaStreet pool liquidity (max loan amount, durations) and existing loan status. Use this to answer 'How much can I borrow against this property?' or 'What APR would I get?'",
+    "Get borrowing options for a specific tokenized property: Fabrica lending pool liquidity (max loan amount, durations) and existing loan status. Use this to answer 'How much can I borrow against this property?' or 'What APR would I get?'",
     {
       tokenId: z.string().optional().describe("The token ID of the property"),
       slug: z.string().optional().describe("Property slug from the URL"),

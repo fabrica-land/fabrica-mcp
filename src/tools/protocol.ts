@@ -1,6 +1,7 @@
 import { getTokens, getAllLoans, DEFAULT_MIN_SCORE, filterSpamTokens } from "../clients/graphql.js";
 import { getFabricaPools, aggregatePoolStats } from "../clients/subgraph.js";
 import { CONTRACTS, NETWORK_LABEL, MAINNET_WARNING, IS_MAINNET } from "../config.js";
+import { LENDING_POOL_NAME } from "../labels.js";
 
 function formatUsd(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -37,11 +38,9 @@ export async function getProtocolStats() {
     const repaidLoans = loans.filter(l => l.loanStatus === "Repaid");
     const liquidatedLoans = loans.filter(l => l.loanStatus === "Liquidated");
     const totalLoanVolume = loans.reduce((sum, l) => sum + parseFloat(l.principalScaled || "0"), 0);
-    const repaymentRate = (repaidLoans.length + liquidatedLoans.length) > 0
-      ? ((repaidLoans.length / (repaidLoans.length + liquidatedLoans.length)) * 100)
-      : 100;
     const agg = aggregatePoolStats(pools);
     const poolStats = agg ? {
+      name: LENDING_POOL_NAME,
       poolCount: agg.poolCount,
       pools: pools.map(p => p.id),
       totalValueLocked: formatPoolValue(agg.totalValueLocked, 18),
@@ -67,9 +66,14 @@ export async function getProtocolStats() {
       ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
       contracts: {
         fabricaToken: CONTRACTS.fabricaToken,
-        nftfiV2: CONTRACTS.nftfiV2,
-        nftfiV3: CONTRACTS.nftfiV3,
       },
+      ...(CONTRACTS.nftfiV2 ? {
+        historicalContracts: {
+          note: "Former peer-to-peer lending integration (NFTfi), retired. Listed only to read historical loans.",
+          nftfiV2: CONTRACTS.nftfiV2,
+          nftfiV3: CONTRACTS.nftfiV3,
+        },
+      } : {}),
       properties: {
         totalTokenized: activeTokens.length,
         totalEstimatedValue: formatUsd(String(totalEstimatedValue)),
@@ -82,8 +86,7 @@ export async function getProtocolStats() {
         repaidLoans: repaidLoans.length,
         liquidatedLoans: liquidatedLoans.length,
         totalLoanVolume: formatUsd(String(totalLoanVolume)),
-        repaymentRate: `${repaymentRate.toFixed(0)}%`,
-        metaStreetPools: poolStats,
+        lendingPools: poolStats,
       },
       marketplace: {
         activeListings: activeListingsCount,
