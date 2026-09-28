@@ -12,6 +12,7 @@
   ],
   "scripts": {
     "build": "tsup",
+    "build:vercel": "node scripts/build-vercel.mjs",
     "typecheck": "tsc --noEmit",
     "dev": "tsup --watch",
     "start": "node dist/index.js",
