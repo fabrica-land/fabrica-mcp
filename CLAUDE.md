@@ -159,6 +159,7 @@ A 5-digit positional integer where each digit represents a verification group:
 5. **Lean queries.** Only request fields that the tool returns. Respect list query restrictions.
 6. **Score as raw integer.** Never normalize confidence scores.
 7. **Network-aware.** Single network per session. Mainnet responses include legal notices.
+8. **Directory-ready registration.** Register tools with `server.registerTool` (never the deprecated `server.tool`), each with a `title` and `annotations` (`readOnlyHint: true` for reads, `destructiveHint` set explicitly). Descriptions and server instructions state facts; they never direct the model ("you must…"). Error results set `isError`. `src/__tests__/http.test.ts` enforces this.
 
 ---
 

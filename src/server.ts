@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult, ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { searchProperties, getProperty, getPropertyMap } from "./tools/properties.js";
 import { getLendingMarket } from "./tools/lending.js";
@@ -10,168 +11,194 @@ import { getActivity } from "./tools/activity.js";
 import { getPropertyImage, getPortfolioImage } from "./tools/images.js";
 import { NETWORK_LABEL, IS_MAINNET, MAINNET_LEGAL_NOTICE } from "./config.js";
 
-const MAINNET_PREAMBLE = IS_MAINNET
-  ? " IMPORTANT: This server is connected to Ethereum Mainnet. Fabrica tokens represent real property in the United States with real legal consequences. Before acquiring any token, you MUST inform the user that: (1) they will become the beneficial owner and trustee of a real property trust, (2) they may incur legal liabilities and tax obligations, (3) they should review the trust instrument and operating agreement attached to the token. The operating agreement URL is included in property details — fetch and review it to advise the user on the terms."
-  : " This server is connected to Sepolia Testnet. Properties here are for testing only — no real-world legal or financial implications.";
+const NETWORK_NOTICE = IS_MAINNET
+  ? `\n\n${MAINNET_LEGAL_NOTICE}`
+  : " Properties on this network are test tokens with no real-world legal or financial effect.";
+
+export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to tokenized US land on the Fabrica protocol, including property records, confidence scores, parcel boundaries and maps, the lending market, borrow quotes, wallet portfolios and activity. Network: ${NETWORK_LABEL}. Company overview: https://about.fabrica.land.${NETWORK_NOTICE}`;
+
+/** Every tool only reads public data from Fabrica's API and media service. */
+function readOnly(title: string): ToolAnnotations {
+  return { title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true };
+}
+
+/** JSON tool result; results that carry an `error` are flagged so clients can tell failure from data. */
+function jsonResult(result: object): CallToolResult {
+  return {
+    content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+    ...("error" in result ? { isError: true } : {}),
+  };
+}
 
 export function createServer(): McpServer {
   // `instructions` belongs in the SDK's ServerOptions (second argument), not in the
   // Implementation record. Passed in the first argument it rode along inside
-  // `serverInfo`, where no client reads it, so the mainnet legal preamble never
+  // `serverInfo`, where no client reads it, so the mainnet legal notice never
   // reached an agent.
   const server = new McpServer(
     {
       name: "fabrica-mcp",
+      title: "Fabrica",
       version: "0.1.0",
     },
     {
-      instructions: `Fabrica MCP Server — read-only access to tokenized real property data on the Fabrica protocol. Network: ${NETWORK_LABEL}. Company overview: https://about.fabrica.land.${MAINNET_PREAMBLE}`,
+      instructions: SERVER_INSTRUCTIONS,
     },
   );
 
-  // --- search_properties ---
-  server.tool(
+  server.registerTool(
     "search_properties",
-    `Search tokenized real properties on the Fabrica protocol (${NETWORK_LABEL}). Returns a list of properties matching the given filters.${IS_MAINNET ? " Each result represents a REAL parcel of land in the US, legally tokenized as an ERC-1155 NFT." : " These are test properties on Sepolia — no real-world implications."}`,
     {
-      region: z.string().optional().describe("US state code (e.g. 'TX', 'CA', 'NV')"),
-      minAcres: z.number().optional().describe("Minimum parcel size in acres"),
-      maxAcres: z.number().optional().describe("Maximum parcel size in acres"),
-      minScore: z.number().optional().describe("Minimum confidence score (integer, e.g. 70000). Higher = more verified. Typical range: 0-100000."),
-      hasListings: z.boolean().optional().describe("Only show properties with active sale listings"),
-      hasLoans: z.boolean().optional().describe("Only show properties with active loans"),
-      ownedBy: z.string().optional().describe("Filter by owner wallet address"),
-      limit: z.number().optional().describe("Max results (default 20, max 100)"),
-      offset: z.number().optional().describe("Pagination offset"),
+      title: "Search properties",
+      description: `Search tokenized real properties on the Fabrica protocol (${NETWORK_LABEL}). Returns a list of properties matching the given filters.${IS_MAINNET ? " Each result is a real parcel of land in the US, held in a trust whose beneficial interest is an ERC-1155 token." : " These are test properties on Sepolia with no real-world effect."}`,
+      inputSchema: {
+        region: z.string().optional().describe("US state code (e.g. 'TX', 'CA', 'NV')"),
+        minAcres: z.number().optional().describe("Minimum parcel size in acres"),
+        maxAcres: z.number().optional().describe("Maximum parcel size in acres"),
+        minScore: z.number().optional().describe("Minimum confidence score (integer, e.g. 70000). Higher = more verified. Typical range: 0-100000."),
+        hasListings: z.boolean().optional().describe("Only show properties with active sale listings"),
+        hasLoans: z.boolean().optional().describe("Only show properties with active loans"),
+        ownedBy: z.string().optional().describe("Filter by owner wallet address"),
+        limit: z.number().optional().describe("Max results (default 20, max 100)"),
+        offset: z.number().optional().describe("Pagination offset"),
+      },
+      annotations: readOnly("Search properties"),
     },
-    async (args) => ({
-      content: [{ type: "text", text: JSON.stringify(await searchProperties(args), null, 2) }],
-    }),
+    async (args) => jsonResult(await searchProperties(args)),
   );
 
-  // --- get_property ---
-  server.tool(
+  server.registerTool(
     "get_property",
-    `Get comprehensive details about a specific tokenized property on Fabrica (${NETWORK_LABEL}), including legal description, valuation, confidence score breakdown, ownership history, loan history, marketplace activity, and media.${IS_MAINNET ? " The operating agreement URL in the response links to the legal trust instrument — review it before advising on acquisition." : ""}`,
     {
-      tokenId: z.string().optional().describe("The token ID of the property"),
-      slug: z.string().optional().describe("Property slug from the URL (e.g. 'us/nevada/elko-county/elko/apn-063025003')"),
+      title: "Get property details",
+      description: `Get comprehensive details about a specific tokenized property on Fabrica (${NETWORK_LABEL}), including legal description, valuation, confidence score breakdown, ownership history, loan history, marketplace activity, and media.${IS_MAINNET ? " The response includes the URL of the operating agreement (the trust instrument) that governs the token." : ""}`,
+      inputSchema: {
+        tokenId: z.string().optional().describe("The token ID of the property"),
+        slug: z.string().optional().describe("Property slug from the URL (e.g. 'us/nevada/elko-county/elko/apn-063025003')"),
+      },
+      annotations: readOnly("Get property details"),
     },
-    async (args) => ({
-      content: [{ type: "text", text: JSON.stringify(await getProperty(args), null, 2) }],
-    }),
+    async (args) => jsonResult(await getProperty(args)),
   );
 
-  // --- get_lending_market ---
-  server.tool(
+  server.registerTool(
     "get_lending_market",
-    "Get an overview of the Fabrica lending market: loan counts, loans, Fabrica lending pool liquidity and utilization, average APR, and recent loan events. Owners borrow against their properties through the Fabrica lending pool (pool-based lending). Loan records also include historical peer-to-peer loans made through a former integration that is now retired.",
     {
-      status: z.enum(["active", "repaid", "liquidated", "all"]).optional().describe("Filter loans by status (default: 'all')"),
-      borrower: z.string().optional().describe("Filter by borrower wallet address"),
-      lender: z.string().optional().describe("Filter by lender wallet address"),
-      since: z.string().optional().describe("ISO date. Only return loans started after this date."),
-      limit: z.number().optional().describe("Max loan results (default 20)"),
+      title: "Get lending market",
+      description: "Get an overview of the Fabrica lending market: loan counts, loans, Fabrica lending pool liquidity and utilization, average APR, and recent loan events. Owners borrow against their properties through the Fabrica lending pool (pool-based lending). Loan records also include historical peer-to-peer loans made through a former integration that is now retired.",
+      inputSchema: {
+        status: z.enum(["active", "repaid", "liquidated", "all"]).optional().describe("Filter loans by status (default: 'all')"),
+        borrower: z.string().optional().describe("Filter by borrower wallet address"),
+        lender: z.string().optional().describe("Filter by lender wallet address"),
+        since: z.string().optional().describe("ISO date. Only return loans started after this date."),
+        limit: z.number().optional().describe("Max loan results (default 20)"),
+      },
+      annotations: readOnly("Get lending market"),
     },
-    async (args) => ({
-      content: [{ type: "text", text: JSON.stringify(await getLendingMarket(args), null, 2) }],
-    }),
+    async (args) => jsonResult(await getLendingMarket(args)),
   );
 
-  // --- get_portfolio ---
-  server.tool(
+  server.registerTool(
     "get_portfolio",
-    "Get a wallet's complete Fabrica portfolio: properties owned, active loans (as borrower or lender), marketplace orders, credit history, and total portfolio value.",
     {
-      address: z.string().describe("Ethereum wallet address (0x...)"),
+      title: "Get wallet portfolio",
+      description: "Get a wallet's complete Fabrica portfolio: properties owned, active loans (as borrower or lender), marketplace orders, credit history, and total portfolio value.",
+      inputSchema: {
+        address: z.string().describe("Ethereum wallet address (0x...)"),
+      },
+      annotations: readOnly("Get wallet portfolio"),
     },
-    async (args) => ({
-      content: [{ type: "text", text: JSON.stringify(await getPortfolio(args), null, 2) }],
-    }),
+    async (args) => jsonResult(await getPortfolio(args)),
   );
 
-  // --- get_protocol_stats ---
-  server.tool(
+  server.registerTool(
     "get_protocol_stats",
-    "Get protocol-wide statistics for the Fabrica real property tokenization platform: total properties, estimated value, lending volume and loan counts, Fabrica lending pool TVL and utilization, geographic distribution, and contract addresses.",
-    {},
-    async () => ({
-      content: [{ type: "text", text: JSON.stringify(await getProtocolStats(), null, 2) }],
-    }),
+    {
+      title: "Get protocol stats",
+      description: "Get protocol-wide statistics for the Fabrica real property tokenization platform: total properties, estimated value, lending volume and loan counts, Fabrica lending pool TVL and utilization, geographic distribution, and contract addresses.",
+      inputSchema: {},
+      annotations: readOnly("Get protocol stats"),
+    },
+    async () => jsonResult(await getProtocolStats()),
   );
 
-  // --- get_property_map ---
-  server.tool(
+  server.registerTool(
     "get_property_map",
-    "Get GeoJSON boundary data for a tokenized property and its county. Useful for mapping, spatial analysis, and visualization.",
     {
-      tokenId: z.string().optional().describe("The token ID of the property"),
-      slug: z.string().optional().describe("Property slug from the URL"),
-      includeCountyBounds: z.boolean().optional().describe("Also return the county boundary polygon (default: true)"),
+      title: "Get property boundary (GeoJSON)",
+      description: "Get GeoJSON boundary data for a tokenized property and its county, for mapping, spatial analysis, and visualization.",
+      inputSchema: {
+        tokenId: z.string().optional().describe("The token ID of the property"),
+        slug: z.string().optional().describe("Property slug from the URL"),
+        includeCountyBounds: z.boolean().optional().describe("Also return the county boundary polygon (default: true)"),
+      },
+      annotations: readOnly("Get property boundary (GeoJSON)"),
     },
-    async (args) => ({
-      content: [{ type: "text", text: JSON.stringify(await getPropertyMap(args), null, 2) }],
-    }),
+    async (args) => jsonResult(await getPropertyMap(args)),
   );
 
-  // --- explain_confidence_score ---
-  server.tool(
+  server.registerTool(
     "explain_confidence_score",
-    "Explain a Fabrica property's confidence score breakdown. The score is a 5-digit positional number where each digit represents a different verification category: recovery status (ten-thousands), past title (thousands), ownership (hundreds), on-chain history (tens), basic validation (ones). Max score: 75342.",
     {
-      tokenId: z.string().optional().describe("Look up and explain the score for this property"),
-      score: z.number().optional().describe("Raw confidence score integer to explain (e.g. 73242)"),
+      title: "Explain confidence score",
+      description: "Explain a Fabrica property's confidence score breakdown. The score is a 5-digit positional number where each digit represents a different verification category: recovery status (ten-thousands), past title (thousands), ownership (hundreds), onchain history (tens), basic validation (ones). Max score: 75342.",
+      inputSchema: {
+        tokenId: z.string().optional().describe("Look up and explain the score for this property"),
+        score: z.number().optional().describe("Raw confidence score integer to explain (e.g. 73242)"),
+      },
+      annotations: readOnly("Explain confidence score"),
     },
-    async (args) => ({
-      content: [{ type: "text", text: JSON.stringify(await explainConfidenceScore(args), null, 2) }],
-    }),
+    async (args) => jsonResult(await explainConfidenceScore(args)),
   );
 
-  // --- get_borrow_quote ---
-  server.tool(
+  server.registerTool(
     "get_borrow_quote",
-    "Get borrowing options for a specific tokenized property: Fabrica lending pool liquidity (max loan amount, durations) and existing loan status. Use this to answer 'How much can I borrow against this property?' or 'What APR would I get?'",
     {
-      tokenId: z.string().optional().describe("The token ID of the property"),
-      slug: z.string().optional().describe("Property slug from the URL"),
+      title: "Get borrow quote",
+      description: "Get borrowing options for a specific tokenized property: Fabrica lending pool liquidity (max loan amount, durations) and existing loan status. Answers questions such as 'How much can I borrow against this property?' or 'What APR would I get?'",
+      inputSchema: {
+        tokenId: z.string().optional().describe("The token ID of the property"),
+        slug: z.string().optional().describe("Property slug from the URL"),
+      },
+      annotations: readOnly("Get borrow quote"),
     },
-    async (args) => ({
-      content: [{ type: "text", text: JSON.stringify(await getBorrowQuote(args), null, 2) }],
-    }),
+    async (args) => jsonResult(await getBorrowQuote(args)),
   );
 
-  // --- get_activity ---
-  server.tool(
+  server.registerTool(
     "get_activity",
-    "Get the activity feed for a property or wallet: mints, transfers, sales, loans started/repaid/liquidated, configuration changes, and more. Use this for transaction history and event timelines.",
     {
-      tokenId: z.string().optional().describe("Property token ID (for property activity)"),
-      slug: z.string().optional().describe("Property slug (for property activity)"),
-      address: z.string().optional().describe("Wallet address (for wallet activity)"),
-      type: z.string().optional().describe("Filter by activity type (e.g. 'loan', 'transfer', 'sale', 'mint')"),
-      limit: z.number().optional().describe("Max results (default 20, max 100)"),
+      title: "Get activity history",
+      description: "Get the activity feed for a property or wallet: mints, transfers, sales, loans started/repaid/liquidated, configuration changes, and more. Covers transaction history and event timelines.",
+      inputSchema: {
+        tokenId: z.string().optional().describe("Property token ID (for property activity)"),
+        slug: z.string().optional().describe("Property slug (for property activity)"),
+        address: z.string().optional().describe("Wallet address (for wallet activity)"),
+        type: z.string().optional().describe("Filter by activity type (e.g. 'loan', 'transfer', 'sale', 'mint')"),
+        limit: z.number().optional().describe("Max results (default 20, max 100)"),
+      },
+      annotations: readOnly("Get activity history"),
     },
-    async (args) => ({
-      content: [{ type: "text", text: JSON.stringify(await getActivity(args), null, 2) }],
-    }),
+    async (args) => jsonResult(await getActivity(args)),
   );
 
-  // --- get_property_image ---
-  server.tool(
+  server.registerTool(
     "get_property_image",
-    "Get a static map image of a tokenized property showing its parcel boundary (or pin marker if no boundary available). Returns an inline image. Supports dark/light themes and custom dimensions.",
     {
-      tokenId: z.string().optional().describe("The token ID of the property"),
-      slug: z.string().optional().describe("Property slug from the URL"),
-      theme: z.enum(["dark", "light"]).optional().describe("Map theme (default: 'dark')"),
-      width: z.number().optional().describe("Image width in pixels (100-1280, default 640)"),
-      height: z.number().optional().describe("Image height in pixels (100-1280, default 640)"),
+      title: "Get property map image",
+      description: "Get a static map image of a tokenized property showing its parcel boundary (or a pin marker if no boundary is available). Returns an inline image. Supports dark/light themes and custom dimensions.",
+      inputSchema: {
+        tokenId: z.string().optional().describe("The token ID of the property"),
+        slug: z.string().optional().describe("Property slug from the URL"),
+        theme: z.enum(["dark", "light"]).optional().describe("Map theme (default: 'dark')"),
+        width: z.number().optional().describe("Image width in pixels (100-1280, default 640)"),
+        height: z.number().optional().describe("Image height in pixels (100-1280, default 640)"),
+      },
+      annotations: readOnly("Get property map image"),
     },
     async (args) => {
       const result = await getPropertyImage(args);
-      if ("error" in result) {
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-      }
+      if ("error" in result) return jsonResult(result);
       return {
         content: [
           { type: "text", text: `Property: ${result.name} (${result.tokenId})` },
@@ -181,21 +208,22 @@ export function createServer(): McpServer {
     },
   );
 
-  // --- get_portfolio_image ---
-  server.tool(
+  server.registerTool(
     "get_portfolio_image",
-    "Get a static map image showing all properties owned by a wallet, plotted as points on a single map. Returns an inline image. Supports dark/light themes and custom dimensions.",
     {
-      address: z.string().describe("Ethereum wallet address (0x...)"),
-      theme: z.enum(["dark", "light"]).optional().describe("Map theme (default: 'dark')"),
-      width: z.number().optional().describe("Image width in pixels (100-1280, default 640)"),
-      height: z.number().optional().describe("Image height in pixels (100-1280, default 640)"),
+      title: "Get portfolio map image",
+      description: "Get a static map image showing all properties owned by a wallet, plotted as points on a single map. Returns an inline image. Supports dark/light themes and custom dimensions.",
+      inputSchema: {
+        address: z.string().describe("Ethereum wallet address (0x...)"),
+        theme: z.enum(["dark", "light"]).optional().describe("Map theme (default: 'dark')"),
+        width: z.number().optional().describe("Image width in pixels (100-1280, default 640)"),
+        height: z.number().optional().describe("Image height in pixels (100-1280, default 640)"),
+      },
+      annotations: readOnly("Get portfolio map image"),
     },
     async (args) => {
       const result = await getPortfolioImage(args);
-      if ("error" in result) {
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-      }
+      if ("error" in result) return jsonResult(result);
       return {
         content: [
           { type: "text", text: `Portfolio map for ${result.address}` },

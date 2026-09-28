@@ -50,4 +50,19 @@ describe("hosted HTTP transport", () => {
     expect(client.getInstructions()).toContain("Network:");
     await client.close();
   });
+
+  it("marks every tool read-only with a title, as the Claude connectors directory requires", async () => {
+    const client = new Client({ name: "http-test", version: "0.0.0" });
+    await client.connect(new StreamableHTTPClientTransport(new URL(url)));
+    const { tools } = await client.listTools();
+    for (const tool of tools) {
+      expect(tool.title, tool.name).toBeTruthy();
+      expect(tool.annotations?.title, tool.name).toBeTruthy();
+      expect(tool.annotations?.readOnlyHint, tool.name).toBe(true);
+      expect(tool.annotations?.destructiveHint, tool.name).toBe(false);
+      expect(tool.description ?? "", tool.name).not.toMatch(/\bMUST\b|—/);
+    }
+    expect(client.getInstructions() ?? "").not.toMatch(/\bMUST\b|\binform the user\b|—/);
+    await client.close();
+  });
 });
