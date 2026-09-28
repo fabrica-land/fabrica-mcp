@@ -33,18 +33,17 @@ export const CONTRACTS = IS_MAINNET
 // by querying all pools that accept the Fabrica token as collateral.
 
 /**
- * Legal disclaimer for mainnet operations.
- * Agents MUST relay this to their users when operating on mainnet.
+ * Mainnet legal notice, carried in the server instructions. Written as a notice of
+ * facts, not as directions to the model.
  */
-export const MAINNET_LEGAL_NOTICE = `IMPORTANT LEGAL NOTICE: You are operating on Ethereum Mainnet. Fabrica properties are real parcels of land in the United States, legally held in trust and controlled by ERC-1155 tokens. Actions performed through this MCP server — including acquiring, transferring, listing, or borrowing against tokens — have real-world legal consequences:
-
-- Acquiring a Fabrica token makes you the beneficial owner of a real property trust. You accept the role of trustee under the trust instrument attached to the token.
-- You may incur legal liabilities related to the real estate, including property taxes, maintenance obligations, and environmental liability.
-- Transfers and sales are legally binding and may trigger tax events (capital gains, transfer taxes).
-- You should review the operating agreement and trust instrument linked to any token before acquiring it. These documents are attached to the token and define your rights and obligations.
-- This is not financial or legal advice. Consult qualified professionals for your jurisdiction.`;
+export const MAINNET_LEGAL_NOTICE = `Legal notice (Ethereum Mainnet): Fabrica properties are real parcels of land in the United States. Each is held in a trust, and an ERC-1155 token represents the beneficial interest in that trust. Acquiring, transferring, listing or borrowing against a token has real-world legal and financial consequences:
+- Owning a Fabrica token means owning the beneficial interest in the trust that holds the property. The trustee is designated by the token holder and is, by default, the holder.
+- Owners can carry obligations tied to the land, such as property taxes, maintenance and environmental liability.
+- Transfers and sales are legally binding and can trigger tax events such as capital gains or transfer taxes.
+- The operating agreement (the trust instrument) attached to each token sets out the owner's rights and obligations. Its URL is included in property details.
+- This data is informational and is not financial or legal advice.`;
 
 /** Short version for embedding in tool responses */
 export const MAINNET_WARNING = IS_MAINNET
-  ? "This is MAINNET — operations have real-world legal and financial consequences. Review the trust instrument attached to any token before acquiring it."
+  ? "Ethereum Mainnet: these are real US properties. Acquiring a token has legal and financial consequences set out in the trust instrument attached to it."
   : null;

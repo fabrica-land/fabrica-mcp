@@ -12,7 +12,7 @@ describe("config", () => {
     expect(CONTRACTS.nftfiV2).toBeTruthy();
     expect(CONTRACTS.nftfiV3).toBeTruthy();
     expect(MAINNET_WARNING).toBeTruthy();
-    expect(MAINNET_LEGAL_NOTICE).toContain("IMPORTANT LEGAL NOTICE");
+    expect(MAINNET_LEGAL_NOTICE).toContain("Legal notice");
     expect(MAINNET_LEGAL_NOTICE).toContain("trustee");
     expect(MAINNET_LEGAL_NOTICE).toContain("tax");
     expect(MAINNET_LEGAL_NOTICE).toContain("trust instrument");
@@ -21,13 +21,21 @@ describe("config", () => {
   it("has legal notice covering key obligations", async () => {
     const { MAINNET_LEGAL_NOTICE } = await import("../config.js");
     // The legal notice must cover these key areas
-    expect(MAINNET_LEGAL_NOTICE).toContain("beneficial owner");
+    expect(MAINNET_LEGAL_NOTICE).toContain("beneficial interest");
     expect(MAINNET_LEGAL_NOTICE).toContain("trustee");
     expect(MAINNET_LEGAL_NOTICE).toContain("property taxes");
     expect(MAINNET_LEGAL_NOTICE).toContain("capital gains");
     expect(MAINNET_LEGAL_NOTICE).toContain("operating agreement");
     expect(MAINNET_LEGAL_NOTICE).toContain("trust instrument");
     expect(MAINNET_LEGAL_NOTICE).toContain("not financial or legal advice");
+  });
+
+  it("states the notice as facts, not as directions to the model", async () => {
+    const { MAINNET_LEGAL_NOTICE, MAINNET_WARNING } = await import("../config.js");
+    for (const text of [MAINNET_LEGAL_NOTICE, MAINNET_WARNING ?? ""]) {
+      expect(text).not.toMatch(/\bMUST\b|\byou should\b|\binform the user\b/i);
+      expect(text).not.toContain("—");
+    }
   });
 
   it("mainnet contracts have all required addresses", async () => {
