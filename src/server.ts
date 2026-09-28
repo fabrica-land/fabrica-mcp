@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { registerAppTool } from "@modelcontextprotocol/ext-apps/server";
 import type { CallToolResult, ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { searchProperties, getProperty, getPropertyMap } from "./tools/properties.js";
@@ -10,12 +11,24 @@ import { getBorrowQuote } from "./tools/borrowing.js";
 import { getActivity } from "./tools/activity.js";
 import { getPropertyImage, getPortfolioImage } from "./tools/images.js";
 import { NETWORK_LABEL, IS_MAINNET, MAINNET_LEGAL_NOTICE } from "./config.js";
+import { PROPERTY_CARD_URI, registerPropertyCard } from "./ui/property-card.js";
 
 const NETWORK_NOTICE = IS_MAINNET
   ? `\n\n${MAINNET_LEGAL_NOTICE}`
   : " Properties on this network are test tokens with no real-world legal or financial effect.";
 
 export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to tokenized US land on the Fabrica protocol, including property records, confidence scores, parcel boundaries and maps, the lending market, borrow quotes, wallet portfolios and activity. Network: ${NETWORK_LABEL}. Company overview: https://about.fabrica.land.${NETWORK_NOTICE}`;
+
+/**
+ * MCP Apps (the property card) ship testnet-first: on by default on Sepolia, and on mainnet
+ * only when FABRICA_MCP_APPS=enabled. Read per server so a deployment's env decides.
+ */
+export function mcpAppsEnabled(): boolean {
+  const flag = process.env.FABRICA_MCP_APPS?.toLowerCase();
+  if (flag === "enabled") return true;
+  if (flag === "disabled") return false;
+  return !IS_MAINNET;
+}
 
 /** Every tool only reads public data from Fabrica's API and media service. */
 function readOnly(title: string): ToolAnnotations {
@@ -53,33 +66,41 @@ export function createServer(): McpServer {
       description: `Search tokenized real properties on the Fabrica protocol (${NETWORK_LABEL}). Returns a list of properties matching the given filters.${IS_MAINNET ? " Each result is a real parcel of land in the US, held in a trust whose beneficial interest is an ERC-1155 token." : " These are test properties on Sepolia with no real-world effect."}`,
       inputSchema: {
         region: z.string().optional().describe("US state code (e.g. 'TX', 'CA', 'NV')"),
-        minAcres: z.number().optional().describe("Minimum parcel size in acres"),
-        maxAcres: z.number().optional().describe("Maximum parcel size in acres"),
-        minScore: z.number().optional().describe("Minimum confidence score (integer, e.g. 70000). Higher = more verified. Typical range: 0-100000."),
+        minAcres: z.number().min(0).optional().describe("Minimum parcel size in acres"),
+        maxAcres: z.number().min(0).optional().describe("Maximum parcel size in acres"),
+        minScore: z.number().int().min(0).optional().describe("Minimum confidence score (integer, e.g. 70000). Higher = more verified. Typical range: 0-100000."),
         hasListings: z.boolean().optional().describe("Only show properties with active sale listings"),
         hasLoans: z.boolean().optional().describe("Only show properties with active loans"),
         ownedBy: z.string().optional().describe("Filter by owner wallet address"),
-        limit: z.number().optional().describe("Max results (default 20, max 100)"),
-        offset: z.number().optional().describe("Pagination offset"),
+        limit: z.number().int().min(1).max(100).optional().describe("Max results (default 20, max 100)"),
+        offset: z.number().int().min(0).optional().describe("Pagination offset"),
       },
       annotations: readOnly("Search properties"),
     },
     async (args) => jsonResult(await searchProperties(args)),
   );
 
-  server.registerTool(
-    "get_property",
-    {
-      title: "Get property details",
-      description: `Get comprehensive details about a specific tokenized property on Fabrica (${NETWORK_LABEL}), including legal description, valuation, confidence score breakdown, ownership history, loan history, marketplace activity, and media.${IS_MAINNET ? " The response includes the URL of the operating agreement (the trust instrument) that governs the token." : ""}`,
-      inputSchema: {
-        tokenId: z.string().optional().describe("The token ID of the property"),
-        slug: z.string().optional().describe("Property slug from the URL (e.g. 'us/nevada/elko-county/elko/apn-063025003')"),
-      },
-      annotations: readOnly("Get property details"),
+  const getPropertyConfig = {
+    title: "Get property details",
+    description: `Get comprehensive details about a specific tokenized property on Fabrica (${NETWORK_LABEL}), including legal description, valuation, confidence score breakdown, current ownership and holders, active loans, marketplace listings and offers, recent activity, photos and a parcel map image link. Boundary geometry is returned by get_property_map.${IS_MAINNET ? " The response includes the URL of the operating agreement (the trust instrument) that governs the token." : ""}`,
+    inputSchema: {
+      tokenId: z.string().optional().describe("The token ID of the property"),
+      slug: z.string().optional().describe("Property slug from the URL (e.g. 'us/nevada/elko-county/elko/apn-063025003')"),
     },
-    async (args) => jsonResult(await getProperty(args)),
-  );
+    annotations: readOnly("Get property details"),
+  };
+  const getPropertyCallback = async (args: { tokenId?: string; slug?: string }): Promise<CallToolResult> => {
+    const result = await getProperty(args);
+    return { ...jsonResult(result), structuredContent: result };
+  };
+  if (mcpAppsEnabled()) {
+    // MCP App: hosts that support MCP Apps render the property card from structuredContent;
+    // other clients read the same data as JSON text.
+    registerAppTool(server, "get_property", { ...getPropertyConfig, _meta: { ui: { resourceUri: PROPERTY_CARD_URI } } }, getPropertyCallback);
+    registerPropertyCard(server);
+  } else {
+    server.registerTool("get_property", getPropertyConfig, getPropertyCallback);
+  }
 
   server.registerTool(
     "get_lending_market",
@@ -91,7 +112,7 @@ export function createServer(): McpServer {
         borrower: z.string().optional().describe("Filter by borrower wallet address"),
         lender: z.string().optional().describe("Filter by lender wallet address"),
         since: z.string().optional().describe("ISO date. Only return loans started after this date."),
-        limit: z.number().optional().describe("Max loan results (default 20)"),
+        limit: z.number().int().min(1).max(100).optional().describe("Max loan results (default 20, max 100)"),
       },
       annotations: readOnly("Get lending market"),
     },
@@ -144,7 +165,7 @@ export function createServer(): McpServer {
       description: "Explain a Fabrica property's confidence score breakdown. The score is a 5-digit positional number where each digit represents a different verification category: recovery status (ten-thousands), past title (thousands), ownership (hundreds), onchain history (tens), basic validation (ones). Max score: 75342.",
       inputSchema: {
         tokenId: z.string().optional().describe("Look up and explain the score for this property"),
-        score: z.number().optional().describe("Raw confidence score integer to explain (e.g. 73242)"),
+        score: z.number().int().min(0).optional().describe("Raw confidence score integer to explain (e.g. 73242)"),
       },
       annotations: readOnly("Explain confidence score"),
     },
@@ -155,7 +176,7 @@ export function createServer(): McpServer {
     "get_borrow_quote",
     {
       title: "Get borrow quote",
-      description: "Get borrowing options for a specific tokenized property: Fabrica lending pool liquidity (max loan amount, durations) and existing loan status. Answers questions such as 'How much can I borrow against this property?' or 'What APR would I get?'",
+      description: "Get borrowing options for a specific tokenized property: Fabrica lending pool liquidity (max loan amount, durations) and existing loan status. Answers questions such as 'How much can I borrow against this property?'. The amount is an estimate; the rate is set by a live quote when borrowing.",
       inputSchema: {
         tokenId: z.string().optional().describe("The token ID of the property"),
         slug: z.string().optional().describe("Property slug from the URL"),
@@ -175,7 +196,7 @@ export function createServer(): McpServer {
         slug: z.string().optional().describe("Property slug (for property activity)"),
         address: z.string().optional().describe("Wallet address (for wallet activity)"),
         type: z.string().optional().describe("Filter by activity type (e.g. 'loan', 'transfer', 'sale', 'mint')"),
-        limit: z.number().optional().describe("Max results (default 20, max 100)"),
+        limit: z.number().int().min(1).max(100).optional().describe("Max results (default 20, max 100)"),
       },
       annotations: readOnly("Get activity history"),
     },
@@ -191,8 +212,8 @@ export function createServer(): McpServer {
         tokenId: z.string().optional().describe("The token ID of the property"),
         slug: z.string().optional().describe("Property slug from the URL"),
         theme: z.enum(["dark", "light"]).optional().describe("Map theme (default: 'dark')"),
-        width: z.number().optional().describe("Image width in pixels (100-1280, default 640)"),
-        height: z.number().optional().describe("Image height in pixels (100-1280, default 640)"),
+        width: z.number().int().min(100).max(1280).optional().describe("Image width in pixels (100-1280, default 640)"),
+        height: z.number().int().min(100).max(1280).optional().describe("Image height in pixels (100-1280, default 640)"),
       },
       annotations: readOnly("Get property map image"),
     },
@@ -216,8 +237,8 @@ export function createServer(): McpServer {
       inputSchema: {
         address: z.string().describe("Ethereum wallet address (0x...)"),
         theme: z.enum(["dark", "light"]).optional().describe("Map theme (default: 'dark')"),
-        width: z.number().optional().describe("Image width in pixels (100-1280, default 640)"),
-        height: z.number().optional().describe("Image height in pixels (100-1280, default 640)"),
+        width: z.number().int().min(100).max(1280).optional().describe("Image width in pixels (100-1280, default 640)"),
+        height: z.number().int().min(100).max(1280).optional().describe("Image height in pixels (100-1280, default 640)"),
       },
       annotations: readOnly("Get portfolio map image"),
     },

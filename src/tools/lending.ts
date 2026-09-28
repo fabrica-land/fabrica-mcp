@@ -6,7 +6,7 @@ import {
 } from "../clients/graphql.js";
 import { getFabricaPools, aggregatePoolStats } from "../clients/subgraph.js";
 import type { LoanModel } from "../types/index.js";
-import { LENDING_POOL_NAME, formatLoanProvider } from "../labels.js";
+import { LENDING_POOL_NAME, formatLoanProvider, loanVolumeByCurrency } from "../labels.js";
 
 function formatUsd(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -57,7 +57,7 @@ export async function getLendingMarket(args: Record<string, unknown>) {
   const borrower = args.borrower as string | undefined;
   const lender = args.lender as string | undefined;
   const since = args.since as string | undefined;
-  const limit = Math.min((args.limit as number | undefined) ?? 20, 100);
+  const limit = Math.min(Math.max(Math.trunc((args.limit as number | undefined) ?? 20), 1), 100);
   try {
     const [allLoans, pools, startedEvents, repaidEvents, liquidatedEvents] = await Promise.all([
       getAllLoans(),
@@ -93,7 +93,6 @@ export async function getLendingMarket(args: Record<string, unknown>) {
     const activeLoans = allLoans.filter(l => l.loanStatus === "Active");
     const repaidLoans = allLoans.filter(l => l.loanStatus === "Repaid");
     const liquidatedLoans = allLoans.filter(l => l.loanStatus === "Liquidated");
-    const totalVolume = allLoans.reduce((sum, l) => sum + parseFloat(l.principalScaled || "0"), 0);
     const avgApr = activeLoans.length > 0
       ? activeLoans.reduce((sum, l) => sum + (l.aprPercent ?? 0), 0) / activeLoans.length
       : 0;
@@ -152,7 +151,7 @@ export async function getLendingMarket(args: Record<string, unknown>) {
         activeLoans: activeLoans.length,
         repaidLoans: repaidLoans.length,
         liquidatedLoans: liquidatedLoans.length,
-        totalVolume: formatUsd(String(totalVolume)),
+        volumeByCurrency: loanVolumeByCurrency(allLoans),
         averageAPR: avgApr > 0 ? `${avgApr.toFixed(1)}%` : "N/A",
       },
       poolStats,

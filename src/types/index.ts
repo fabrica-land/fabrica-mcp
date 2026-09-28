@@ -175,8 +175,10 @@ export interface ConfigurationModel {
 }
 
 export interface ConfigurationMedia {
-  url: string;
-  type: string;
+  source: string;
+  type: string | null;
+  description: string | null;
+  order: string | null;
 }
 
 export interface ProofOfTitle {

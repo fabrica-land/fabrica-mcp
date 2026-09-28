@@ -2,12 +2,20 @@ import { getTokens, getToken, getCountyBounds, DEFAULT_MIN_SCORE, filterSpamToke
 import type { TokenModel } from "../types/index.js";
 import { NETWORK_LABEL, MAINNET_WARNING, IS_MAINNET, CONTRACTS } from "../config.js";
 import { LENDING_POOL_NAME, formatLoanProvider, formatActivitySource } from "../labels.js";
+import { propertyPhotos, propertyMapImage } from "./media.js";
 
 function formatUsd(value: string | null | undefined): string | null {
   if (!value) return null;
   const num = parseFloat(value);
   if (isNaN(num)) return null;
   return `$${num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+}
+
+/** USD when the API supplies a USD price; otherwise the native amount and currency, never a guessed "$". */
+function formatOrderPrice(usdPrice: string | null, price: string | null, symbol: string | null): string | null {
+  const usd = formatUsd(usdPrice);
+  if (usd) return usd;
+  return price ? `${price} ${symbol ?? ""}`.trim() : null;
 }
 
 function formatScore(score: number | null): number | null {
@@ -50,8 +58,8 @@ export async function searchProperties(args: Record<string, unknown>) {
   const hasListings = args.hasListings as boolean | undefined;
   const hasLoans = args.hasLoans as boolean | undefined;
   const ownedBy = args.ownedBy as string | undefined;
-  const limit = Math.min((args.limit as number | undefined) ?? 20, 100);
-  const offset = (args.offset as number | undefined) ?? 0;
+  const limit = Math.min(Math.max(Math.trunc((args.limit as number | undefined) ?? 20), 1), 100);
+  const offset = Math.max(Math.trunc((args.offset as number | undefined) ?? 0), 0);
   try {
     let tokens = await getTokens({
       minScore: minScore ?? DEFAULT_MIN_SCORE,
@@ -82,9 +90,11 @@ export async function searchProperties(args: Record<string, unknown>) {
       return {
         network: NETWORK_LABEL,
         ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
-        total: 0,
+        total,
         properties: [],
-        message: "No properties found matching your filters.",
+        message: total > 0
+          ? `No more results: ${total} properties match, and offset ${offset} is past the end.`
+          : "No properties found matching your filters.",
       };
     }
     return {
@@ -143,6 +153,7 @@ export async function getProperty(args: Record<string, unknown>) {
       contractAddress: token.contractAddress,
       name: token.name ?? token.vanityName,
       propertyLink: token.propertyLink,
+      isPremint: token.isPremint,
       recoveryStatus: recovery,
       ...(warnings.length > 0 ? { warnings } : {}),
       location: {
@@ -210,13 +221,13 @@ export async function getProperty(args: Record<string, unknown>) {
       },
       marketplace: {
         listings: activeListings.map(l => ({
-          price: formatUsd(l.usdPrice ?? l.price),
+          price: formatOrderPrice(l.usdPrice, l.price, l.symbol),
           symbol: l.symbol,
           expiresAt: l.endTime,
           seller: shortenAddress(l.makerAddress),
         })),
         bids: activeBids.map(b => ({
-          price: formatUsd(b.usdPrice ?? b.price),
+          price: formatOrderPrice(b.usdPrice, b.price, b.symbol),
           symbol: b.symbol,
           bidder: shortenAddress(b.makerAddress),
         })),
@@ -225,6 +236,8 @@ export async function getProperty(args: Record<string, unknown>) {
         imageLight: token.imageUrlLight,
         imageDark: token.imageUrlDark,
         userDescription: token.configuration?.userDescription ?? null,
+        mapImage: propertyMapImage(token.contractAddress, token.tokenId),
+        photos: propertyPhotos(token.configuration?.media),
       },
       recentActivity: token.activity?.slice(0, 10).map(a => ({
         type: a.activity,
@@ -234,7 +247,6 @@ export async function getProperty(args: Record<string, unknown>) {
         txHash: a.transactionHash,
       })) ?? [],
       mintedAt: token.mintedAt,
-      geoJson: token.geoJson ?? token.definition?.geoJson ?? null,
     };
   } catch (e) {
     return { error: `Failed to get property: ${e instanceof Error ? e.message : String(e)}` };

@@ -4,7 +4,7 @@ An MCP server giving AI agents read-only access to tokenized real property data 
 
 ## What is Fabrica?
 
-Fabrica tokenizes real property (land) as ERC-1155 NFTs on Ethereum. A legal trust holds title at the county level. The token controls the trust. Transfer the token, transfer ownership.
+Fabrica tokenizes real property (land) as ERC-1155 NFTs on Ethereum. A legal trust holds title at the county level, and the token represents the beneficial interest in that trust: owning the token means owning the beneficial interest in the trust that holds the property.
 
 - Platform: https://fabrica.land
 - Docs: https://docs.fabrica.land
@@ -22,6 +22,11 @@ src/
   index.ts            # stdio entrypoint (local installs)
   http.ts             # stateless Streamable HTTP handler (hosted)
   vercel.ts           # Vercel function entry, bundled by scripts/build-vercel.mjs
+  ui/property-card.ts # registers the property card MCP App resource (ui://fabrica/property-card)
+  ui/generated/       # gitignored: HTML built from /ui by scripts/build-ui.mjs
+ui/
+  property-card/      # the MCP App view (index.html template + app.ts), bundled with the
+                      # MCP Apps SDK into one self-contained HTML string (no CDN scripts)
   tools/
     properties.ts     # search_properties, get_property, get_property_map
     lending.ts        # get_lending_market
@@ -97,12 +102,12 @@ Configured via `FABRICA_NETWORK` env var (default: `ethereum`).
 | | Ethereum Mainnet | Sepolia Testnet |
 |---|---|---|
 | Properties | Real US land parcels | Test tokens only |
-| Legal consequences | Yes — trustee role, taxes, liabilities | None |
+| Legal consequences | Yes: beneficial interest in a trust, holder is trustee by default, taxes, liabilities | None |
 | Fabrica lending pool | Active (1+ pools) | Active (2 pools) |
 | NFTfi (peer-to-peer) | Retired integration; historical loans only | Not available |
 | Legal notices in responses | Yes | No |
 
-On mainnet, the server's `instructions` field tells agents to inform users about real-world legal consequences and to review the trust instrument attached to tokens before advising on acquisition.
+On mainnet, the server's `instructions` carry `MAINNET_LEGAL_NOTICE` (src/config.ts): the legal facts, stated as a notice, never as directions to the model.
 
 ---
 
@@ -174,6 +179,7 @@ A 5-digit positional integer where each digit represents a verification group:
   - `FABRICA_API_URL` (default: `https://api.fabrica.land/graphql`)
   - `FABRICA_METASTREET_SUBGRAPH_URL` (default: auto-selected per network)
   - `FABRICA_MEDIA_URL` (default: `https://media.fabrica.land`)
+  - `FABRICA_MCP_APPS` (default: on for Sepolia, off for mainnet): the property card MCP App
 
 ---
 
