@@ -136,6 +136,7 @@ All optional — sensible defaults are built in:
 
 - [Fabrica Platform](https://fabrica.land)
 - [Documentation](https://docs.fabrica.land)
+- [Company Overview](https://about.fabrica.land)
 - [Dune Dashboard](https://dune.com/fabrica/dashboard)
 - [MCP Specification](https://modelcontextprotocol.io)
 

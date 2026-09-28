@@ -8,6 +8,7 @@ Fabrica tokenizes real property (land) as ERC-1155 NFTs on Ethereum. A legal tru
 
 - Platform: https://fabrica.land
 - Docs: https://docs.fabrica.land
+- Company overview: https://about.fabrica.land
 - Dune: https://dune.com/fabrica/dashboard
 
 ---

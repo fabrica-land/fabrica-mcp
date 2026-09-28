@@ -91,6 +91,7 @@ export async function getProtocolStats() {
       links: {
         platform: "https://fabrica.land",
         docs: "https://docs.fabrica.land",
+        about: "https://about.fabrica.land",
         dune: "https://dune.com/fabrica/dashboard",
         opensea: "https://opensea.io/collection/fabrica-v3",
         github: "https://github.com/fabrica-land",
