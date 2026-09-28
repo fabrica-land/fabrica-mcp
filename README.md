@@ -159,6 +159,7 @@ The hosted servers run on Vercel from this repository: one Vercel project per ne
 
 - [Fabrica Platform](https://fabrica.land)
 - [Documentation](https://docs.fabrica.land)
+- [Company Overview](https://about.fabrica.land)
 - [Dune Dashboard](https://dune.com/fabrica/dashboard)
 - [MCP Specification](https://modelcontextprotocol.io)
 
