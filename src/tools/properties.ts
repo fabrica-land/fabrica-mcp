@@ -1,7 +1,7 @@
 import { getTokens, getToken, getCountyBounds, DEFAULT_MIN_SCORE, filterSpamTokens } from "../clients/graphql.js";
 import type { TokenModel } from "../types/index.js";
 import { NETWORK_LABEL, MAINNET_WARNING, IS_MAINNET, CONTRACTS } from "../config.js";
-import { LENDING_POOL_NAME, formatLoanProvider, formatActivitySource } from "../labels.js";
+import { LENDING_POOL_NAME, formatActivitySource, formatLoanProvider, formatUsdcCeiling } from "../labels.js";
 import { propertyPhotos, propertyMapImage } from "./media.js";
 
 function formatUsd(value: string | null | undefined): string | null {
@@ -215,7 +215,7 @@ export async function getProperty(args: Record<string, unknown>) {
         })),
         lendingPoolLiquidity: token.poolLendingLiquidity ? {
           name: LENDING_POOL_NAME,
-          maxPrincipal: `${token.poolLendingLiquidity.maxPrincipalScaled} USDC`,
+          maxPrincipal: formatUsdcCeiling(token.poolLendingLiquidity.maxPrincipalScaled),
           hasActiveLoan: token.poolLendingLiquidity.activeLoan !== null,
         } : null,
       },

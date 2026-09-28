@@ -1,5 +1,5 @@
 import { getToken } from "../clients/graphql.js";
-import { LENDING_POOL_NAME, formatLoanProvider } from "../labels.js";
+import { LENDING_POOL_NAME, formatLoanProvider, formatUsdcCeiling } from "../labels.js";
 
 function formatUsd(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -50,7 +50,7 @@ export async function getBorrowQuote(args: Record<string, unknown>) {
         name: LENDING_POOL_NAME,
         available: true,
         // maxPrincipalScaled is whole USDC; maxPrincipalUsdc is raw 6-decimal units.
-        maxBorrow: `${pool.maxPrincipalScaled} USDC`,
+        maxBorrow: formatUsdcCeiling(pool.maxPrincipalScaled),
         durations: pool.durations ?? [],
         hasExistingLoan: pool.activeLoan !== null,
         ...(pool.activeLoan ? {
@@ -74,7 +74,7 @@ export async function getBorrowQuote(args: Record<string, unknown>) {
     result.summary = hasActiveLoan
       ? "This property already has an active loan. Additional borrowing may be limited."
       : pool && hasCapacity
-        ? `Up to ${pool.maxPrincipalScaled} USDC advertised by the ${LENDING_POOL_NAME}. This is an estimate; the amount and rate are set by a live quote when borrowing.`
+        ? `Up to ${formatUsdcCeiling(pool.maxPrincipalScaled)} advertised by the ${LENDING_POOL_NAME}. This is an estimate; the amount and rate are set by a live quote when borrowing.`
         : "No borrowing options currently available for this property.";
     return result;
   } catch (e) {
