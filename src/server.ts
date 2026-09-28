@@ -130,7 +130,7 @@ export function createServer(): McpServer {
   // --- get_borrow_quote ---
   server.tool(
     "get_borrow_quote",
-    "Get borrowing options for a specific tokenized property: MetaStreet pool liquidity (max loan amount, durations), peer-to-peer loan offers, and existing loan status. Use this to answer 'How much can I borrow against this property?' or 'What APR would I get?'",
+    "Get borrowing options for a specific tokenized property: MetaStreet pool liquidity (max loan amount, durations) and existing loan status. Use this to answer 'How much can I borrow against this property?' or 'What APR would I get?'",
     {
       tokenId: z.string().optional().describe("The token ID of the property"),
       slug: z.string().optional().describe("Property slug from the URL"),

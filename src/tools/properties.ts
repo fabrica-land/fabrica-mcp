@@ -201,11 +201,6 @@ export async function getProperty(args: Record<string, unknown>) {
           borrower: shortenAddress(l.borrower?.address),
           lender: shortenAddress(l.lender?.address),
         })),
-        loanOffers: token.loanOffers?.slice(0, 5).map(o => ({
-          principal: `${o.principalScaled} ${o.currencySymbol ?? ""}`.trim(),
-          apr: o.aprPercent !== null ? `${o.aprPercent.toFixed(1)}%` : null,
-          duration: o.durationFormatted,
-        })) ?? [],
         metaStreetLiquidity: token.poolLendingLiquidity ? {
           maxPrincipal: `${token.poolLendingLiquidity.maxPrincipalScaled} USDC`,
           hasActiveLoan: token.poolLendingLiquidity.activeLoan !== null,
