@@ -25,7 +25,7 @@ const server = new McpServer(
     version: "0.1.0",
   },
   {
-    instructions: `Fabrica MCP Server — read-only access to tokenized real property data on the Fabrica protocol. Network: ${NETWORK_LABEL}.${MAINNET_PREAMBLE}`,
+    instructions: `Fabrica MCP Server — read-only access to tokenized real property data on the Fabrica protocol. Network: ${NETWORK_LABEL}. Company overview: https://about.fabrica.land.${MAINNET_PREAMBLE}`,
   },
 );
 
