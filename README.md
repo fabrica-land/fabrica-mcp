@@ -112,6 +112,18 @@ Replace `/absolute/path/to/fabrica-mcp` with the actual path where you cloned th
 
 > "Show me a map of all properties in this wallet's portfolio"
 
+## Property card (MCP App)
+
+In clients that support [MCP Apps](https://github.com/modelcontextprotocol/ext-apps) (such as Claude on the web and desktop), `get_property` renders a property card inline in the conversation:
+- a gallery with the parcel map first, followed by the owner's photos when there are any
+- name, location and acreage
+- confidence score, estimated value, listing price, and borrowing capacity
+- **Buy** (when listed), **Make an offer**, **Contact owner** and **View on Fabrica** buttons
+
+Every button opens the property on Fabrica, where the user completes the action and signs; the server itself never prepares or submits a transaction. Clients without MCP Apps support receive the same data as JSON.
+
+The card is on by default on Sepolia and off on mainnet unless `FABRICA_MCP_APPS=enabled`. Photos are limited to the origins the card's sandbox allows (see `WIDGET_IMAGE_ORIGINS` in `src/tools/media.ts`).
+
 ## Network Selection
 
 The hosted servers are split by URL (see Quick Start). A local server connects to **Ethereum Mainnet** by default, where properties represent real parcels of US land with real legal consequences. To experiment with test properties first, set `FABRICA_NETWORK=sepolia`:
@@ -150,6 +162,7 @@ All optional — sensible defaults are built in:
 | `FABRICA_API_URL` | `https://api.fabrica.land/graphql` | Fabrica GraphQL API |
 | `FABRICA_METASTREET_SUBGRAPH_URL` | Auto-selected per network | Subgraph for the lending pool contracts (the variable keeps its original name) |
 | `FABRICA_MEDIA_URL` | `https://media.fabrica.land` | Fabrica media service for map images |
+| `FABRICA_MCP_APPS` | on for Sepolia, off for mainnet | `enabled` or `disabled`: the property card MCP App on `get_property` |
 
 ## Hosting
 

@@ -5,7 +5,7 @@ type ImageTheme = "dark" | "light";
 
 const MEDIA_BASE_URL = process.env.FABRICA_MEDIA_URL ?? "https://media.fabrica.land";
 
-function buildMediaUrl(
+export function buildMediaUrl(
   contractAddress: string,
   target: string,
   theme: ImageTheme,

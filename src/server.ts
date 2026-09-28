@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { registerAppTool } from "@modelcontextprotocol/ext-apps/server";
 import type { CallToolResult, ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { searchProperties, getProperty, getPropertyMap } from "./tools/properties.js";
@@ -10,12 +11,24 @@ import { getBorrowQuote } from "./tools/borrowing.js";
 import { getActivity } from "./tools/activity.js";
 import { getPropertyImage, getPortfolioImage } from "./tools/images.js";
 import { NETWORK_LABEL, IS_MAINNET, MAINNET_LEGAL_NOTICE } from "./config.js";
+import { PROPERTY_CARD_URI, registerPropertyCard } from "./ui/property-card.js";
 
 const NETWORK_NOTICE = IS_MAINNET
   ? `\n\n${MAINNET_LEGAL_NOTICE}`
   : " Properties on this network are test tokens with no real-world legal or financial effect.";
 
 export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to tokenized US land on the Fabrica protocol, including property records, confidence scores, parcel boundaries and maps, the lending market, borrow quotes, wallet portfolios and activity. Network: ${NETWORK_LABEL}. Company overview: https://about.fabrica.land.${NETWORK_NOTICE}`;
+
+/**
+ * MCP Apps (the property card) ship testnet-first: on by default on Sepolia, and on mainnet
+ * only when FABRICA_MCP_APPS=enabled. Read per server so a deployment's env decides.
+ */
+export function mcpAppsEnabled(): boolean {
+  const flag = process.env.FABRICA_MCP_APPS?.toLowerCase();
+  if (flag === "enabled") return true;
+  if (flag === "disabled") return false;
+  return !IS_MAINNET;
+}
 
 /** Every tool only reads public data from Fabrica's API and media service. */
 function readOnly(title: string): ToolAnnotations {
@@ -67,19 +80,27 @@ export function createServer(): McpServer {
     async (args) => jsonResult(await searchProperties(args)),
   );
 
-  server.registerTool(
-    "get_property",
-    {
-      title: "Get property details",
-      description: `Get comprehensive details about a specific tokenized property on Fabrica (${NETWORK_LABEL}), including legal description, valuation, confidence score breakdown, ownership history, loan history, marketplace activity, and media.${IS_MAINNET ? " The response includes the URL of the operating agreement (the trust instrument) that governs the token." : ""}`,
-      inputSchema: {
-        tokenId: z.string().optional().describe("The token ID of the property"),
-        slug: z.string().optional().describe("Property slug from the URL (e.g. 'us/nevada/elko-county/elko/apn-063025003')"),
-      },
-      annotations: readOnly("Get property details"),
+  const getPropertyConfig = {
+    title: "Get property details",
+    description: `Get comprehensive details about a specific tokenized property on Fabrica (${NETWORK_LABEL}), including legal description, valuation, confidence score breakdown, ownership history, loan history, marketplace activity, and media.${IS_MAINNET ? " The response includes the URL of the operating agreement (the trust instrument) that governs the token." : ""}`,
+    inputSchema: {
+      tokenId: z.string().optional().describe("The token ID of the property"),
+      slug: z.string().optional().describe("Property slug from the URL (e.g. 'us/nevada/elko-county/elko/apn-063025003')"),
     },
-    async (args) => jsonResult(await getProperty(args)),
-  );
+    annotations: readOnly("Get property details"),
+  };
+  const getPropertyCallback = async (args: { tokenId?: string; slug?: string }): Promise<CallToolResult> => {
+    const result = await getProperty(args);
+    return { ...jsonResult(result), structuredContent: result };
+  };
+  if (mcpAppsEnabled()) {
+    // MCP App: hosts that support MCP Apps render the property card from structuredContent;
+    // other clients read the same data as JSON text.
+    registerAppTool(server, "get_property", { ...getPropertyConfig, _meta: { ui: { resourceUri: PROPERTY_CARD_URI } } }, getPropertyCallback);
+    registerPropertyCard(server);
+  } else {
+    server.registerTool("get_property", getPropertyConfig, getPropertyCallback);
+  }
 
   server.registerTool(
     "get_lending_market",

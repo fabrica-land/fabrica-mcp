@@ -22,6 +22,11 @@ src/
   index.ts            # stdio entrypoint (local installs)
   http.ts             # stateless Streamable HTTP handler (hosted)
   vercel.ts           # Vercel function entry, bundled by scripts/build-vercel.mjs
+  ui/property-card.ts # registers the property card MCP App resource (ui://fabrica/property-card)
+  ui/generated/       # gitignored: HTML built from /ui by scripts/build-ui.mjs
+ui/
+  property-card/      # the MCP App view (index.html template + app.ts), bundled with the
+                      # MCP Apps SDK into one self-contained HTML string (no CDN scripts)
   tools/
     properties.ts     # search_properties, get_property, get_property_map
     lending.ts        # get_lending_market
@@ -174,6 +179,7 @@ A 5-digit positional integer where each digit represents a verification group:
   - `FABRICA_API_URL` (default: `https://api.fabrica.land/graphql`)
   - `FABRICA_METASTREET_SUBGRAPH_URL` (default: auto-selected per network)
   - `FABRICA_MEDIA_URL` (default: `https://media.fabrica.land`)
+  - `FABRICA_MCP_APPS` (default: on for Sepolia, off for mainnet): the property card MCP App
 
 ---
 

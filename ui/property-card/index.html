@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Fabrica property</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #111318; --muted: #5d6270; --line: #e6e8ee; --tile: #f3f4f7;
+    --accent: #1e28ff; --accent-fg: #ffffff; --warn-bg: #fff4e0; --warn-fg: #7a4a00;
+  }
+  :root[data-theme="dark"] {
+    --bg: #17181c; --fg: #f2f3f5; --muted: #a2a7b3; --line: #2c2e35; --tile: #22242a;
+    --accent: #4d56ff; --accent-fg: #ffffff; --warn-bg: #3a2c12; --warn-fg: #ffd58a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); }
+  body { font: 14px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .card { padding: 12px; display: grid; gap: 12px; }
+  .gallery { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; }
+  .slide { position: relative; flex: 0 0 min(88%, 520px); aspect-ratio: 16 / 10; scroll-snap-align: start;
+    border-radius: 10px; overflow: hidden; background: var(--tile); border: 0; padding: 0; cursor: pointer; }
+  .slide:only-child { flex-basis: 100%; }
+  .slide img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .slide .tag { position: absolute; left: 8px; bottom: 8px; padding: 2px 8px; border-radius: 999px;
+    background: rgba(0, 0, 0, 0.6); color: #fff; font-size: 12px; }
+  .slide .fallback { display: grid; place-items: center; height: 100%; color: var(--muted); font-size: 13px; }
+  .head { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+  h2 { margin: 0; font-size: 16px; line-height: 1.3; }
+  .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .pill { flex: none; font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+  .facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+  .fact { background: var(--tile); border-radius: 8px; padding: 8px 10px; }
+  .fact .k { color: var(--muted); font-size: 12px; }
+  .fact .v { font-weight: 600; margin-top: 2px; }
+  .warn { background: var(--warn-bg); color: var(--warn-fg); border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+  .desc { color: var(--fg); font-size: 13px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .notice { color: var(--muted); font-size: 12px; }
+  .cta, .secondary { border-radius: 8px; padding: 8px 14px; font: inherit; font-weight: 600; cursor: pointer; }
+  .cta { background: var(--accent); color: var(--accent-fg); border: 1px solid var(--accent); }
+  .secondary { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+  .link { background: none; border: 0; padding: 8px 4px; font: inherit; color: var(--accent); cursor: pointer; margin-left: auto; }
+  .muted { color: var(--muted); }
+</style>
+</head>
+<body>
+<main id="root" class="card"><p class="muted">Loading property…</p></main>
+<!-- APP_SCRIPT -->
+</body>
+</html>

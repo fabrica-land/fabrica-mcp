@@ -11,11 +11,16 @@
     "dist/"
   ],
   "scripts": {
+    "build:ui": "node scripts/build-ui.mjs",
+    "prebuild": "npm run build:ui",
     "build": "tsup",
+    "prebuild:vercel": "npm run build:ui",
     "build:vercel": "node scripts/build-vercel.mjs",
-    "typecheck": "tsc --noEmit",
+    "pretypecheck": "npm run build:ui",
+    "typecheck": "tsc --noEmit && tsc -p ui --noEmit",
     "dev": "tsup --watch",
     "start": "node dist/index.js",
+    "pretest": "npm run build:ui",
     "test": "vitest run",
     "test:watch": "vitest",
     "schema:refresh": "node scripts/refresh-api-schema.mjs"
@@ -32,12 +37,14 @@
   "author": "Fabrica",
   "license": "MIT",
   "dependencies": {
+    "@modelcontextprotocol/ext-apps": "^1.7.5",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "graphql": "^16.13.2",
     "graphql-request": "^7.4.0"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
+    "esbuild": "^0.27.7",
     "tsup": "^8.5.1",
     "typescript": "^6.0.2",
     "vitest": "^4.1.2"

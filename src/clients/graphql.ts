@@ -199,7 +199,7 @@ const TOKEN_DETAIL_FIELDS = gql`
     lastOwner { address user { displayName } }
     balances { balance holder { address user { displayName } } tokenId }
     pricing { source scope currency value confidence timestamp }
-    configuration { holdingEntityDate propertyNickName userDescription proofOfTitle { document documentName source } }
+    configuration { holdingEntityDate propertyNickName userDescription proofOfTitle { document documentName source } media { source type description order } }
     definition { claim holdingEntity coordinates { lat lon } geoJson offchainRegistrar { admin country propertyId } }
     loans {
       loanId loanStatus loanProvider loanType

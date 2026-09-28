@@ -65,4 +65,32 @@ describe("hosted HTTP transport", () => {
     expect(client.getInstructions() ?? "").not.toMatch(/\bMUST\b|\binform the user\b|—/);
     await client.close();
   });
+
+  it("keeps the property card off on mainnet unless FABRICA_MCP_APPS=enabled", async () => {
+    const client = new Client({ name: "http-test", version: "0.0.0" });
+    await client.connect(new StreamableHTTPClientTransport(new URL(url)));
+    const { tools } = await client.listTools();
+    expect(tools.find((tool) => tool.name === "get_property")?._meta?.ui).toBeUndefined();
+    await client.close();
+  });
+
+  it("links get_property to the property card MCP App and serves it self-contained", async () => {
+    process.env.FABRICA_MCP_APPS = "enabled";
+    const client = new Client({ name: "http-test", version: "0.0.0" });
+    await client.connect(new StreamableHTTPClientTransport(new URL(url)));
+    const { tools } = await client.listTools();
+    const getProperty = tools.find((tool) => tool.name === "get_property");
+    const ui = getProperty?._meta?.ui;
+    expect(typeof ui === "object" && ui !== null && "resourceUri" in ui ? ui.resourceUri : null).toBe("ui://fabrica/property-card");
+    const { contents } = await client.readResource({ uri: "ui://fabrica/property-card" });
+    const [card] = contents;
+    expect(card?.mimeType).toBe("text/html;profile=mcp-app");
+    const html = card && "text" in card ? card.text : "";
+    expect(html).toContain("View on Fabrica");
+    expect(html).toContain('<script type="module">');
+    expect(html).not.toMatch(/<script[^>]+src=/);
+    expect(JSON.stringify(card?._meta)).toContain("https://ipfs.fabrica.land");
+    await client.close();
+    delete process.env.FABRICA_MCP_APPS;
+  });
 });

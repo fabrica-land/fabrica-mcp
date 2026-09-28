@@ -2,6 +2,7 @@ import { getTokens, getToken, getCountyBounds, DEFAULT_MIN_SCORE, filterSpamToke
 import type { TokenModel } from "../types/index.js";
 import { NETWORK_LABEL, MAINNET_WARNING, IS_MAINNET, CONTRACTS } from "../config.js";
 import { LENDING_POOL_NAME, formatLoanProvider, formatActivitySource } from "../labels.js";
+import { propertyPhotos, propertyMapImage } from "./media.js";
 
 function formatUsd(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -143,6 +144,7 @@ export async function getProperty(args: Record<string, unknown>) {
       contractAddress: token.contractAddress,
       name: token.name ?? token.vanityName,
       propertyLink: token.propertyLink,
+      isPremint: token.isPremint,
       recoveryStatus: recovery,
       ...(warnings.length > 0 ? { warnings } : {}),
       location: {
@@ -225,6 +227,8 @@ export async function getProperty(args: Record<string, unknown>) {
         imageLight: token.imageUrlLight,
         imageDark: token.imageUrlDark,
         userDescription: token.configuration?.userDescription ?? null,
+        mapImage: propertyMapImage(token.contractAddress, token.tokenId),
+        photos: propertyPhotos(token.configuration?.media),
       },
       recentActivity: token.activity?.slice(0, 10).map(a => ({
         type: a.activity,
