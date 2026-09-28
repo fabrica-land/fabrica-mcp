@@ -8,7 +8,7 @@ import type {
   LoanLiquidatedEvent,
   CountyBoundsModel,
 } from "../types/index.js";
-import { NETWORK } from "../config.js";
+import { CONTRACTS, IS_MAINNET, NETWORK } from "../config.js";
 
 const DEFAULT_API_URL = "https://api.fabrica.land/graphql";
 
@@ -43,16 +43,24 @@ export class FabricaApiError extends Error {
  * whose message is the API's own error text rather than a serialized request dump.
  * Anything else (network, timeout) propagates unchanged.
  */
+const API_TIMEOUT_MS = 20_000;
+
 async function request<T>(
   document: string,
   variables: Record<string, unknown>,
 ): Promise<T> {
   try {
-    return await client.request<T>(document, variables);
+    return await client.request<T>({ document, variables, signal: AbortSignal.timeout(API_TIMEOUT_MS) });
   } catch (error) {
     if (error instanceof ClientError) {
       const messages = error.response.errors?.map(e => e.message) ?? [];
       if (messages.length > 0) throw new FabricaApiError(messages);
+      // No GraphQL errors: an HTTP-level failure. ClientError's own message embeds the
+      // serialized query and response, which is noise to an agent; keep it out.
+      throw new Error(`Fabrica API request failed (HTTP ${error.response.status}). Try again shortly.`);
+    }
+    if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
+      throw new Error(`Fabrica API did not respond within ${API_TIMEOUT_MS / 1000} s. Try again shortly.`);
     }
     throw error;
   }
@@ -266,36 +274,43 @@ const WALLET_FIELDS = gql`
       estimatedValue score marketplacePrice
       supplyUnderLoan
     }
-    loansTaken {
+    loansTaken(network: $network) {
       loanId loanStatus loanProvider principalScaled currencySymbol
       aprPercent durationFormatted maturityDate startTime
       collateralId
       lender { address }
       amountPaidToLenderScaled loanRepaidDate
     }
-    loansMade {
+    loansMade(network: $network) {
       loanId loanStatus loanProvider principalScaled currencySymbol
       aprPercent durationFormatted maturityDate startTime
       collateralId
       borrower { address }
       amountPaidToLenderScaled loanRepaidDate
     }
-    marketplaceOffersMade { marketplaceId tokenId side status price symbol }
+    marketplaceOffersMade(network: $network) { marketplaceId tokenId side status price symbol }
     activity { activity source time timestamp network tokenId transactionHash currencyAmount currencySymbol usdAmount }
   }
 `;
 
 const GET_WALLET_QUERY = gql`
   ${WALLET_FIELDS}
-  query GetWallet($walletAddress: String!) {
-    wallet(walletAddress: $walletAddress) {
+  query GetWallet($walletAddress: String!, $network: String!, $testnets: Boolean!, $contractAddress: String!) {
+    wallet(walletAddress: $walletAddress, network: $network, testnets: $testnets, contractAddress: $contractAddress, burned: false) {
       ...WalletFields
     }
   }
 `;
 
 export async function getWallet(walletAddress: string): Promise<WalletModel | null> {
-  const data = await request<{ wallet: WalletModel | null }>(GET_WALLET_QUERY, { walletAddress });
+  // Scope the wallet (its tokens, loans and orders) to this deployment's network and
+  // contract, so a Sepolia server never returns mainnet records and vice versa.
+  const data = await request<{ wallet: WalletModel | null }>(GET_WALLET_QUERY, {
+    walletAddress,
+    network: NETWORK,
+    testnets: !IS_MAINNET,
+    contractAddress: CONTRACTS.fabricaToken,
+  });
   return data.wallet;
 }
 

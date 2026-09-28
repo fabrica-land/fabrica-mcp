@@ -17,18 +17,37 @@ export function buildMediaUrl(
     width: String(width),
     height: String(height),
   });
-  return `${MEDIA_BASE_URL}/${NETWORK}/${contractAddress}/${target}/image?${params}`;
+  return `${MEDIA_BASE_URL}/${NETWORK}/${encodeURIComponent(contractAddress)}/${encodeURIComponent(target)}/image?${params}`;
 }
 
+const IMAGE_TIMEOUT_MS = 15_000;
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+// The media service answers with a redirect to Mapbox Static Images.
+const IMAGE_HOSTS = new Set([new URL(MEDIA_BASE_URL).host, "api.mapbox.com"]);
+const ETH_ADDRESS = /^0x[0-9a-fA-F]{40}$/;
+const TOKEN_ID = /^[0-9]{1,80}$/;
+
 async function fetchImageAsBase64(url: string): Promise<{ data: string; mimeType: string }> {
-  const response = await fetch(url, { redirect: "follow" });
+  const response = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(IMAGE_TIMEOUT_MS) });
   if (!response.ok) {
     throw new Error(`Image fetch failed (${response.status}): ${response.statusText}`);
   }
-  const contentType = response.headers.get("content-type") ?? "image/png";
+  if (!IMAGE_HOSTS.has(new URL(response.url).host)) {
+    throw new Error("Image service redirected to an unexpected host");
+  }
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.startsWith("image/")) {
+    throw new Error(`Image service returned ${contentType || "no content type"} instead of an image`);
+  }
+  if (Number(response.headers.get("content-length") ?? 0) > MAX_IMAGE_BYTES) {
+    throw new Error("Map image is larger than 5 MB; request a smaller width and height");
+  }
   const buffer = await response.arrayBuffer();
+  if (buffer.byteLength > MAX_IMAGE_BYTES) {
+    throw new Error("Map image is larger than 5 MB; request a smaller width and height");
+  }
   const base64 = Buffer.from(buffer).toString("base64");
-  return { data: base64, mimeType: contentType };
+  return { data: base64, mimeType: contentType.split(";")[0] };
 }
 
 export async function getPropertyImage(args: Record<string, unknown>) {
@@ -64,6 +83,9 @@ export async function getPortfolioImage(args: Record<string, unknown>) {
   const height = Math.min(Math.max((args.height as number | undefined) ?? 640, 100), 1280);
   if (!address) {
     return { error: "Wallet address is required" };
+  }
+  if (!ETH_ADDRESS.test(address)) {
+    return { error: "address must be an Ethereum address: 0x followed by 40 hex characters" };
   }
   try {
     const url = buildMediaUrl(CONTRACTS.fabricaToken, address, theme, width, height);

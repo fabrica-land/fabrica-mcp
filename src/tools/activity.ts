@@ -25,7 +25,7 @@ export async function getActivity(args: Record<string, unknown>) {
   const slug = args.slug as string | undefined;
   const address = args.address as string | undefined;
   const activityType = args.type as string | undefined;
-  const limit = Math.min((args.limit as number | undefined) ?? 20, 100);
+  const limit = Math.min(Math.max(Math.trunc((args.limit as number | undefined) ?? 20), 1), 100);
   if (!tokenId && !slug && !address) {
     return { error: "Provide tokenId, slug (for a property), or address (for a wallet)" };
   }

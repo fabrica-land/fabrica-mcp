@@ -48,6 +48,7 @@ describe("getPropertyImage", () => {
     const pngBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
     mockFetch.mockResolvedValue({
       ok: true,
+      url: "https://api.mapbox.com/styles/v1/fabrica/static/800x500",
       headers: new Headers({ "content-type": "image/png" }),
       arrayBuffer: () => Promise.resolve(pngBytes.buffer),
     });
@@ -77,6 +78,7 @@ describe("getPropertyImage", () => {
     });
     mockFetch.mockResolvedValue({
       ok: true,
+      url: "https://api.mapbox.com/styles/v1/fabrica/static/800x500",
       headers: new Headers({ "content-type": "image/png" }),
       arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
     });
@@ -94,6 +96,7 @@ describe("getPropertyImage", () => {
     });
     mockFetch.mockResolvedValue({
       ok: true,
+      url: "https://api.mapbox.com/styles/v1/fabrica/static/800x500",
       headers: new Headers({ "content-type": "image/png" }),
       arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
     });
@@ -129,6 +132,7 @@ describe("getPropertyImage", () => {
     });
     mockFetch.mockResolvedValue({
       ok: true,
+      url: "https://api.mapbox.com/styles/v1/fabrica/static/800x500",
       headers: new Headers({ "content-type": "image/png" }),
       arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
     });
@@ -152,16 +156,17 @@ describe("getPortfolioImage", () => {
     const pngBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
     mockFetch.mockResolvedValue({
       ok: true,
+      url: "https://api.mapbox.com/styles/v1/fabrica/static/800x500",
       headers: new Headers({ "content-type": "image/png" }),
       arrayBuffer: () => Promise.resolve(pngBytes.buffer),
     });
-    const result = await getPortfolioImage({ address: "0xabc123" });
-    expect(result).toHaveProperty("address", "0xabc123");
+    const result = await getPortfolioImage({ address: "0xabc1230000000000000000000000000000000abc" });
+    expect(result).toHaveProperty("address", "0xabc1230000000000000000000000000000000abc");
     expect(result).toHaveProperty("image");
     const image = (result as { image: { data: string; mimeType: string } }).image;
     expect(image.mimeType).toBe("image/png");
     const fetchUrl = mockFetch.mock.calls[0][0] as string;
-    expect(fetchUrl).toContain("0xabc123/image");
+    expect(fetchUrl).toContain("0xabc1230000000000000000000000000000000abc/image");
     expect(fetchUrl).toContain("theme=dark");
     expect(fetchUrl).toContain("width=640");
     expect(fetchUrl).toContain("height=640");
@@ -173,8 +178,36 @@ describe("getPortfolioImage", () => {
       status: 500,
       statusText: "Internal Server Error",
     });
-    const result = await getPortfolioImage({ address: "0xabc123" });
+    const result = await getPortfolioImage({ address: "0xabc1230000000000000000000000000000000abc" });
     expect(result).toHaveProperty("error");
     expect((result as { error: string }).error).toContain("Failed to get portfolio image");
+  });
+
+  it("rejects anything that is not an Ethereum address, including path traversal", async () => {
+    const result = await getPortfolioImage({ address: "../../ethereum/0x5cbeb7a0df7ed85d82a472fd56d81ed550f3ea95/1" });
+    expect(result).toHaveProperty("error");
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("rejects a response that is not an image", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      url: "https://api.mapbox.com/styles/v1/fabrica/static/800x500",
+      headers: new Headers({ "content-type": "application/json" }),
+      arrayBuffer: () => Promise.resolve(new TextEncoder().encode("{}").buffer),
+    });
+    const result = await getPortfolioImage({ address: "0xabc1230000000000000000000000000000000abc" });
+    expect((result as { error: string }).error).toContain("instead of an image");
+  });
+
+  it("rejects a redirect to an unexpected host", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      url: "https://evil.example/image.png",
+      headers: new Headers({ "content-type": "image/png" }),
+      arrayBuffer: () => Promise.resolve(new Uint8Array([1]).buffer),
+    });
+    const result = await getPortfolioImage({ address: "0xabc1230000000000000000000000000000000abc" });
+    expect((result as { error: string }).error).toContain("unexpected host");
   });
 });

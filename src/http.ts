@@ -3,6 +3,11 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { createServer } from "./server.js";
 
 /**
+ * Origin policy: this public server serves only public, read-only data and holds no
+ * credentials or session state, so any browser origin may call it (wildcard CORS below).
+ * DNS rebinding targets local servers with privileged access, which this is not. Revisit
+ * when authenticated tools exist.
+ *
  * Stateless Streamable HTTP entrypoint. Every POST gets a fresh server and
  * transport, so the same handler runs on serverless platforms (Vercel) and
  * behind any plain Node HTTP server. Network is fixed per deployment by
@@ -16,6 +21,10 @@ const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Expose-Headers": "Mcp-Session-Id, Mcp-Protocol-Version",
 };
 
+const MAX_BODY_BYTES = 1024 * 1024;
+
+class PayloadTooLargeError extends Error {}
+
 /** Vercel's Node runtime pre-parses JSON bodies onto `req.body`; plain Node does not. */
 export type McpHttpRequest = IncomingMessage & { body?: unknown };
 
@@ -25,12 +34,22 @@ function sendJsonRpcError(res: ServerResponse, status: number, code: number, mes
 }
 
 async function readJsonBody(req: McpHttpRequest): Promise<unknown> {
+  if (Number(req.headers["content-length"] ?? 0) > MAX_BODY_BYTES) throw new PayloadTooLargeError();
   if (req.body !== undefined && typeof req.body !== "string" && !Buffer.isBuffer(req.body)) return req.body;
   const chunks: Buffer[] = [];
   if (typeof req.body === "string") chunks.push(Buffer.from(req.body));
   else if (Buffer.isBuffer(req.body)) chunks.push(req.body);
-  else for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
+  else {
+    let size = 0;
+    for await (const chunk of req) {
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk));
+      size += buffer.length;
+      if (size > MAX_BODY_BYTES) throw new PayloadTooLargeError();
+      chunks.push(buffer);
+    }
+  }
   const raw = Buffer.concat(chunks).toString("utf8");
+  if (raw.length > MAX_BODY_BYTES) throw new PayloadTooLargeError();
   return raw ? JSON.parse(raw) : undefined;
 }
 
@@ -48,8 +67,12 @@ export async function handleMcpHttpRequest(req: McpHttpRequest, res: ServerRespo
   let body: unknown;
   try {
     body = await readJsonBody(req);
-  } catch {
-    sendJsonRpcError(res, 400, -32700, "Parse error: request body must be JSON.");
+  } catch (error) {
+    if (error instanceof PayloadTooLargeError) {
+      sendJsonRpcError(res, 413, -32600, "Request body is larger than 1 MB.");
+    } else {
+      sendJsonRpcError(res, 400, -32700, "Parse error: request body must be JSON.");
+    }
     return;
   }
   const server = createServer();
@@ -63,6 +86,6 @@ export async function handleMcpHttpRequest(req: McpHttpRequest, res: ServerRespo
     await transport.handleRequest(req, res, body);
   } catch (error) {
     console.error("MCP HTTP request failed:", error);
-    if (!res.headersSent) sendJsonRpcError(res, 500, -32603, "Internal server error.");
+    if (!res.headersSent) sendJsonRpcError(res, 500, -32603, "The Fabrica MCP server failed to handle this request. Retry; if it keeps failing, contact questions@fabrica.land.");
   }
 }

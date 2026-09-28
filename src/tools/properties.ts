@@ -51,8 +51,8 @@ export async function searchProperties(args: Record<string, unknown>) {
   const hasListings = args.hasListings as boolean | undefined;
   const hasLoans = args.hasLoans as boolean | undefined;
   const ownedBy = args.ownedBy as string | undefined;
-  const limit = Math.min((args.limit as number | undefined) ?? 20, 100);
-  const offset = (args.offset as number | undefined) ?? 0;
+  const limit = Math.min(Math.max(Math.trunc((args.limit as number | undefined) ?? 20), 1), 100);
+  const offset = Math.max(Math.trunc((args.offset as number | undefined) ?? 0), 0);
   try {
     let tokens = await getTokens({
       minScore: minScore ?? DEFAULT_MIN_SCORE,
@@ -83,9 +83,11 @@ export async function searchProperties(args: Record<string, unknown>) {
       return {
         network: NETWORK_LABEL,
         ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
-        total: 0,
+        total,
         properties: [],
-        message: "No properties found matching your filters.",
+        message: total > 0
+          ? `No more results: ${total} properties match, and offset ${offset} is past the end.`
+          : "No properties found matching your filters.",
       };
     }
     return {

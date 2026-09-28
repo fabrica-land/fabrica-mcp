@@ -57,7 +57,7 @@ export async function getLendingMarket(args: Record<string, unknown>) {
   const borrower = args.borrower as string | undefined;
   const lender = args.lender as string | undefined;
   const since = args.since as string | undefined;
-  const limit = Math.min((args.limit as number | undefined) ?? 20, 100);
+  const limit = Math.min(Math.max(Math.trunc((args.limit as number | undefined) ?? 20), 1), 100);
   try {
     const [allLoans, pools, startedEvents, repaidEvents, liquidatedEvents] = await Promise.all([
       getAllLoans(),
