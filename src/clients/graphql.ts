@@ -12,8 +12,14 @@ import { CONTRACTS, IS_MAINNET, NETWORK } from "../config.js";
 
 const DEFAULT_API_URL = "https://api.fabrica.land/graphql";
 
-/** Minimum confidence score to filter out spam/invalid tokens. Matches the frontend threshold. */
-export const DEFAULT_MIN_SCORE = 2142;
+/**
+ * Default minimum confidence score for public listings and protocol stats. Matches the
+ * frontend's marketplace threshold (72032): a normal recovery status plus enough checks
+ * passing. The API pairs any `minScore` with a verified-deed requirement, so this default
+ * leaves out properties the marketplace would not sell, including ones whose recovery
+ * status is not Normal (Void, Stolen, Recovery pending, Distressed).
+ */
+export const DEFAULT_MIN_SCORE = 72032;
 
 /** Token names that indicate spam or errored metadata */
 const SPAM_NAME_PATTERNS = ["SyntaxError", "Error", "BadGatewayException"];
