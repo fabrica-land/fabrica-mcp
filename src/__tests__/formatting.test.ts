@@ -5,7 +5,7 @@ vi.mock("../clients/graphql.js", () => ({
   getToken: vi.fn(),
   getTokens: vi.fn().mockResolvedValue([]),
   getCountyBounds: vi.fn(),
-  DEFAULT_MIN_SCORE: 2142,
+  DEFAULT_MIN_SCORE: 72032,
   filterSpamTokens: vi.fn((tokens: unknown[]) => tokens),
 }));
 

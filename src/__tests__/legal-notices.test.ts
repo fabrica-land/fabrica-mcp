@@ -8,7 +8,7 @@ vi.mock("../clients/graphql.js", () => ({
   getLoanStartedEvents: vi.fn().mockResolvedValue([]),
   getLoanRepaidEvents: vi.fn().mockResolvedValue([]),
   getLoanLiquidatedEvents: vi.fn().mockResolvedValue([]),
-  DEFAULT_MIN_SCORE: 2142,
+  DEFAULT_MIN_SCORE: 72032,
   filterSpamTokens: vi.fn((tokens: unknown[]) => tokens),
 }));
 

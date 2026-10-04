@@ -62,7 +62,9 @@ export async function searchProperties(args: Record<string, unknown>) {
   const offset = Math.max(Math.trunc((args.offset as number | undefined) ?? 0), 0);
   try {
     let tokens = await getTokens({
-      minScore: minScore ?? DEFAULT_MIN_SCORE,
+      // Like the frontend: public listings use the marketplace threshold, while one
+      // wallet's own properties are listed in full unless the caller sets a minimum.
+      minScore: minScore ?? (ownedBy ? undefined : DEFAULT_MIN_SCORE),
       hasListings: hasListings ?? undefined,
       ownedBy,
       burned: false,

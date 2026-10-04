@@ -87,14 +87,16 @@ describe("filterSpamTokens", () => {
 });
 
 describe("DEFAULT_MIN_SCORE", () => {
-  it("is set to 2142 matching frontend threshold", () => {
-    expect(DEFAULT_MIN_SCORE).toBe(2142);
+  it("is set to 72032 matching the frontend marketplace threshold", () => {
+    expect(DEFAULT_MIN_SCORE).toBe(72032);
   });
 
-  it("requires at least basic validation checks", () => {
-    // 2142 = 0*10000 + 2*1000 + 1*100 + 4*10 + 2*1
-    // Means: 0 recovery, 2 past title, 1 ownership, 4 onchain, 2 basic
-    expect(DEFAULT_MIN_SCORE).toBeGreaterThan(0);
+  it("requires a normal recovery status", () => {
+    // 72032 = 7*10000 + 2*1000 + 0*100 + 3*10 + 2*1
+    // The ten-thousands digit is the recovery status: 7 is Normal, so a Void (1),
+    // Distressed (4), Stolen (5) or Recovery pending (6) property scores below it.
+    expect(DEFAULT_MIN_SCORE).toBeGreaterThanOrEqual(70000);
+    expect(19999).toBeLessThan(DEFAULT_MIN_SCORE); // Void with every other check passing
     expect(DEFAULT_MIN_SCORE).toBeLessThan(75342); // less than max
   });
 });

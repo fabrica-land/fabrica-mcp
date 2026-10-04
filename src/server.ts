@@ -68,7 +68,7 @@ export function createServer(): McpServer {
         region: z.string().optional().describe("US state code (e.g. 'TX', 'CA', 'NV')"),
         minAcres: z.number().min(0).optional().describe("Minimum parcel size in acres"),
         maxAcres: z.number().min(0).optional().describe("Maximum parcel size in acres"),
-        minScore: z.number().int().min(0).optional().describe("Minimum confidence score (integer, e.g. 70000). Higher = more verified. Typical range: 0-100000."),
+        minScore: z.number().int().min(0).optional().describe("Minimum confidence score (integer). Defaults to 72032, the marketplace threshold, except when ownedBy is set (then every property in that wallet is listed). Any minimum also requires a verified deed. Max: 75342."),
         hasListings: z.boolean().optional().describe("Only show properties with active sale listings"),
         hasLoans: z.boolean().optional().describe("Only show properties with active loans"),
         ownedBy: z.string().optional().describe("Filter by owner wallet address"),

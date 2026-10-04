@@ -131,7 +131,7 @@ Defined in `src/config.ts`. Lending pools are discovered dynamically from the su
 
 Tokens on the smart contract include spam/errored entries. The MCP filters them out:
 
-- **`minScore: 2142`** — default threshold matching the frontend, filters out tokens without basic validation
+- **`minScore: 72032`**: default threshold matching the frontend marketplace (public listings and protocol stats). The API pairs any `minScore` with a verified-deed requirement, so this leaves out properties the marketplace would not sell, including any whose recovery status is not Normal. `search_properties` with `ownedBy` and no `minScore` lists every property in that wallet, like the owner's holdings on the frontend; `get_portfolio` applies no score filter
 - **Name filtering** — client-side exclusion of tokens with names like `SyntaxError`, `Error`, `BadGatewayException`
 - Default query filters: `burned: false`, `premints: false`, `testnets: false` (mainnet) / `true` (sepolia)
 
