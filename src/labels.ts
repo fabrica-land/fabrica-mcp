@@ -1,7 +1,7 @@
 import type { ActivityModel } from "./types/index.js";
 
 /** Public name of the in-app lending pool. */
-export const LENDING_POOL_NAME = "Fabrica lending pool";
+export const LENDING_POOL_NAME = "DeFi lending pool";
 
 /**
  * Human-readable lending venue for a loan record.

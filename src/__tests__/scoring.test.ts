@@ -13,7 +13,7 @@ describe("explainConfidenceScore", () => {
     const r = result as Record<string, unknown>;
     expect(r.score).toBe(75342);
     expect(r.maxScore).toBe(75342);
-    expect(r.percentage).toBe("100.0%");
+    expect(r.percentage).toBeUndefined();
     const breakdown = r.breakdown as Record<string, { value: number; max: number }>;
     expect(breakdown.recoveryStatus.value).toBe(7);
     expect(breakdown.recoveryStatus.max).toBe(7);

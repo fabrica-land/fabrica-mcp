@@ -17,7 +17,7 @@ const NETWORK_NOTICE = IS_MAINNET
   ? `\n\n${MAINNET_LEGAL_NOTICE}`
   : " Properties on this network are test tokens with no real-world legal or financial effect.";
 
-export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to tokenized US land on the Fabrica protocol, including property records, confidence scores, parcel boundaries and maps, the lending market, borrow quotes, wallet portfolios and activity. Network: ${NETWORK_LABEL}. Company overview: https://about.fabrica.land.${NETWORK_NOTICE}`;
+export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to tokenized US land on the Fabrica protocol, including property records, Property checks, parcel boundaries and maps, the lending market, borrow quotes, wallet portfolios and activity. Network: ${NETWORK_LABEL}. Company overview: https://about.fabrica.land.${NETWORK_NOTICE}`;
 
 /**
  * MCP Apps (the property card) ship testnet-first: on by default on Sepolia, and on mainnet
@@ -68,7 +68,7 @@ export function createServer(): McpServer {
         region: z.string().optional().describe("US state code (e.g. 'TX', 'CA', 'NV')"),
         minAcres: z.number().min(0).optional().describe("Minimum parcel size in acres"),
         maxAcres: z.number().min(0).optional().describe("Maximum parcel size in acres"),
-        minScore: z.number().int().min(0).optional().describe("Minimum confidence score (integer). Defaults to 72032, the marketplace threshold, except when ownedBy is set (then every property in that wallet is listed). Any minimum also requires a verified deed. Max: 75342."),
+        minScore: z.number().int().min(0).optional().describe("Minimum Property checks number: the 5-digit numeric encoding of Property checks, an integer. Defaults to 72032, the marketplace threshold, except when ownedBy is set (then every property in that wallet is listed). Any minimum also requires a verified deed. Max: 75342."),
         hasListings: z.boolean().optional().describe("Only show properties with active sale listings"),
         hasLoans: z.boolean().optional().describe("Only show properties with active loans"),
         ownedBy: z.string().optional().describe("Filter by owner wallet address"),
@@ -82,7 +82,7 @@ export function createServer(): McpServer {
 
   const getPropertyConfig = {
     title: "Get property details",
-    description: `Get comprehensive details about a specific tokenized property on Fabrica (${NETWORK_LABEL}), including legal description, valuation, confidence score breakdown, current ownership and holders, active loans, marketplace listings and offers, recent activity, photos and a parcel map image link. Boundary geometry is returned by get_property_map.${IS_MAINNET ? " The response includes the URL of the operating agreement (the trust instrument) that governs the token." : ""}`,
+    description: `Get comprehensive details about a specific tokenized property on Fabrica (${NETWORK_LABEL}), including legal description, valuation, Property checks (with their 5-digit numeric encoding), current ownership and holders, active loans, marketplace listings and offers, recent activity, photos and a parcel map image link. Boundary geometry is returned by get_property_map.${IS_MAINNET ? " The response includes the URL of the operating agreement (the trust instrument) that governs the token." : ""}`,
     inputSchema: {
       tokenId: z.string().optional().describe("The token ID of the property"),
       slug: z.string().optional().describe("Property slug from the URL (e.g. 'us/nevada/elko-county/elko/apn-063025003')"),
@@ -106,7 +106,7 @@ export function createServer(): McpServer {
     "get_lending_market",
     {
       title: "Get lending market",
-      description: "Get an overview of the Fabrica lending market: loan counts, loans, Fabrica lending pool liquidity and utilization, average APR, and recent loan events. Owners borrow against their properties through the Fabrica lending pool (pool-based lending). Loan records also include historical peer-to-peer loans made through a former integration that is now retired.",
+      description: "Get an overview of the Fabrica lending market: loan counts, loans, DeFi lending pool liquidity and utilization, average APR, and recent loan events. Owners borrow against their properties through the DeFi lending pool (pool-based lending). Loan records also include historical peer-to-peer loans made through a former integration that is now retired.",
       inputSchema: {
         status: z.enum(["active", "repaid", "liquidated", "all"]).optional().describe("Filter loans by status (default: 'all')"),
         borrower: z.string().optional().describe("Filter by borrower wallet address"),
@@ -136,7 +136,7 @@ export function createServer(): McpServer {
     "get_protocol_stats",
     {
       title: "Get protocol stats",
-      description: "Get protocol-wide statistics for the Fabrica real property tokenization platform: total properties, estimated value, lending volume and loan counts, Fabrica lending pool TVL and utilization, geographic distribution, and contract addresses.",
+      description: "Get protocol-wide statistics for the Fabrica real property tokenization platform: total properties, estimated value, lending volume and loan counts, DeFi lending pool TVL and utilization, geographic distribution, and contract addresses.",
       inputSchema: {},
       annotations: readOnly("Get protocol stats"),
     },
@@ -161,13 +161,13 @@ export function createServer(): McpServer {
   server.registerTool(
     "explain_confidence_score",
     {
-      title: "Explain confidence score",
-      description: "Explain a Fabrica property's confidence score breakdown. The score is a 5-digit positional number where each digit represents a different verification category: recovery status (ten-thousands), past title (thousands), ownership (hundreds), onchain history (tens), basic validation (ones). Max score: 75342.",
+      title: "Explain Property checks",
+      description: "Explain a Fabrica property's Property checks from their numeric encoding (formerly called the confidence score; the tool name keeps it). The encoding is a 5-digit positional number where each digit represents a different verification group: recovery status (ten-thousands), past title (thousands), ownership (hundreds), onchain history (tens), basic validation (ones). Max score: 75342.",
       inputSchema: {
         tokenId: z.string().optional().describe("Look up and explain the score for this property"),
-        score: z.number().int().min(0).optional().describe("Raw confidence score integer to explain (e.g. 73242)"),
+        score: z.number().int().min(0).optional().describe("The 5-digit Property checks number to explain, as an integer (e.g. 73242)"),
       },
-      annotations: readOnly("Explain confidence score"),
+      annotations: readOnly("Explain Property checks"),
     },
     async (args) => jsonResult(await explainConfidenceScore(args)),
   );
@@ -176,7 +176,7 @@ export function createServer(): McpServer {
     "get_borrow_quote",
     {
       title: "Get borrow quote",
-      description: "Get borrowing options for a specific tokenized property: Fabrica lending pool liquidity (max loan amount, durations) and existing loan status. Answers questions such as 'How much can I borrow against this property?'. The amount is an estimate; the rate is set by a live quote when borrowing.",
+      description: "Get borrowing options for a specific tokenized property: DeFi lending pool liquidity (max loan amount, durations) and existing loan status. Answers questions such as 'How much can I borrow against this property?'. The amount is an estimate; the rate is set by a live quote when borrowing.",
       inputSchema: {
         tokenId: z.string().optional().describe("The token ID of the property"),
         slug: z.string().optional().describe("Property slug from the URL"),

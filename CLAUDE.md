@@ -83,7 +83,7 @@ The Apollo API routes subgraph data internally, so all onchain and offchain prop
 **Mainnet:** `https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-mainnet/3.13.2/gn`
 **Sepolia:** `https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-sepolia/3.13.2/gn`
 
-Used for Fabrica lending pool TVL, utilization, and loan count data. The subgraph, the env var and some internal identifiers keep the MetaStreet name for historical reasons; public-facing text says Fabrica lending pool. **Pools are discovered dynamically** by querying all pools that accept the Fabrica collateral token — no hardcoded pool IDs. Mainnet has 1+ pools, Sepolia has 2. Pool values are in 18-decimal format.
+Used for DeFi lending pool TVL, utilization, and loan count data. The subgraph, the env var and some internal identifiers keep the MetaStreet name for historical reasons; public-facing text says DeFi lending pool. **Pools are discovered dynamically** by querying all pools that accept the Fabrica collateral token — no hardcoded pool IDs. Mainnet has 1+ pools, Sepolia has 2. Pool values are in 18-decimal format.
 
 ### 3. Fabrica Media Service (Images)
 
@@ -103,7 +103,7 @@ Configured via `FABRICA_NETWORK` env var (default: `ethereum`).
 |---|---|---|
 | Properties | Real US land parcels | Test tokens only |
 | Legal consequences | Yes: beneficial interest in a trust, holder is trustee by default, taxes, liabilities | None |
-| Fabrica lending pool | Active (1+ pools) | Active (2 pools) |
+| DeFi lending pool | Active (1+ pools) | Active (2 pools) |
 | NFTfi (peer-to-peer) | Retired integration; historical loans only | Not available |
 | Legal notices in responses | Yes | No |
 
@@ -139,16 +139,16 @@ The `minScore` can be overridden by users in `search_properties`.
 
 ---
 
-## Confidence Score
+## Property checks (5-digit numeric encoding)
 
-A 5-digit positional integer where each digit represents a verification group:
+The feature is called **Property checks** in every description and output. The API's `score` field (and `confidenceScore`, `explain_confidence_score`) keep their names as identifiers; in prose the number is "the numeric encoding of Property checks", a 5-digit positional integer where each digit represents a verification group:
 
 | Position | Group | Max | Weight |
 |---|---|---|---|
 | Ten-thousands | Recovery status | 7 | ×10000 |
 | Thousands | Past title & load | 5 | ×1000 |
 | Hundreds | Ownership | 3 | ×100 |
-| Tens | On-chain history | 4 | ×10 |
+| Tens | Onchain history | 4 | ×10 |
 | Ones | Basic validation | 2 | ×1 |
 
 **Max score: 75342.** Recovery digit: 7=normal, 6=under review, 5=recovery, 1=voided.
@@ -162,7 +162,7 @@ A 5-digit positional integer where each digit represents a verification group:
 3. **Sensible defaults.** Default limit 20, non-burned active tokens, spam filtered.
 4. **Composable.** Tools chain naturally: search → get_property → get_borrow_quote.
 5. **Lean queries.** Only request fields that the tool returns. Respect list query restrictions.
-6. **Score as raw integer.** Never normalize confidence scores.
+6. **Property checks number as raw integer.** Never normalize it, and never present it as a percentage, grade or rating.
 7. **Network-aware.** Single network per session. Mainnet responses include legal notices.
 8. **Directory-ready registration.** Register tools with `server.registerTool` (never the deprecated `server.tool`), each with a `title` and `annotations` (`readOnlyHint: true` for reads, `destructiveHint` set explicitly). Descriptions and server instructions state facts; they never direct the model ("you must…"). Error results set `isError`. `src/__tests__/http.test.ts` enforces this.
 
@@ -219,7 +219,12 @@ Then configure your MCP client with `node /path/to/fabrica-mcp/dist/index.js`.
 
 Tool descriptions and outputs are read by agents and repeated to people, so they follow Fabrica's public wording:
 
-- The in-app pool is the **Fabrica lending pool** (pool-based lending). Do not present MetaStreet as a live venue in descriptions or output text; code identifiers may keep the name.
+- The in-app pool is the **DeFi lending pool** (pool-based lending; "Fabrica lending pool" is retired). Do not present MetaStreet as a live venue in descriptions or output text; code identifiers may keep the name.
 - NFTfi is a **retired** peer-to-peer integration. Mention it only as historical and labeled (see `src/labels.ts`).
 - Never output a platform-wide or aggregate repayment rate. Loan counts are fine. A single wallet's own repayment percentage shown next to its counts (`get_portfolio`) is fine.
 - Never call Fabrica's code "open source".
+- The per-property verification feature is **Property checks**. Not "confidence score", "Provenance Score" or "token score" as a name (the `explain_confidence_score` tool and the `score` / `confidenceScore` fields keep their identifiers). The valuation "confidence level" is a different signal and keeps its name.
+- Fabrica is not a party to the trust, never holds title and never custodies property. Never write that Fabrica manages, administers, operates, controls, oversees, handles or holds someone's trust, property or loan.
+- No fixed time unit and no "instantly" for money moving (sale proceeds, loans, payoffs, withdrawals).
+- Stablecoins are "digital dollars"; Fabrica counts one USDC as one dollar. Never promise the coin's value ("always equal $1").
+- Write "onchain" as one word. No em dashes in descriptions or output text (`http.test.ts` checks descriptions and instructions).
