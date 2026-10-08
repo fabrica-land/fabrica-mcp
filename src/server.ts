@@ -106,7 +106,7 @@ export function createServer(): McpServer {
     "get_lending_market",
     {
       title: "Get lending market",
-      description: "Get an overview of the Fabrica lending market: loan counts, loans, Fabrica lending pool liquidity and utilization, average APR, and recent loan events. Owners borrow against their properties through the Fabrica lending pool (pool-based lending). Loan records also include historical peer-to-peer loans made through a former integration that is now retired.",
+      description: "Get an overview of the Fabrica lending market: loan counts, loans, DeFi lending pool liquidity and utilization, average APR, and recent loan events. Owners borrow against their properties through the DeFi lending pool (pool-based lending). Loan records also include historical peer-to-peer loans made through a former integration that is now retired.",
       inputSchema: {
         status: z.enum(["active", "repaid", "liquidated", "all"]).optional().describe("Filter loans by status (default: 'all')"),
         borrower: z.string().optional().describe("Filter by borrower wallet address"),
@@ -136,7 +136,7 @@ export function createServer(): McpServer {
     "get_protocol_stats",
     {
       title: "Get protocol stats",
-      description: "Get protocol-wide statistics for the Fabrica real property tokenization platform: total properties, estimated value, lending volume and loan counts, Fabrica lending pool TVL and utilization, geographic distribution, and contract addresses.",
+      description: "Get protocol-wide statistics for the Fabrica real property tokenization platform: total properties, estimated value, lending volume and loan counts, DeFi lending pool TVL and utilization, geographic distribution, and contract addresses.",
       inputSchema: {},
       annotations: readOnly("Get protocol stats"),
     },

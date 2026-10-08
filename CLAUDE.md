@@ -83,7 +83,7 @@ The Apollo API routes subgraph data internally, so all onchain and offchain prop
 **Mainnet:** `https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-mainnet/3.13.2/gn`
 **Sepolia:** `https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-sepolia/3.13.2/gn`
 
-Used for Fabrica lending pool TVL, utilization, and loan count data. The subgraph, the env var and some internal identifiers keep the MetaStreet name for historical reasons; public-facing text says Fabrica lending pool. **Pools are discovered dynamically** by querying all pools that accept the Fabrica collateral token — no hardcoded pool IDs. Mainnet has 1+ pools, Sepolia has 2. Pool values are in 18-decimal format.
+Used for DeFi lending pool TVL, utilization, and loan count data. The subgraph, the env var and some internal identifiers keep the MetaStreet name for historical reasons; public-facing text says DeFi lending pool. **Pools are discovered dynamically** by querying all pools that accept the Fabrica collateral token — no hardcoded pool IDs. Mainnet has 1+ pools, Sepolia has 2. Pool values are in 18-decimal format.
 
 ### 3. Fabrica Media Service (Images)
 
@@ -103,7 +103,7 @@ Configured via `FABRICA_NETWORK` env var (default: `ethereum`).
 |---|---|---|
 | Properties | Real US land parcels | Test tokens only |
 | Legal consequences | Yes: beneficial interest in a trust, holder is trustee by default, taxes, liabilities | None |
-| Fabrica lending pool | Active (1+ pools) | Active (2 pools) |
+| DeFi lending pool | Active (1+ pools) | Active (2 pools) |
 | NFTfi (peer-to-peer) | Retired integration; historical loans only | Not available |
 | Legal notices in responses | Yes | No |
 
