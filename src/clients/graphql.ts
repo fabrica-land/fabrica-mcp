@@ -121,7 +121,6 @@ const TOKENS_LIST_FIELDS = gql`
     isPremint
     isBurned
     majorityOwnerAddress
-    loanOfferCount
   }
 `;
 
@@ -226,7 +225,6 @@ const TOKEN_DETAIL_FIELDS = gql`
       collateralId
       amountPaidToLenderScaled loanRepaidDate loanLiquidationDate
     }
-    loanOfferCount
     poolLendingLiquidity { maxPrincipalScaled maxPrincipalUsdc durations activeLoan { id principal repayment duration maturity } }
     marketplaceListings { marketplaceId side status price usdPrice symbol supply makerAddress startTime endTime }
     marketplaceBids { marketplaceId side status price usdPrice symbol supply makerAddress startTime endTime }

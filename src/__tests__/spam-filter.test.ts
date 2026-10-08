@@ -29,7 +29,6 @@ function makeToken(overrides: Partial<TokenModel> = {}): TokenModel {
     isPremint: false,
     isBurned: false,
     majorityOwnerAddress: "0x1234567890abcdef1234567890abcdef12345678",
-    loanOfferCount: 0,
     ...overrides,
   } as TokenModel;
 }

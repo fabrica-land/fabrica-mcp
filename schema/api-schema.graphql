@@ -228,8 +228,6 @@ type ClientNetworkModel {
 }
 
 type ClientNftfiNetworkModel {
-  apiBaseUri: String!
-  enabled: Boolean!
   refinanceEnabled: Boolean!
   versions: [ClientNftfiVersionModel!]!
 }
@@ -496,40 +494,6 @@ type LoanModel {
   totalRenegotiationAdminFeesPaidScaled: String!
   totalRenegotiationFeesPaid: String!
   totalRenegotiationFeesPaidScaled: String!
-}
-
-type LoanOfferModel {
-  aprBps: Int
-  aprPercent: Float
-  borrower: WalletModel!
-  collateralContract: String!
-  collateralId: String!
-  currency: String!
-  currencySymbol: String
-  durationFormatted: String!
-  durationSeconds: Float!
-  effectiveAprBps: Int
-  effectiveAprPercent: Float
-  interestForDurationBps: Int
-  interestForDurationPercent: Float
-  lender: WalletModel!
-  loanContract: String!
-  loanProvider: LoanProvider!
-  loanType: LoanType!
-  marketplaceFeeBps: Int!
-  marketplaceFeePercent: Float!
-  maxRepayment: String!
-  maxRepaymentScaled: String!
-  networkName: String!
-  nonce: String
-  offerExpiry: String!
-  offerId: String!
-  offeredDate: String
-  originationFee: String!
-  originationFeeScaled: String!
-  principal: String!
-  principalScaled: String!
-  token: TokenModel
 }
 
 enum LoanProvider {
@@ -1267,8 +1231,6 @@ type TokenModel {
   isClaimedPremint: Boolean!
   isPremint: Boolean!
   lastOwner: WalletModel
-  loanOfferCount: Int!
-  loanOffers: [LoanOfferModel!]!
   loans: [LoanModel!]!
   locality: String
   majorOwner: String @deprecated(reason: "Use majorityOwnerAddress")
@@ -1422,7 +1384,6 @@ type WalletModel {
   contractAddress: String
   creditHistory: WalletCreditHistoryModel!
   fees(filter: FeesFilterInput): FeesModel!
-  loanOffersMade(network: String): [LoanOfferModel!]
   loansMade(network: String): [LoanModel!]
   loansTaken(network: String): [LoanModel!]
   marketplaceOffersMade(network: String): [MarketplaceOrderModel!]
