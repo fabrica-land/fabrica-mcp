@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 /**
  * Tool output is read by agents and repeated to people, so it follows Fabrica's
- * public wording: the in-app pool is the Fabrica lending pool, the peer-to-peer
+ * public wording: the in-app pool is the DeFi lending pool, the peer-to-peer
  * integration is labeled as retired, and no platform-wide repayment rate is
  * published.
  */
@@ -78,7 +78,7 @@ describe("formatActivitySource", () => {
 });
 
 describe("get_protocol_stats wording", () => {
-  it("publishes no repayment rate and names the Fabrica lending pool", async () => {
+  it("publishes no repayment rate and names the DeFi lending pool", async () => {
     const result = await getProtocolStats() as Record<string, unknown>;
     const text = JSON.stringify(result);
     expect(text).not.toMatch(/repaymentRate/i);
@@ -119,7 +119,7 @@ describe("get_lending_market wording", () => {
 });
 
 describe("get_borrow_quote wording", () => {
-  it("reports Fabrica lending pool liquidity", async () => {
+  it("reports DeFi lending pool liquidity", async () => {
     vi.mocked(getToken).mockResolvedValue({
       tokenId: "1",
       name: "Test Ranch",

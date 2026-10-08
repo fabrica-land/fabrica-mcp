@@ -140,7 +140,7 @@ export async function getProperty(args: Record<string, unknown>) {
     const recovery = getRecoveryStatus(token.score);
     const warnings: string[] = [];
     if (recovery && recovery.value !== 7) {
-      warnings.push(`Recovery status: ${recovery.label} — property may be disputed or voided`);
+      warnings.push(`Recovery status: ${recovery.label}; the property may be disputed or voided`);
     }
     if (parseInt(token.supplyLiquidating || "0") > 0) {
       warnings.push("Property has supply currently in liquidation");

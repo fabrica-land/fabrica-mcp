@@ -150,7 +150,7 @@ function render(): void {
   const recoveryLabel = str(recovery.label);
   const facts = el("div", "facts");
   const factNodes = [
-    fact("Confidence score", score !== null ? `${score}${recoveryLabel && recoveryLabel !== "Normal" ? ` · ${recoveryLabel}` : ""}` : null),
+    fact("Property checks", score !== null ? `${score}${recoveryLabel && recoveryLabel !== "Normal" ? ` · ${recoveryLabel}` : ""}` : null),
     fact("Estimated value", str(valuation.estimatedValue)),
     fact("Listed for sale", str(listing.price)),
     activeLoans.length > 0
