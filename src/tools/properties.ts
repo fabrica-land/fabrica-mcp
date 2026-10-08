@@ -1,7 +1,7 @@
 import { getTokens, getToken, getCountyBounds, DEFAULT_MIN_SCORE, filterSpamTokens } from "../clients/graphql.js";
 import type { TokenModel } from "../types/index.js";
 import { NETWORK_LABEL, MAINNET_WARNING, IS_MAINNET, CONTRACTS } from "../config.js";
-import { LENDING_POOL_NAME, formatActivitySource, formatLoanProvider, formatUsdcCeiling } from "../labels.js";
+import { LENDING_POOL_NAME, formatActivityAmount, formatActivitySource, formatLoanProvider, formatUsdcCeiling } from "../labels.js";
 import { propertyPhotos, propertyMapImage } from "./media.js";
 
 function formatUsd(value: string | null | undefined): string | null {
@@ -245,7 +245,7 @@ export async function getProperty(args: Record<string, unknown>) {
         type: a.activity,
         source: formatActivitySource(a.source),
         time: a.time,
-        amount: a.usdAmount ? formatUsd(a.usdAmount) : (a.currencyAmount ? `${a.currencyAmount} ${a.currencySymbol ?? ""}`.trim() : null),
+        amount: formatActivityAmount(a),
         txHash: a.transactionHash,
       })) ?? [],
       mintedAt: token.mintedAt,

@@ -227,6 +227,7 @@ export interface ActivityModel {
   tokenId: string | null;
   transactionHash: string | null;
   currencyAmount: string | null;
+  currencyDecimals: number | null;
   currencySymbol: string | null;
   usdAmount: string | null;
   durationSeconds: string | null;
