@@ -230,7 +230,7 @@ const TOKEN_DETAIL_FIELDS = gql`
     poolLendingLiquidity { maxPrincipalScaled maxPrincipalUsdc durations activeLoan { id principal repayment duration maturity } }
     marketplaceListings { marketplaceId side status price usdPrice symbol supply makerAddress startTime endTime }
     marketplaceBids { marketplaceId side status price usdPrice symbol supply makerAddress startTime endTime }
-    activity { activity source time timestamp network tokenId transactionHash currencyAmount currencySymbol usdAmount }
+    activity { activity source time timestamp network tokenId transactionHash currencyAmount currencyDecimals currencySymbol usdAmount }
     transfers { from { address } to { address } value transactionHash blockTimestamp }
   }
 `;
@@ -295,7 +295,7 @@ const WALLET_FIELDS = gql`
       amountPaidToLenderScaled loanRepaidDate
     }
     marketplaceOffersMade(network: $network) { marketplaceId tokenId side status price symbol }
-    activity { activity source time timestamp network tokenId transactionHash currencyAmount currencySymbol usdAmount }
+    activity { activity source time timestamp network tokenId transactionHash currencyAmount currencyDecimals currencySymbol usdAmount }
   }
 `;
 

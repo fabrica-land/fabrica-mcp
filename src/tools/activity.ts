@@ -1,13 +1,6 @@
 import { getToken, getWallet } from "../clients/graphql.js";
 import type { ActivityModel } from "../types/index.js";
-import { formatActivitySource } from "../labels.js";
-
-function formatUsd(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const num = parseFloat(value);
-  if (isNaN(num)) return null;
-  return `$${num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
+import { formatActivityAmount, formatActivitySource } from "../labels.js";
 
 function formatActivity(a: ActivityModel) {
   return {
@@ -15,7 +8,7 @@ function formatActivity(a: ActivityModel) {
     source: formatActivitySource(a.source),
     time: a.time,
     tokenId: a.tokenId ?? null,
-    amount: a.usdAmount ? formatUsd(a.usdAmount) : (a.currencyAmount ? `${a.currencyAmount} ${a.currencySymbol ?? ""}`.trim() : null),
+    amount: formatActivityAmount(a),
     txHash: a.transactionHash ?? null,
   };
 }
