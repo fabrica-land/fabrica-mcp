@@ -228,7 +228,6 @@ type ClientNetworkModel {
 }
 
 type ClientNftfiNetworkModel {
-  refinanceEnabled: Boolean!
   versions: [ClientNftfiVersionModel!]!
 }
 
