@@ -37,7 +37,6 @@ export interface TokenModel {
   pricing: PricingModel[];
   estimatedValue: string;
   cardDisplayValuation: string;
-  loanOfferCount: number;
   loans: LoanModel[];
   poolLendingLiquidity: PoolLendingLiquidityModel | null;
   configuration: ConfigurationModel | null;
@@ -73,13 +72,12 @@ export interface WalletModel {
   totalValue: string;
   totalAcres: string;
   totalCollateralValue: string;
-  totalOutstandingLoansUSDC: string;
+  totalOutstandingLoansUSDC: string | null;
   propertyCountUnderLoan: string;
   creditHistory: WalletCreditHistory;
   activity: ActivityModel[];
   loansTaken: LoanModel[] | null;
   loansMade: LoanModel[] | null;
-  loanOffersMade: LoanOfferModel[] | null;
   marketplaceOffersMade: MarketplaceOrderModel[] | null;
 }
 
@@ -137,16 +135,6 @@ export interface MarketplaceOrderModel {
   makerAddress: string;
   startTime: string;
   endTime: string | null;
-}
-
-export interface LoanOfferModel {
-  offerId: string;
-  lender: WalletModel;
-  loanProvider: "PoolLending" | "NFTfi";
-  principalScaled: string;
-  currencySymbol: string | null;
-  durationFormatted: string;
-  aprPercent: number | null;
 }
 
 export interface ScoringCheckResult {

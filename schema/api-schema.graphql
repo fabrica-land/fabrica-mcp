@@ -228,9 +228,6 @@ type ClientNetworkModel {
 }
 
 type ClientNftfiNetworkModel {
-  apiBaseUri: String!
-  enabled: Boolean!
-  refinanceEnabled: Boolean!
   versions: [ClientNftfiVersionModel!]!
 }
 
@@ -496,40 +493,6 @@ type LoanModel {
   totalRenegotiationAdminFeesPaidScaled: String!
   totalRenegotiationFeesPaid: String!
   totalRenegotiationFeesPaidScaled: String!
-}
-
-type LoanOfferModel {
-  aprBps: Int
-  aprPercent: Float
-  borrower: WalletModel!
-  collateralContract: String!
-  collateralId: String!
-  currency: String!
-  currencySymbol: String
-  durationFormatted: String!
-  durationSeconds: Float!
-  effectiveAprBps: Int
-  effectiveAprPercent: Float
-  interestForDurationBps: Int
-  interestForDurationPercent: Float
-  lender: WalletModel!
-  loanContract: String!
-  loanProvider: LoanProvider!
-  loanType: LoanType!
-  marketplaceFeeBps: Int!
-  marketplaceFeePercent: Float!
-  maxRepayment: String!
-  maxRepaymentScaled: String!
-  networkName: String!
-  nonce: String
-  offerExpiry: String!
-  offerId: String!
-  offeredDate: String
-  originationFee: String!
-  originationFeeScaled: String!
-  principal: String!
-  principalScaled: String!
-  token: TokenModel
 }
 
 enum LoanProvider {
@@ -882,7 +845,7 @@ type PoolLendingLiquidityModel {
   maxPrincipalScaled: String!
 
   """
-  Advertised borrowing capacity in the currency token (USDC, 6 decimals): the largest principal any single pool forecasts from its tick liquidity against that pool's collateral price (`oracleValuation.quote.price` or `onchainValuation.usablePriceUsdc6`), net of the active loan on that pool. Pools with no usable price contribute zero. This is an off-chain forecast, not the amount the MetaStreet router can actually source — the router's on-chain sourcing can come out lower and the two can disagree; quote the real amount before presenting it as borrowable.
+  Advertised borrowing capacity in the currency token (USDC, 6 decimals): the largest principal any single pool forecasts from its tick liquidity against that pool's collateral price. Signed-quote pools use `oracleValuation.quote.price`. Onchain pools use `onchainValuation.usablePriceUsdc6` ONLY when `aggregatorReadAddress` is the pool's `priceOracle()`; a split pool contributes zero even when that price is set. Pools with no usable price also contribute zero. Net of the active loan on that pool. This is an off-chain forecast, not the amount the MetaStreet router can actually source — the router's on-chain sourcing can come out lower and the two can disagree; quote the real amount before presenting it as borrowable.
   """
   maxPrincipalUsdc: String!
   pools: [PoolLendingPoolModel!]!
@@ -905,7 +868,7 @@ type PoolLendingLoanModel {
 }
 
 """
-The subgraph's `OnchainPrice` row for this token under the pool's validator: the RAW canonical price the FabricaAttributeOracle fact store holds, before any eligibility gate. This is NOT the price the pool lends against — use `onchainValuation.usablePriceUsdc6` for that. Only populated for OnchainOracle pools inside `Token.poolLendingLiquidity`.
+The subgraph's `OnchainPrice` row for this token: the RAW canonical price the fact store holds, before any eligibility gate. This is NOT the price the pool lends against. `onchainValuation.usablePriceUsdc6` is the READ aggregator's price; borrow capacity uses it only when `aggregatorReadAddress` is the pool's `priceOracle()`, and is zero when they differ. Only populated for OnchainOracle pools inside `Token.poolLendingLiquidity`.
 """
 type PoolLendingOnchainPriceModel {
   """Publisher confidence in basis points (0–10000)."""
@@ -929,26 +892,36 @@ type PoolLendingOnchainPriceModel {
 }
 
 """
-What the aggregator answers for THIS token right now — the exact inputs an OnchainOracle pool uses at execution. This, not `onchainPrice.priceUsdc6`, is the price the pool lends against. Only populated inside `Token.poolLendingLiquidity`.
+What the read aggregator answers for THIS token right now. When `aggregatorReadAddress` equals the pool's `priceOracleAddress`, these are the inputs that pool uses at execution and `usablePriceUsdc6` is the price it lends against. When they differ, `capacityBlockReason` is `oracle_read_not_pool_oracle` and `maxPrincipalUsdc` does not use this object. Not `onchainPrice.priceUsdc6`. Only populated inside `Token.poolLendingLiquidity`.
 """
 type PoolLendingOnchainValuationModel {
   """
-  Why `usablePriceUsdc6` is null: the first failed aggregator gate (`heartbeat`, `registry`, `recovery`, `currency`, `min_sources`, `dispersion`, `land_use`) or an API-side read failure (`price_unavailable`, `eligibility_unavailable`, `oracle_state_unavailable`). Null when `usablePriceUsdc6` is set.
+  ENG-4414: the aggregator `eligibilityReport` and `price()` were read from. Equal to the pool's `priceOracleAddress` when the pool has no separate read address. When it differs, borrow capacity from this pool is zero even if `usablePriceUsdc6` is set.
+  """
+  aggregatorReadAddress: String
+
+  """
+  ENG-4414: `oracle_read_not_pool_oracle` when `aggregatorReadAddress` is not the pool's `priceOracleAddress`, so this pool contributes zero borrow capacity even if `usablePriceUsdc6` is set. Null when the two addresses are the same, including when the read was unset.
+  """
+  capacityBlockReason: String
+
+  """
+  Why `usablePriceUsdc6` is null: the first failed aggregator gate (`heartbeat`, `registry`, `recovery`, `currency`, `max_silence`, `min_sources`, `dispersion`, `land_use`, `eligibility_unattested` (eligibility writer has not attested this token), `eligibility` (a required eligibility pair is not passing), `eligibility_region_unattested` (missing, locked, stale, zero, or reserved vacancy), `eligibility_region` (a country or region is not allowed), `eligibility_vacant_land` (vacancy is not vacant)) or an API-side read failure (`price_unavailable`, `eligibility_unavailable`, `oracle_state_unavailable`). Null when `usablePriceUsdc6` is set.
   """
   failedCheck: String
 
   """
-  The aggregator's live `price()` in USDC (6 decimals) per unit of token supply, after every eligibility check passed: the price the pool lends against and the input to `maxPrincipalUsdc`. Differs from `onchainPrice.priceUsdc6` (the raw canonical source price) by design. Null whenever a check fails or the oracle could not be read; `failedCheck` then names why.
+  The read aggregator's live `price()` in USDC (6 decimals) per unit of token supply, after every eligibility check passed. This is the price the pool lends against only when `aggregatorReadAddress` is the pool's `priceOracle()`. Differs from `onchainPrice.priceUsdc6` (the raw canonical source price) by design. Null whenever a check fails or the oracle could not be read; `failedCheck` then names why.
   """
   usablePriceUsdc6: String
 }
 
 """
-The validator's heartbeat surface for an OnchainOracle pool. While `isStale` is true the aggregator refuses every price and the pool cannot originate or refinance. The subgraph-sourced fields (`lastHeartbeat`, `currentCycle`, `minValidCycle`) are null when the indexer could not be read (see `indexerUnavailableReason`) or has no row for the validator yet; `isStale` and `maxSilence` are read live on-chain and always reported. Only populated inside `Token.poolLendingLiquidity`.
+The READ aggregator's freshness surface. `isStale` is that aggregator's freshness, not the pool's `priceOracle()` gate: on a split, borrow capacity is zero regardless of `isStale`. The subgraph-sourced fields (`lastHeartbeat`, `currentCycle`, `minValidCycle`) are null when the indexer could not be read (see `indexerUnavailableReason`) or has no legacy validator row yet; `isStale` and `maxSilence` are read live on-chain and always reported. Only populated inside `Token.poolLendingLiquidity`.
 """
 type PoolLendingOracleFeedModel {
   """
-  The validator's current keeper cycle, from the subgraph. Null while the indexer is unavailable or before the first write.
+  The legacy validator's current keeper cycle, from the subgraph. Null for Round 3 aggregators, while the indexer is unavailable, or before the first write.
   """
   currentCycle: String
 
@@ -958,7 +931,7 @@ type PoolLendingOracleFeedModel {
   indexerUnavailableReason: String
 
   """
-  The fact store's live heartbeat verdict, negated: true when `block.timestamp > lastHeartbeat + maxSilence` on-chain right now. This is the exact gate the aggregator applies; while true the pool refuses every loan and contributes zero to `maxPrincipalUsdc`. Also true when the on-chain read itself failed (fail-closed).
+  `isStale` is the READ aggregator's freshness verdict: true when the legacy `isHeartbeatFresh(validatorId)` gate reports the feed not fresh, or, for Round 3 feeds, when the `max_silence` check fails or the eligibility read fails (`eligibility_unavailable`). Capacity never reads this bit; a split read/execution oracle zeros capacity regardless (see `capacityBlockReason`).
   """
   isStale: Boolean!
 
@@ -968,12 +941,12 @@ type PoolLendingOracleFeedModel {
   lastHeartbeat: String
 
   """
-  Seconds of silence after `lastHeartbeat` before the feed is stale, read live from the fact store's `maxSilence()`.
+  Seconds of silence after `lastHeartbeat` before the feed is stale, read live from the fact store or Round 3 aggregator `maxSilence()`.
   """
   maxSilence: String!
 
   """
-  Lowest keeper cycle still considered valid, from the subgraph. A price whose `cycle` is below this was invalidated. Null while the indexer is unavailable or before the first write.
+  Lowest keeper cycle still considered valid, from the subgraph. A price whose `cycle` is below this was invalidated. Null for Round 3 aggregators, while the indexer is unavailable, or before the first write.
   """
   minValidCycle: String
 }
@@ -1008,12 +981,12 @@ type PoolLendingPoolModel {
   onchainPrice: PoolLendingOnchainPriceModel
 
   """
-  The aggregator's live verdict: `usablePriceUsdc6` is the price the pool lends against (null with `failedCheck` set when refused). Null for SignedQuote pools and on depositor-side reads.
+  The read aggregator's live verdict. `usablePriceUsdc6` is the price the pool lends against only when `aggregatorReadAddress` is this pool's `priceOracle()`; otherwise it is an observation and this pool contributes zero borrow capacity. Null for SignedQuote pools and on depositor-side reads.
   """
   onchainValuation: PoolLendingOnchainValuationModel
 
   """
-  The validator's heartbeat surface (`isStale` gates every loan). Null for SignedQuote pools and on depositor-side reads.
+  `isStale` is the READ aggregator's freshness verdict: true when the legacy `isHeartbeatFresh(validatorId)` gate reports the feed not fresh, or, for Round 3 feeds, when the `max_silence` check fails or the eligibility read fails (`eligibility_unavailable`). Capacity never reads this bit; a split read/execution oracle zeros capacity regardless (see `capacityBlockReason`). Null for SignedQuote pools and on depositor-side reads.
   """
   oracleFeed: PoolLendingOracleFeedModel
 
@@ -1045,7 +1018,7 @@ How a pool values its collateral. Consumers must switch on this field. Inside `T
 """
 enum PoolLendingPricing {
   """
-  The pool's price oracle is a FabricaOracleAggregator that reads the FabricaAttributeOracle fact store at execution time. No signed quote exists (the API never signs for such a pool), `oracleContext` is empty on borrow/refinance, and `oracleValuation` is null. `onchainPrice`, `oracleFeed` and `onchainValuation` are populated only inside `Token.poolLendingLiquidity`.
+  The pool's price oracle is a FabricaOracleAggregator that reads the on-chain fact store at execution time. No signed quote exists (the API never signs for such a pool), `oracleContext` is empty on borrow/refinance, and `oracleValuation` is null. `onchainPrice`, `oracleFeed` and `onchainValuation` are populated only inside `Token.poolLendingLiquidity`.
   """
   OnchainOracle
 
@@ -1099,6 +1072,7 @@ type ProofOfTitleModel {
   document: String
   documentId: String
   documentName: String
+  grantor: String
   source: String
 }
 
@@ -1267,8 +1241,6 @@ type TokenModel {
   isClaimedPremint: Boolean!
   isPremint: Boolean!
   lastOwner: WalletModel
-  loanOfferCount: Int!
-  loanOffers: [LoanOfferModel!]!
   loans: [LoanModel!]!
   locality: String
   majorOwner: String @deprecated(reason: "Use majorityOwnerAddress")
@@ -1389,9 +1361,15 @@ type UserProvidedFieldModel {
   pattern: String
   placeholder: String
   required: Boolean!
+  requiredIf: UserProvidedFieldRequirementModel
   size: Int
   step: Int
   type: String!
+}
+
+type UserProvidedFieldRequirementModel {
+  field: String!
+  value: String!
 }
 
 type WalletCreditHistoryModel {
@@ -1422,7 +1400,6 @@ type WalletModel {
   contractAddress: String
   creditHistory: WalletCreditHistoryModel!
   fees(filter: FeesFilterInput): FeesModel!
-  loanOffersMade(network: String): [LoanOfferModel!]
   loansMade(network: String): [LoanModel!]
   loansTaken(network: String): [LoanModel!]
   marketplaceOffersMade(network: String): [MarketplaceOrderModel!]
@@ -1437,7 +1414,7 @@ type WalletModel {
   tokens: [TokenModel!]!
   totalAcres: String!
   totalCollateralValue: String!
-  totalOutstandingLoansUSDC: String!
+  totalOutstandingLoansUSDC: String
   totalValue: String!
   user: UserModel!
 }
