@@ -72,7 +72,7 @@ export interface WalletModel {
   totalValue: string;
   totalAcres: string;
   totalCollateralValue: string;
-  totalOutstandingLoansUSDC: string;
+  totalOutstandingLoansUSDC: string | null;
   propertyCountUnderLoan: string;
   creditHistory: WalletCreditHistory;
   activity: ActivityModel[];
