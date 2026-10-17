@@ -70,7 +70,7 @@ describe("getPropertyMap degrades on a county-outline failure instead of swallow
         headers: { "content-type": "application/json" },
       });
     }));
-    const result = await getPropertyMap({ tokenId: "1" }) as Record<string, unknown>;
+    const result = await getPropertyMap({ tokenId: "1", includeCountyBounds: true }) as Record<string, unknown>;
     expect(result.type).toBe("FeatureCollection");
     expect((result.features as unknown[]).length).toBe(1);
     expect(result.warnings).toEqual([

@@ -1,5 +1,6 @@
 import { getWallet } from "../clients/graphql.js";
 import { formatLoanProvider } from "../labels.js";
+import { estimateFields, formatTokenAmount, sortLoans } from "../format.js";
 
 function formatUsd(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -35,7 +36,7 @@ export async function getPortfolio(args: Record<string, unknown>) {
       name: t.name ?? t.vanityName,
       location: { state: t.regionCode, county: t.district },
       acres: t.acres ? parseFloat(t.acres) : null,
-      estimatedValue: formatUsd(t.estimatedValue),
+      ...estimateFields(t.estimatedValue),
       confidenceScore: t.score ?? null,
       hasActiveLoan: parseInt(t.supplyUnderLoan || "0") > 0,
       hasActiveListing: t.marketplacePrice !== null,
@@ -43,8 +44,8 @@ export async function getPortfolio(args: Record<string, unknown>) {
     })) ?? [];
     const borrowedLoans = wallet.loansTaken ?? [];
     const lentLoans = wallet.loansMade ?? [];
-    const activeBorrowed = borrowedLoans.filter(l => l.loanStatus === "Active");
-    const activelyLent = lentLoans.filter(l => l.loanStatus === "Active");
+    const activeBorrowed = sortLoans(borrowedLoans.filter(l => l.loanStatus === "Active"));
+    const activelyLent = sortLoans(lentLoans.filter(l => l.loanStatus === "Active"));
     const ch = wallet.creditHistory;
     return {
       address: wallet.address,
@@ -62,9 +63,10 @@ export async function getPortfolio(args: Record<string, unknown>) {
           loans: activeBorrowed.map(l => ({
             loanId: l.loanId,
             provider: formatLoanProvider(l.loanProvider),
-            principal: `${l.principalScaled} ${l.currencySymbol ?? ""}`.trim(),
+            principal: formatTokenAmount(l.principalScaled, l.currencySymbol),
             apr: l.aprPercent !== null ? `${l.aprPercent.toFixed(1)}%` : null,
             duration: l.durationFormatted,
+            startTime: l.startTime,
             maturityDate: l.maturityDate,
             collateralTokenId: l.collateralId,
           })),
@@ -74,8 +76,9 @@ export async function getPortfolio(args: Record<string, unknown>) {
           loans: activelyLent.map(l => ({
             loanId: l.loanId,
             provider: formatLoanProvider(l.loanProvider),
-            principal: `${l.principalScaled} ${l.currencySymbol ?? ""}`.trim(),
+            principal: formatTokenAmount(l.principalScaled, l.currencySymbol),
             apr: l.aprPercent !== null ? `${l.aprPercent.toFixed(1)}%` : null,
+            startTime: l.startTime,
             borrower: shortenAddress(l.borrower?.address),
             collateralTokenId: l.collateralId,
           })),

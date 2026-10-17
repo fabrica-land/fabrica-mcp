@@ -37,9 +37,10 @@ const POOL_FIELDS = gql`
 
 /**
  * Fetch ALL MetaStreet pools that accept the Fabrica token as collateral.
- * Dynamically discovers pools from the subgraph — no hardcoded pool addresses.
+ * Dynamically discovers pools from the subgraph, no hardcoded pool addresses.
+ * Returns null when the subgraph cannot be read, so a failure is never reported as zero.
  */
-export async function getFabricaPools(): Promise<SubgraphPool[]> {
+export async function getFabricaPools(): Promise<SubgraphPool[] | null> {
   const query = gql`
     ${POOL_FIELDS}
     query GetFabricaPools($collateralToken: String!) {
@@ -54,38 +55,30 @@ export async function getFabricaPools(): Promise<SubgraphPool[]> {
     });
     return data.pools;
   } catch {
-    return [];
+    return null;
   }
+}
+
+/** Exact sum of integer strings (18-decimal pool values overflow float precision); float sum otherwise. */
+function sumValues(values: string[]): string {
+  if (values.every(v => /^\d+$/.test(v))) {
+    return values.reduce((sum, v) => sum + BigInt(v), 0n).toString();
+  }
+  return String(values.reduce((sum, v) => sum + parseFloat(v), 0));
 }
 
 /** Aggregate stats across all Fabrica pools */
 export function aggregatePoolStats(pools: SubgraphPool[]) {
   if (pools.length === 0) return null;
-  let totalValueLocked = 0;
-  let totalValueUsed = 0;
-  let totalValueAvailable = 0;
-  let loansOriginated = 0;
-  let loansActive = 0;
-  let loansRepaid = 0;
-  let loansLiquidated = 0;
-  for (const pool of pools) {
-    totalValueLocked += parseFloat(pool.totalValueLocked);
-    totalValueUsed += parseFloat(pool.totalValueUsed);
-    totalValueAvailable += parseFloat(pool.totalValueAvailable);
-    loansOriginated += parseInt(pool.loansOriginated);
-    loansActive += parseInt(pool.loansActive);
-    loansRepaid += parseInt(pool.loansRepaid);
-    loansLiquidated += parseInt(pool.loansLiquidated);
-  }
   return {
     poolCount: pools.length,
-    totalValueLocked: String(totalValueLocked),
-    totalValueUsed: String(totalValueUsed),
-    totalValueAvailable: String(totalValueAvailable),
-    loansOriginated,
-    loansActive,
-    loansRepaid,
-    loansLiquidated,
+    totalValueLocked: sumValues(pools.map(p => p.totalValueLocked)),
+    totalValueUsed: sumValues(pools.map(p => p.totalValueUsed)),
+    totalValueAvailable: sumValues(pools.map(p => p.totalValueAvailable)),
+    loansOriginated: pools.reduce((sum, p) => sum + parseInt(p.loansOriginated), 0),
+    loansActive: pools.reduce((sum, p) => sum + parseInt(p.loansActive), 0),
+    loansRepaid: pools.reduce((sum, p) => sum + parseInt(p.loansRepaid), 0),
+    loansLiquidated: pools.reduce((sum, p) => sum + parseInt(p.loansLiquidated), 0),
   };
 }
 

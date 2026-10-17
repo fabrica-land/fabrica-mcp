@@ -84,7 +84,8 @@ Replace `/absolute/path/to/fabrica-mcp` with the actual path where you cloned th
 | `get_portfolio` | Wallet holdings, credit history, loan positions |
 | `get_protocol_stats` | Protocol-wide metrics: properties, estimated value, loan volume and counts, lending pool TVL |
 | `get_property_map` | GeoJSON boundary data for mapping and spatial analysis |
-| `get_borrow_quote` | Borrowing options for a property: DeFi lending pool liquidity, durations, current loans |
+| `get_borrow_quote` | Borrowing options for a property: DeFi lending pool liquidity, durations, current loans, and why capacity is zero when it is |
+| `get_valuation` | Every value the API holds for a property with its source, date and confidence: estimate, AVM, Prycd, county assessor, signed valuations, pool oracle state |
 | `get_activity` | Activity feed for a property or wallet: transfers, loans, sales, mints |
 | `get_order_book` | Listings and offers on a property: prices, sellers and buyers, expiry, whether a loan blocks each listing, premint state |
 | `explain_confidence_score` | Decode the numeric encoding of Property checks (5 digits, formerly called the confidence score) into verification groups |
@@ -105,6 +106,8 @@ npm run knowledge:check                         # exit 1 when a source moved pas
 ```
 
 Source pins (docs commit, help center sitemap fingerprint, trust agreement commit) are recorded in `knowledge/sources.json`. The build takes about 30 seconds and the index is under 1 MB.
+
+A scheduled workflow (`.github/workflows/refresh-knowledge.yml`, daily and on demand) rebuilds the index, runs the tests and opens a pull request titled "Knowledge index: <source> <short sha>" whose body lists the pages added, removed and changed (`scripts/knowledge-diff.mjs`). Merging it deploys both servers. The workflow needs one repository secret, `KNOWLEDGE_DOCS_TOKEN`, a fine-grained GitHub token with read access to the contents of the private `fabrica-land/docs` repository; a failed source fetch fails the run, so a partial index is never proposed.
 
 ### Resources
 

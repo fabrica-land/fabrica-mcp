@@ -8,6 +8,7 @@ import { getPortfolio } from "./tools/portfolio.js";
 import { getProtocolStats } from "./tools/protocol.js";
 import { explainConfidenceScore } from "./tools/scoring.js";
 import { getBorrowQuote } from "./tools/borrowing.js";
+import { getValuation } from "./tools/valuation.js";
 import { getActivity } from "./tools/activity.js";
 import { getOrderBook } from "./tools/marketplace.js";
 import { getPropertyImage, getPortfolioImage } from "./tools/images.js";
@@ -150,11 +151,11 @@ export function createServer(): McpServer {
     "get_property_map",
     {
       title: "Get property boundary (GeoJSON)",
-      description: "Get GeoJSON boundary data for a tokenized property and its county, for mapping, spatial analysis, and visualization.",
+      description: "Get GeoJSON boundary data for a tokenized property, for mapping, spatial analysis, and visualization. The county boundary is added only with includeCountyBounds: true.",
       inputSchema: {
         tokenId: z.string().optional().describe("The token ID of the property"),
         slug: z.string().optional().describe("Property slug from the URL"),
-        includeCountyBounds: z.boolean().optional().describe("Also return the county boundary polygon (default: true)"),
+        includeCountyBounds: z.boolean().optional().describe("Also return the county boundary polygon, a large decorative layer (default: false)"),
       },
       annotations: readOnly("Get property boundary (GeoJSON)"),
     },
@@ -179,7 +180,7 @@ export function createServer(): McpServer {
     "get_borrow_quote",
     {
       title: "Get borrow quote",
-      description: "Get borrowing options for a specific tokenized property: DeFi lending pool liquidity (max loan amount, durations) and existing loan status. Answers questions such as 'How much can I borrow against this property?'. The amount is an estimate; the rate is set by a live quote when borrowing.",
+      description: "Get borrowing options for a specific tokenized property: DeFi lending pool liquidity (max loan amount, durations), existing loan status, and the reasons when the pool shows no capacity (tax status, price oracle checks). Answers questions such as 'How much can I borrow against this property?'. The amount is an estimate; the rate is set by a live quote when borrowing.",
       inputSchema: {
         tokenId: z.string().optional().describe("The token ID of the property"),
         slug: z.string().optional().describe("Property slug from the URL"),
@@ -187,6 +188,20 @@ export function createServer(): McpServer {
       annotations: readOnly("Get borrow quote"),
     },
     async (args) => jsonResult(await getBorrowQuote(args)),
+  );
+
+  server.registerTool(
+    "get_valuation",
+    {
+      title: "Get valuation sources",
+      description: "Get every value the Fabrica API holds for a property, each with its source, date and confidence: the estimate and the sources it comes from, the Fabrica AVM, Prycd and county assessor figures, the signed valuations the DeFi lending pool reads, the pool's oracle state (feed freshness, onchain price, usable price) with the reason when a price is missing, and the valuation report link. Presents data with its provenance; it suggests no price.",
+      inputSchema: {
+        tokenId: z.string().optional().describe("The token ID of the property"),
+        slug: z.string().optional().describe("Property slug from the URL"),
+      },
+      annotations: readOnly("Get valuation sources"),
+    },
+    async (args) => jsonResult(await getValuation(args)),
   );
 
   server.registerTool(

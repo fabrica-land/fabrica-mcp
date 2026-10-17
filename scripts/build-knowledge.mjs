@@ -351,7 +351,7 @@ const index = {
   sources: {
     docs: { url: "https://docs.fabrica.land", repo: sources.docs.repo, ref: sources.docs.ref, commit: docs.commit, documents: docs.documents },
     help: { url: "https://help.fabrica.land", documents: help.documents, fingerprint: help.fingerprint },
-    "trust-agreement": { url: sources["trust-agreement"].url, repo: sources["trust-agreement"].repo, commit: trust.commit, documents: 1 },
+    "trust-agreement": { url: sources["trust-agreement"].url, repo: sources["trust-agreement"].repo, commit: trust.commit, ...(trust.commit ? {} : { fingerprint: trust.pin }), documents: 1 },
   },
   passages,
 };
