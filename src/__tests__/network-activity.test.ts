@@ -38,6 +38,16 @@ describe("get_activity with no filter", () => {
     expect(await getActivity({ limit: 1 })).toMatchObject({ total: 3, showing: "1 of 3" });
   });
 
+  it("pairs each score change with the property's previous one", async () => {
+    const score = (timestamp: number, newValue: string) => ({ ...event("ScoreChanged", timestamp), newValue });
+    vi.mocked(getNetworkActivity).mockResolvedValueOnce([
+      { tokenId: "1", name: "Lot One", vanityName: null, activity: [score(400, "73342"), score(100, "72342")] },
+    ]);
+    const result = await getActivity({ type: "ScoreChanged" });
+    const events = ("events" in result ? result.events : undefined) ?? [];
+    expect(events[0]).toMatchObject({ propertyChecks: { previousEncoding: 72342, changed: ["Past Title & Load 2 to 3 (of 5)"] } });
+  });
+
   it("reports a failure as an error", async () => {
     vi.mocked(getNetworkActivity).mockRejectedValueOnce(new Error("boom"));
     expect(await getActivity({})).toMatchObject({ error: expect.stringContaining("boom") });

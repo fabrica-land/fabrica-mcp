@@ -98,11 +98,13 @@ async function getNetworkWideActivity(activityType: string | undefined, limit: n
   try {
     const tokens = await getNetworkActivity();
     const lower = activityType?.toLowerCase();
-    const events = tokens.flatMap(token => (token.activity ?? [])
-      .filter(a => a.network === NETWORK)
-      .filter(a => lower ? a.activity.toLowerCase().includes(lower) : a.activity !== SCORE_CHANGED)
-      .map(a => ({ ...formatActivity(a), tokenId: token.tokenId, property: token.name ?? token.vanityName ?? null, timestamp: a.timestamp })))
-      .sort((a, b) => b.timestamp - a.timestamp);
+    const events = tokens.flatMap(token => {
+      const feed = (token.activity ?? [])
+        .filter(a => a.network === NETWORK)
+        .filter(a => lower ? a.activity.toLowerCase().includes(lower) : a.activity !== SCORE_CHANGED);
+      const previous = previousScores(feed);
+      return feed.map((a, i) => ({ ...formatActivity(a, previous.get(i)), tokenId: token.tokenId, property: token.name ?? token.vanityName ?? null, timestamp: a.timestamp }));
+    }).sort((a, b) => b.timestamp - a.timestamp);
     const label = `every property on ${NETWORK_LABEL}`;
     const scope = `Activity across ${tokens.length} minted properties on ${NETWORK_LABEL}, newest first.${lower ? "" : " Property checks recalculations (ScoreChanged) are left out; type \"ScoreChanged\" lists them."} tokenId, slug or address narrows it to one property or wallet.`;
     if (events.length === 0) {
