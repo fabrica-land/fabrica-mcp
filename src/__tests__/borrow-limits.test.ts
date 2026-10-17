@@ -143,3 +143,10 @@ describe("describeAppraisalDerivation names the rule it matched", () => {
     expect(describeAppraisalDerivation(50000, pricing)).toMatchObject({ rule: expect.stringContaining("lower of the Prycd and Fabrica AVM"), derivation: expect.stringContaining("Fabrica AVM") });
   });
 });
+
+describe("zero capacity across pools", () => {
+  it("says the usable pool is empty rather than repeating another pool's oracle failure", () => {
+    const empty = oraclePool({ oracleValuation: { signature: "0x", quote: { price: "2000000000", currency: "0x", timestamp: 1, duration: 1 } }, ticks: [tick(1000, 1, 0)] });
+    expect(bindingConstraint({ hasActiveLoan: false, taxBlocked: false, oracleReasons: ["The other pool's oracle is stale."], maxBorrowUsd: 0, pools: [empty, oraclePool()] })).toMatchObject({ limitedBy: "pool_liquidity" });
+  });
+});

@@ -137,8 +137,9 @@ export function bindingConstraint(input: {
   } : {};
   if (input.maxBorrowUsd <= 0) {
     if (input.taxBlocked) return { limitedBy: "tax_status" as LimitedBy, explanation: "The property's taxes are not known to be current, so the pool's price for it is set to zero.", ...details };
-    if (priced.length === 0 || input.oracleReasons.length > 0) return { limitedBy: "oracle" as LimitedBy, explanation: input.oracleReasons[0] ?? "No pool has a usable price for this property.", ...details };
+    // A pool that can price the property but is empty explains the zero better than another pool's oracle failure.
     if (best && best.freeLiquidityUsd < DUST_USD) return { limitedBy: "pool_liquidity" as LimitedBy, explanation: "The pool has no free liquidity to lend right now.", ...details };
+    if (priced.length === 0 || input.oracleReasons.length > 0) return { limitedBy: "oracle" as LimitedBy, explanation: input.oracleReasons[0] ?? "No pool has a usable price for this property.", ...details };
     return { limitedBy: input.hasActiveLoan ? "existing_loan" as LimitedBy : "unknown" as LimitedBy, explanation: input.hasActiveLoan ? "The property already backs a loan, so the pool shows no new capacity." : "The API reports no capacity and states no reason.", ...details };
   }
   if (input.hasActiveLoan) {

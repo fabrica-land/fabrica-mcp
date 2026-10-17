@@ -228,3 +228,18 @@ describe("valuation wording", () => {
     expect(formatUsdc6(null)).toBeNull();
   });
 });
+
+describe("appraisal provenance by pool pricing", () => {
+  it("leaves the appraisal derivation off an onchain oracle price", async () => {
+    const pool = oraclePool({
+      pricing: "OnchainOracle",
+      onchainPrice: { priceUsdc6: "6174527000", confidenceScore: 9250, cycle: "4", valuedAt: "1792000000", sourceId: 2 },
+      onchainValuation: { usablePriceUsdc6: "6174527000", capacityBlockReason: null, failedCheck: null },
+    });
+    vi.mocked(getTokenValuation).mockResolvedValue(valuationToken({ ...avmAndPrycd, poolLendingLiquidity: poolLendingLiquidityWithOracle({ ...avmAndPrycd.poolLendingLiquidity!, pools: [pool] }) }));
+    vi.mocked(getSignedValuations).mockResolvedValue(null as never);
+    const result = await getValuation({ tokenId: "100" });
+    if ("error" in result) throw new Error(result.error);
+    expect(result.oracle?.pools[0]).not.toHaveProperty("appraisal");
+  });
+});

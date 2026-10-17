@@ -200,7 +200,8 @@ export async function getValuation(args: GetValuationArgs) {
         maxBorrow: maxBorrow > 0 ? formatUsdcCeiling(liquidity.maxPrincipalScaled) : null,
         appraisalBlock: describeAppraisalBlock(liquidity.appraisalBlockReason),
         pools: (liquidity.pools ?? []).map(p => {
-          const appraisal = describeAppraisalDerivation(collateralPriceUsd(p), token.pricing);
+          // Only a signed quote is the API's appraisal; an onchain oracle price comes from the aggregator.
+          const appraisal = p.pricing === "SignedQuote" ? describeAppraisalDerivation(collateralPriceUsd(p), token.pricing) : null;
           return { ...describePoolOracle(p), ...(appraisal ? { appraisal } : {}) };
         }),
         ...(maxBorrow > 0 ? {} : { noCapacityReasons: zeroCapacityReasons(liquidity) }),

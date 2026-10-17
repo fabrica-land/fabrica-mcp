@@ -22,7 +22,7 @@ vi.mock("../clients/subgraph.js", async (importOriginal) => {
 
 import { getAllLoans, getToken, getTokens, getWallet, getCountyBounds } from "../clients/graphql.js";
 import { getFabricaPools } from "../clients/subgraph.js";
-import { getLendingMarket } from "../tools/lending.js";
+import { countsByProvider, getLendingMarket } from "../tools/lending.js";
 import { getProtocolStats } from "../tools/protocol.js";
 import { getBorrowQuote } from "../tools/borrowing.js";
 import { getPortfolio } from "../tools/portfolio.js";
@@ -254,5 +254,13 @@ describe("ENG-4462: bounded responses", () => {
     const text = JSON.stringify(result);
     expect(JSON.parse(text).ownership.holders).toHaveLength(25);
     expect(JSON.parse(text).marketplace.listings).toHaveLength(20);
+  });
+});
+
+describe("loan counts per provider", () => {
+  it("counts loans in default and liquidating so the statuses add up to the total", () => {
+    const loan = (loanStatus: string) => ({ loanProvider: "FabricaPool", loanStatus }) as unknown as Parameters<typeof countsByProvider>[0][number];
+    const counts = Object.values(countsByProvider([loan("Active"), loan("Default"), loan("Liquidating"), loan("Repaid")]))[0];
+    expect(counts).toMatchObject({ total: 4, active: 1, repaid: 1, liquidated: 0, inDefault: 1, liquidating: 1 });
   });
 });

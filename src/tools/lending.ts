@@ -70,15 +70,17 @@ function recentLoanEvents(loans: ReadonlyArray<LoanModel>) {
 }
 
 /** Loan counts per provider, so the pool's own counts and the retired peer-to-peer loans add up to the summary. */
-function countsByProvider(loans: ReadonlyArray<LoanModel>) {
-  const counts: Record<string, { total: number; active: number; repaid: number; liquidated: number }> = {};
+export function countsByProvider(loans: ReadonlyArray<LoanModel>) {
+  const counts: Record<string, { total: number; active: number; repaid: number; liquidated: number; inDefault: number; liquidating: number }> = {};
   for (const loan of loans) {
     const name = formatLoanProvider(loan.loanProvider) ?? "Unknown provider";
-    const row = counts[name] ??= { total: 0, active: 0, repaid: 0, liquidated: 0 };
+    const row = counts[name] ??= { total: 0, active: 0, repaid: 0, liquidated: 0, inDefault: 0, liquidating: 0 };
     row.total += 1;
     if (loan.loanStatus === "Active") row.active += 1;
     else if (loan.loanStatus === "Repaid") row.repaid += 1;
     else if (loan.loanStatus === "Liquidated") row.liquidated += 1;
+    else if (loan.loanStatus === "Default") row.inDefault += 1;
+    else if (loan.loanStatus === "Liquidating") row.liquidating += 1;
   }
   return counts;
 }
