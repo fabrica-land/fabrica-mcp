@@ -204,6 +204,17 @@ describe("get_order_book", () => {
     expect(JSON.stringify(result)).toContain("A sale pays the loan off");
   });
 
+  it("stays neutral about payoff when no live listing shows the loan type", async () => {
+    vi.mocked(fetchOrderBook).mockResolvedValue(token({
+      supplyUnderLoan: "1",
+      marketplaceListings: [order({ side: "sell", status: "expired", encumbrance: { buyable: false, blockReason: "LEGACY_POOL", loanId: "7" } })],
+    }));
+    const text = JSON.stringify(await getOrderBook({ tokenId: "1" }));
+    expect(text).not.toContain("A sale pays the loan off");
+    expect(text).not.toContain("cannot be paid off by a third party");
+    expect(text).toContain("depends on the loan; a live listing shows it");
+  });
+
   it("reports an unknown token as not found", async () => {
     vi.mocked(fetchOrderBook).mockRejectedValue(new FabricaApiError(["No token or premint found for token with ID 123 on any network"]));
     vi.mocked(getPremintSuccessor).mockResolvedValue(null);

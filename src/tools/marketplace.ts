@@ -158,11 +158,16 @@ export async function getOrderBook({ tokenId, slug, status, minOfferUsd }: Order
     if (replacedPremintTokenId) {
       notes.push(`Token ${replacedPremintTokenId} was a premint that has been replaced by minted token ${token.tokenId}; this is the minted token's order book.`);
     }
-    const legacyPool = liveListings.some(({ order }) => order.encumbrance?.blockReason === "LEGACY_POOL");
+    // Only a live listing's encumbrance says whether a buyer can pay the loan off; without one, stay neutral.
+    const encumbrances = liveListings.flatMap(({ order }) => (order.encumbrance ? [order.encumbrance] : []));
     if (underLoan) {
-      notes.push(legacyPool
-        ? "The property is collateral for an active loan in a lending pool that cannot be paid off by a third party, so the seller has to refinance or repay the loan before the property can be bought."
-        : "The property is collateral for an active loan. A sale pays the loan off from the sale proceeds before the seller is paid.");
+      if (encumbrances.some(e => e.blockReason === "LEGACY_POOL")) {
+        notes.push("The property is collateral for an active loan in a lending pool that cannot be paid off by a third party, so the seller has to refinance or repay the loan before the property can be bought.");
+      } else if (encumbrances.length > 0) {
+        notes.push("The property is collateral for an active loan. A sale pays the loan off from the sale proceeds before the seller is paid.");
+      } else {
+        notes.push("The property is collateral for an active loan. Whether a sale can pay the loan off from the proceeds depends on the loan; a live listing shows it.");
+      }
     }
     if (token.isPremint) {
       notes.push("This property is a premint: its token has not been minted yet.");
