@@ -45,6 +45,11 @@ function shortenAddress(addr: string): string {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
+/** Active, encumbered or pending, and not past its end time. */
+export function isLiveOrder(order: { status: OrderBookOrder["status"]; endTime: string | null }, now: number): boolean {
+  return LIVE_STATUSES.has(order.status) && !hasEnded(order.endTime, now);
+}
+
 /** True when an order's end time is known and already past. */
 export function hasEnded(endTime: string | null | undefined, now: number): boolean {
   const end = endTime ? Date.parse(endTime) : Number.NaN;

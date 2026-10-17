@@ -79,7 +79,7 @@ export function scopeLabel(scope: unknown): string | null {
 
 /**
  * The line under the estimate: which source it equals, and the county assessor's figure
- * when it differs. Nothing when no source matches (the estimate is shown on its own).
+ * (with its scope, preferring the whole parcel) when it differs. Nothing when no source matches (the estimate is shown on its own).
  */
 export function estimateSourceLine(estimate: string | null, pricing: PricingEntry[]): string | null {
   if (!estimate) return null;
@@ -91,8 +91,13 @@ export function estimateSourceLine(estimate: string | null, pricing: PricingEntr
     const date = shortDate(match.asOf);
     parts.push([SOURCE_LABELS[match.source] ?? match.source, date].filter(Boolean).join(", "));
   }
-  const assessor = pricing.find((p) => p.source === "regrid-county-assessor" && typeof p.value === "string");
-  if (assessor && typeof assessor.value === "string" && assessor.value !== estimate) parts.push(`assessor ${assessor.value}`);
+  // A last sale is history, not an assessment, so it never stands in for the assessor's figure here.
+  const assessments = pricing.filter((p) => p.source === "regrid-county-assessor" && typeof p.value === "string" && p.scope !== "lastSale");
+  const assessor = assessments.find((p) => p.scope === "parcel") ?? assessments[0];
+  if (assessor && typeof assessor.value === "string" && assessor.value !== estimate) {
+    const scope = scopeLabel(assessor.scope);
+    parts.push(`assessor${scope ? ` ${scope}` : ""} ${assessor.value}`);
+  }
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 

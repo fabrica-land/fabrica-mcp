@@ -9,7 +9,7 @@ import { propertyStage, describeStage } from "../lifecycle.js";
 import { summarizeFees } from "../fees.js";
 import { loadTaxSignals, taxSummary } from "./tax.js";
 import { countChecks, getRecoveryStatus } from "./scoring.js";
-import { hasEnded } from "./marketplace.js";
+import { isLiveOrder } from "./marketplace.js";
 
 /** USD when the API supplies a USD price; otherwise the native amount and currency, never a guessed "$". */
 function formatOrderPrice(usdPrice: string | null, price: string | null, symbol: string | null): string | null {
@@ -262,10 +262,10 @@ export async function getProperty(args: Record<string, unknown>) {
     if (!token) {
       return { error: `No property found with ${tokenId ? `token ID ${tokenId}` : `slug ${slug}`}` };
     }
-    // An order past its end time is not live even while the API still reports it active.
+    // Live as get_order_book counts it: active, encumbered or pending, and not past its end time.
     const now = Date.now();
-    const activeListings = token.marketplaceListings?.filter(l => l.status === "active" && !hasEnded(l.endTime, now)) ?? [];
-    const activeBids = token.marketplaceBids?.filter(b => b.status === "active" && !hasEnded(b.endTime, now)) ?? [];
+    const activeListings = token.marketplaceListings?.filter(l => isLiveOrder(l, now)) ?? [];
+    const activeBids = token.marketplaceBids?.filter(b => isLiveOrder(b, now)) ?? [];
     const activeLoans = token.loans?.filter(l => l.loanStatus === "Active") ?? [];
     const holders = capList(token.balances ?? [], MAX_HOLDERS);
     const listings = capList(activeListings, MAX_ORDERS);

@@ -51,8 +51,17 @@ describe("fact lines", () => {
   ];
 
   it("names the source the estimate equals and the assessor figure", () => {
-    expect(estimateSourceLine("$771,075", pricing)).toBe("Prycd, Oct 13, 2026 · assessor $357,000");
+    expect(estimateSourceLine("$771,075", pricing)).toBe("Prycd, Oct 13, 2026 · assessor land $357,000");
     expect(estimateSourceLine("$357,000", pricing)).toBe("County assessor, Oct 12, 2026");
+  });
+
+  it("prefers the assessor's parcel figure and never shows a last sale as the assessment", () => {
+    const sale = { source: "regrid-county-assessor", scope: "lastSale", value: "$290,000" };
+    const land = { source: "regrid-county-assessor", scope: "land", value: "$357,000" };
+    const parcel = { source: "regrid-county-assessor", scope: "parcel", value: "$410,000" };
+    const prycd = { source: "prycd", value: "$771,075" };
+    expect(estimateSourceLine("$771,075", [prycd, sale, land, parcel])).toBe("Prycd · assessor parcel $410,000");
+    expect(estimateSourceLine("$771,075", [prycd, sale])).toBe("Prycd");
     expect(estimateSourceLine(null, pricing)).toBeNull();
   });
 
