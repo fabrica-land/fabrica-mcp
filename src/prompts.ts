@@ -116,7 +116,9 @@ export function registerPrompts(server: McpServer): void {
     "how_to_add_land",
     {
       title: "How to add land to Fabrica",
-      description: "What the on-ramp involves for a given parcel: the link to start it, the steps (title review, identity, notary, recording), the deferred setup fee, and the owner's obligations.",
+      description: IS_MAINNET
+        ? "What the on-ramp involves for a given parcel: the link to start it, the steps (title review, identity, notary, recording), the deferred setup fee, and the owner's obligations."
+        : "How adding a parcel works on the Sepolia test network: the link to start it, and that test tokens create no trust, record no deed and change no ownership.",
       argsSchema: { address: z.string().describe("Street address or parcel number of the land") },
     },
     ({ address }) => howToAddLandPrompt(address),

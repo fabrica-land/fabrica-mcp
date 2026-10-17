@@ -16,7 +16,7 @@ The Fabrica MCP server is read-only, public, and needs no key:
 
 Everything in this file about trusts, ownership, deeds, taxes and obligations applies to Ethereum mainnet only. On Sepolia, tokens are test tokens: holding or transferring one is not ownership of any real property or of a beneficial interest in a trust, and adding a parcel there creates no trust and records no deed.
 
-Claude Code: `claude mcp add --transport http fabrica https://mcp.fabrica.land/mcp`. Source: https://github.com/fabrica-land/fabrica-mcp. The server also offers the four loops below as MCP prompts (`due_diligence`, `work_parcel_list`, `wallet_review`, `how_to_add_land`).
+Claude Code, mainnet: `claude mcp add --transport http fabrica https://mcp.fabrica.land/mcp`. Sepolia testnet: `claude mcp add --transport http fabrica-testnet https://mcp-testnet.fabrica.land/mcp`. Source: https://github.com/fabrica-land/fabrica-mcp. The server also offers the four loops below as MCP prompts (`due_diligence`, `work_parcel_list`, `wallet_review`, `how_to_add_land`).
 
 ## Tools
 
