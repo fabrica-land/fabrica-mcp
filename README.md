@@ -92,7 +92,7 @@ npm run knowledge:check                         # exit 1 when a source moved pas
 
 Source pins (docs commit, help center sitemap fingerprint, trust agreement commit) are recorded in `knowledge/sources.json`. The build takes about 30 seconds and the index is under 1 MB.
 
-A scheduled workflow (`.github/workflows/refresh-knowledge.yml`, daily and on demand) rebuilds the index, runs the tests and opens a pull request titled "Knowledge index: <source> <short sha>" whose body lists the pages added, removed and changed (`scripts/knowledge-diff.mjs`). Merging it deploys both servers. The workflow needs one repository secret, `KNOWLEDGE_DOCS_TOKEN`, a fine-grained GitHub token with read access to the contents of the private `fabrica-land/docs` repository; a failed source fetch fails the run, so a partial index is never proposed.
+A scheduled workflow (`.github/workflows/refresh-knowledge.yml`, daily and on demand) rebuilds the index, runs the tests and opens a pull request titled "Knowledge index: <source> <short sha>" whose body lists the pages added, removed and changed (`scripts/knowledge-diff.mjs`). Merging it deploys both servers. The workflow needs one repository secret, `KNOWLEDGE_TOKEN`, a fine-grained GitHub token with read access to the contents of the private `fabrica-land/docs` repository; a failed source fetch fails the run, so a partial index is never proposed.
 
 ### Resources
 

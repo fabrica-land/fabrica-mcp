@@ -2,7 +2,7 @@
 # moved (docs.fabrica.land, the help center, the US trust agreement). Merging the pull
 # request to main deploys both servers through Vercel.
 #
-# Needs one repository secret: KNOWLEDGE_DOCS_TOKEN, a fine-grained token with read access
+# Needs one repository secret: KNOWLEDGE_TOKEN, a fine-grained token with read access
 # to the contents of fabrica-land/docs (the docs repository is private). Without it the
 # docs step fails and no partial index is ever proposed.
 name: Refresh knowledge index
@@ -31,7 +31,7 @@ jobs:
         with:
           repository: fabrica-land/docs
           ref: v3.0
-          token: ${{ secrets.KNOWLEDGE_DOCS_TOKEN }}
+          token: ${{ secrets.KNOWLEDGE_TOKEN }}
           path: .knowledge-sources/docs
           # Full history: page dates come from the last commit touching each file.
           fetch-depth: 0
