@@ -28,11 +28,11 @@ const { getParcelIndex } = await import("../clients/graphql.js");
 function parcelToken(overrides: Partial<ParcelIndexToken> & Pick<ParcelIndexToken, "tokenId">): ParcelIndexToken {
   return {
     name: null, vanityName: null, slug: `token-${overrides.tokenId}`, propertyLink: `https://fabrica.land/token-${overrides.tokenId}`,
-    regionCode: null, coordinates: { lat: 0, lon: 0 }, definition: null,
+    regionCode: null, district: null, place: null, coordinates: { lat: 0, lon: 0 }, definition: null,
     ...overrides,
   };
 }
-const { allowFindParcel, findParcel, interiorPoint, matchByApn, parseParcelPoint, parseTypeAhead, pointInPolygons, polygonsOf, resolveCounty, stateRetryText, FIND_PARCEL_LIMIT_PER_MINUTE } = await import("../tools/parcels.js");
+const { allowFindParcel, findParcel, interiorPoint, matchByApn, matchIndexByQuery, queryLocality, streetKey, typeAheadText, parseParcelPoint, parseTypeAhead, pointInPolygons, polygonsOf, resolveCounty, stateRetryText, FIND_PARCEL_LIMIT_PER_MINUTE } = await import("../tools/parcels.js");
 
 const SF_HIT = { category: "parcel", context: "San Francisco, CA", headline: "1707 Jones St", owner: "SOMEONE PRIVATE", parcelnumb: "0151010", path: "/us/ca/san-francisco/downtown/12801", score: 85, type: "Parcel" };
 const HUNT_HIT = { category: "parcel", context: "Greenville, TX", headline: "1707 Jones St", owner: "ANOTHER OWNER", parcelnumb: "71359", path: "/us/tx/hunt/greenville/20283", score: 80, type: "Parcel" };
@@ -258,7 +258,7 @@ describe("findParcel", () => {
     const intended = { ...HUNT_HIT, headline: "100 Main St", parcelnumb: "2", path: "/us/tx/hunt/greenville/2", score: 90 };
     fetchMock.mockResolvedValueOnce(respond([SF_HIT, stray])).mockResolvedValueOnce(respond([intended]));
     const result = await findParcel({ query: "100 Main St", state: "TX" });
-    expect(String(fetchMock.mock.calls[1]?.[0])).toContain(encodeURIComponent("100 Main St, TX").replace(/%20/g, "+"));
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain("100+Main+St+TX");
     expect(result).toMatchObject({ match: "single", parcel: { apn: "2" } });
   });
 
@@ -277,7 +277,7 @@ describe("findParcel", () => {
     fetchMock.mockResolvedValueOnce(respond([SF_HIT])).mockResolvedValueOnce(respond([HUNT_HIT])).mockResolvedValueOnce(respond(HUNT_PARCEL));
     const result = await findParcel({ query: "1707 Jones St", state: "TX" });
     expect(new URL(String(fetchMock.mock.calls[0]?.[0])).searchParams.get("query")).toBe("1707 Jones St");
-    expect(new URL(String(fetchMock.mock.calls[1]?.[0])).searchParams.get("query")).toBe("1707 Jones St, TX");
+    expect(new URL(String(fetchMock.mock.calls[1]?.[0])).searchParams.get("query")).toBe("1707 Jones St TX");
     expect(result).toMatchObject({ match: "single", parcel: { state: "TX" } });
   });
 
@@ -290,13 +290,95 @@ describe("findParcel", () => {
     expect("candidates" in result ? (result.candidates ?? []).map((c) => c.onFabrica) : []).toEqual([null, null]);
   });
 
-  it("reports a search failure as an error, not a throw", async () => {
+  it("reports a search failure as an error, not a throw, when Fabrica's records do not know the address", async () => {
     fetchMock.mockResolvedValueOnce(respond({ message: "Error fetching type-ahead result from Regrid" }, 502));
-    expect(await findParcel({ query: "1707 Jones St" })).toMatchObject({ error: expect.stringContaining("HTTP 502") });
+    expect(await findParcel({ query: "9 Nowhere Lane" })).toMatchObject({ error: expect.stringContaining("HTTP 502") });
+  });
+
+  it("strips commas before the type-ahead (the upstream search refuses them)", async () => {
+    fetchMock.mockResolvedValueOnce(respond([SF_HIT])).mockResolvedValueOnce(respond(sfParcel([[[-122.416, 37.796], [-122.414, 37.796], [-122.414, 37.798], [-122.416, 37.798], [-122.416, 37.796]]])));
+    await findParcel({ query: "1707 Jones St, San Francisco, CA" });
+    expect(new URL(String(fetchMock.mock.calls[0]?.[0])).searchParams.get("query")).toBe("1707 Jones St San Francisco CA");
+  });
+
+  it("falls back to Fabrica's own records when the parcel search is down", async () => {
+    fetchMock.mockResolvedValueOnce(respond({ message: "Error fetching type-ahead result from Regrid" }, 502));
+    const result = await findParcel({ query: "1707 Jones Street, San Francisco, CA", state: "CA" });
+    expect(result).toMatchObject({
+      match: "unconfirmed",
+      matchSource: "fabrica-index",
+      candidates: [{ apn: "015-1010", state: "CA", regridPath: null, onFabrica: { tokenId: "4737315677965897536" } }],
+      note: expect.stringContaining("HTTP 502"),
+    });
+    expect(result).toMatchObject({ note: expect.stringContaining("not confirmed") });
+  });
+
+  it("falls back by parcel number too, and never across states", async () => {
+    fetchMock.mockResolvedValue(respond({ message: "unavailable" }, 502));
+    expect(await findParcel({ query: "015-1010", state: "CA" })).toMatchObject({ match: "unconfirmed", candidates: [{ onFabrica: { tokenId: "4737315677965897536" } }] });
+    expect(await findParcel({ query: "1707 Jones St", state: "NV" })).toMatchObject({ error: expect.stringContaining("does not confirm") });
   });
 
   it("rejects a county it cannot place", async () => {
     expect(await findParcel({ query: "1 Main St", county: "Nowhere Such" })).toMatchObject({ error: expect.stringContaining("No single US county") });
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("type-ahead fallback helpers", () => {
+  it("drops commas and keeps the words", () => {
+    expect(typeAheadText(" 37497 Palo Colorado Road,  Carmel, CA ")).toBe("37497 Palo Colorado Road Carmel CA");
+  });
+
+  it("reads the house number and street, abbreviating suffixes and dropping directions", () => {
+    expect(streetKey("37497 Palo Colorado Road, Carmel, CA")).toEqual({ number: "37497", direction: null, street: ["palo", "colorado", "rd"] });
+    expect(streetKey("29078 West Stagecoach Lane")).toEqual({ number: "29078", direction: "w", street: ["stagecoach", "ln"] });
+    expect(streetKey("Somewhere in Hunt")).toBeNull();
+  });
+
+  it("matches the same street, not a neighbour or a different street with the same number", () => {
+    const tokens = [
+      parcelToken({ tokenId: "1", name: "37497 Palo Colorado Road, Carmel, CA", regionCode: "CA" }),
+      parcelToken({ tokenId: "2", name: "37709 Palo Colorado Road, Carmel, CA", regionCode: "CA" }),
+      parcelToken({ tokenId: "3", name: "37497 Palo Alto Road, Somewhere, CA", regionCode: "CA" }),
+    ];
+    expect(matchIndexByQuery("37497 Palo Colorado Rd, Carmel, CA", { state: "CA" }, tokens).map((t) => t.tokenId)).toEqual(["1"]);
+    expect(matchIndexByQuery("37497 Palo Colorado Rd", { state: "AZ" }, tokens)).toEqual([]);
+  });
+
+  it("keeps East and West apart, and honours the county", () => {
+    const tokens = [
+      parcelToken({ tokenId: "w", name: "29078 West Stagecoach Lane, Seligman, AZ", regionCode: "AZ", district: "Yavapai County" }),
+      parcelToken({ tokenId: "x", name: "29078 Stagecoach Lane, Elsewhere, AZ", regionCode: "AZ", district: "Mohave County" }),
+    ];
+    expect(matchIndexByQuery("29078 E Stagecoach Ln", { state: "AZ" }, tokens).map((t) => t.tokenId)).toEqual(["x"]);
+    expect(matchIndexByQuery("29078 W Stagecoach Ln", { state: "AZ" }, tokens).map((t) => t.tokenId)).toEqual(["w", "x"]);
+    expect(matchIndexByQuery("29078 W Stagecoach Ln", { state: "AZ", county: "Yavapai" }, tokens).map((t) => t.tokenId)).toEqual(["w"]);
+  });
+
+  it("holds the city and state written in the address", () => {
+    expect(queryLocality("123 Main St, Reno, NV 89501")).toEqual({ city: "Reno", state: "NV" });
+    expect(queryLocality("123 Main St, Reno")).toEqual({ city: "Reno", state: null });
+    expect(queryLocality("123 Oak Ct")).toEqual({ city: null, state: null });
+    const tokens = [parcelToken({ tokenId: "tx", name: "123 Main St, Austin, TX", regionCode: "TX", place: "Austin" })];
+    expect(matchIndexByQuery("123 Main St, Reno, NV", {}, tokens)).toEqual([]);
+    expect(matchIndexByQuery("123 Main St, Reno, TX", {}, tokens)).toEqual([]);
+    expect(matchIndexByQuery("123 Main St, Austin, Texas", {}, tokens).map((t) => t.tokenId)).toEqual(["tx"]);
+  });
+
+  it("matches a registrar APN with or without its own county FIPS prefix", () => {
+    const tokens = [parcelToken({ tokenId: "la", name: "1 Elm St, Los Angeles, CA", regionCode: "CA", definition: { offchainRegistrar: { admin: "06037", propertyId: "06037-018-007" } } })];
+    expect(matchIndexByQuery("018-007", {}, tokens).map((t) => t.tokenId)).toEqual(["la"]);
+    expect(matchIndexByQuery("06037-018-007", {}, tokens).map((t) => t.tokenId)).toEqual(["la"]);
+    expect(matchIndexByQuery("018-007", { state: "CA", county: "Los Angeles" }, tokens).map((t) => t.tokenId)).toEqual(["la"]);
+    expect(matchIndexByQuery("018-007", { state: "CA", county: "Orange" }, tokens)).toEqual([]);
+  });
+
+  it("needs the whole street, with or without its suffix", () => {
+    const tokens = [parcelToken({ tokenId: "e", name: "123 Main Street Extension, Town, TX", regionCode: "TX" })];
+    expect(matchIndexByQuery("123 Main Street", { state: "TX" }, tokens)).toEqual([]);
+    const plain = [parcelToken({ tokenId: "p", name: "37497 Palo Colorado Road, Carmel, CA", regionCode: "CA" })];
+    expect(matchIndexByQuery("37497 Palo Colorado", { state: "CA" }, plain).map((t) => t.tokenId)).toEqual(["p"]);
+    expect(matchIndexByQuery("37497 Palo Colorado Ln", { state: "CA" }, plain)).toEqual([]);
   });
 });

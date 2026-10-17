@@ -11,6 +11,7 @@ import type {
   GetLoanLiquidatedEventsQuery,
   GetLoanRepaidEventsQuery,
   GetLoanStartedEventsQuery,
+  GetNetworkActivityQuery,
   GetOperatingAgreementQuery,
   GetOrderBookQuery,
   GetParcelIndexQuery,
@@ -101,6 +102,7 @@ export type ConfigurationDocument = NonNullable<NonNullable<TrustDocumentsToken[
 export type TaxStatusToken = GetTaxStatusQuery["token"];
 export type OperatingAgreementModel = GetOperatingAgreementQuery["token"];
 export type ParcelIndexToken = GetParcelIndexQuery["tokens"][number];
+export type NetworkActivityToken = GetNetworkActivityQuery["tokens"][number];
 
 // --- Valuation and pool oracle (get_valuation, get_borrow_quote) ---
 

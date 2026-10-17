@@ -261,4 +261,12 @@ export type GetParcelIndexQueryVariables = Exact<{
 }>;
 
 
-export type GetParcelIndexQuery = { tokens: Array<{ tokenId: string, name: string | null, vanityName: string | null, slug: string, propertyLink: string, regionCode: string | null, coordinates: { lat: number, lon: number }, definition: { offchainRegistrar: { admin: string, propertyId: string } } | null }> };
+export type GetParcelIndexQuery = { tokens: Array<{ tokenId: string, name: string | null, vanityName: string | null, slug: string, propertyLink: string, regionCode: string | null, district: string | null, place: string | null, coordinates: { lat: number, lon: number }, definition: { offchainRegistrar: { admin: string, propertyId: string } } | null }> };
+
+export type GetNetworkActivityQueryVariables = Exact<{
+  testnets?: boolean | null | undefined;
+  contractAddress?: string | null | undefined;
+}>;
+
+
+export type GetNetworkActivityQuery = { tokens: Array<{ tokenId: string, name: string | null, vanityName: string | null, activity: Array<{ activity: ActivityType, source: ActivitySource, time: string, timestamp: number, network: string, tokenId: string | null, transactionHash: string | null, currencyAmount: string | null, currencyDecimals: number | null, currencySymbol: string | null, usdAmount: string | null }> }> };

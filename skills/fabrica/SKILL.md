@@ -35,7 +35,7 @@ Claude Code, mainnet: `claude mcp add --transport http fabrica https://mcp.fabri
 | `get_lending_market` | Loans, pool liquidity, average APR |
 | `get_portfolio` | A wallet's holdings, credit history and loans |
 | `get_portfolio_image` | Map of a wallet's holdings |
-| `get_activity` | Transfers, sales and loans for a property or wallet |
+| `get_activity` | Transfers, sales and loans for a property or wallet; with no filter, the newest across the network |
 | `get_protocol_stats` | Protocol-wide counts and totals |
 | `ask_fabrica` | Cited passages from Fabrica's docs, help center and trust agreement for how Fabrica works |
 | `find_parcel` | Any US address or parcel number: the parcel, whether it is on Fabrica, and the on-ramp link if not |

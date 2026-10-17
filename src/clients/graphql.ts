@@ -5,6 +5,7 @@ import type {
   GetLoanRepaidEventsQuery,
   GetLoanStartedEventsQuery,
   GetLoansQuery,
+  GetNetworkActivityQuery,
   GetOperatingAgreementQuery,
   GetOrderBookQuery,
   GetParcelIndexQuery,
@@ -23,6 +24,7 @@ import type {
   LoanModel,
   LoanRepaidEvent,
   LoanStartedEvent,
+  NetworkActivityToken,
   OperatingAgreementModel,
   OrderBookToken,
   ParcelIndexToken,
@@ -858,6 +860,8 @@ const GET_PARCEL_INDEX_QUERY = gql`
       slug
       propertyLink
       regionCode
+      district
+      place
       coordinates { lat lon }
       definition { offchainRegistrar { admin propertyId } }
     }
@@ -867,6 +871,30 @@ const GET_PARCEL_INDEX_QUERY = gql`
 /** Every minted, unburned token with its state, APN and coordinates: what find_parcel matches against. */
 export async function getParcelIndex(): Promise<ParcelIndexToken[]> {
   const data = await request<GetParcelIndexQuery>(GET_PARCEL_INDEX_QUERY, {
+    testnets: !IS_MAINNET,
+    contractAddress: CONTRACTS.fabricaToken,
+  });
+  return filterSpamTokens(data.tokens);
+}
+
+// --- Network-wide activity: every token's feed, merged by get_activity when no filter is given ---
+
+const GET_NETWORK_ACTIVITY_QUERY = gql`
+  query GetNetworkActivity($testnets: Boolean, $contractAddress: String) {
+    tokens(burned: true, premints: false, testnets: $testnets, contractAddress: $contractAddress) {
+      tokenId
+      name
+      vanityName
+      activity { activity source time timestamp network tokenId transactionHash currencyAmount currencyDecimals currencySymbol usdAmount }
+    }
+  }
+`;
+
+const networkActivityCache = new TtlCache<GetNetworkActivityQuery>();
+
+/** Every minted token on this network, burned ones included (their history and Burn event stay), with its activity feed (one request). */
+export async function getNetworkActivity(): Promise<NetworkActivityToken[]> {
+  const data = await cachedRequest(networkActivityCache, GET_NETWORK_ACTIVITY_QUERY, {
     testnets: !IS_MAINNET,
     contractAddress: CONTRACTS.fabricaToken,
   });
@@ -894,4 +922,5 @@ export const API_DOCUMENTS: ReadonlyArray<{ name: string; document: string }> = 
   { name: "GetOrderBook", document: GET_ORDER_BOOK_QUERY },
   { name: "GetPremintSuccessor", document: GET_PREMINT_SUCCESSOR_QUERY },
   { name: "GetParcelIndex", document: GET_PARCEL_INDEX_QUERY },
+  { name: "GetNetworkActivity", document: GET_NETWORK_ACTIVITY_QUERY },
 ];

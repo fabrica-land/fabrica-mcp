@@ -1,5 +1,6 @@
 import { getParcelIndex } from "../clients/graphql.js";
 import type { ParcelIndexToken } from "../types/index.js";
+import { stateCode } from "../links.js";
 import { MAINNET_WARNING, NETWORK_LABEL, WEB_BASE } from "../config.js";
 import { US_COUNTY_ROWS } from "../data/us-counties.js";
 import { z } from "zod";
@@ -55,7 +56,7 @@ export interface ParcelCandidate {
   apn: string | null;
   state: string | null;
   county: string | null;
-  regridPath: string;
+  regridPath: string | null;
   onFabrica: ParcelOnFabrica | null;
 }
 
@@ -295,6 +296,142 @@ export function stateRetryText(query: string, state: string | undefined, countyS
   return `${query}, ${code}`;
 }
 
+/**
+ * The type-ahead's upstream search answers 503 to any query with a comma (ENG-5024), so
+ * commas become spaces before the call. The words and their order are unchanged.
+ */
+export function typeAheadText(query: string): string {
+  return query.replace(/,/g, " ").replace(/\s+/g, " ").trim();
+}
+
+const STREET_SUFFIXES: Record<string, string> = {
+  road: "rd", street: "st", avenue: "ave", drive: "dr", lane: "ln", court: "ct", boulevard: "blvd",
+  place: "pl", highway: "hwy", parkway: "pkwy", circle: "cir", terrace: "ter", trail: "trl", way: "way",
+};
+const DIRECTIONS: Record<string, string> = { north: "n", south: "s", east: "e", west: "w" };
+
+const DIRECTION_LETTERS = new Set(Object.values(DIRECTIONS));
+
+/**
+ * "29078 West Stagecoach Lane, Seligman, AZ" to its house number, its direction ("w", or null) and its
+ * street words, abbreviated the usual way. The direction is kept apart so "W" and "West" compare equal.
+ */
+export function streetKey(address: string): { number: string; direction: string | null; street: string[] } | null {
+  const [line = ""] = address.split(",");
+  const words = line.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").split(/\s+/).filter(Boolean);
+  const [number, ...rest] = words;
+  if (!number || !/^\d+[a-z]?$/.test(number) || rest.length === 0) return null;
+  const normalized = rest.map((word) => STREET_SUFFIXES[word] ?? DIRECTIONS[word] ?? word);
+  const directions = normalized.filter((word) => DIRECTION_LETTERS.has(word));
+  const street = normalized.filter((word) => !DIRECTION_LETTERS.has(word));
+  return street.length > 0 ? { number, direction: directions.join("") || null, street } : null;
+}
+
+/**
+ * Fabrica properties whose name has the same house number and street as the query, or whose
+ * registrar parcel number is the query, within the state when one is given. Used only when the
+ * parcel search is down, so a parcel already on Fabrica still resolves from Fabrica's own records.
+ */
+/**
+ * The city and state written into a comma-separated address: "123 Main St, Reno, NV 89501" gives
+ * { city: "Reno", state: "NV" }. Only the comma form is read; a bare trailing word is too often a suffix ("Ct").
+ */
+export function queryLocality(query: string): { city: string | null; state: string | null } {
+  const parts = query.split(",").map((part) => part.trim()).filter(Boolean);
+  if (parts.length < 2) return { city: null, state: null };
+  const last = parts[parts.length - 1].replace(/\b\d{5}(?:-\d{4})?\b/g, "").trim();
+  const state = stateCode(last);
+  const cityPart = state ? (parts.length >= 3 ? parts[parts.length - 2] : null) : parts[parts.length - 1];
+  return { city: cityPart || null, state };
+}
+
+export function matchIndexByQuery(query: string, scope: { state?: string; county?: string }, tokens: readonly ParcelIndexToken[]): ParcelIndexToken[] {
+  const wanted = streetKey(query);
+  const apn = normalizeApn(query);
+  const county = scope.county ? withoutSuffix(slugify(scope.county)) : null;
+  // The locality in the address text binds too: "123 Main St, Reno, NV" is not 123 Main St in another city or state.
+  const locality = queryLocality(query);
+  const state = scope.state ?? locality.state;
+  const city = locality.city ? slugify(locality.city) : null;
+  const countyFips = scope.county ? resolveCounty(scope.county, state ?? undefined)?.county.fips ?? null : null;
+  return tokens.filter((token) => {
+    if (state && token.regionCode?.toUpperCase() !== state.toUpperCase()) return false;
+    if (city && token.place && slugify(token.place) !== city) return false;
+    // A token without a district names its county by the registrar admin, a FIPS code: compare codes then.
+    const admin = token.definition?.offchainRegistrar?.admin ?? null;
+    if (county && !token.district && admin && /^\d{5}$/.test(admin)) {
+      if (countyFips && admin !== countyFips) return false;
+    } else {
+      const tokenCounty = token.district ?? admin;
+      if (county && tokenCounty && withoutSuffix(slugify(tokenCounty)) !== county) return false;
+    }
+    const propertyId = token.definition?.offchainRegistrar?.propertyId;
+    // The registrar admin is the county FIPS, so "06037-018-007" also answers to "018-007" in its own county.
+    const fips = token.definition?.offchainRegistrar?.admin ?? null;
+    if (apn.length >= 4 && /\d/.test(apn) && propertyId && registrarApns(propertyId, fips && /^\d{5}$/.test(fips) ? fips : null).includes(apn)) return true;
+    const own = streetKey(token.name ?? token.vanityName ?? "");
+    if (!wanted || !own || own.number !== wanted.number) return false;
+    // East and West Stagecoach Lane are different streets; a direction given on one side only is not a conflict.
+    if (own.direction && wanted.direction && own.direction !== wanted.direction) return false;
+    return sameStreet(own.street, wanted.street);
+  });
+}
+
+const SUFFIX_ABBREVIATIONS = new Set(Object.values(STREET_SUFFIXES));
+
+/**
+ * The same complete street: "Palo Colorado Rd" and "Palo Colorado Road" match, and so does
+ * "Palo Colorado" with no suffix, but "Main St" and "Main St Extension" or "Palo Alto Rd" do not.
+ */
+function sameStreet(a: readonly string[], b: readonly string[]): boolean {
+  const split = (words: readonly string[]) => {
+    const last = words[words.length - 1];
+    return words.length > 1 && SUFFIX_ABBREVIATIONS.has(last) ? { core: words.slice(0, -1), suffix: last } : { core: words, suffix: null };
+  };
+  const x = split(a);
+  const y = split(b);
+  if (x.suffix && y.suffix && x.suffix !== y.suffix) return false;
+  return x.core.length === y.core.length && x.core.every((word, i) => word === y.core[i]);
+}
+
+function indexCandidate(token: ParcelIndexToken): ParcelCandidate {
+  const registrar = token.definition?.offchainRegistrar ?? null;
+  const name = token.name ?? token.vanityName ?? "";
+  return {
+    address: name.split(",")[0]?.trim() || name,
+    place: [token.place, token.regionCode].filter(Boolean).join(", "),
+    apn: registrar?.propertyId ?? null,
+    state: token.regionCode?.toUpperCase() ?? null,
+    county: token.district ?? registrar?.admin ?? null,
+    regridPath: null,
+    onFabrica: toOnFabrica(token),
+  };
+}
+
+const SEARCH_DOWN = "The US parcel search is not answering right now";
+
+/** When the type-ahead fails: the properties already on Fabrica that the query names, from Fabrica's own records. */
+async function indexFallback(query: string, args: FindParcelArgs, failure: string) {
+  let matches: ParcelIndexToken[];
+  try {
+    matches = matchIndexByQuery(query, { state: args.state, county: args.county }, await getParcelIndex());
+  } catch {
+    return { error: `${SEARCH_DOWN} (${failure}), and Fabrica's property records could not be read either. Try again shortly.` };
+  }
+  if (matches.length === 0) {
+    return { error: `${SEARCH_DOWN} (${failure}). No property in Fabrica's own records has this name or parcel number. That does not confirm the parcel is not on Fabrica; try again shortly for the full search and the on-ramp link.` };
+  }
+  // Fabrica's records cannot see parcels that are not on Fabrica (a repeated APN, a neighbour with a similar
+  // name), so a match here is a lead to confirm, never a parcel identity.
+  return {
+    query,
+    match: "unconfirmed",
+    matchSource: "fabrica-index",
+    candidates: matches.slice(0, MAX_CANDIDATES).map(indexCandidate),
+    note: `${SEARCH_DOWN} (${failure}), so ${matches.length === 1 ? "this property was" : "these properties were"} matched against Fabrica's own records (the property name or its registrar parcel number), not the US parcel search. A name or parcel-number match is not a parcel-boundary check: say it is likely, not confirmed. get_property with the tokenId returns the record; try find_parcel again shortly to confirm.`,
+  };
+}
+
 export const findParcelInput = {
   query: z.string().min(3).max(200).describe("Street address (with city and state when known) or parcel number (APN)"),
   state: z.string().regex(/^[A-Za-z]{2}$/).optional().describe("Two-letter US state code, e.g. 'AZ'"),
@@ -317,7 +454,7 @@ async function searchParcel(args: FindParcelArgs) {
     return { error: `No single US county matches "${args.county}"${args.state ? ` in ${args.state.toUpperCase()}` : ""}. A two-letter state and the county name (for example state "AZ", county "Navajo") identify it.` };
   }
   const typeAhead = async (text: string): Promise<TypeAheadHit[]> => {
-    const params = new URLSearchParams({ query: text });
+    const params = new URLSearchParams({ query: typeAheadText(text) });
     if (scope) params.set("adminId", scope.county.fips);
     return parseTypeAhead(await fetchJson(`${API_BASE}/regrid/type-ahead?${params.toString()}`));
   };
@@ -332,7 +469,7 @@ async function searchParcel(args: FindParcelArgs) {
     const second = retry !== null ? (await typeAhead(retry)).filter((hit) => inState(hit, args.state)) : [];
     inScope = second.length > 0 ? second : first;
   } catch (error) {
-    return { error: `The parcel search did not answer (${error instanceof Error ? error.message : "unknown error"}). Try again shortly.` };
+    return indexFallback(query, args, error instanceof Error ? error.message : "unknown error");
   }
   // A query that is a parcel number matching exactly one parcel in scope is that parcel.
   const exactApn = inScope.filter(isExactApn);

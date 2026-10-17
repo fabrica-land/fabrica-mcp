@@ -96,15 +96,15 @@ describe("get_property lifecycle, fees and flags", () => {
       lifecycle: { stage: "premint_unclaimed", claimState: "UNCLAIMED" },
       fees: { total: "$500", unpaidCount: 1 },
     });
-    expect(result).not.toHaveProperty("flags");
+    expect(result).toHaveProperty("flags", []);
   });
 
   it("shows a minted token without empty blocks", async () => {
     vi.mocked(getToken).mockResolvedValueOnce(token());
     const result = await getProperty({ tokenId: "12345" });
     expect(result).toMatchObject({ lifecycle: { stage: "minted" } });
-    expect(result).not.toHaveProperty("fees");
-    expect(result).not.toHaveProperty("flags");
+    expect(result).toHaveProperty("fees", null);
+    expect(result).toHaveProperty("flags", []);
   });
 
   it("shows an off-ramping token", async () => {
