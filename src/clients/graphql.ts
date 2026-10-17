@@ -564,6 +564,9 @@ function isScoreRecord(value: unknown): value is ScoreRecord {
   return typeof value === "object" && value !== null && "checks" in value && typeof value.checks === "object" && value.checks !== null;
 }
 
+/** get_property waits on the score record inline, so a slow score API must not hold it for the full API timeout. */
+const SCORE_RECORD_TIMEOUT_MS = 5_000;
+
 const scoreRecordCache = new TtlCache<ScoreRecord | null>();
 
 /**
@@ -581,10 +584,10 @@ async function fetchScoreRecord(contractAddress: string, tokenId: string): Promi
   const url = `${base}/${encodeURIComponent(NETWORK)}/${encodeURIComponent(contractAddress)}/${encodeURIComponent(tokenId)}/score`;
   let response: Response;
   try {
-    response = await fetch(url, { signal: AbortSignal.timeout(API_TIMEOUT_MS) });
+    response = await fetch(url, { signal: AbortSignal.timeout(SCORE_RECORD_TIMEOUT_MS) });
   } catch (error) {
     if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
-      throw new Error(`Fabrica API did not respond within ${API_TIMEOUT_MS / 1000} s. Try again shortly.`);
+      throw new Error(`Fabrica score API did not respond within ${SCORE_RECORD_TIMEOUT_MS / 1000} s.`);
     }
     throw error;
   }

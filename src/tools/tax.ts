@@ -6,7 +6,7 @@ import { LENDING_POOL_NAME } from "../labels.js";
 const TAX_CHECK = "propertyTaxesCurrent";
 
 export type TaxStatus = "current" | "delinquent" | "unknown";
-export type TaxBasis = "check" | "lendingBlockReason" | "both" | "none";
+export type TaxBasis = "check" | "lendingBlockReason" | "both" | "conflicting" | "none";
 
 const NOT_AVAILABLE = ["the amount due", "the due date", "the county's own tax record"];
 
@@ -22,6 +22,9 @@ function checkFromRecord(record: ScoreRecord | null): boolean | null {
 
 /** Combines the check with the lending block reason, which the API derives from the same check. */
 export function resolveTaxStatus(check: boolean | null, blockReason: AppraisalBlockReason | null | undefined): { status: TaxStatus; basis: TaxBasis } {
+  // The two signals are read separately and can briefly disagree; a passing check against a
+  // delinquent block reason claims neither.
+  if (blockReason === "TAX_DELINQUENT" && check === true) return { status: "unknown", basis: "conflicting" };
   if (blockReason === "TAX_DELINQUENT") return { status: "delinquent", basis: check === false ? "both" : "lendingBlockReason" };
   if (blockReason === "TAX_STATUS_UNKNOWN") return { status: "unknown", basis: check === null ? "both" : "lendingBlockReason" };
   if (check === true) return { status: "current", basis: "check" };
@@ -68,7 +71,11 @@ export async function loadTaxSignals(token: {
   const checkExpired = Number.isFinite(expiry) && expiry <= Date.now();
   const check = record && Number.isFinite(expiry) && !checkExpired ? checkFromRecord(record) : null;
   const blockReason = token.poolLendingLiquidity?.appraisalBlockReason ?? null;
-  return { ...resolveTaxStatus(check, blockReason), blockReason, checkExpired, checkedAt: record?.updatedAt ?? null, nextCheckBy: record?.expiresAt ?? null, warnings };
+  const resolved = resolveTaxStatus(check, blockReason);
+  if (resolved.basis === "conflicting") {
+    warnings.push("Fabrica's tax check passed, but the lending pool still reports the taxes as past due; the two are updated separately. Try again shortly.");
+  }
+  return { ...resolved, blockReason, checkExpired, checkedAt: record?.updatedAt ?? null, nextCheckBy: record?.expiresAt ?? null, warnings };
 }
 
 export async function getTaxStatus(args: Record<string, unknown>) {
