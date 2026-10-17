@@ -23,6 +23,11 @@ describe("ScoreChanged detail", () => {
     expect(previous.get(1)).toBeNull();
     expect(formatActivity(feed[0], previous.get(0)).propertyChecks?.changed).toEqual(["Past Title & Load 2 to 3 (of 5)"]);
   });
+
+  it("pairs two changes in the same block by feed order", () => {
+    const previous = previousScores([scoreEvent("1", "2026-10-03", "73342"), scoreEvent("1", "2026-10-03", "72342")]);
+    expect(previous.get(0)).toBe("72342");
+  });
 });
 
 describe("legal description preview", () => {

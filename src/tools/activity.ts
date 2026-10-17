@@ -14,7 +14,7 @@ export function previousScores(activities: readonly ActivityModel[]): Map<number
   const previous = new Map<number, string | null>();
   activities.forEach((a, i) => {
     if (a.activity !== "ScoreChanged") return;
-    const older = activities.slice(i + 1).find(o => o.activity === "ScoreChanged" && o.tokenId === a.tokenId && o.time < a.time);
+    const older = activities.slice(i + 1).find(o => o.activity === "ScoreChanged" && o.tokenId === a.tokenId);
     previous.set(i, older?.newValue ?? null);
   });
   return previous;

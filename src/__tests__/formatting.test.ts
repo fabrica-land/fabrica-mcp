@@ -98,8 +98,7 @@ describe("getProperty formatting", () => {
   it("preserves the numeric encoding of Property checks as a raw integer", async () => {
     vi.mocked(getToken).mockResolvedValueOnce(makeDetailToken());
     const result = await getProperty({ tokenId: "12345" }) as Record<string, unknown>;
-    const checks = result.propertyChecks as Record<string, unknown>;
-    expect(checks.encoding).toBe(73242);
+    expect(result.propertyChecks).toMatchObject({ encoding: 73242 });
     // The deprecated valuation aliases are gone: one copy of the checks per response.
     expect(result.valuation).not.toHaveProperty("scoreBreakdown");
     expect(result.valuation).not.toHaveProperty("confidenceScore");
