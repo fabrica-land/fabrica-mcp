@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  canHover, checksSubline, chooseLayout, estimateSourceLine, failedChecks, layoutWidth, safeArea, taxChip, usdcAmount,
+  activityLabel, canExpand, canHover, checksSubline, chooseLayout, documentUrl, estimateSourceLine, failedChecks, isFullscreen,
+  layoutWidth, pricingRows, safeArea, shortDate, taxChip, usdcAmount,
 } from "./view.js";
 
 describe("chooseLayout", () => {
@@ -74,5 +75,42 @@ describe("fact lines", () => {
     expect(taxChip("current")).toBe("Taxes current");
     expect(taxChip("delinquent")).toBe("Taxes past due");
     expect(taxChip("unknown")).toBeNull();
+  });
+});
+
+describe("display modes", () => {
+  it("offers Expand only when the host lists fullscreen and the card is inline", () => {
+    expect(canExpand({ availableDisplayModes: ["inline", "fullscreen"], displayMode: "inline" })).toBe(true);
+    expect(canExpand({ availableDisplayModes: ["inline"] })).toBe(false);
+    expect(canExpand(undefined)).toBe(false);
+    expect(canExpand({ availableDisplayModes: ["inline", "fullscreen"], displayMode: "fullscreen" })).toBe(false);
+    expect(isFullscreen({ displayMode: "fullscreen" })).toBe(true);
+  });
+});
+
+describe("fullscreen panels", () => {
+  it("lists each pricing source that has a value once", () => {
+    expect(pricingRows([
+      { source: "fabrica-avm", value: null },
+      { source: "prycd", value: "$771,075" },
+      { source: "prycd", value: "$771,075" },
+      { source: "regrid-county-assessor", value: "$357,000" },
+    ])).toEqual([{ label: "Prycd", value: "$771,075" }, { label: "County assessor", value: "$357,000" }]);
+  });
+
+  it("opens documents only on Fabrica's IPFS gateway", () => {
+    expect(documentUrl("ipfs://bafybeiea37nz")).toBe("https://ipfs.fabrica.land/ipfs/bafybeiea37nz");
+    expect(documentUrl("https://ipfs.fabrica.land/ipfs/bafkrei")).toBe("https://ipfs.fabrica.land/ipfs/bafkrei");
+    expect(documentUrl("https://evil.example/ipfs/x")).toBeNull();
+    expect(documentUrl("javascript:alert(1)")).toBeNull();
+    expect(documentUrl(null)).toBeNull();
+  });
+
+  it("names activity in plain words and dates it in UTC", () => {
+    expect(activityLabel("LoanRepaid")).toBe("Loan repaid");
+    expect(activityLabel("ScoreChanged")).toBe("Property checks updated");
+    expect(activityLabel("SomethingNewHappened")).toBe("Something new happened");
+    expect(shortDate("2026-06-30T22:04:23.000Z")).toBe("Jun 30, 2026");
+    expect(shortDate("not a date")).toBeNull();
   });
 });

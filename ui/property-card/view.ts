@@ -2,9 +2,12 @@
 // fact lines built from the get_property result. No DOM access, so it is unit tested.
 
 export type Layout = "compact" | "regular";
+export type DisplayMode = "inline" | "fullscreen" | "pip";
 
 /** The host context fields the card reads (MCP Apps McpUiHostContext, all optional). */
 export interface HostContextLike {
+  displayMode?: DisplayMode;
+  availableDisplayModes?: DisplayMode[];
   platform?: "web" | "desktop" | "mobile";
   containerDimensions?: { width?: number; maxWidth?: number };
   deviceCapabilities?: { touch?: boolean; hover?: boolean };
@@ -102,4 +105,68 @@ export function taxChip(status: unknown): string | null {
   if (status === "current") return "Taxes current";
   if (status === "delinquent") return "Taxes past due";
   return null;
+}
+
+export function isFullscreen(context: HostContextLike | undefined): boolean {
+  return context?.displayMode === "fullscreen";
+}
+
+/** The Expand control shows only when the host offers fullscreen and the card is not in it. */
+export function canExpand(context: HostContextLike | undefined): boolean {
+  return !isFullscreen(context) && (context?.availableDisplayModes ?? []).includes("fullscreen");
+}
+
+export const TABS = ["Overview", "Value", "Lending", "Documents", "Activity"] as const;
+export type Tab = (typeof TABS)[number];
+
+/** Pricing sources that returned a value, labelled, without repeats. */
+export function pricingRows(pricing: PricingEntry[]): { label: string; value: string }[] {
+  const rows: { label: string; value: string }[] = [];
+  for (const p of pricing) {
+    if (typeof p.source !== "string" || typeof p.value !== "string" || p.value.trim() === "") continue;
+    const label = SOURCE_LABELS[p.source] ?? p.source;
+    if (!rows.some((r) => r.label === label && r.value === p.value)) rows.push({ label, value: p.value });
+  }
+  return rows;
+}
+
+const IPFS_GATEWAY = "https://ipfs.fabrica.land/ipfs/";
+
+/** A document link on Fabrica's IPFS gateway: ipfs:// URIs are rewritten, other hosts dropped. */
+export function documentUrl(uri: unknown): string | null {
+  if (typeof uri !== "string") return null;
+  const cid = /^ipfs:\/\/(?:ipfs\/)?([A-Za-z0-9]+(?:\/[^\s]*)?)$/.exec(uri.trim());
+  if (cid) return IPFS_GATEWAY + cid[1];
+  return uri.startsWith(IPFS_GATEWAY) ? uri : null;
+}
+
+const ACTIVITY_LABELS: Record<string, string> = {
+  ScoreChanged: "Property checks updated",
+  Transfer: "Transferred",
+  OperatingAgreementUpdated: "Trust agreement updated",
+  MarketplaceListingStarted: "Listed for sale",
+  MarketplaceListingExpired: "Listing expired",
+  MarketplaceListingCanceled: "Listing canceled",
+  MarketplaceSale: "Sold",
+  LoanStarted: "Loan started",
+  LoanRepaid: "Loan repaid",
+  LoanRefinanced: "Loan refinanced",
+  LoanLiquidated: "Loan liquidated",
+  Minted: "Minted",
+};
+
+/** "LoanRepaid" -> "Loan repaid"; unknown types are split from CamelCase. */
+export function activityLabel(type: unknown): string {
+  if (typeof type !== "string" || type === "") return "Activity";
+  if (ACTIVITY_LABELS[type]) return ACTIVITY_LABELS[type];
+  const words = type.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** "2026-06-30T22:04:23Z" -> "Jun 30, 2026" (UTC, so the day does not shift with the viewer). */
+export function shortDate(iso: unknown): string | null {
+  if (typeof iso !== "string") return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 }
