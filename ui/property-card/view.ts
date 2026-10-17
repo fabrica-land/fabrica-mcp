@@ -159,6 +159,20 @@ export function pricingRows(pricing: PricingEntry[]): { label: string; value: st
   return rows;
 }
 
+// Buttons may only open Fabrica's own pages over https.
+const FABRICA_HOSTS = new Set(["fabrica.land", "testnets.fabrica.land"]);
+
+/** The property page link when it is one of Fabrica's own pages over https; null otherwise. */
+export function fabricaUrl(link: string | null): string | null {
+  if (!link) return null;
+  try {
+    const url = new URL(link);
+    return url.protocol === "https:" && FABRICA_HOSTS.has(url.hostname) ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 const IPFS_GATEWAY = "https://ipfs.fabrica.land/ipfs/";
 const DOCUMENT_HOSTS = new Set(["ipfs.fabrica.land", "fabrica.land", "testnets.fabrica.land"]);
 

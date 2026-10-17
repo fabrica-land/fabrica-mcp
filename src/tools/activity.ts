@@ -1,4 +1,5 @@
 import { getToken, getWallet, propertyLookupError } from "../clients/graphql.js";
+import { NETWORK } from "../config.js";
 import type { ActivityModel } from "../types/index.js";
 import { formatActivityAmount, formatActivitySource } from "../labels.js";
 import { z } from "zod";
@@ -48,6 +49,9 @@ export async function getActivity(args: GetActivityArgs) {
       activities = wallet.activity ?? [];
       label = `wallet ${address.slice(0, 6)}...${address.slice(-4)}`;
     }
+    // The API names each event's network with the same strings as FABRICA_NETWORK
+    // ("ethereum", "sepolia"), so a deployment only reports events from its own network.
+    activities = activities.filter(a => a.network === NETWORK);
     if (activityType) {
       const lower = activityType.toLowerCase();
       activities = activities.filter(a => a.activity.toLowerCase().includes(lower));

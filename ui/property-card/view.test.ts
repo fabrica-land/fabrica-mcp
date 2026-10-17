@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  activityLabel, canExpand, canHover, checksSubline, chooseLayout, documentUrl, estimateSourceLine, failedChecks, isFullscreen,
-  layoutWidth, pricingRows, safeArea, shortDate, taxChip, usdcAmount,
+  activityLabel, canExpand, canHover, checksSubline, chooseLayout, documentUrl, estimateSourceLine, fabricaUrl, failedChecks,
+  isFullscreen, layoutWidth, pricingRows, safeArea, shortDate, taxChip, usdcAmount,
 } from "./view.js";
 
 describe("chooseLayout", () => {
@@ -79,8 +79,18 @@ describe("fact lines", () => {
   it("reads pool capacity in whole USDC and drops zero", () => {
     expect(usdcAmount("966 USDC")).toBe(966);
     expect(usdcAmount("2,500 USDC")).toBe(2500);
+    expect(usdcAmount("1,234 USDC")).toBe(1234);
     expect(usdcAmount("0 USDC")).toBeNull();
+    expect(usdcAmount("0")).toBeNull();
     expect(usdcAmount(null)).toBeNull();
+  });
+
+  it("treats negative, unreadable and sub-dollar capacity as no capacity", () => {
+    expect(usdcAmount("-5 USDC")).toBeNull();
+    expect(usdcAmount("abc")).toBeNull();
+    expect(usdcAmount("0.9 USDC")).toBeNull();
+    expect(usdcAmount(966)).toBeNull();
+    expect(usdcAmount(undefined)).toBeNull();
   });
 
   it("shows a tax chip only for a known status", () => {
@@ -125,11 +135,44 @@ describe("fullscreen panels", () => {
     expect(documentUrl(null)).toBeNull();
   });
 
+  it("maps every ipfs form to the gateway and refuses https links off Fabrica hosts", () => {
+    expect(documentUrl("ipfs://ipfs/bafybeiea37nz")).toBe("https://ipfs.fabrica.land/ipfs/bafybeiea37nz");
+    expect(documentUrl("ipfs://bafybeiea37nz/agreement.pdf")).toBe("https://ipfs.fabrica.land/ipfs/bafybeiea37nz/agreement.pdf");
+    expect(documentUrl("ipfs://ipfs/bafybeiea37nz/docs/deed.pdf")).toBe("https://ipfs.fabrica.land/ipfs/bafybeiea37nz/docs/deed.pdf");
+    expect(documentUrl("  ipfs://bafybeiea37nz  ")).toBe("https://ipfs.fabrica.land/ipfs/bafybeiea37nz");
+    expect(documentUrl("https://testnets.fabrica.land/agreement/test")).toBe("https://testnets.fabrica.land/agreement/test");
+    expect(documentUrl("https://ipfs.io/ipfs/bafybeiea37nz")).toBeNull();
+    expect(documentUrl("https://fabrica.land.evil.com/ipfs/x")).toBeNull();
+    expect(documentUrl("data:text/html,hi")).toBeNull();
+    expect(documentUrl("/agreement/test")).toBeNull();
+    expect(documentUrl("")).toBeNull();
+  });
+
   it("names activity in plain words and dates it in UTC", () => {
     expect(activityLabel("LoanRepaid")).toBe("Loan repaid");
     expect(activityLabel("ScoreChanged")).toBe("Property checks updated");
     expect(activityLabel("SomethingNewHappened")).toBe("Something new happened");
     expect(shortDate("2026-06-30T22:04:23.000Z")).toBe("Jun 30, 2026");
     expect(shortDate("not a date")).toBeNull();
+  });
+});
+
+describe("property links", () => {
+  it("opens only Fabrica's own pages over https", () => {
+    expect(fabricaUrl("https://fabrica.land/property/ethereum/1")).toBe("https://fabrica.land/property/ethereum/1");
+    expect(fabricaUrl("https://testnets.fabrica.land/property/sepolia/1")).toBe("https://testnets.fabrica.land/property/sepolia/1");
+    expect(fabricaUrl("https://fabrica.land/property/ethereum/1?ref=x#top")).toBe("https://fabrica.land/property/ethereum/1?ref=x#top");
+  });
+
+  it("rejects plain http, other hosts, script and data links, relative paths and empty links", () => {
+    expect(fabricaUrl("http://fabrica.land/property/ethereum/1")).toBeNull();
+    expect(fabricaUrl("https://fabrica.land.evil.com/property/1")).toBeNull();
+    expect(fabricaUrl("https://evil.com/fabrica.land")).toBeNull();
+    expect(fabricaUrl("https://ipfs.fabrica.land/ipfs/bafy")).toBeNull();
+    expect(fabricaUrl("javascript:alert(1)")).toBeNull();
+    expect(fabricaUrl("data:text/html,hi")).toBeNull();
+    expect(fabricaUrl("/property/ethereum/1")).toBeNull();
+    expect(fabricaUrl("")).toBeNull();
+    expect(fabricaUrl(null)).toBeNull();
   });
 });
