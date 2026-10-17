@@ -101,14 +101,29 @@ export function normalizeApn(apn: string): string {
 }
 
 function slugify(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return value.toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
+/** County-equivalent suffixes, as people and registrars write them; the county table names mostly leave them out. */
+function withoutSuffix(slug: string): string {
+  return slug.replace(/-(county|parish|city-and-borough|borough|census-area|municipality)$/, "");
+}
+
+/**
+ * Whether a token's registrar admin (a county name such as "Bartow") is the parcel's county.
+ * Compared against the county's full table name, so "St. Louis" (the county) never matches "St. Louis City".
+ */
 function sameCounty(admin: string | null | undefined, countyKey: string | null, county: County | null): boolean {
   if (!admin || !countyKey) return true;
-  const adminSlug = slugify(admin).replace(/-(county|parish|borough|city-and-borough|census-area|municipality)$/, "");
-  const pathCounty = countyKey.split("/")[1] ?? "";
-  return adminSlug === pathCounty || (county !== null && slugify(county.name).startsWith(adminSlug));
+  const adminSlug = withoutSuffix(slugify(admin));
+  if (county !== null) return withoutSuffix(slugify(county.name)) === adminSlug;
+  return withoutSuffix(countyKey.split("/")[1] ?? "") === adminSlug;
+}
+
+/** The registrar's parcel number, also when it carries a five-digit county FIPS prefix ("06037-018-007"). */
+function registrarApns(propertyId: string): string[] {
+  const unprefixed = /^\d{5}-(.+)$/.exec(propertyId)?.[1];
+  return unprefixed ? [normalizeApn(propertyId), normalizeApn(unprefixed)] : [normalizeApn(propertyId)];
 }
 
 function toOnFabrica(token: ParcelIndexToken): ParcelOnFabrica {
@@ -130,7 +145,7 @@ export function matchByApn(hit: TypeAheadHit, tokens: readonly ParcelIndexToken[
     const registrar = token.definition?.offchainRegistrar;
     return token.regionCode?.toUpperCase() === state
       && registrar?.propertyId !== undefined && registrar.propertyId !== null
-      && normalizeApn(registrar.propertyId) === apn
+      && registrarApns(registrar.propertyId).includes(apn)
       && sameCounty(registrar.admin, countyKey, county);
   }) ?? null;
 }
@@ -226,7 +241,7 @@ export function resolveCounty(county: string, state: string | undefined): { key:
     return fits.length === 1 && only ? { key: only[0], county: only[1] } : null;
   };
   // An exact name first, so "St. Louis County" is not confused with the city of St. Louis; then without the suffix.
-  return pick((slug) => slug) ?? pick((slug) => slug.replace(/-(county|parish|borough)$/, ""));
+  return pick((slug) => slug) ?? pick(withoutSuffix);
 }
 
 function inState(hit: TypeAheadHit, state: string | undefined): boolean {

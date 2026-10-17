@@ -56,6 +56,15 @@ describe("find_parcel helpers", () => {
     expect(matchByApn(hit, [{ ...token, definition: { offchainRegistrar: { admin: "Kern", propertyId: "0151010" } } }])).toBeNull();
   });
 
+  it("matches a FIPS-prefixed registrar parcel number, and never confuses a county with a same-named city", () => {
+    const stLouisCity = { headline: "1 Main St", context: "St. Louis, MO", apn: "12-345", path: "/us/mo/st-louis/downtown/1", score: 90 };
+    const stLouisCounty = { ...stLouisCity, path: "/us/mo/st-louis-county/clayton/1" };
+    const countyToken = { tokenId: "7", regionCode: "MO", definition: { offchainRegistrar: { admin: "St. Louis", propertyId: "29189-12-345" } } };
+    expect(matchByApn(stLouisCounty, [countyToken])?.tokenId).toBe("7");
+    expect(matchByApn(stLouisCity, [countyToken])).toBeNull();
+    expect(matchByApn(stLouisCity, [{ ...countyToken, definition: { offchainRegistrar: { admin: "St. Louis City", propertyId: "12-345" } } }])?.tokenId).toBe("7");
+  });
+
   it("reads only the point, Regrid id and outline from the parcel lookup", () => {
     const point = parseParcelPoint(HUNT_PARCEL, HUNT_HIT.path);
     expect(point).toMatchObject({ lat: 33.132262, lon: -96.100462, regridId: "f89e-uuid" });
@@ -84,6 +93,8 @@ describe("find_parcel helpers", () => {
     expect(resolveCounty("St. Louis County", "MO")?.county.fips).toBe("29189");
     expect(resolveCounty("St. Louis City", "MO")?.county.fips).toBe("29510");
     expect(resolveCounty("Baltimore County", "MD")?.county.fips).toBe("24005");
+    expect(resolveCounty("Juneau City and Borough", "AK")?.county.fips).toBe("02110");
+    expect(resolveCounty("Anchorage Municipality", "AK")?.county.fips).toBe("02020");
   });
 
   it("limits find_parcel calls per client per minute", () => {
