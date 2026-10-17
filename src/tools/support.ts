@@ -37,15 +37,15 @@ const TX_CONTEXT = /(\/tx\/|\b(?:tx|txn|transaction)[ _-]?(?:hash|id)\b\s*(?:is\
  * Key material never goes into a support message: a 64-hex-character value with or without
  * 0x (a private key) unless it directly follows a transaction-hash label or an /tx/ URL, or a run
  * of 12 or more seed-phrase-shaped words anywhere in the text (lowercase, 3 to 8 letters, no
- * common non-BIP-39 word, mostly distinct), even after a lead-in such as "my seed phrase is:".
+ * common non-BIP-39 word; repeats allowed), even after a lead-in such as "my seed phrase is:".
  * Talking about a lost key is fine.
  */
 export function containsSecret(text: string): boolean {
-  for (const match of text.matchAll(/(?<![0-9a-zA-Z])(?:0x)?[0-9a-fA-F]{64}(?![0-9a-fA-F])/g)) {
+  for (const match of text.matchAll(/(?<![0-9a-zA-Z])(?:0[xX])?[0-9a-fA-F]{64}(?![0-9a-fA-F])/g)) {
     if (!TX_CONTEXT.test(text.slice(Math.max(0, match.index - 40), match.index))) return true;
   }
   let run: string[] = [];
-  const isSeedRun = () => run.length >= 12 && new Set(run).size >= 10;
+  const isSeedRun = () => run.length >= 12;
   for (const raw of text.split(/\s+/)) {
     if (/^\d+[.)]?$/.test(raw)) continue;
     const word = raw.replace(/^[("'\[]+|[.,;:!?)"'\]]+$/g, "").toLowerCase();

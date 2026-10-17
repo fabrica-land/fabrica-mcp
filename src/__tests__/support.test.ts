@@ -21,7 +21,7 @@ describe("contact_support (links and email)", () => {
   });
 
   it("keeps the mailto short enough for mail clients", () => {
-    const result = contactSupport({ summary: "word ".repeat(390) });
+    const result = contactSupport({ summary: "the parcel and the deed ".repeat(80) });
     if ("error" in result) throw new Error(result.error);
     expect(result.mailto.length).toBeLessThanOrEqual(1900);
   });
@@ -42,7 +42,7 @@ describe("contact_support (links and email)", () => {
   });
 
   it("keeps the property link when the summary is cut and refuses a non-numeric token ID", () => {
-    const result = contactSupport({ summary: "word ".repeat(390), tokenId: "123" });
+    const result = contactSupport({ summary: "the parcel and the deed ".repeat(80), tokenId: "123" });
     if ("error" in result) throw new Error(result.error);
     expect(result.mailto.length).toBeLessThanOrEqual(1900);
     expect(decodeURIComponent(result.mailto)).toContain("/property/");
@@ -51,6 +51,8 @@ describe("contact_support (links and email)", () => {
 
   it("catches a capitalized seed phrase and survives malformed Unicode", () => {
     expect(containsSecret("Abandon ability able about above absent absorb abstract absurd abuse access accident")).toBe(true);
+    expect(containsSecret(`key 0X${"AB".repeat(32)}`)).toBe(true);
+    expect(containsSecret(`${"abandon ".repeat(11)}about`)).toBe(true);
     const result = contactSupport({ summary: "A question about my parcel \ud800 listing." });
     expect("mailto" in result).toBe(true);
   });
