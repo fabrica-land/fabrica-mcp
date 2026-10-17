@@ -5,6 +5,7 @@ vi.mock("../clients/graphql.js", () => ({
   getToken: vi.fn(),
 }));
 
+import { getToken } from "../clients/graphql.js";
 import { explainConfidenceScore } from "../tools/scoring.js";
 
 describe("explainConfidenceScore", () => {
@@ -55,7 +56,7 @@ describe("explainConfidenceScore", () => {
     const r = result as Record<string, unknown>;
     const breakdown = r.breakdown as Record<string, { value: number; label: string }>;
     expect(breakdown.recoveryStatus.value).toBe(1);
-    expect(breakdown.recoveryStatus.label).toContain("Voided");
+    expect(breakdown.recoveryStatus.label).toBe("Void");
     const warnings = r.warnings as string[];
     expect(warnings).toBeDefined();
   });
@@ -68,6 +69,43 @@ describe("explainConfidenceScore", () => {
     const warnings = r.warnings as string[];
     expect(warnings).toBeDefined();
     expect(warnings.some(w => w.includes("Title verification"))).toBe(true);
+  });
+
+  it("labels recovery digits 4, 5 and 6 as the API defines them", async () => {
+    const labels = await Promise.all([43242, 53242, 63242].map(async score => {
+      const r = await explainConfidenceScore({ score }) as Record<string, unknown>;
+      return (r.breakdown as Record<string, { label: string }>).recoveryStatus.label;
+    }));
+    expect(labels).toEqual(["Tax sale or foreclosure", "Reported stolen", "Recovery pending"]);
+  });
+
+  it("labels digits as category values, never as check counts", async () => {
+    const r = await explainConfidenceScore({ score: 73242 }) as Record<string, unknown>;
+    const breakdown = r.breakdown as Record<string, { label: string }>;
+    expect(breakdown.pastTitleAndLoad.label).toBe("3 (highest is 5)");
+    expect(breakdown.basicValidation.label).toBe("2, the highest value");
+    expect(JSON.stringify(r.breakdown)).not.toMatch(/checks pass|%/i);
+    expect(r.percentage).toBeUndefined();
+    expect(r.howToRead).toContain("not a title search or title insurance");
+  });
+
+  it("counts the individual checks when looking up a token", async () => {
+    vi.mocked(getToken).mockResolvedValueOnce({
+      tokenId: "1",
+      name: "Test Lot",
+      vanityName: null,
+      score: 73242,
+      scoringCheckResults: [
+        { checkName: "a", group: "pastTitleAndLoad", title: "A", value: true },
+        { checkName: "b", group: "pastTitleAndLoad", title: "B", value: false },
+        { checkName: "c", group: "ownership", title: "C", value: true },
+      ],
+    } as never);
+    const r = await explainConfidenceScore({ tokenId: "1" }) as Record<string, unknown>;
+    expect(r.checksPassed).toEqual({ passed: 2, total: 3 });
+    const breakdown = r.breakdown as Record<string, { checks?: { passed: number; total: number } }>;
+    expect(breakdown.pastTitleAndLoad.checks).toEqual({ passed: 1, total: 2 });
+    expect(breakdown.basicValidation.checks).toBeUndefined();
   });
 
   it("decomposes zero score", async () => {

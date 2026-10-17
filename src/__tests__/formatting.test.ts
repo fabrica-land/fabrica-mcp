@@ -96,7 +96,7 @@ describe("getProperty formatting", () => {
     expect(valuation.estimatedValue).toBe("$396,647");
   });
 
-  it("preserves confidence score as raw integer", async () => {
+  it("preserves the numeric encoding of Property checks as a raw integer", async () => {
     vi.mocked(getToken).mockResolvedValueOnce(makeDetailToken());
     const result = await getProperty({ tokenId: "12345" }) as Record<string, unknown>;
     const valuation = result.valuation as Record<string, unknown>;
@@ -107,6 +107,23 @@ describe("getProperty formatting", () => {
     vi.mocked(getToken).mockResolvedValueOnce(makeDetailToken());
     const result = await getProperty({ tokenId: "12345" }) as Record<string, unknown>;
     expect(result.acres).toBe(40.5);
+  });
+
+  it("returns Property checks at the top level with pass counts", async () => {
+    vi.mocked(getToken).mockResolvedValueOnce(makeDetailToken());
+    const result = await getProperty({ tokenId: "12345" }) as Record<string, unknown>;
+    const checks = result.propertyChecks as Record<string, unknown>;
+    expect(checks.encoding).toBe(73242);
+    expect(checks.passed).toBe(1);
+    expect(checks.total).toBe(1);
+    expect(checks.about).toContain("not a title search or title insurance");
+    expect(result.recoveryStatus).toEqual({ value: 7, label: "Normal" });
+  });
+
+  it("warns with the API's recovery label when the status is not Normal", async () => {
+    vi.mocked(getToken).mockResolvedValueOnce(makeDetailToken({ score: 43242 }));
+    const result = await getProperty({ tokenId: "12345" }) as Record<string, unknown>;
+    expect((result.warnings as string[])[0]).toContain("Tax sale or foreclosure");
   });
 
   it("shows a one-line taxes summary", async () => {

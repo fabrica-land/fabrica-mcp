@@ -8,6 +8,7 @@ import { locationLink, stateName } from "../links.js";
 import { propertyStage, describeStage } from "../lifecycle.js";
 import { summarizeFees } from "../fees.js";
 import { loadTaxSignals, taxSummary } from "./tax.js";
+import { countChecks, getRecoveryStatus } from "./scoring.js";
 
 /** USD when the API supplies a USD price; otherwise the native amount and currency, never a guessed "$". */
 function formatOrderPrice(usdPrice: string | null, price: string | null, symbol: string | null): string | null {
@@ -203,18 +204,6 @@ export async function searchProperties(args: Record<string, unknown>) {
   }
 }
 
-function getRecoveryStatus(score: number | null): { value: number; label: string } | null {
-  if (score === null) return null;
-  const digit = Math.floor(score / 10000);
-  const labels: Record<number, string> = {
-    7: "Normal",
-    6: "Under review",
-    5: "Recovery in progress",
-    1: "Voided",
-  };
-  return { value: digit, label: labels[digit] ?? "Unknown" };
-}
-
 /** get_property keeps its response bounded: holders and orders beyond these are counted, not listed. */
 const MAX_HOLDERS = 25;
 const MAX_ORDERS = 20;
@@ -283,7 +272,7 @@ export async function getProperty(args: Record<string, unknown>) {
     const flags = flagsOf(token);
     const warnings: string[] = [];
     if (recovery && recovery.value !== 7) {
-      warnings.push(`Recovery status: ${recovery.label}; the property may be disputed or voided`);
+      warnings.push(`Recovery status: ${recovery.label}: ${recovery.meaning}. Sales and loans are paused until it is Normal.`);
     }
     if (parseInt(token.supplyLiquidating || "0") > 0) {
       warnings.push("Property has supply currently in liquidation");
@@ -292,6 +281,7 @@ export async function getProperty(args: Record<string, unknown>) {
       warnings.push("Property has supply currently in default");
     }
     const tax = await loadTaxSignals(token);
+    const checkResults = token.scoringCheckResults?.map(s => ({ check: s.title, group: s.group, passed: s.value })) ?? [];
     warnings.push(...tax.warnings);
     return {
       ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
@@ -304,7 +294,7 @@ export async function getProperty(args: Record<string, unknown>) {
       lifecycle: lifecycleOf(token, replacedPremintTokenId),
       ...(fees ? { fees } : {}),
       ...(flags.length > 0 ? { flags } : {}),
-      recoveryStatus: recovery,
+      recoveryStatus: recovery ? { value: recovery.value, label: recovery.label } : null,
       ...(warnings.length > 0 ? { warnings } : {}),
       location: {
         address: token.address,
@@ -318,6 +308,12 @@ export async function getProperty(args: Record<string, unknown>) {
         coordinates: token.coordinates ? { lat: token.coordinates.lat, lon: token.coordinates.lon } : null,
       },
       acres: token.acres ? parseFloat(token.acres) : null,
+      propertyChecks: {
+        ...countChecks(checkResults),
+        encoding: token.score,
+        results: checkResults,
+        about: "Property checks are a starting point for your own research, not a title search or title insurance. encoding is their 5-digit numeric encoding (explain_confidence_score decodes it).",
+      },
       taxes: {
         status: tax.status,
         summary: taxSummary(tax.status, tax.checkedAt, token.isPremint, tax),
@@ -336,12 +332,10 @@ export async function getProperty(args: Record<string, unknown>) {
       valuation: {
         ...estimateFields(token.estimatedValue, token.pricing),
         displayValuation: formatUsd(token.cardDisplayValuation) ?? token.cardDisplayValuation,
+        // Deprecated aliases of propertyChecks.encoding and propertyChecks.results, kept for one
+        // release; the valuation's own confidence (pricing[].confidence) is a different signal.
         confidenceScore: token.score,
-        scoreBreakdown: token.scoringCheckResults.map(s => ({
-          check: s.title,
-          group: s.group,
-          passed: s.value,
-        })),
+        scoreBreakdown: checkResults,
         pricing: token.pricing.map(p => ({
           source: p.source,
           value: formatUsd(p.value),

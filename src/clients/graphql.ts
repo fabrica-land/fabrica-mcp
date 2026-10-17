@@ -21,11 +21,11 @@ import { LOAN_PAGE_BUDGET, LOAN_PAGE_SIZE } from "./budgets.js";
 const DEFAULT_API_URL = "https://api.fabrica.land/graphql";
 
 /**
- * Default minimum confidence score for public listings and protocol stats. Matches the
+ * Default minimum numeric encoding of Property checks for public listings and protocol stats. Matches the
  * frontend's marketplace threshold (72032): a normal recovery status plus enough checks
  * passing. The API pairs any `minScore` with a verified-deed requirement, so this default
  * leaves out properties the marketplace would not sell, including ones whose recovery
- * status is not Normal (Void, Stolen, Recovery pending, Distressed).
+ * status is not Normal (Void, Reported stolen, Recovery pending, Tax sale or foreclosure).
  */
 export const DEFAULT_MIN_SCORE = 72032;
 
