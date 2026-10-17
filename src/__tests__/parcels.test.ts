@@ -329,8 +329,8 @@ describe("type-ahead fallback helpers", () => {
   });
 
   it("reads the house number and street, abbreviating suffixes and dropping directions", () => {
-    expect(streetKey("37497 Palo Colorado Road, Carmel, CA")).toEqual({ number: "37497", street: ["palo", "colorado", "rd"] });
-    expect(streetKey("29078 West Stagecoach Lane")).toEqual({ number: "29078", street: ["stagecoach", "ln"] });
+    expect(streetKey("37497 Palo Colorado Road, Carmel, CA")).toEqual({ number: "37497", direction: null, street: ["palo", "colorado", "rd"] });
+    expect(streetKey("29078 West Stagecoach Lane")).toEqual({ number: "29078", direction: "w", street: ["stagecoach", "ln"] });
     expect(streetKey("Somewhere in Hunt")).toBeNull();
   });
 
@@ -340,7 +340,17 @@ describe("type-ahead fallback helpers", () => {
       parcelToken({ tokenId: "2", name: "37709 Palo Colorado Road, Carmel, CA", regionCode: "CA" }),
       parcelToken({ tokenId: "3", name: "37497 Palo Alto Road, Somewhere, CA", regionCode: "CA" }),
     ];
-    expect(matchIndexByQuery("37497 Palo Colorado Rd, Carmel, CA", "CA", tokens).map((t) => t.tokenId)).toEqual(["1"]);
-    expect(matchIndexByQuery("37497 Palo Colorado Rd", "AZ", tokens)).toEqual([]);
+    expect(matchIndexByQuery("37497 Palo Colorado Rd, Carmel, CA", { state: "CA" }, tokens).map((t) => t.tokenId)).toEqual(["1"]);
+    expect(matchIndexByQuery("37497 Palo Colorado Rd", { state: "AZ" }, tokens)).toEqual([]);
+  });
+
+  it("keeps East and West apart, and honours the county", () => {
+    const tokens = [
+      parcelToken({ tokenId: "w", name: "29078 West Stagecoach Lane, Seligman, AZ", regionCode: "AZ", district: "Yavapai County" }),
+      parcelToken({ tokenId: "x", name: "29078 Stagecoach Lane, Elsewhere, AZ", regionCode: "AZ", district: "Mohave County" }),
+    ];
+    expect(matchIndexByQuery("29078 E Stagecoach Ln", { state: "AZ" }, tokens).map((t) => t.tokenId)).toEqual(["x"]);
+    expect(matchIndexByQuery("29078 W Stagecoach Ln", { state: "AZ" }, tokens).map((t) => t.tokenId)).toEqual(["w", "x"]);
+    expect(matchIndexByQuery("29078 W Stagecoach Ln", { state: "AZ", county: "Yavapai" }, tokens).map((t) => t.tokenId)).toEqual(["w"]);
   });
 });

@@ -308,14 +308,21 @@ const STREET_SUFFIXES: Record<string, string> = {
 };
 const DIRECTIONS: Record<string, string> = { north: "n", south: "s", east: "e", west: "w" };
 
-/** "37497 Palo Colorado Road, Carmel, CA" to its house number and street words, abbreviated the usual way. */
-export function streetKey(address: string): { number: string; street: string[] } | null {
+const DIRECTION_LETTERS = new Set(Object.values(DIRECTIONS));
+
+/**
+ * "29078 West Stagecoach Lane, Seligman, AZ" to its house number, its direction ("w", or null) and its
+ * street words, abbreviated the usual way. The direction is kept apart so "W" and "West" compare equal.
+ */
+export function streetKey(address: string): { number: string; direction: string | null; street: string[] } | null {
   const [line = ""] = address.split(",");
   const words = line.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").split(/\s+/).filter(Boolean);
   const [number, ...rest] = words;
   if (!number || !/^\d+[a-z]?$/.test(number) || rest.length === 0) return null;
-  const street = rest.map((word) => STREET_SUFFIXES[word] ?? DIRECTIONS[word] ?? word).filter((word) => !Object.values(DIRECTIONS).includes(word));
-  return street.length > 0 ? { number, street } : null;
+  const normalized = rest.map((word) => STREET_SUFFIXES[word] ?? DIRECTIONS[word] ?? word);
+  const directions = normalized.filter((word) => DIRECTION_LETTERS.has(word));
+  const street = normalized.filter((word) => !DIRECTION_LETTERS.has(word));
+  return street.length > 0 ? { number, direction: directions.join("") || null, street } : null;
 }
 
 /**
@@ -323,15 +330,20 @@ export function streetKey(address: string): { number: string; street: string[] }
  * registrar parcel number is the query, within the state when one is given. Used only when the
  * parcel search is down, so a parcel already on Fabrica still resolves from Fabrica's own records.
  */
-export function matchIndexByQuery(query: string, state: string | undefined, tokens: readonly ParcelIndexToken[]): ParcelIndexToken[] {
+export function matchIndexByQuery(query: string, scope: { state?: string; county?: string }, tokens: readonly ParcelIndexToken[]): ParcelIndexToken[] {
   const wanted = streetKey(query);
   const apn = normalizeApn(query);
+  const county = scope.county ? withoutSuffix(slugify(scope.county)) : null;
   return tokens.filter((token) => {
-    if (state && token.regionCode?.toUpperCase() !== state.toUpperCase()) return false;
+    if (scope.state && token.regionCode?.toUpperCase() !== scope.state.toUpperCase()) return false;
+    const tokenCounty = token.district ?? token.definition?.offchainRegistrar?.admin ?? null;
+    if (county && tokenCounty && withoutSuffix(slugify(tokenCounty)) !== county) return false;
     const propertyId = token.definition?.offchainRegistrar?.propertyId;
     if (apn.length >= 4 && /\d/.test(apn) && propertyId && registrarApns(propertyId, null).includes(apn)) return true;
     const own = streetKey(token.name ?? token.vanityName ?? "");
     if (!wanted || !own || own.number !== wanted.number) return false;
+    // East and West Stagecoach Lane are different streets; a direction given on one side only is not a conflict.
+    if (own.direction && wanted.direction && own.direction !== wanted.direction) return false;
     // Street words must agree as far as both go, so "Palo Colorado Rd" matches "Palo Colorado Road" but not "Palo Alto Rd".
     const shared = Math.min(own.street.length, wanted.street.length);
     return own.street.slice(0, shared).every((word, i) => word === wanted.street[i]);
@@ -358,7 +370,7 @@ const SEARCH_DOWN = "The US parcel search is not answering right now";
 async function indexFallback(query: string, args: FindParcelArgs, failure: string) {
   let matches: ParcelIndexToken[];
   try {
-    matches = matchIndexByQuery(query, args.state, await getParcelIndex());
+    matches = matchIndexByQuery(query, { state: args.state, county: args.county }, await getParcelIndex());
   } catch {
     return { error: `${SEARCH_DOWN} (${failure}), and Fabrica's property records could not be read either. Try again shortly.` };
   }
