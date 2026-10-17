@@ -39,6 +39,10 @@ describe("a wallet the API has never seen is an empty portfolio, not an error", 
     stubApi({ errors: [{ message: 'No user found for "not-an-address"' }], data: null }, 404);
     await expect(getWallet("not-an-address")).resolves.toBeNull();
   });
+  it("propagates a response that carries another error next to No user found", async () => {
+    stubApi({ errors: [{ message: 'No user found for "0xabc"' }, { message: "Cannot query field tokens on WalletModel" }], data: null }, 400);
+    await expect(getWallet("0xabc")).rejects.toBeInstanceOf(FabricaApiError);
+  });
 });
 
 describe("explain_confidence_score rejects numbers that are not an encoding", () => {
@@ -67,6 +71,9 @@ describe("state names and slugs in the forms agents send", () => {
   it("accepts a fabrica.land URL or a leading slash as the slug", () => {
     expect(normalizeSlug("https://fabrica.land/us/nevada/elko-county/elko/apn-00633b008")).toBe("us/nevada/elko-county/elko/apn-00633b008");
     expect(normalizeSlug("https://testnets.fabrica.land/us/nevada/x/")).toBe("us/nevada/x");
+    expect(normalizeSlug("https://fabrica.land/us/nevada/x?utm_source=share#photos")).toBe("us/nevada/x");
+    expect(normalizeSlug("us/nevada/x?ref=1")).toBe("us/nevada/x");
+    expect(normalizeSlug("https://evilfabrica.land/us/nevada/x")).toBe("https://evilfabrica.land/us/nevada/x");
     expect(normalizeSlug("/us/nevada/x")).toBe("us/nevada/x");
     expect(normalizeSlug("us/nevada/x")).toBe("us/nevada/x");
     expect(normalizeSlug("   ")).toBeUndefined();

@@ -35,13 +35,29 @@ export function stateCode(nameOrCode: string | null | undefined): string | null 
   return code ?? null;
 }
 
+/** fabrica.land and its subdomains (testnets.fabrica.land), and nothing that merely ends in those letters. */
+const FABRICA_HOST = /^(?:[a-z0-9-]+\.)*fabrica\.land$/i;
+
+/** The path of a URL on Fabrica's own host; null for anything else, a URL elsewhere included. */
+function fabricaPath(value: string): string | null {
+  if (!/^https?:\/\//i.test(value)) return null;
+  try {
+    const url = new URL(value);
+    return FABRICA_HOST.test(url.hostname) ? url.pathname : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * The API's property slug ("us/nevada/elko-county/elko/apn-00633b008") from however an agent
- * passes it: the full fabrica.land URL, a leading or trailing slash, or the slug itself.
+ * passes it: the full fabrica.land URL (query string and fragment dropped), a leading or
+ * trailing slash, or the slug itself. A URL on another host is passed through as given.
  */
 export function normalizeSlug(slug: string | undefined): string | undefined {
   if (slug === undefined) return undefined;
-  const path = slug.trim().replace(/^https?:\/\/[^/]*fabrica\.land\//i, "").replace(/^\/+|\/+$/g, "");
+  const trimmed = slug.trim();
+  const path = (fabricaPath(trimmed) ?? trimmed.replace(/[?#].*$/, "")).replace(/^\/+|\/+$/g, "");
   return path.length > 0 ? path : undefined;
 }
 

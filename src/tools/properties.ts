@@ -164,6 +164,9 @@ export async function searchProperties(args: Record<string, unknown>) {
     const link = (region || county) && linkState && (!county || counties.size <= 1)
       ? { locationLink: locationLink({ state: linkState, county: linkCounty }) }
       : {};
+    const unknownRegion = region && !regionCode
+      ? `No properties found: "${region}" is not a US state code or state name. Pass a two-letter code such as "NV" or a name such as "Nevada".`
+      : null;
     if (groupBy) {
       const groups = groupTokens(tokens, groupBy);
       const groupPage = groups.slice(offset, offset + limit);
@@ -175,7 +178,8 @@ export async function searchProperties(args: Record<string, unknown>) {
         ...link,
         groupBy,
         totalGroups: groups.length,
-        showing: groupPage.length > 0 ? `${offset + 1}-${offset + groupPage.length} of ${groups.length}` : `none: offset ${offset} is past the last of ${groups.length} groups`,
+        showing: groupPage.length > 0 ? `${offset + 1}-${offset + groupPage.length} of ${groups.length}` : unknownRegion ? "none" : `none: offset ${offset} is past the last of ${groups.length} groups`,
+        ...(unknownRegion ? { message: unknownRegion } : {}),
         groups: groupPage,
         ...(ungrouped > 0 ? { ungroupedCount: ungrouped, ungroupedNote: `${ungrouped} matching ${ungrouped === 1 ? "property has" : "properties have"} no ${groupBy === "county" ? "state or county" : "state"} in the record and ${ungrouped === 1 ? "is" : "are"} not in any group.` } : {}),
       };
@@ -190,9 +194,7 @@ export async function searchProperties(args: Record<string, unknown>) {
         properties: [],
         message: total > 0
           ? `No more results: ${total} properties match, and offset ${offset} is past the end.`
-          : region && !regionCode
-            ? `No properties found: "${region}" is not a US state code or state name. Pass a two-letter code such as "NV" or a name such as "Nevada".`
-            : "No properties found matching your filters.",
+          : unknownRegion ?? "No properties found matching your filters.",
       };
     }
     return {

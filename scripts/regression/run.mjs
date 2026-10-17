@@ -36,14 +36,16 @@ async function call(tool, args) {
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: tool, arguments: args } }),
     signal: AbortSignal.timeout(90_000),
   });
-  const body = await response.json();
-  const content = body.result?.content ?? [];
+  // A gateway error page or a body with neither a JSON-RPC result nor an error means no tool ran: a failure, never a pass.
+  const body = response.ok ? await response.json().catch(() => null) : null;
+  const outcome = body !== null && typeof body === "object" && (body.result !== undefined || body.error !== undefined);
+  const content = outcome ? body.result?.content ?? [] : [];
   const text = content.filter((c) => c.type === "text").map((c) => c.text).join("\n");
   return {
     ms: Date.now() - started,
-    isError: Boolean(body.error) || Boolean(body.result?.isError),
+    isError: !response.ok || !outcome || Boolean(body.error) || Boolean(body.result?.isError),
     hasImage: content.some((c) => c.type === "image"),
-    text: body.error ? JSON.stringify(body.error) : text,
+    text: !response.ok ? `HTTP ${response.status}` : !outcome ? "no JSON-RPC result or error in the response" : body.error ? JSON.stringify(body.error) : text,
   };
 }
 
@@ -53,7 +55,7 @@ function judge(expect, result) {
   if (expect === "results") {
     try { return !result.isError && JSON.parse(result.text).properties.length > 0; } catch { return false; }
   }
-  if (expect.startsWith("contains:")) return result.text.includes(expect.slice("contains:".length));
+  if (expect.startsWith("contains:")) return !result.isError && result.text.includes(expect.slice("contains:".length));
   if (expect.startsWith("error:")) return result.isError && result.text.includes(expect.slice("error:".length));
   return false;
 }

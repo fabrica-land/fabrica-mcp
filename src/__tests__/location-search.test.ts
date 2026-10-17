@@ -106,6 +106,13 @@ describe("grouped search review fixes", () => {
     expect(result.groups).toHaveLength(1);
   });
 
+  it("says when the region is not a US state in a grouped search too", async () => {
+    const result = await searchProperties({ region: "ZZ", groupBy: "county" }) as Record<string, unknown>;
+    expect(result.totalGroups).toBe(0);
+    expect(result.showing).toBe("none");
+    expect(result.message).toContain('"ZZ" is not a US state code or state name');
+  });
+
   it("leaves tokens with no county out of county groups and counts them", async () => {
     vi.mocked(getTokens).mockResolvedValueOnce([...tokens, noCounty] as never);
     const result = await searchProperties({ region: "CO", groupBy: "county" }) as { groups: Array<Record<string, unknown>>; ungroupedCount?: number };

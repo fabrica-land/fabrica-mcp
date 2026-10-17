@@ -497,8 +497,9 @@ export function propertyLookupError(error: unknown, lookup: { tokenId?: string; 
 }
 
 /** The API answers `wallet(...)` for an address it has never seen with this GraphQL error, not with null. */
+/** The API's answer for a wallet it has no record of, and nothing else: any other error alongside it propagates. */
 export function isWalletNotFound(error: unknown): boolean {
-  return error instanceof FabricaApiError && error.graphQLErrors.some(m => m.includes("No user found"));
+  return error instanceof FabricaApiError && error.graphQLErrors.length > 0 && error.graphQLErrors.every(m => m.includes("No user found"));
 }
 
 // --- Trust documents query ---
