@@ -44,6 +44,8 @@ ui/
     documents.ts      # whole documents reassembled from the index, for resources
   resources/
     knowledge.ts      # fabrica://docs, fabrica://help, fabrica://legal, fabrica://property/{tokenId}/trust-agreement, fabrica://network
+  # scripts/build-knowledge.mjs builds the index; scripts/knowledge-diff.mjs and
+  # .github/workflows/refresh-knowledge.yml open the daily refresh pull request
   clients/
     graphql.ts        # Fabrica GraphQL API client (primary data source)
     subgraph.ts       # Lending pool subgraph client (dynamic pool discovery)
