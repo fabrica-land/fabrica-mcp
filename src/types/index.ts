@@ -157,6 +157,8 @@ export interface MarketplaceOrderModel {
   makerAddress: string;
   startTime: string;
   endTime: string | null;
+  /** Set on an encumbered order; buyable is false when the loan blocks a purchase. */
+  encumbrance?: { buyable: boolean } | null;
 }
 
 export interface ScoringCheckResult {

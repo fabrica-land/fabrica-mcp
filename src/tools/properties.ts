@@ -9,6 +9,7 @@ import { propertyStage, describeStage } from "../lifecycle.js";
 import { summarizeFees } from "../fees.js";
 import { loadTaxSignals, taxSummary } from "./tax.js";
 import { countChecks, getRecoveryStatus } from "./scoring.js";
+import { isLiveOrder } from "./marketplace.js";
 
 /** USD when the API supplies a USD price; otherwise the native amount and currency, never a guessed "$". */
 function formatOrderPrice(usdPrice: string | null, price: string | null, symbol: string | null): string | null {
@@ -261,8 +262,12 @@ export async function getProperty(args: Record<string, unknown>) {
     if (!token) {
       return { error: `No property found with ${tokenId ? `token ID ${tokenId}` : `slug ${slug}`}` };
     }
-    const activeListings = token.marketplaceListings?.filter(l => l.status === "active") ?? [];
-    const activeBids = token.marketplaceBids?.filter(b => b.status === "active") ?? [];
+    // Live as get_order_book counts it: active, encumbered or pending, and not past its end time.
+    const now = Date.now();
+    // Buyable listings first (stable otherwise), so the cap never hides the one a buyer can act on.
+    const activeListings = (token.marketplaceListings?.filter(l => isLiveOrder(l, now)) ?? [])
+      .sort((a, b) => Number(a.encumbrance?.buyable === false) - Number(b.encumbrance?.buyable === false));
+    const activeBids = token.marketplaceBids?.filter(b => isLiveOrder(b, now)) ?? [];
     const activeLoans = token.loans?.filter(l => l.loanStatus === "Active") ?? [];
     const holders = capList(token.balances ?? [], MAX_HOLDERS);
     const listings = capList(activeListings, MAX_ORDERS);
@@ -338,6 +343,8 @@ export async function getProperty(args: Record<string, unknown>) {
         scoreBreakdown: checkResults,
         pricing: token.pricing.map(p => ({
           source: p.source,
+          scope: p.scope,
+          asOf: p.timestamp,
           value: formatUsd(p.value),
           currency: p.currency,
           confidence: p.confidence,
@@ -373,12 +380,16 @@ export async function getProperty(args: Record<string, unknown>) {
         } : null,
       },
       marketplace: {
+        listingCount: listings.total,
+        offerCount: bids.total,
         ...(listings.truncated || bids.truncated ? { note: `Up to ${MAX_ORDERS} listings and ${MAX_ORDERS} offers are shown; ${listings.total} active listings and ${bids.total} active offers in all.` } : {}),
         listings: listings.items.map(l => ({
           price: formatOrderPrice(l.usdPrice, l.price, l.symbol),
           symbol: l.symbol,
           expiresAt: l.endTime,
           seller: shortenAddress(l.makerAddress),
+          // An encumbered listing the loan blocks still shows, but cannot be bought now.
+          buyable: l.encumbrance?.buyable !== false,
         })),
         bids: bids.items.map(b => ({
           price: formatOrderPrice(b.usdPrice, b.price, b.symbol),

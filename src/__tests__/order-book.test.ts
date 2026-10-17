@@ -18,7 +18,7 @@ vi.mock("../clients/graphql.js", () => {
 });
 
 import { FabricaApiError, getOrderBook as fetchOrderBook, getPremintSuccessor } from "../clients/graphql.js";
-import { getOrderBook, formatTokenAmount, relativeExpiry } from "../tools/marketplace.js";
+import { getOrderBook, formatTokenAmount, relativeExpiry, hasEnded, isLiveOrder } from "../tools/marketplace.js";
 
 const NOW = Date.parse("2026-10-17T00:00:00Z");
 
@@ -291,5 +291,25 @@ describe("get_order_book", () => {
     const text = JSON.stringify(await getOrderBook({ tokenId: "1" }));
     expect(text).not.toContain("—");
     expect(text).not.toMatch(/\b(fair|good deal|bargain|overpriced|underpriced|instantly)\b/i);
+  });
+});
+
+describe("hasEnded", () => {
+  const now = Date.parse("2026-10-17T00:00:00Z");
+  it("is true only for a known end time in the past", () => {
+    expect(hasEnded("2026-10-16T00:00:00Z", now)).toBe(true);
+    expect(hasEnded("2026-10-18T00:00:00Z", now)).toBe(false);
+    expect(hasEnded(null, now)).toBe(false);
+    expect(hasEnded("not a date", now)).toBe(false);
+  });
+});
+
+describe("isLiveOrder", () => {
+  const now = Date.parse("2026-10-17T00:00:00Z");
+  it("counts active, encumbered and pending orders that have not ended", () => {
+    expect(isLiveOrder({ status: "encumbered", endTime: null }, now)).toBe(true);
+    expect(isLiveOrder({ status: "pending", endTime: "2026-10-18T00:00:00Z" }, now)).toBe(true);
+    expect(isLiveOrder({ status: "active", endTime: "2026-10-16T00:00:00Z" }, now)).toBe(false);
+    expect(isLiveOrder({ status: "filled", endTime: null }, now)).toBe(false);
   });
 });

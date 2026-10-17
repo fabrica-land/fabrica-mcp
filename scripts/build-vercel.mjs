@@ -2,7 +2,7 @@
 // one self-contained function at /mcp plus a landing page at /. The network is
 // fixed per Vercel project by FABRICA_NETWORK (read at runtime by the function,
 // and at build time for the landing page copy).
-import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { build } from "tsup";
 
 const OUTPUT = ".vercel/output";
@@ -60,5 +60,19 @@ document.getElementById("cmd").textContent = "claude mcp add --transport http ${
 `);
 // The Fabrica skill file (Agent Skills format), for agents that never connect to the server.
 await copyFile("skills/fabrica/SKILL.md", `${OUTPUT}/static/skill.md`);
-await writeFile(`${OUTPUT}/config.json`, JSON.stringify({ version: 3 }, null, 2));
+// Brand font for the property card (ui/property-card/index.html), with its licence. The card
+// loads it cross-origin from the host's sandboxed frame, so it needs CORS.
+await mkdir(`${OUTPUT}/static/fonts`, { recursive: true });
+for (const file of await readdir("ui/fonts")) await copyFile(`ui/fonts/${file}`, `${OUTPUT}/static/fonts/${file}`);
+await writeFile(`${OUTPUT}/config.json`, JSON.stringify({
+  version: 3,
+  routes: [
+    {
+      src: "^/fonts/(.*)$",
+      headers: { "Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=31536000, immutable" },
+      continue: true,
+    },
+    { handle: "filesystem" },
+  ],
+}, null, 2));
 console.log(`Built Vercel output for ${networkLabel} in ${OUTPUT}`);

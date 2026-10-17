@@ -29,7 +29,10 @@ src/
 skills/fabrica/SKILL.md # Agent Skills file, served at /skill.md by scripts/build-vercel.mjs; keep it in step with the tools
 ui/
   property-card/      # the MCP App view (index.html template + app.ts), bundled with the
-                      # MCP Apps SDK into one self-contained HTML string (no CDN scripts)
+                      # MCP Apps SDK into one self-contained HTML string (no CDN scripts).
+                      # view.ts: layout from the host context (compact under 480 px or on a
+                      # phone, regular otherwise), hover, safe areas, fact lines; unit tested
+  fonts/              # Open Sauce Two (OFL) subset, served at /fonts by the hosted server
   tools/
     properties.ts     # search_properties, get_property, get_property_map
     lending.ts        # get_lending_market
