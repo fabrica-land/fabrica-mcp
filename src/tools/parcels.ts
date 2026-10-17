@@ -359,7 +359,9 @@ export function matchIndexByQuery(query: string, scope: { state?: string; county
     const tokenCounty = token.district ?? token.definition?.offchainRegistrar?.admin ?? null;
     if (county && tokenCounty && withoutSuffix(slugify(tokenCounty)) !== county) return false;
     const propertyId = token.definition?.offchainRegistrar?.propertyId;
-    if (apn.length >= 4 && /\d/.test(apn) && propertyId && registrarApns(propertyId, null).includes(apn)) return true;
+    // The registrar admin is the county FIPS, so "06037-018-007" also answers to "018-007" in its own county.
+    const fips = token.definition?.offchainRegistrar?.admin ?? null;
+    if (apn.length >= 4 && /\d/.test(apn) && propertyId && registrarApns(propertyId, fips && /^\d{5}$/.test(fips) ? fips : null).includes(apn)) return true;
     const own = streetKey(token.name ?? token.vanityName ?? "");
     if (!wanted || !own || own.number !== wanted.number) return false;
     // East and West Stagecoach Lane are different streets; a direction given on one side only is not a conflict.
@@ -410,24 +412,16 @@ async function indexFallback(query: string, args: FindParcelArgs, failure: strin
     return { error: `${SEARCH_DOWN} (${failure}), and Fabrica's property records could not be read either. Try again shortly.` };
   }
   if (matches.length === 0) {
-    return { error: `${SEARCH_DOWN} (${failure}). No property on Fabrica matches this address or parcel number, so it is probably not on Fabrica yet; try again shortly for the full search and the on-ramp link.` };
+    return { error: `${SEARCH_DOWN} (${failure}). No property in Fabrica's own records has this name or parcel number. That does not confirm the parcel is not on Fabrica; try again shortly for the full search and the on-ramp link.` };
   }
-  const source = "matched against Fabrica's own property records (the property name or its registrar parcel number), not the US parcel search; a name match is not a parcel-boundary check";
-  if (matches.length === 1 && matches[0]) {
-    return {
-      query,
-      match: "single",
-      matchSource: "fabrica-index",
-      parcel: indexCandidate(matches[0]),
-      note: `${SEARCH_DOWN} (${failure}), so this was ${source}. This parcel is on Fabrica; get_property with the tokenId returns its record.`,
-    };
-  }
+  // Fabrica's records cannot see parcels that are not on Fabrica (a repeated APN, a neighbour with a similar
+  // name), so a match here is a lead to confirm, never a parcel identity.
   return {
     query,
-    match: "ambiguous",
+    match: "unconfirmed",
     matchSource: "fabrica-index",
     candidates: matches.slice(0, MAX_CANDIDATES).map(indexCandidate),
-    note: `${SEARCH_DOWN} (${failure}), so these were ${source}. Adding the state narrows them.`,
+    note: `${SEARCH_DOWN} (${failure}), so ${matches.length === 1 ? "this property was" : "these properties were"} matched against Fabrica's own records (the property name or its registrar parcel number), not the US parcel search. A name or parcel-number match is not a parcel-boundary check: say it is likely, not confirmed. get_property with the tokenId returns the record; try find_parcel again shortly to confirm.`,
   };
 }
 

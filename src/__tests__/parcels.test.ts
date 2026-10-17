@@ -305,17 +305,18 @@ describe("findParcel", () => {
     fetchMock.mockResolvedValueOnce(respond({ message: "Error fetching type-ahead result from Regrid" }, 502));
     const result = await findParcel({ query: "1707 Jones Street, San Francisco, CA", state: "CA" });
     expect(result).toMatchObject({
-      match: "single",
+      match: "unconfirmed",
       matchSource: "fabrica-index",
-      parcel: { apn: "015-1010", state: "CA", regridPath: null, onFabrica: { tokenId: "4737315677965897536" } },
+      candidates: [{ apn: "015-1010", state: "CA", regridPath: null, onFabrica: { tokenId: "4737315677965897536" } }],
       note: expect.stringContaining("HTTP 502"),
     });
+    expect(result).toMatchObject({ note: expect.stringContaining("not confirmed") });
   });
 
   it("falls back by parcel number too, and never across states", async () => {
     fetchMock.mockResolvedValue(respond({ message: "unavailable" }, 502));
-    expect(await findParcel({ query: "015-1010", state: "CA" })).toMatchObject({ matchSource: "fabrica-index", parcel: { onFabrica: { tokenId: "4737315677965897536" } } });
-    expect(await findParcel({ query: "1707 Jones St", state: "NV" })).toMatchObject({ error: expect.stringContaining("probably not on Fabrica") });
+    expect(await findParcel({ query: "015-1010", state: "CA" })).toMatchObject({ match: "unconfirmed", candidates: [{ onFabrica: { tokenId: "4737315677965897536" } }] });
+    expect(await findParcel({ query: "1707 Jones St", state: "NV" })).toMatchObject({ error: expect.stringContaining("does not confirm") });
   });
 
   it("rejects a county it cannot place", async () => {
@@ -363,6 +364,12 @@ describe("type-ahead fallback helpers", () => {
     expect(matchIndexByQuery("123 Main St, Reno, NV", {}, tokens)).toEqual([]);
     expect(matchIndexByQuery("123 Main St, Reno, TX", {}, tokens)).toEqual([]);
     expect(matchIndexByQuery("123 Main St, Austin, Texas", {}, tokens).map((t) => t.tokenId)).toEqual(["tx"]);
+  });
+
+  it("matches a registrar APN with or without its own county FIPS prefix", () => {
+    const tokens = [parcelToken({ tokenId: "la", name: "1 Elm St, Los Angeles, CA", regionCode: "CA", definition: { offchainRegistrar: { admin: "06037", propertyId: "06037-018-007" } } })];
+    expect(matchIndexByQuery("018-007", {}, tokens).map((t) => t.tokenId)).toEqual(["la"]);
+    expect(matchIndexByQuery("06037-018-007", {}, tokens).map((t) => t.tokenId)).toEqual(["la"]);
   });
 
   it("needs the whole street, with or without its suffix", () => {
