@@ -1,14 +1,16 @@
 {
   "name": "@fabrica-land/mcp",
   "version": "0.1.0",
-  "description": "MCP server for AI agents to explore tokenized real property data on the Fabrica protocol",
+  "description": "MCP server for AI agents to explore tokenized real property on the Fabrica protocol",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
     "fabrica-mcp": "./dist/index.js"
   },
   "files": [
-    "dist/"
+    "dist/",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build:ui": "node scripts/build-ui.mjs",
@@ -27,24 +29,38 @@
     "test:watch": "vitest",
     "schema:refresh": "node scripts/refresh-api-schema.mjs",
     "knowledge:build": "node scripts/build-knowledge.mjs",
-    "knowledge:check": "node scripts/build-knowledge.mjs --check"
+    "knowledge:check": "node scripts/build-knowledge.mjs --check",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
   "keywords": [
     "mcp",
+    "model-context-protocol",
     "fabrica",
     "real-estate",
+    "land",
+    "property",
+    "rwa",
     "tokenization",
-    "ai",
     "ethereum",
-    "nft"
+    "nft",
+    "ai-agents"
   ],
   "author": "Fabrica",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fabrica-land/fabrica-mcp.git"
+  },
+  "homepage": "https://github.com/fabrica-land/fabrica-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/fabrica-land/fabrica-mcp/issues"
+  },
   "dependencies": {
     "@modelcontextprotocol/ext-apps": "^1.7.5",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "graphql": "^16.13.2",
-    "graphql-request": "^7.4.0"
+    "graphql-request": "^7.4.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
@@ -55,5 +71,8 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

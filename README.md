@@ -42,21 +42,12 @@ Any other client that supports remote MCP servers (Streamable HTTP) works the sa
 
 ### Run locally (stdio)
 
-Clone and build:
-
-```bash
-git clone https://github.com/fabrica-land/fabrica-mcp.git
-cd fabrica-mcp
-npm install
-npm run build
-```
-
-Then configure your MCP client to use the built server:
+The hosted URL is the simplest path. To run the server on your own machine instead, use the npm package `@fabrica-land/mcp` (Node 20 or later):
 
 **Claude Code:**
 
 ```bash
-claude mcp add fabrica -- node /absolute/path/to/fabrica-mcp/dist/index.js
+claude mcp add fabrica -- npx -y @fabrica-land/mcp
 ```
 
 **Claude Desktop** (`claude_desktop_config.json`):
@@ -65,14 +56,24 @@ claude mcp add fabrica -- node /absolute/path/to/fabrica-mcp/dist/index.js
 {
   "mcpServers": {
     "fabrica": {
-      "command": "node",
-      "args": ["/absolute/path/to/fabrica-mcp/dist/index.js"]
+      "command": "npx",
+      "args": ["-y", "@fabrica-land/mcp"]
     }
   }
 }
 ```
 
-Replace `/absolute/path/to/fabrica-mcp` with the actual path where you cloned the repo.
+Set `FABRICA_NETWORK=sepolia` in the server's environment for the testnet.
+
+**From source:**
+
+```bash
+git clone https://github.com/fabrica-land/fabrica-mcp.git
+cd fabrica-mcp
+npm install
+npm run build
+claude mcp add fabrica -- node /absolute/path/to/fabrica-mcp/dist/index.js
+```
 
 ## Available Tools
 
