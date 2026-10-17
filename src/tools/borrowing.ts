@@ -2,13 +2,16 @@ import { getToken, propertyLookupError } from "../clients/graphql.js";
 import { LENDING_POOL_NAME, describeAppraisalBlock, formatLoanProvider, formatUsdcCeiling } from "../labels.js";
 import { estimateFields, formatDurationDays, formatRawTokenAmount, formatTokenAmount, formatUnixTime, shortenAddress } from "../format.js";
 import { describePoolOracle, zeroCapacityReasons } from "./valuation.js";
+import { type ArgsOf, propertyRefInputs } from "./inputs.js";
 
 /** Pool loan amounts are raw USDC units (6 decimals). */
 const POOL_CURRENCY_DECIMALS = 6;
 
-export async function getBorrowQuote(args: Record<string, unknown>) {
-  const tokenId = args.tokenId as string | undefined;
-  const slug = args.slug as string | undefined;
+export const getBorrowQuoteInput = propertyRefInputs;
+export type GetBorrowQuoteArgs = ArgsOf<typeof getBorrowQuoteInput>;
+
+export async function getBorrowQuote(args: GetBorrowQuoteArgs) {
+  const { tokenId, slug } = args;
   if (!tokenId && !slug) {
     return { error: "Either tokenId or slug is required" };
   }

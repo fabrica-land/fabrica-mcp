@@ -1,5 +1,5 @@
 import { getTokens, getToken, getCountyBounds, getPremintSuccessor, isTokenNotFound, DEFAULT_MIN_SCORE, filterSpamTokens, propertyLookupError } from "../clients/graphql.js";
-import type { TokenModel } from "../types/index.js";
+import type { TokenListItem, TokenModel } from "../types/index.js";
 import { NETWORK_LABEL, MAINNET_WARNING, IS_MAINNET, CONTRACTS } from "../config.js";
 import { LENDING_POOL_NAME, formatActivityAmount, formatActivitySource, formatLoanProvider, formatUsdcCeiling } from "../labels.js";
 import { propertyPhotos, propertyMapImage, toGatewayUrl } from "./media.js";
@@ -10,6 +10,8 @@ import { summarizeFees } from "../fees.js";
 import { loadTaxSignals, taxSummary } from "./tax.js";
 import { countChecks, getRecoveryStatus } from "./scoring.js";
 import { isLiveOrder } from "./marketplace.js";
+import { z } from "zod";
+import { type ArgsOf, propertyRefInputs } from "./inputs.js";
 
 /** USD when the API supplies a USD price; otherwise the native amount and currency, never a guessed "$". */
 function formatOrderPrice(usdPrice: string | null, price: string | null, symbol: string | null): string | null {
@@ -18,7 +20,7 @@ function formatOrderPrice(usdPrice: string | null, price: string | null, symbol:
   return price ? `${price} ${symbol ?? ""}`.trim() : null;
 }
 
-function tokenToSummary(token: TokenModel) {
+function tokenToSummary(token: TokenListItem) {
   const hasLoan = parseInt(token.supplyUnderLoan || "0") > 0;
   return {
     tokenId: token.tokenId,
@@ -63,7 +65,7 @@ function mostCommon(values: ReadonlyArray<string | null | undefined>): string | 
 export type GroupBy = "state" | "county";
 
 /** The state or state|county a token groups under; null when the record lacks that location. */
-function groupKey(t: TokenModel, groupBy: GroupBy): string | null {
+function groupKey(t: TokenListItem, groupBy: GroupBy): string | null {
   const state = t.regionCode?.trim().toUpperCase() ?? "";
   if (!state) return null;
   if (groupBy === "state") return state;
@@ -72,21 +74,13 @@ function groupKey(t: TokenModel, groupBy: GroupBy): string | null {
 }
 
 /** Tokens a grouping leaves out because the API gives them no state (or no county, by county). */
-export function ungroupedCount(tokens: ReadonlyArray<TokenModel>, groupBy: GroupBy): number {
+export function ungroupedCount(tokens: ReadonlyArray<TokenListItem>, groupBy: GroupBy): number {
   return tokens.filter(t => groupKey(t, groupBy) === null).length;
 }
 
-function optionalString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim() ? value : undefined;
-}
-
-function optionalGroupBy(value: unknown): GroupBy | undefined {
-  return value === "state" || value === "county" ? value : undefined;
-}
-
 /** One row per state or county: counts, acres and the fabrica.land location page. */
-export function groupTokens(tokens: ReadonlyArray<TokenModel>, groupBy: GroupBy) {
-  const groups = new Map<string, TokenModel[]>();
+export function groupTokens(tokens: ReadonlyArray<TokenListItem>, groupBy: GroupBy) {
+  const groups = new Map<string, TokenListItem[]>();
   for (const t of tokens) {
     // A record with no state (or no county, by county) is not a location; ungroupedCount reports it.
     const key = groupKey(t, groupBy);
@@ -110,18 +104,28 @@ export function groupTokens(tokens: ReadonlyArray<TokenModel>, groupBy: GroupBy)
   }).sort((a, b) => b.properties - a.properties || String(a.county ?? a.state).localeCompare(String(b.county ?? b.state)));
 }
 
-export async function searchProperties(args: Record<string, unknown>) {
-  const region = args.region as string | undefined;
-  const county = optionalString(args.county);
-  const groupBy = optionalGroupBy(args.groupBy);
-  const minAcres = args.minAcres as number | undefined;
-  const maxAcres = args.maxAcres as number | undefined;
-  const minScore = args.minScore as number | undefined;
-  const hasListings = args.hasListings as boolean | undefined;
-  const hasLoans = args.hasLoans as boolean | undefined;
-  const ownedBy = args.ownedBy as string | undefined;
-  const limit = Math.min(Math.max(Math.trunc((args.limit as number | undefined) ?? 20), 1), 100);
-  const offset = Math.max(Math.trunc((args.offset as number | undefined) ?? 0), 0);
+export const searchPropertiesInput = {
+  region: z.string().optional().describe("US state code (e.g. 'TX', 'CA', 'NV')"),
+  county: z.string().optional().describe("County name, case-insensitive, the 'County' suffix optional (e.g. 'Costilla' or 'Mohave County'). Combine with region when the name exists in more than one state."),
+  groupBy: z.enum(["state", "county"]).optional().describe("Return one row per state or county (property count, count for sale, total acres, location page link) instead of property rows. limit and offset page through the groups."),
+  minAcres: z.number().min(0).optional().describe("Minimum parcel size in acres"),
+  maxAcres: z.number().min(0).optional().describe("Maximum parcel size in acres"),
+  minScore: z.number().int().min(0).optional().describe("Minimum Property checks number: the 5-digit numeric encoding of Property checks, an integer. Defaults to 72032, the marketplace threshold, except when ownedBy is set (then every property in that wallet is listed). Any minimum also requires a verified deed. Max: 75342."),
+  hasListings: z.boolean().optional().describe("Only show properties with active sale listings"),
+  hasLoans: z.boolean().optional().describe("Only show properties with active loans"),
+  ownedBy: z.string().optional().describe("Filter by owner wallet address"),
+  limit: z.number().int().min(1).max(100).optional().describe("Max results (default 20, max 100)"),
+  offset: z.number().int().min(0).optional().describe("Pagination offset"),
+};
+export type SearchPropertiesArgs = ArgsOf<typeof searchPropertiesInput>;
+
+export async function searchProperties(args: SearchPropertiesArgs) {
+  const region = args.region;
+  const county = args.county?.trim() ? args.county : undefined;
+  const groupBy = args.groupBy;
+  const { minAcres, maxAcres, minScore, hasListings, hasLoans, ownedBy } = args;
+  const limit = Math.min(Math.max(Math.trunc(args.limit ?? 20), 1), 100);
+  const offset = Math.max(Math.trunc(args.offset ?? 0), 0);
   try {
     let tokens = await getTokens({
       // Like the frontend: public listings use the marketplace threshold, while one
@@ -256,9 +260,11 @@ function flagsOf(token: TokenModel): string[] {
   return flags;
 }
 
-export async function getProperty(args: Record<string, unknown>) {
-  const tokenId = args.tokenId as string | undefined;
-  const slug = args.slug as string | undefined;
+export const getPropertyInput = propertyRefInputs;
+export type GetPropertyArgs = ArgsOf<typeof getPropertyInput>;
+
+export async function getProperty(args: GetPropertyArgs) {
+  const { tokenId, slug } = args;
   if (!tokenId && !slug) {
     return { error: "Either tokenId or slug is required" };
   }
@@ -423,10 +429,15 @@ export async function getProperty(args: Record<string, unknown>) {
   }
 }
 
-export async function getPropertyMap(args: Record<string, unknown>) {
-  const tokenId = args.tokenId as string | undefined;
-  const slug = args.slug as string | undefined;
-  const includeCountyBounds = (args.includeCountyBounds as boolean | undefined) ?? false;
+export const getPropertyMapInput = {
+  ...propertyRefInputs,
+  includeCountyBounds: z.boolean().optional().describe("Also return the county boundary polygon, a large decorative layer (default: false)"),
+};
+export type GetPropertyMapArgs = ArgsOf<typeof getPropertyMapInput>;
+
+export async function getPropertyMap(args: GetPropertyMapArgs) {
+  const { tokenId, slug } = args;
+  const includeCountyBounds = args.includeCountyBounds ?? false;
   if (!tokenId && !slug) {
     return { error: "Either tokenId or slug is required" };
   }

@@ -1,6 +1,9 @@
-import { getParcelIndex, type ParcelIndexToken } from "../clients/graphql.js";
+import { getParcelIndex } from "../clients/graphql.js";
+import type { ParcelIndexToken } from "../types/index.js";
 import { MAINNET_WARNING, NETWORK_LABEL, WEB_BASE } from "../config.js";
 import { US_COUNTY_ROWS } from "../data/us-counties.js";
+import { z } from "zod";
+import type { ArgsOf } from "./inputs.js";
 
 /**
  * find_parcel: any US address or parcel number to a parcel identity, whether it is
@@ -291,11 +294,12 @@ export function stateRetryText(query: string, state: string | undefined, countyS
   return `${query}, ${code}`;
 }
 
-export interface FindParcelArgs {
-  query: string;
-  state?: string;
-  county?: string;
-}
+export const findParcelInput = {
+  query: z.string().min(3).max(200).describe("Street address (with city and state when known) or parcel number (APN)"),
+  state: z.string().regex(/^[A-Za-z]{2}$/).optional().describe("Two-letter US state code, e.g. 'AZ'"),
+  county: z.string().max(80).optional().describe("County name, e.g. 'Navajo'"),
+};
+export type FindParcelArgs = ArgsOf<typeof findParcelInput>;
 
 /** find_parcel's answer. Every non-error result names the network and, on mainnet, carries the legal notice. */
 export async function findParcel(args: FindParcelArgs) {

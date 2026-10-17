@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { loan, poolLendingLiquidityWithOracle, tokenDetailWithPoolOracle } from "./fixtures.js";
 
 /**
  * Tool output is read by agents and repeated to people, so it follows Fabrica's
@@ -8,9 +9,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
  */
 
 const loans = [
-  { loanId: "1", loanProvider: "PoolLending", loanStatus: "Active", principalScaled: "1000", aprPercent: 12, startTime: "2026-09-01T00:00:00Z" },
-  { loanId: "2", loanProvider: "PoolLending", loanStatus: "Repaid", principalScaled: "500", aprPercent: 10, startTime: "2026-08-01T00:00:00Z" },
-  { loanId: "3", loanProvider: "NFTfi", loanStatus: "Liquidated", principalScaled: "700", aprPercent: 20, startTime: "2024-01-01T00:00:00Z" },
+  loan({ loanId: "1", loanProvider: "PoolLending", loanStatus: "Active", principalScaled: "1000", aprPercent: 12, startTime: "2026-09-01T00:00:00Z" }),
+  loan({ loanId: "2", loanProvider: "PoolLending", loanStatus: "Repaid", principalScaled: "500", aprPercent: 10, startTime: "2026-08-01T00:00:00Z" }),
+  loan({ loanId: "3", loanProvider: "NFTfi", loanStatus: "Liquidated", principalScaled: "700", aprPercent: 20, startTime: "2024-01-01T00:00:00Z" }),
 ];
 
 vi.mock("../clients/graphql.js", () => ({
@@ -46,7 +47,7 @@ import { formatLoanProvider, formatActivitySource, LENDING_POOL_NAME } from "../
 import { IS_MAINNET } from "../config.js";
 
 beforeEach(() => {
-  vi.mocked(getAllLoans).mockResolvedValue(loans as never);
+  vi.mocked(getAllLoans).mockResolvedValue(loans);
 });
 
 describe("formatLoanProvider", () => {
@@ -120,14 +121,14 @@ describe("get_lending_market wording", () => {
 
 describe("get_borrow_quote wording", () => {
   it("reports DeFi lending pool liquidity", async () => {
-    vi.mocked(getToken).mockResolvedValue({
+    vi.mocked(getToken).mockResolvedValue(tokenDetailWithPoolOracle({
       tokenId: "1",
       name: "Test Ranch",
       estimatedValue: "10000",
       supplyUnderLoan: "0",
       loans: [],
-      poolLendingLiquidity: { maxPrincipalUsdc: "2500000000", maxPrincipalScaled: "2500", durations: [30, 60], activeLoan: null },
-    } as never);
+      poolLendingLiquidity: poolLendingLiquidityWithOracle({ maxPrincipalUsdc: "2500000000", maxPrincipalScaled: "2500", durations: [30, 60], activeLoan: null }),
+    }));
     const result = await getBorrowQuote({ tokenId: "1" }) as Record<string, unknown>;
     expect(result.metaStreet).toBeUndefined();
     const pool = result.lendingPool as Record<string, unknown>;
@@ -140,14 +141,14 @@ describe("get_borrow_quote wording", () => {
   });
 
   it("explains when the pool has no liquidity for a property", async () => {
-    vi.mocked(getToken).mockResolvedValue({
+    vi.mocked(getToken).mockResolvedValue(tokenDetailWithPoolOracle({
       tokenId: "2",
       name: "Dry Lot",
       estimatedValue: "1000",
       supplyUnderLoan: "0",
       loans: [],
       poolLendingLiquidity: null,
-    } as never);
+    }));
     const result = await getBorrowQuote({ tokenId: "2" }) as Record<string, unknown>;
     const pool = result.lendingPool as Record<string, unknown>;
     expect(pool.available).toBe(false);
@@ -155,14 +156,14 @@ describe("get_borrow_quote wording", () => {
   });
 
   it("treats zero pool capacity as unavailable", async () => {
-    vi.mocked(getToken).mockResolvedValue({
+    vi.mocked(getToken).mockResolvedValue(tokenDetailWithPoolOracle({
       tokenId: "3",
       name: "Zero Lot",
       estimatedValue: "1000",
       supplyUnderLoan: "0",
       loans: [],
-      poolLendingLiquidity: { maxPrincipalUsdc: "0", maxPrincipalScaled: "0", durations: [30], activeLoan: null },
-    } as never);
+      poolLendingLiquidity: poolLendingLiquidityWithOracle({ maxPrincipalUsdc: "0", maxPrincipalScaled: "0", durations: [30], activeLoan: null }),
+    }));
     const result = await getBorrowQuote({ tokenId: "3" }) as Record<string, unknown>;
     const pool = result.lendingPool as Record<string, unknown>;
     expect(pool.available).toBe(false);

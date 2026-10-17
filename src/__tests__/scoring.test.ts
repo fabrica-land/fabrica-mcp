@@ -8,6 +8,7 @@ vi.mock("../clients/graphql.js", () => ({
 
 import { getToken } from "../clients/graphql.js";
 import { explainConfidenceScore } from "../tools/scoring.js";
+import { tokenDetail } from "./fixtures.js";
 
 describe("explainConfidenceScore", () => {
   it("decomposes max score 75342 correctly", async () => {
@@ -91,7 +92,7 @@ describe("explainConfidenceScore", () => {
   });
 
   it("counts the individual checks when looking up a token", async () => {
-    vi.mocked(getToken).mockResolvedValueOnce({
+    vi.mocked(getToken).mockResolvedValueOnce(tokenDetail({
       tokenId: "1",
       name: "Test Lot",
       vanityName: null,
@@ -101,7 +102,7 @@ describe("explainConfidenceScore", () => {
         { checkName: "b", group: "pastTitleAndLoad", title: "B", value: false },
         { checkName: "c", group: "ownership", title: "C", value: true },
       ],
-    } as never);
+    }));
     const r = await explainConfidenceScore({ tokenId: "1" }) as Record<string, unknown>;
     expect(r.checksPassed).toEqual({ passed: 2, total: 3 });
     const breakdown = r.breakdown as Record<string, { checks?: { passed: number; total: number } }>;

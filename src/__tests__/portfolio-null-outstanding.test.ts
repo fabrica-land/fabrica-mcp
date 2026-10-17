@@ -7,30 +7,20 @@ vi.mock("../clients/graphql.js", () => ({
 
 import { getWallet } from "../clients/graphql.js";
 import { getPortfolio } from "../tools/portfolio.js";
-import type { WalletModel } from "../types/index.js";
+import { wallet } from "./fixtures.js";
 
 const ADDRESS = "0x1234567890abcdef1234567890abcdef12345678";
 
 describe("get_portfolio with a null totalOutstandingLoansUSDC", () => {
   it("returns no error and a null outstandingLoans", async () => {
-    const totalOutstandingLoansUSDC: WalletModel["totalOutstandingLoansUSDC"] = null;
-    const wallet = {
+    const portfolioWallet = wallet({
       address: ADDRESS,
-      user: { displayName: null },
-      tokens: [],
-      tokenCount: "0",
-      totalValue: "0",
-      totalAcres: "0",
-      totalCollateralValue: "0",
-      totalOutstandingLoansUSDC,
-      propertyCountUnderLoan: "0",
-      creditHistory: null,
-      activity: [],
+      totalOutstandingLoansUSDC: null,
       loansTaken: null,
       loansMade: null,
       marketplaceOffersMade: null,
-    };
-    vi.mocked(getWallet).mockResolvedValueOnce(wallet as never);
+    });
+    vi.mocked(getWallet).mockResolvedValueOnce(portfolioWallet);
     const portfolio = await getPortfolio({ address: ADDRESS });
     expect(portfolio).not.toHaveProperty("error");
     expect(portfolio).toMatchObject({ lending: { asBorrower: { outstandingLoans: null } } });

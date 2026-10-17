@@ -9,9 +9,10 @@ vi.mock("../clients/graphql.js", () => ({
 import { getSignedValuations, getToken, getTokenValuation } from "../clients/graphql.js";
 import { getValuation } from "../tools/valuation.js";
 import { getBorrowQuote } from "../tools/borrowing.js";
+import { oraclePool, poolLendingLiquidityWithOracle, tokenDetailWithPoolOracle, valuationPricing, valuationToken } from "./fixtures.js";
 import { describeAppraisalBlock, describeCapacityBlock, describeFailedCheck, describeSignedValuationReason, formatUsdc6 } from "../labels.js";
 
-const avmAndPrycd = {
+const avmAndPrycd = valuationToken({
   tokenId: "100",
   name: "Two Source Ranch",
   vanityName: null,
@@ -20,51 +21,51 @@ const avmAndPrycd = {
   cardDisplayValuation: "20000.00",
   valuationReportUrl: "https://ipfs.fabrica.land/ipfs/report",
   pricing: [
-    { source: "fabrica-avm", scope: "land", value: "9100.00", currency: "usd", confidence: "60.000", timestamp: "2026-09-27T06:09:36.614Z", modelVersion: "1.14.1" },
-    { source: "fabrica-avm", scope: "improvements", value: null, currency: "usd", confidence: "0.000", timestamp: "2026-09-27T06:09:36.614Z", modelVersion: "1.14.1" },
-    { source: "prycd", scope: "land", value: "8210.74000000000000000000", currency: "usd", confidence: "75.200", timestamp: "2026-10-13T03:03:02.064Z", modelVersion: "" },
-    { source: "regrid-county-assessor", scope: "land", value: "15930.00", currency: "usd", confidence: null, timestamp: "2026-10-12T03:03:14.824Z", modelVersion: "" },
-    { source: "regrid-county-assessor", scope: "last sale", value: "25000.00", currency: "usd", confidence: null, timestamp: "2026-10-12T03:03:14.824Z", modelVersion: "" },
+    valuationPricing({ source: "fabrica-avm", scope: "land", value: "9100.00", currency: "usd", confidence: "60.000", timestamp: "2026-09-27T06:09:36.614Z", modelVersion: "1.14.1" }),
+    valuationPricing({ source: "fabrica-avm", scope: "improvements", value: null, currency: "usd", confidence: "0.000", timestamp: "2026-09-27T06:09:36.614Z", modelVersion: "1.14.1" }),
+    valuationPricing({ source: "prycd", scope: "land", value: "8210.74000000000000000000", currency: "usd", confidence: "75.200", timestamp: "2026-10-13T03:03:02.064Z", modelVersion: "" }),
+    valuationPricing({ source: "regrid-county-assessor", scope: "land", value: "15930.00", currency: "usd", confidence: null, timestamp: "2026-10-12T03:03:14.824Z", modelVersion: "" }),
+    valuationPricing({ source: "regrid-county-assessor", scope: "last sale", value: "25000.00", currency: "usd", confidence: null, timestamp: "2026-10-12T03:03:14.824Z", modelVersion: "" }),
   ],
-  poolLendingLiquidity: {
+  poolLendingLiquidity: poolLendingLiquidityWithOracle({
     maxPrincipalScaled: "325.684574",
     maxPrincipalUsdc: "325684574",
     durations: [30],
     activeLoan: null,
     appraisalBlockReason: null,
-    pools: [{
+    pools: [oraclePool({
       address: "0x842Ffbf1AD5314503904626122376f71603A3Cf9",
       pricing: "SignedQuote",
       oracleValuation: { quote: { price: "1524966393", currency: "0xA0b8", timestamp: 1792198035, duration: 1200 }, signature: "0xsig" },
       onchainPrice: null,
       oracleFeed: null,
       onchainValuation: null,
-    }],
-  },
-};
+    })],
+  }),
+});
 
-const onchainOracle = {
+const onchainOracle = valuationToken({
   ...avmAndPrycd,
   tokenId: "200",
   name: "Oracle Lot",
-  poolLendingLiquidity: {
+  poolLendingLiquidity: poolLendingLiquidityWithOracle({
     maxPrincipalScaled: "0",
     maxPrincipalUsdc: "0",
     durations: [30],
     activeLoan: null,
     appraisalBlockReason: null,
-    pools: [{
+    pools: [oraclePool({
       address: "0x1111111111111111111111111111111111111111",
       pricing: "OnchainOracle",
       oracleValuation: null,
       onchainPrice: { priceUsdc6: "9000000000", confidenceScore: 9250, cycle: "4", valuedAt: "1792000000", sourceId: 2 },
       oracleFeed: { lastHeartbeat: "1792100000", maxSilence: "86400", isStale: false, currentCycle: "5", minValidCycle: "3", indexerUnavailableReason: null },
       onchainValuation: { usablePriceUsdc6: null, capacityBlockReason: null, failedCheck: "min_sources" },
-    }],
-  },
-};
+    })],
+  }),
+});
 
-const assessorOnlyPremint = {
+const assessorOnlyPremint = valuationToken({
   tokenId: "300",
   name: "Premint Parcel",
   vanityName: null,
@@ -73,10 +74,10 @@ const assessorOnlyPremint = {
   cardDisplayValuation: "0.00",
   valuationReportUrl: null,
   pricing: [
-    { source: "regrid-county-assessor", scope: "parcel", value: "42000.00", currency: "usd", confidence: null, timestamp: "2026-10-12T03:03:14.824Z", modelVersion: "" },
+    valuationPricing({ source: "regrid-county-assessor", scope: "parcel", value: "42000.00", currency: "usd", confidence: null, timestamp: "2026-10-12T03:03:14.824Z", modelVersion: "" }),
   ],
   poolLendingLiquidity: null,
-};
+});
 
 const signedPanel = {
   networkName: "ethereum",
@@ -97,7 +98,7 @@ describe("get_valuation", () => {
   });
 
   it("names the sources behind the estimate and lists every row with its date", async () => {
-    vi.mocked(getTokenValuation).mockResolvedValue(avmAndPrycd as never);
+    vi.mocked(getTokenValuation).mockResolvedValue(avmAndPrycd);
     const result = await getValuation({ tokenId: "100" });
     expect(result).toMatchObject({
       estimate: { value: "$8,211", basedOn: ["Prycd"], asOf: "2026-10-13T03:03:02.064Z" },
@@ -122,7 +123,7 @@ describe("get_valuation", () => {
   });
 
   it("explains an onchain oracle that has no usable price", async () => {
-    vi.mocked(getTokenValuation).mockResolvedValue(onchainOracle as never);
+    vi.mocked(getTokenValuation).mockResolvedValue(onchainOracle);
     const result = await getValuation({ tokenId: "200" });
     expect(result).toMatchObject({
       oracle: {
@@ -140,7 +141,7 @@ describe("get_valuation", () => {
   });
 
   it("renders a premint with only the assessor value", async () => {
-    vi.mocked(getTokenValuation).mockResolvedValue(assessorOnlyPremint as never);
+    vi.mocked(getTokenValuation).mockResolvedValue(assessorOnlyPremint);
     const result = await getValuation({ slug: "us/x/premint" });
     expect(getSignedValuations).toHaveBeenCalledWith("300");
     expect(result).toMatchObject({
@@ -153,7 +154,7 @@ describe("get_valuation", () => {
   });
 
   it("still answers when the signed valuation service fails", async () => {
-    vi.mocked(getTokenValuation).mockResolvedValue(avmAndPrycd as never);
+    vi.mocked(getTokenValuation).mockResolvedValue(avmAndPrycd);
     vi.mocked(getSignedValuations).mockResolvedValue(null);
     const result = await getValuation({ tokenId: "100" });
     expect(result).not.toHaveProperty("error");
@@ -168,10 +169,10 @@ describe("get_valuation", () => {
 
 describe("get_borrow_quote states why capacity is zero", () => {
   it("gives the tax reason", async () => {
-    vi.mocked(getToken).mockResolvedValue({
+    vi.mocked(getToken).mockResolvedValue(tokenDetailWithPoolOracle({
       tokenId: "4", name: "Taxed Lot", estimatedValue: "1000", supplyUnderLoan: "0", loans: [],
-      poolLendingLiquidity: { maxPrincipalScaled: "0", maxPrincipalUsdc: "0", durations: [30], activeLoan: null, appraisalBlockReason: "TAX_DELINQUENT", pools: [] },
-    } as never);
+      poolLendingLiquidity: poolLendingLiquidityWithOracle({ maxPrincipalScaled: "0", maxPrincipalUsdc: "0", durations: [30], activeLoan: null, appraisalBlockReason: "TAX_DELINQUENT", pools: [] }),
+    }));
     const result = await getBorrowQuote({ tokenId: "4" });
     expect(result).toMatchObject({
       lendingPool: { available: false, reasons: [describeAppraisalBlock("TAX_DELINQUENT")] },
@@ -180,7 +181,10 @@ describe("get_borrow_quote states why capacity is zero", () => {
   });
 
   it("gives the oracle reason", async () => {
-    vi.mocked(getToken).mockResolvedValue({ ...onchainOracle, supplyUnderLoan: "0", loans: [] } as never);
+    vi.mocked(getToken).mockResolvedValue(tokenDetailWithPoolOracle({
+      tokenId: onchainOracle.tokenId, name: onchainOracle.name, estimatedValue: onchainOracle.estimatedValue, supplyUnderLoan: "0", loans: [],
+      poolLendingLiquidity: onchainOracle.poolLendingLiquidity,
+    }));
     const result = await getBorrowQuote({ tokenId: "200" });
     expect(result).toMatchObject({
       lendingPool: { reasons: [describeFailedCheck("min_sources")] },
@@ -189,10 +193,10 @@ describe("get_borrow_quote states why capacity is zero", () => {
   });
 
   it("says so when the API gives no specific reason", async () => {
-    vi.mocked(getToken).mockResolvedValue({
+    vi.mocked(getToken).mockResolvedValue(tokenDetailWithPoolOracle({
       tokenId: "5", name: "Quiet Lot", estimatedValue: "1000", supplyUnderLoan: "0", loans: [],
-      poolLendingLiquidity: { maxPrincipalScaled: "0", maxPrincipalUsdc: "0", durations: [30], activeLoan: null, appraisalBlockReason: null, pools: [] },
-    } as never);
+      poolLendingLiquidity: poolLendingLiquidityWithOracle({ maxPrincipalScaled: "0", maxPrincipalUsdc: "0", durations: [30], activeLoan: null, appraisalBlockReason: null, pools: [] }),
+    }));
     const result = await getBorrowQuote({ tokenId: "5" });
     expect(result).toMatchObject({ lendingPool: { reasons: [expect.stringContaining("states no specific reason")] } });
   });
@@ -213,7 +217,7 @@ describe("valuation wording", () => {
 
   it("uses no price-suggestion language in tool output", async () => {
     for (const token of [avmAndPrycd, onchainOracle, assessorOnlyPremint]) {
-      vi.mocked(getTokenValuation).mockResolvedValue(token as never);
+      vi.mocked(getTokenValuation).mockResolvedValue(token);
       const text = JSON.stringify(await getValuation({ tokenId: token.tokenId }));
       expect(text).not.toMatch(banned);
     }
