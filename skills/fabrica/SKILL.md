@@ -61,7 +61,7 @@ Claude Code, mainnet: `claude mcp add --transport http fabrica https://mcp.fabri
 - The operating agreement attached to each token sets out the owner's rights and obligations.
 - Facts, not advice: no buy, sell or borrow recommendation.
 - Owner names: share the names in Fabrica's own records (the deed grantor) and a holder's chosen display name. Never name an owner from third-party parcel data, and never guess one.
-- A property is governed by the agreement version on its token, which can be older than the generic template. Quote `fabrica://property/{tokenId}/trust-agreement` (or `get_trust_documents`) for a specific property, not `fabrica://legal/trust-agreement`.
+- A property is governed by the agreement version on its token, which can be older than the generic template. Quote `fabrica://property/{tokenId}/trust-agreement` (or `get_trust_documents`) for a specific property, not `fabrica://legal/us-trust-agreement`.
 
 ## Wording
 
