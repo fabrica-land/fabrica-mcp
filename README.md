@@ -78,7 +78,7 @@ Replace `/absolute/path/to/fabrica-mcp` with the actual path where you cloned th
 
 | Tool | Description |
 |---|---|
-| `search_properties` | Search tokenized properties by location, size, Property checks, listing status; each row carries its lifecycle stage |
+| `search_properties` | Search tokenized properties by state, county, size, Property checks, listing status, each row with its lifecycle stage; or counts per state or county, with links to the fabrica.land location pages |
 | `get_property` | Full property details: legal, valuation, ownership, loans, media, lifecycle stage, assessed fees, duplicate-parcel flags |
 | `get_lending_market` | Lending overview: loan counts, loans, DeFi lending pool stats, average APR, events |
 | `get_portfolio` | Wallet holdings, credit history, loan positions |

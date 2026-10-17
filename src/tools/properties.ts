@@ -4,6 +4,7 @@ import { NETWORK_LABEL, MAINNET_WARNING, IS_MAINNET, CONTRACTS } from "../config
 import { LENDING_POOL_NAME, formatActivityAmount, formatActivitySource, formatLoanProvider, formatUsdcCeiling } from "../labels.js";
 import { propertyPhotos, propertyMapImage } from "./media.js";
 import { estimateFields, formatTokenAmount, sortLoans } from "../format.js";
+import { locationLink, stateName } from "../links.js";
 import { propertyStage, describeStage } from "../lifecycle.js";
 import { summarizeFees } from "../fees.js";
 
@@ -54,8 +55,79 @@ function tokenToSummary(token: TokenModel) {
   };
 }
 
+/** "Mohave County", "mohave county", "Mohave" → "mohave". */
+export function normalizeCounty(name: string | null | undefined): string {
+  return (name ?? "").trim().toLowerCase().replace(/\s+/g, " ").replace(/ county$/, "");
+}
+
+/** The name most tokens give for a field, ignoring blanks. */
+function mostCommon(values: ReadonlyArray<string | null | undefined>): string | null {
+  const counts = new Map<string, number>();
+  for (const v of values) {
+    const name = v?.trim();
+    if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  let best: string | null = null;
+  for (const [name, count] of counts) {
+    if (best === null || count > (counts.get(best) ?? 0)) best = name;
+  }
+  return best;
+}
+
+export type GroupBy = "state" | "county";
+
+/** The state or state|county a token groups under; null when the record lacks that location. */
+function groupKey(t: TokenModel, groupBy: GroupBy): string | null {
+  const state = t.regionCode?.trim().toUpperCase() ?? "";
+  if (!state) return null;
+  if (groupBy === "state") return state;
+  const county = normalizeCounty(t.district);
+  return county ? `${state}|${county}` : null;
+}
+
+/** Tokens a grouping leaves out because the API gives them no state (or no county, by county). */
+export function ungroupedCount(tokens: ReadonlyArray<TokenModel>, groupBy: GroupBy): number {
+  return tokens.filter(t => groupKey(t, groupBy) === null).length;
+}
+
+function optionalString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function optionalGroupBy(value: unknown): GroupBy | undefined {
+  return value === "state" || value === "county" ? value : undefined;
+}
+
+/** One row per state or county: counts, acres and the fabrica.land location page. */
+export function groupTokens(tokens: ReadonlyArray<TokenModel>, groupBy: GroupBy) {
+  const groups = new Map<string, TokenModel[]>();
+  for (const t of tokens) {
+    // A record with no state (or no county, by county) is not a location; ungroupedCount reports it.
+    const key = groupKey(t, groupBy);
+    if (key === null) continue;
+    const members = groups.get(key);
+    if (members) members.push(t);
+    else groups.set(key, [t]);
+  }
+  return [...groups.values()].map(members => {
+    const fullState = mostCommon(members.map(t => t.region)) ?? stateName(members[0].regionCode);
+    const county = groupBy === "county" ? mostCommon(members.map(t => t.district)) : null;
+    const acres = members.reduce((sum, t) => sum + (Number.parseFloat(t.acres ?? "") || 0), 0);
+    return {
+      state: members[0].regionCode,
+      ...(groupBy === "county" ? { county } : {}),
+      properties: members.length,
+      forSale: members.filter(t => t.marketplacePrice !== null).length,
+      totalAcres: Math.round(acres * 100) / 100,
+      locationLink: locationLink({ state: fullState, county }),
+    };
+  }).sort((a, b) => b.properties - a.properties || String(a.county ?? a.state).localeCompare(String(b.county ?? b.state)));
+}
+
 export async function searchProperties(args: Record<string, unknown>) {
   const region = args.region as string | undefined;
+  const county = optionalString(args.county);
+  const groupBy = optionalGroupBy(args.groupBy);
   const minAcres = args.minAcres as number | undefined;
   const maxAcres = args.maxAcres as number | undefined;
   const minScore = args.minScore as number | undefined;
@@ -81,6 +153,12 @@ export async function searchProperties(args: Record<string, unknown>) {
       const upper = region.toUpperCase();
       tokens = tokens.filter(t => t.regionCode?.toUpperCase() === upper);
     }
+    if (county) {
+      const wanted = normalizeCounty(county);
+      tokens = tokens.filter(t => normalizeCounty(t.district) === wanted);
+    }
+    // The location page is named from the region/county matches, before other filters can empty the list.
+    const locationTokens = tokens;
     if (minAcres !== undefined) {
       tokens = tokens.filter(t => t.acres !== null && parseFloat(t.acres) >= minAcres);
     }
@@ -91,12 +169,37 @@ export async function searchProperties(args: Record<string, unknown>) {
       tokens = tokens.filter(t => parseInt(t.supplyUnderLoan || "0") > 0);
     }
     const total = tokens.length;
+    // The page for the location asked about: names as the matches spell them, else from the filter.
+    const states = new Set(locationTokens.map(t => t.regionCode?.toUpperCase()));
+    const counties = new Set(locationTokens.map(t => normalizeCounty(t.district)));
+    const linkState = region ? stateName(region) ?? mostCommon(locationTokens.map(t => t.region)) : states.size === 1 ? mostCommon(locationTokens.map(t => t.region)) ?? stateName([...states][0]) : null;
+    const linkCounty = county ? mostCommon(locationTokens.map(t => t.district)) ?? `${county.trim().replace(/\s+county$/i, "")} County` : null;
+    const link = (region || county) && linkState && (!county || counties.size <= 1)
+      ? { locationLink: locationLink({ state: linkState, county: linkCounty }) }
+      : {};
+    if (groupBy) {
+      const groups = groupTokens(tokens, groupBy);
+      const groupPage = groups.slice(offset, offset + limit);
+      const ungrouped = ungroupedCount(tokens, groupBy);
+      return {
+        network: NETWORK_LABEL,
+        ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
+        total,
+        ...link,
+        groupBy,
+        totalGroups: groups.length,
+        showing: groupPage.length > 0 ? `${offset + 1}-${offset + groupPage.length} of ${groups.length}` : `none: offset ${offset} is past the last of ${groups.length} groups`,
+        groups: groupPage,
+        ...(ungrouped > 0 ? { ungroupedCount: ungrouped, ungroupedNote: `${ungrouped} matching ${ungrouped === 1 ? "property has" : "properties have"} no ${groupBy === "county" ? "state or county" : "state"} in the record and ${ungrouped === 1 ? "is" : "are"} not in any group.` } : {}),
+      };
+    }
     const page = tokens.slice(offset, offset + limit);
     if (page.length === 0) {
       return {
         network: NETWORK_LABEL,
         ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
         total,
+        ...link,
         properties: [],
         message: total > 0
           ? `No more results: ${total} properties match, and offset ${offset} is past the end.`
@@ -107,6 +210,7 @@ export async function searchProperties(args: Record<string, unknown>) {
       network: NETWORK_LABEL,
       ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
       total,
+      ...link,
       showing: `${offset + 1}-${offset + page.length} of ${total}`,
       properties: page.map(tokenToSummary),
     };

@@ -3,6 +3,10 @@ import { getFabricaPools } from "../clients/subgraph.js";
 import { CONTRACTS, NETWORK_LABEL, MAINNET_WARNING, IS_MAINNET } from "../config.js";
 import { loanVolumeByCurrency } from "../labels.js";
 import { buildPoolStats } from "./pool-stats.js";
+import { groupTokens } from "./properties.js";
+import { PLATFORM_URL } from "../links.js";
+
+const TOP_COUNTY_COUNT = 10;
 
 function formatUsd(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -37,7 +41,7 @@ export async function getProtocolStats() {
       protocol: {
         name: "Fabrica",
         description: "Tokenized real property (land) as ERC-1155 NFTs on Ethereum",
-        website: "https://fabrica.land",
+        website: PLATFORM_URL,
         docs: "https://docs.fabrica.land",
         network: NETWORK_LABEL,
         tokenStandard: "ERC-1155",
@@ -58,6 +62,7 @@ export async function getProtocolStats() {
         totalEstimatedValue: formatUsd(String(totalEstimatedValue)),
         statesRepresented: statesRepresented.size,
         states: Array.from(statesRepresented).sort(),
+        topCounties: groupTokens(activeTokens, "county").slice(0, TOP_COUNTY_COUNT),
       },
       lending: {
         totalLoans: loans.length,
@@ -71,7 +76,7 @@ export async function getProtocolStats() {
         activeListings: activeListingsCount,
       },
       links: {
-        platform: "https://fabrica.land",
+        platform: PLATFORM_URL,
         docs: "https://docs.fabrica.land",
         about: "https://about.fabrica.land",
         dune: "https://dune.com/fabrica/dashboard",
