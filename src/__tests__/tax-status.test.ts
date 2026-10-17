@@ -83,6 +83,13 @@ describe("get_tax_status", () => {
     expect(result.summary).toContain("the last verification expired");
   });
 
+  it("does not trust a check whose expiry is missing", async () => {
+    vi.mocked(getTaxStatusToken).mockResolvedValueOnce(makeToken());
+    vi.mocked(getScoreRecord).mockResolvedValueOnce({ ...record(1), expiresAt: null });
+    const result = await getTaxStatus({ tokenId: "1" }) as Record<string, unknown>;
+    expect(result.status).toBe("unknown");
+  });
+
   it("carries the network's legal notice", async () => {
     vi.mocked(getTaxStatusToken).mockResolvedValueOnce(makeToken());
     vi.mocked(getScoreRecord).mockResolvedValueOnce(record(1));

@@ -64,8 +64,9 @@ export async function loadTaxSignals(token: {
   }
   // Only the score record says whether the check is still in force: a check past its expiry,
   // or one whose expiry cannot be read (the GraphQL list has no dates), says nothing about today.
-  const checkExpired = record?.expiresAt ? Date.parse(record.expiresAt) < Date.now() : false;
-  const check = record && !checkExpired ? checkFromRecord(record) : null;
+  const expiry = record?.expiresAt ? Date.parse(record.expiresAt) : Number.NaN;
+  const checkExpired = Number.isFinite(expiry) && expiry <= Date.now();
+  const check = record && Number.isFinite(expiry) && !checkExpired ? checkFromRecord(record) : null;
   const blockReason = token.poolLendingLiquidity?.appraisalBlockReason ?? null;
   return { ...resolveTaxStatus(check, blockReason), blockReason, checkExpired, checkedAt: record?.updatedAt ?? null, nextCheckBy: record?.expiresAt ?? null, warnings };
 }
