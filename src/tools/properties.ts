@@ -9,6 +9,7 @@ import { propertyStage, describeStage } from "../lifecycle.js";
 import { summarizeFees } from "../fees.js";
 import { loadTaxSignals, taxSummary } from "./tax.js";
 import { countChecks, getRecoveryStatus } from "./scoring.js";
+import { hasEnded } from "./marketplace.js";
 
 /** USD when the API supplies a USD price; otherwise the native amount and currency, never a guessed "$". */
 function formatOrderPrice(usdPrice: string | null, price: string | null, symbol: string | null): string | null {
@@ -261,8 +262,10 @@ export async function getProperty(args: Record<string, unknown>) {
     if (!token) {
       return { error: `No property found with ${tokenId ? `token ID ${tokenId}` : `slug ${slug}`}` };
     }
-    const activeListings = token.marketplaceListings?.filter(l => l.status === "active") ?? [];
-    const activeBids = token.marketplaceBids?.filter(b => b.status === "active") ?? [];
+    // An order past its end time is not live even while the API still reports it active.
+    const now = Date.now();
+    const activeListings = token.marketplaceListings?.filter(l => l.status === "active" && !hasEnded(l.endTime, now)) ?? [];
+    const activeBids = token.marketplaceBids?.filter(b => b.status === "active" && !hasEnded(b.endTime, now)) ?? [];
     const activeLoans = token.loans?.filter(l => l.loanStatus === "Active") ?? [];
     const holders = capList(token.balances ?? [], MAX_HOLDERS);
     const listings = capList(activeListings, MAX_ORDERS);
