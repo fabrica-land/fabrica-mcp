@@ -63,6 +63,19 @@ describe("TtlCache", () => {
     expect(reload).toHaveBeenCalledTimes(1);
   });
 
+  it("never evicts a pending load to make room", async () => {
+    const cache = new TtlCache<string>(1_000, 1);
+    let resolve: (v: string) => void = () => {};
+    const slow = vi.fn(() => new Promise<string>(r => { resolve = r; }));
+    const pending = cache.get("a", slow);
+    await cache.get("b", async () => "b");
+    expect(cache.size).toBe(2);
+    void cache.get("a", slow);
+    expect(slow).toHaveBeenCalledTimes(1);
+    resolve("a");
+    await expect(pending).resolves.toBe("a");
+  });
+
   it("is disabled with a zero TTL", async () => {
     const cache = new TtlCache<number>(0);
     const load = vi.fn(async () => 1);

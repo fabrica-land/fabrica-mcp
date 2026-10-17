@@ -40,9 +40,10 @@ export class TtlCache<V> {
       () => { entry.expiresAt = Date.now() + this.ttlMs; },
       () => { if (this.entries.get(key) === entry) this.entries.delete(key); },
     );
-    for (const oldest of this.entries.keys()) {
+    // Evict the oldest settled entries; pending loads may briefly exceed the bound so they stay shared.
+    for (const [oldest, candidate] of this.entries) {
       if (this.entries.size <= this.maxEntries) break;
-      this.entries.delete(oldest);
+      if (candidate.expiresAt !== Number.POSITIVE_INFINITY) this.entries.delete(oldest);
     }
     return value;
   }
