@@ -1,9 +1,11 @@
 import { getTrustDocuments as fetchTrustDocuments } from "../clients/graphql.js";
 import type { ConfigurationDocument } from "../types/index.js";
-import { MAINNET_WARNING } from "../config.js";
+import { IS_MAINNET, MAINNET_WARNING } from "../config.js";
 import { toGatewayUrl } from "./media.js";
 
-const TRUST_NOTE = "The token represents the beneficial interest in this trust. The trustee is designated by the token holder and is, by default, the holder.";
+const TRUST_NOTE = IS_MAINNET
+  ? "The token represents the beneficial interest in this trust. The trustee is designated by the token holder and is, by default, the holder."
+  : "This is a test token on Sepolia: it carries no beneficial interest and has no real-world legal or financial effect.";
 
 const NOT_INCLUDED = "Not available here: a title search report, title insurance, and county records beyond the deed reference above. Property checks are a starting point for your own research, not a title search or title insurance.";
 

@@ -125,8 +125,12 @@ describe("get_trust_documents", () => {
   it("uses Fabrica's legal wording: beneficial interest, trustee designated by the holder, no em dashes", async () => {
     vi.mocked(fetchTrustDocuments).mockResolvedValueOnce(makeToken());
     const text = JSON.stringify(await getTrustDocuments({ tokenId: "1" }));
-    expect(text).toContain("beneficial interest");
-    expect(text).toContain("designated by the token holder");
+    if (IS_MAINNET) {
+      expect(text).toContain("beneficial interest in this trust");
+      expect(text).toContain("designated by the token holder");
+    } else {
+      expect(text).toContain("no real-world legal or financial effect");
+    }
     expect(text).not.toMatch(/token is the property|clean title|—/i);
     expect(text).not.toMatch(/Fabrica (manages|administers|operates|controls|holds)/);
   });
