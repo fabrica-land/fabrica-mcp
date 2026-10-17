@@ -21,6 +21,7 @@ vi.mock("../clients/graphql.js", () => ({
   ]),
 }));
 
+const { getParcelIndex } = await import("../clients/graphql.js");
 const { allowFindParcel, findParcel, matchByApn, parseParcelPoint, parseTypeAhead, pointInPolygons, polygonsOf, resolveCounty, FIND_PARCEL_LIMIT_PER_MINUTE } = await import("../tools/parcels.js");
 
 const SF_HIT = { category: "parcel", context: "San Francisco, CA", headline: "1707 Jones St", owner: "SOMEONE PRIVATE", parcelnumb: "0151010", path: "/us/ca/san-francisco/downtown/12801", score: 85, type: "Parcel" };
@@ -149,6 +150,15 @@ describe("findParcel", () => {
     fetchMock.mockResolvedValueOnce(respond([HUNT_HIT])).mockResolvedValueOnce(respond(parcel));
     const result = await findParcel({ query: "1707 Jones St", state: "TX", county: "Hunt" });
     expect(result).toMatchObject({ match: "single", parcel: { onFabrica: { tokenId: "42" } } });
+  });
+
+  it("withholds the on-ramp when the Fabrica token check fails", async () => {
+    vi.mocked(getParcelIndex).mockRejectedValueOnce(new Error("GraphQL down"));
+    fetchMock.mockResolvedValueOnce(respond([HUNT_HIT]));
+    const result = await findParcel({ query: "1707 Jones St", state: "TX", county: "Hunt" });
+    expect(result).toMatchObject({ match: "single", parcel: { onFabrica: null }, note: expect.stringContaining("Could not check") });
+    expect("links" in result).toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("returns candidates and no link for an ambiguous query", async () => {

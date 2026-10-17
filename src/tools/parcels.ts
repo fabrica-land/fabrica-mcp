@@ -302,13 +302,22 @@ export async function findParcel(args: FindParcelArgs) {
       note: "This parcel is on Fabrica. get_property with the tokenId returns its record.",
     };
   }
+  if (indexNote) {
+    // Without the token check the parcel may already be on Fabrica, so no on-ramp link.
+    return {
+      query,
+      match: "single",
+      parcel: toCandidate(top.hit, null),
+      note: `${indexNote} The add-to-Fabrica link is withheld until that check succeeds; calling find_parcel again shortly retries it.`,
+    };
+  }
   let point: ParcelPoint | null = null;
   try {
     point = await lookUpParcelPoint(top.hit);
   } catch {
     point = null;
   }
-  const byOutline = point && point.polygons.length > 0 && !indexNote
+  const byOutline = point && point.polygons.length > 0
     ? tokens.find((token) => token.coordinates && token.regionCode?.toUpperCase() === locate(top.hit.path).state && pointInPolygons(token.coordinates.lat, token.coordinates.lon, point.polygons))
     : undefined;
   if (byOutline) {
@@ -325,7 +334,7 @@ export async function findParcel(args: FindParcelArgs) {
     match: "single",
     parcel: toCandidate(top.hit, null),
     links: { addToFabrica },
-    note: `${point ? "The link opens the on-ramp for this parcel. Nothing is created until a person opens it and decides there." : "The parcel's location could not be looked up, so the link opens the on-ramp search page; the address or parcel number can be entered there."} ${COVERAGE_NOTE}${indexNote ? ` ${indexNote}` : ""}`,
+    note: `${point ? "The link opens the on-ramp for this parcel. Nothing is created until a person opens it and decides there." : "The parcel's location could not be looked up, so the link opens the on-ramp search page; the address or parcel number can be entered there."} ${COVERAGE_NOTE}`,
   };
 }
 
