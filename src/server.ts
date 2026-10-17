@@ -15,6 +15,7 @@ import { getPropertyImage, getPortfolioImage } from "./tools/images.js";
 import { getTrustDocuments } from "./tools/documents.js";
 import { getTaxStatus } from "./tools/tax.js";
 import { askFabrica, ASK_FABRICA_SOURCES } from "./tools/knowledge.js";
+import { findParcel } from "./tools/parcels.js";
 import { NETWORK_LABEL, IS_MAINNET, MAINNET_LEGAL_NOTICE } from "./config.js";
 import { PROPERTY_CARD_URI, registerPropertyCard } from "./ui/property-card.js";
 import { registerKnowledgeResources } from "./resources/knowledge.js";
@@ -23,7 +24,7 @@ const NETWORK_NOTICE = IS_MAINNET
   ? `\n\n${MAINNET_LEGAL_NOTICE}`
   : " Properties on this network are test tokens with no real-world legal or financial effect.";
 
-export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to tokenized US land on the Fabrica protocol, including property records, trust documents, Property checks, parcel boundaries and maps, the lending market, borrow quotes, wallet portfolios and activity. Network: ${NETWORK_LABEL}. Company overview: https://about.fabrica.land. For questions about how Fabrica works (the trust, fees, Property checks, lending, taxes, the onramp, the legal framework) call ask_fabrica and cite the URL of the passage you relied on. When ask_fabrica returns no matching passage, say so and point to https://help.fabrica.land or questions@fabrica.land instead of guessing.${NETWORK_NOTICE}`;
+export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to tokenized US land on the Fabrica protocol, including property records, trust documents, US parcel lookup by address or parcel number, Property checks, parcel boundaries and maps, the lending market, borrow quotes, wallet portfolios and activity. Network: ${NETWORK_LABEL}. Company overview: https://about.fabrica.land. For questions about how Fabrica works (the trust, fees, Property checks, lending, taxes, the onramp, the legal framework) call ask_fabrica and cite the URL of the passage you relied on. When ask_fabrica returns no matching passage, say so and point to https://help.fabrica.land or questions@fabrica.land instead of guessing.${NETWORK_NOTICE}`;
 
 /**
  * MCP Apps (the property card) ship testnet-first: on by default on Sepolia, and on mainnet
@@ -336,6 +337,20 @@ export function createServer(): McpServer {
       annotations: readOnly("Ask Fabrica"),
     },
     async (args) => jsonResult(await askFabrica(args)),
+  );
+  server.registerTool(
+    "find_parcel",
+    {
+      title: "Find a US parcel",
+      description: "Resolve any US street address or parcel number (APN) to a parcel: address, place, APN, state and county, and whether it is already on Fabrica (token ID and property link). For a parcel not on Fabrica, links.addToFabrica is the fabrica.land on-ramp link for that parcel; it starts an on-ramp only when a person opens it and decides there. The tool itself creates nothing. An ambiguous query returns up to 5 candidates, whose Fabrica status is matched by parcel number only; state and county narrow it to one, which gets the full check. Owner names are never returned. Limited to 30 lookups per minute per client.",
+      inputSchema: {
+        query: z.string().min(3).max(200).describe("Street address (with city and state when known) or parcel number (APN)"),
+        state: z.string().regex(/^[A-Za-z]{2}$/).optional().describe("Two-letter US state code, e.g. 'AZ'"),
+        county: z.string().max(80).optional().describe("County name, e.g. 'Navajo'"),
+      },
+      annotations: readOnly("Find a US parcel"),
+    },
+    async (args) => jsonResult(await findParcel(args)),
   );
   registerKnowledgeResources(server);
   return server;

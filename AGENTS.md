@@ -42,6 +42,7 @@ ui/
     documents.ts      # get_trust_documents
     tax.ts            # get_tax_status (also the taxes line on get_property)
     knowledge.ts      # ask_fabrica
+    parcels.ts        # find_parcel (Regrid type-ahead via the API, /go on-ramp link, per-client limit)
   knowledge/
     index.ts          # typed, validated loader for generated/index.json (committed)
     search.ts         # BM25 retrieval with Fabrica synonyms and compound-term normalization
@@ -56,6 +57,8 @@ ui/
     subgraph.ts       # Lending pool subgraph client (dynamic pool discovery)
     cache.ts          # Short-TTL read cache with in-flight de-duplication (TtlCache)
     budgets.ts        # Read budgets (loan page budget, MAX_LOANS)
+  data/
+    us-counties.ts    # Regrid county paths to FIPS and name (copied from soil-app's /go table)
   lifecycle.ts        # propertyStage(): premint, minted, off-ramp, burned (get_property, search rows)
   fees.ts             # fees assessed on a token, by currency address
   types/
@@ -205,6 +208,7 @@ Naming rule: "Property checks" is the name; the number is "the numeric encoding 
   - `FABRICA_API_URL` (default: `https://api.fabrica.land/graphql`)
   - `FABRICA_METASTREET_SUBGRAPH_URL` (default: auto-selected per network)
   - `FABRICA_MEDIA_URL` (default: `https://media.fabrica.land`)
+  - `FABRICA_WEB_URL` (default: `https://fabrica.land`, `https://testnets.fabrica.land` on Sepolia): on-ramp links and the APN parcel lookup in `find_parcel`
   - `FABRICA_CACHE_TTL_MS` (default: `30000`; `0` disables): how long API and subgraph reads are cached in the process. Every hosted user shares one per-IP API rate limit, so repeated and concurrent identical reads are served once. Tests run with `0` (`vitest.config.ts`)
   - `FABRICA_MCP_APPS` (default: on for Sepolia, off for mainnet): the property card MCP App
 

@@ -38,3 +38,34 @@ describe("property card image origins", () => {
     expect(WIDGET_IMAGE_ORIGINS).toContain("https://ipfs.fabrica.land");
   });
 });
+
+describe("find_parcel per-client limit", () => {
+  it("counts find_parcel calls in a message or batch, nothing else", async () => {
+    const { countFindParcelCalls } = await import("../http.js");
+    const call = { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "find_parcel", arguments: { query: "x" } } };
+    expect(countFindParcelCalls(call)).toBe(1);
+    expect(countFindParcelCalls([call, { ...call, id: 2 }, { jsonrpc: "2.0", id: 3, method: "tools/list" }])).toBe(2);
+    expect(countFindParcelCalls({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "get_property" } })).toBe(0);
+    expect(countFindParcelCalls(undefined)).toBe(0);
+  });
+
+  it("answers 429 with a clear JSON-RPC error once the limit is spent", async () => {
+    const { createServer: createHttpServer } = await import("node:http");
+    const { handleMcpHttpRequest } = await import("../http.js");
+    const { allowFindParcel, FIND_PARCEL_LIMIT_PER_MINUTE } = await import("../tools/parcels.js");
+    allowFindParcel("203.0.113.9", FIND_PARCEL_LIMIT_PER_MINUTE);
+    const server = createHttpServer((req, res) => void handleMcpHttpRequest(req, res));
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    if (address === null || typeof address === "string") throw new Error("no port");
+    const response = await fetch(`http://127.0.0.1:${address.port}/mcp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream", "X-Forwarded-For": "203.0.113.9, 10.0.0.1" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "find_parcel", arguments: { query: "1 Main St" } } }),
+    });
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    expect(response.status).toBe(429);
+    const body: unknown = await response.json();
+    expect(JSON.stringify(body)).toContain("lookups per minute");
+  });
+});
