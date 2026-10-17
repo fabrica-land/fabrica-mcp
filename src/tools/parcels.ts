@@ -298,7 +298,8 @@ async function searchParcel(args: FindParcelArgs) {
   const inScope = hits.filter((hit) => inState(hit, args.state));
   // A query that is a parcel number matching exactly one parcel in scope is that parcel.
   const exactApn = inScope.filter((hit) => hit.apn !== null && normalizeApn(hit.apn) === normalizeApn(query));
-  const scoped = (exactApn.length === 1 ? exactApn : inScope).slice(0, MAX_CANDIDATES);
+  // Several parcels sharing that exact number stay ambiguous: a score lead says nothing about which one is meant.
+  const scoped = (exactApn.length > 0 ? exactApn : inScope).slice(0, MAX_CANDIDATES);
   if (scoped.length === 0) {
     return { query, match: "none", candidates: [], note: `No US parcel matched${args.state && !scope ? ` in ${args.state.toUpperCase()}; adding the county scopes the search itself, not just its results` : ""}. A full street address with city and state, or a parcel number with state and county, narrows the search.` };
   }
@@ -311,7 +312,7 @@ async function searchParcel(args: FindParcelArgs) {
   }
   const matched = scoped.map((hit) => ({ hit, token: matchByApn(hit, tokens) }));
   const [top, second] = matched;
-  const single = top !== undefined && (second === undefined || top.hit.score - second.hit.score >= CLEAR_LEAD);
+  const single = top !== undefined && (second === undefined || (exactApn.length === 0 && top.hit.score - second.hit.score >= CLEAR_LEAD));
   if (!top || !single) {
     return {
       query,

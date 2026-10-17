@@ -195,6 +195,17 @@ describe("findParcel", () => {
     expect(JSON.stringify(result)).not.toContain("OWNER");
   });
 
+  it("keeps several exact parcel-number hits ambiguous, whatever their scores", async () => {
+    const first = { ...HUNT_HIT, headline: "A", parcelnumb: "71359", score: 95 };
+    const second = { ...HUNT_HIT, headline: "B", parcelnumb: "71-359", path: "/us/tx/hunt/greenville/99999", score: 60 };
+    const other = { ...HUNT_HIT, headline: "C", parcelnumb: "12345", path: "/us/tx/hunt/greenville/11111", score: 99 };
+    fetchMock.mockResolvedValueOnce(respond([other, first, second]));
+    const result = await findParcel({ query: "71359", state: "TX", county: "Hunt" });
+    expect(result).toMatchObject({ match: "ambiguous" });
+    expect("candidates" in result ? (result.candidates ?? []).map((c) => c.apn) : []).toEqual(["71359", "71-359"]);
+    expect("links" in result).toBe(false);
+  });
+
   it("reports a search failure as an error, not a throw", async () => {
     fetchMock.mockResolvedValueOnce(respond({ message: "Error fetching type-ahead result from Regrid" }, 502));
     expect(await findParcel({ query: "1707 Jones St" })).toMatchObject({ error: expect.stringContaining("HTTP 502") });
