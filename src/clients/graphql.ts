@@ -565,13 +565,13 @@ function isScoreRecord(value: unknown): value is ScoreRecord {
   return typeof value === "object" && value !== null && "checks" in value && typeof value.checks === "object" && value.checks !== null;
 }
 
+const scoreRecordCache = new TtlCache<ScoreRecord | null>();
+
 /**
  * The latest score record of an existing token, which carries the raw check values (the
  * GraphQL list reports an unverified check as false) and when the checks expire. Call it
- * only for a token the GraphQL API returned. Null when the API has no record.
+ * only for a token the GraphQL API returned. Null when the API has no record (404).
  */
-const scoreRecordCache = new TtlCache<ScoreRecord | null>();
-
 export function getScoreRecord(contractAddress: string, tokenId: string): Promise<ScoreRecord | null> {
   return scoreRecordCache.get(`${contractAddress}:${tokenId}`, () => fetchScoreRecord(contractAddress, tokenId));
 }
@@ -580,11 +580,19 @@ export function getScoreRecord(contractAddress: string, tokenId: string): Promis
 async function fetchScoreRecord(contractAddress: string, tokenId: string): Promise<ScoreRecord | null> {
   const base = API_URL.replace(/\/graphql\/?$/, "");
   const url = `${base}/${encodeURIComponent(NETWORK)}/${encodeURIComponent(contractAddress)}/${encodeURIComponent(tokenId)}/score`;
-  const response = await fetch(url, { signal: AbortSignal.timeout(API_TIMEOUT_MS) });
+  let response: Response;
+  try {
+    response = await fetch(url, { signal: AbortSignal.timeout(API_TIMEOUT_MS) });
+  } catch (error) {
+    if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
+      throw new Error(`Fabrica API did not respond within ${API_TIMEOUT_MS / 1000} s. Try again shortly.`);
+    }
+    throw error;
+  }
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`Fabrica score API request failed (HTTP ${response.status})`);
   const body: unknown = await response.json();
-  if (!isScoreRecord(body)) return null;
+  if (!isScoreRecord(body)) throw new Error("Fabrica score API returned an unexpected record shape");
   return {
     checks: body.checks,
     updatedAt: "updatedAt" in body && typeof body.updatedAt === "string" ? body.updatedAt : null,
