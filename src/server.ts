@@ -307,7 +307,7 @@ export function createServer(): McpServer {
     "find_parcel",
     {
       title: "Find a US parcel",
-      description: "Resolve any US street address or parcel number (APN) to a parcel: address, place, APN, state and county, and whether it is already on Fabrica (token ID and property link). For a parcel not on Fabrica, links.addToFabrica is the fabrica.land on-ramp link for that parcel; it starts an on-ramp only when a person opens it and decides there. The tool itself creates nothing. An ambiguous query returns up to 5 candidates; state and county narrow it. Owner names are never returned. Limited to 30 lookups per minute per client.",
+      description: "Resolve any US street address or parcel number (APN) to a parcel: address, place, APN, state and county, and whether it is already on Fabrica (token ID and property link). For a parcel not on Fabrica, links.addToFabrica is the fabrica.land on-ramp link for that parcel; it starts an on-ramp only when a person opens it and decides there. The tool itself creates nothing. An ambiguous query returns up to 5 candidates, whose Fabrica status is matched by parcel number only; state and county narrow it to one, which gets the full check. Owner names are never returned. Limited to 30 lookups per minute per client.",
       inputSchema: {
         query: z.string().min(3).max(200).describe("Street address (with city and state when known) or parcel number (APN)"),
         state: z.string().regex(/^[A-Za-z]{2}$/).optional().describe("Two-letter US state code, e.g. 'AZ'"),

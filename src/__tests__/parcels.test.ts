@@ -239,6 +239,7 @@ describe("findParcel", () => {
     const result = await findParcel({ query: "1707 Jones St" });
     expect(result).toMatchObject({ match: "ambiguous" });
     expect("candidates" in result ? result.candidates?.map((c) => c.onFabrica) : undefined).toEqual([null, null]);
+    expect("note" in result ? result.note : "").toContain("narrows to one parcel");
   });
 
   it("prefers the state-ranked search over a stray in-state hit from the nationwide one", async () => {

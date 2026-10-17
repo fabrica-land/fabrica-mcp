@@ -373,7 +373,7 @@ async function searchParcel(args: FindParcelArgs) {
       query,
       match: "ambiguous",
       candidates: matched.map(({ hit, token }) => toCandidate(hit, token)),
-      note: `Several parcels match. Calling find_parcel again with state (and county) narrows it to one.${indexNote ? ` ${indexNote}` : ""}`,
+      note: `Several parcels match. Calling find_parcel again with state (and county) narrows it to one.${indexNote ? ` ${indexNote}` : " onFabrica here comes from parcel numbers only; null means not confirmed on Fabrica, and the full check (including the parcel outline) runs once the search narrows to one parcel."}`,
     };
   }
   if (top.token) {
