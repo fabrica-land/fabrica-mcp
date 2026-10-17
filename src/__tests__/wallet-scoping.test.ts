@@ -53,6 +53,7 @@ function activity(overrides: Partial<ActivityModel>): ActivityModel {
     currencyDecimals: null,
     currencySymbol: null,
     usdAmount: null,
+    newValue: null,
     ...overrides,
   };
 }

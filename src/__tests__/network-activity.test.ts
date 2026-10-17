@@ -14,7 +14,7 @@ const { getActivity } = await import("../tools/activity.js");
 function event(activity: ActivityModel["activity"], timestamp: number, network = "ethereum"): ActivityModel {
   return {
     activity, source: "Fabrica", time: new Date(timestamp * 1000).toISOString(), timestamp, network,
-    tokenId: null, transactionHash: null, currencyAmount: null, currencyDecimals: null, currencySymbol: null, usdAmount: null,
+    tokenId: null, transactionHash: null, currencyAmount: null, currencyDecimals: null, currencySymbol: null, usdAmount: null, newValue: null,
   };
 }
 
@@ -36,6 +36,16 @@ describe("get_activity with no filter", () => {
   it("lists score recalculations when the type asks for them, and pages with limit", async () => {
     expect(await getActivity({ type: "ScoreChanged" })).toMatchObject({ total: 1, events: [{ type: "ScoreChanged" }] });
     expect(await getActivity({ limit: 1 })).toMatchObject({ total: 3, showing: "1 of 3" });
+  });
+
+  it("pairs each score change with the property's previous one", async () => {
+    const score = (timestamp: number, newValue: string) => ({ ...event("ScoreChanged", timestamp), newValue });
+    vi.mocked(getNetworkActivity).mockResolvedValueOnce([
+      { tokenId: "1", name: "Lot One", vanityName: null, activity: [score(400, "73342"), score(100, "72342")] },
+    ]);
+    const result = await getActivity({ type: "ScoreChanged" });
+    const events = ("events" in result ? result.events : undefined) ?? [];
+    expect(events[0]).toMatchObject({ propertyChecks: { previousEncoding: 72342, changed: ["Past Title & Load 2 to 3 (of 5)"] } });
   });
 
   it("reports a failure as an error", async () => {

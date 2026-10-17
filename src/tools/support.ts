@@ -1,3 +1,4 @@
+import { getPropertyLink } from "../clients/graphql.js";
 import { NETWORK, WEB_BASE } from "../config.js";
 import { BIP39_WORDLISTS } from "./bip39-wordlists.js";
 import { z } from "zod";
@@ -70,6 +71,8 @@ export const contactSupportInput = {
   summary: z.string().min(10).max(2000).describe("What the person is trying to do, what happened, and what was already checked"),
   topic: z.enum(SUPPORT_TOPICS).optional().describe("Help center section: getting_started, adding_property, buying_selling, borrowing_lending, trust_legal, troubleshooting, other (default)"),
   tokenId: z.string().regex(/^[0-9]{1,80}$/).optional().describe("Token ID of the property the question is about (digits only)"),
+  subject: z.string().min(3).max(150).optional().describe("Email subject, in the person's words (default: the topic, plus the token ID when given)"),
+  discloseAgent: z.boolean().optional().describe("Add a line saying the email was drafted by an AI agent through the Fabrica MCP server (default: true)"),
 };
 export type ContactSupportArgs = ArgsOf<typeof contactSupportInput>;
 
@@ -91,7 +94,18 @@ function mailtoLink(subject: string, summary: string, suffix: string[]): string 
   return compose(text);
 }
 
-export function contactSupport(args: ContactSupportArgs) {
+/** The property's page as every other tool links it; the stable /property/ link when the API cannot say. */
+async function supportPropertyLink(tokenId: string): Promise<string> {
+  try {
+    const link = await getPropertyLink(tokenId);
+    if (link) return link;
+  } catch {
+    // Fall through: the stable link always resolves on fabrica.land.
+  }
+  return `${WEB}/property/${NETWORK}/${encodeURIComponent(tokenId)}`;
+}
+
+export async function contactSupport(args: ContactSupportArgs) {
   const summary = wellFormed(args.summary).trim();
   if (summary.length < 10) return { error: "The summary needs at least a sentence: what the person is trying to do and what went wrong." };
   if (summary.length > MAX_SUMMARY_CHARS) return { error: `The summary is limited to ${MAX_SUMMARY_CHARS} characters.` };
@@ -102,9 +116,14 @@ export function contactSupport(args: ContactSupportArgs) {
     return { error: "tokenId must be a Fabrica token ID: digits only, as get_property and search_properties return it." };
   }
   const topic = TOPIC_PAGES[args.topic ?? "other"];
-  const propertyLink = args.tokenId ? `${WEB}/property/${NETWORK}/${encodeURIComponent(args.tokenId)}` : null;
-  const subject = `Question from an AI agent: ${topic.label}${args.tokenId ? ` (token ${args.tokenId})` : ""}`;
-  const suffix = [propertyLink ? `Property: ${propertyLink}` : null, "Sent from an AI agent using the Fabrica MCP server."].filter((line) => line !== null);
+  const subjectText = args.subject ? wellFormed(args.subject).replace(/[\r\n]+/g, " ").trim() : "";
+  if (subjectText && containsSecret(subjectText)) {
+    return { error: "The subject looks like it contains a private key or seed phrase. Remove it and call again." };
+  }
+  const propertyLink = args.tokenId ? await supportPropertyLink(args.tokenId) : null;
+  const subject = subjectText || `Question about Fabrica: ${topic.label}${args.tokenId ? ` (token ${args.tokenId})` : ""}`;
+  const disclose = args.discloseAgent ?? true;
+  const suffix = [propertyLink ? `Property: ${propertyLink}` : null, disclose ? "Drafted with an AI agent using the Fabrica MCP server." : null].filter((line) => line !== null);
   return {
     helpCenterUrl: topic.url,
     email: SUPPORT_EMAIL,

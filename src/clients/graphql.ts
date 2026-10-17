@@ -10,6 +10,7 @@ import type {
   GetOrderBookQuery,
   GetParcelIndexQuery,
   GetPremintSuccessorQuery,
+  GetPropertyLinkQuery,
   GetTaxStatusQuery,
   GetTokenQuery,
   GetTokenWithPoolOracleQuery,
@@ -298,7 +299,7 @@ const TOKEN_DETAIL_FIELDS = gql`
     poolLendingLiquidity { appraisalBlockReason maxPrincipalScaled maxPrincipalUsdc durations activeLoan { id principal repayment duration maturity } }
     marketplaceListings { marketplaceId side status price usdPrice symbol supply makerAddress startTime endTime encumbrance { buyable } }
     marketplaceBids { marketplaceId side status price usdPrice symbol supply makerAddress startTime endTime }
-    activity { activity source time timestamp network tokenId transactionHash currencyAmount currencyDecimals currencySymbol usdAmount }
+    activity { activity source time timestamp network tokenId transactionHash currencyAmount currencyDecimals currencySymbol usdAmount newValue }
     transfers { from { address } to { address } value transactionHash blockTimestamp }
   }
 `;
@@ -683,7 +684,7 @@ const WALLET_FIELDS = gql`
       amountPaidToLenderScaled loanRepaidDate
     }
     marketplaceOffersMade(network: $network) { marketplaceId tokenId side status price symbol }
-    activity { activity source time timestamp network tokenId transactionHash currencyAmount currencyDecimals currencySymbol usdAmount }
+    activity { activity source time timestamp network tokenId transactionHash currencyAmount currencyDecimals currencySymbol usdAmount newValue }
   }
 `;
 
@@ -885,7 +886,7 @@ const GET_NETWORK_ACTIVITY_QUERY = gql`
       tokenId
       name
       vanityName
-      activity { activity source time timestamp network tokenId transactionHash currencyAmount currencyDecimals currencySymbol usdAmount }
+      activity { activity source time timestamp network tokenId transactionHash currencyAmount currencyDecimals currencySymbol usdAmount newValue }
     }
   }
 `;
@@ -899,6 +900,24 @@ export async function getNetworkActivity(): Promise<NetworkActivityToken[]> {
     contractAddress: CONTRACTS.fabricaToken,
   });
   return filterSpamTokens(data.tokens);
+}
+
+// --- One token's property page link (contact_support) ---
+
+const GET_PROPERTY_LINK_QUERY = gql`
+  query GetPropertyLink($tokenId: String, $network: String) {
+    token(tokenId: $tokenId, network: $network) {
+      propertyLink
+    }
+  }
+`;
+
+const propertyLinkCache = new TtlCache<GetPropertyLinkQuery>();
+
+/** The fabrica.land page of one token, as every other tool links it. */
+export async function getPropertyLink(tokenId: string): Promise<string | null> {
+  const data = await cachedRequest(propertyLinkCache, GET_PROPERTY_LINK_QUERY, { tokenId, network: NETWORK });
+  return data.token.propertyLink || null;
 }
 
 /**
@@ -923,4 +942,5 @@ export const API_DOCUMENTS: ReadonlyArray<{ name: string; document: string }> = 
   { name: "GetPremintSuccessor", document: GET_PREMINT_SUCCESSOR_QUERY },
   { name: "GetParcelIndex", document: GET_PARCEL_INDEX_QUERY },
   { name: "GetNetworkActivity", document: GET_NETWORK_ACTIVITY_QUERY },
+  { name: "GetPropertyLink", document: GET_PROPERTY_LINK_QUERY },
 ];

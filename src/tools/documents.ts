@@ -72,6 +72,8 @@ export async function getTrustDocuments(args: GetTrustDocumentsArgs) {
         agreementName: token.operatingAgreementName,
         agreementVersion: parseAgreementVersion(token.operatingAgreementName),
         agreementUrl: gatewayOrRaw(token.operatingAgreementUrl),
+        // This token's own agreement text as an MCP resource, without the 150 KB inline.
+        agreementResource: `fabrica://property/${token.tokenId}/trust-agreement`,
         about: TRUST_NOTE,
         ...(includeAgreementText ? { agreementText: token.operatingAgreement ?? null } : {}),
       },

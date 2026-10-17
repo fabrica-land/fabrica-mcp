@@ -5,6 +5,7 @@
 // that mocks a client function builds its fixture here instead of casting a shape by hand, so a
 // query change that drops or renames a field fails typecheck in the tests too.
 import type {
+  ActivityModel,
   BalanceModel,
   LoanCollateralToken,
   LoanModel,
@@ -308,6 +309,25 @@ export function marketplaceOrder(overrides: Partial<MarketplaceOrderModel> = {})
     startTime: "2026-01-01T00:00:00Z",
     endTime: null,
     encumbrance: null,
+    ...overrides,
+  };
+}
+
+/** One row of a token's activity feed (token.activity). */
+export function activity(overrides: Partial<ActivityModel> = {}): ActivityModel {
+  return {
+    activity: "ScoreChanged",
+    source: "Fabrica",
+    time: "2026-10-01T00:00:00Z",
+    timestamp: 0,
+    network: "ethereum",
+    tokenId: "1",
+    transactionHash: null,
+    currencyAmount: null,
+    currencyDecimals: null,
+    currencySymbol: null,
+    usdAmount: null,
+    newValue: null,
     ...overrides,
   };
 }

@@ -81,6 +81,18 @@ describe("retrieval", () => {
     });
   }
 
+  for (const question of ["How does Fabrica work?", "What is Fabrica?", "Explain Fabrica"]) {
+    it(`ranks the overview first for "${question}"`, () => {
+      const [top] = searchPassages(index.passages, question, { limit: 5 });
+      expect(top?.passage.url).toMatch(/what-is-fabrica|docs\/architecture/);
+    });
+  }
+
+  it("leaves a topical question to its own page", () => {
+    const [top] = searchPassages(index.passages, "How do auctions work on Fabrica?", { limit: 5 });
+    expect(top?.passage.url).toContain("auctions");
+  });
+
   it("returns at most one hit per page section", () => {
     const hits = searchPassages(index.passages, "trustee duties", { limit: 5 });
     const keys = hits.map((hit) => `${hit.passage.url}#${hit.passage.sectionTitle}`);

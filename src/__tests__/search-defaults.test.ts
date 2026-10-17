@@ -44,6 +44,17 @@ describe("minimum score defaults", () => {
     expect(minScoreOfLastCall()).toBe(0);
   });
 
+  it("keeps the Monterey test parcel (encoding 73342) inside the default threshold", async () => {
+    // Regression from the 2026-10-16 report: the parcel was missing because of hasListings, not the threshold.
+    await searchProperties({ region: "CA" });
+    expect(minScoreOfLastCall()).toBeLessThanOrEqual(73342);
+  });
+
+  it("says plainly when a grouped search matches nothing", async () => {
+    const result = await searchProperties({ groupBy: "county" });
+    expect(result).toMatchObject({ showing: "none", message: "No properties match these filters." });
+  });
+
   it("protocol stats use the marketplace threshold", async () => {
     await getProtocolStats();
     expect(minScoreOfLastCall()).toBe(72032);
