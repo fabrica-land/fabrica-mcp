@@ -204,7 +204,8 @@ describe("findParcel", () => {
     const raw = JSON.stringify(result);
     expect(raw).not.toContain("OWNER");
     expect(raw).not.toContain("PRIVATE RD");
-    expect(raw).toContain("Fabrica operates in all 50 states");
+    expect(result).toMatchObject({ coverage: { status: "supported" } });
+    expect(raw).toContain("The on-ramp is set up for this county");
   });
 
   it("finds a token inside the parcel outline when the APN differs", async () => {

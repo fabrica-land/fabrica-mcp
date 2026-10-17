@@ -1,0 +1,638 @@
+{
+ "source": {
+  "commit": "bfce9f9d192f44738d05c0e4630b987265dd5c92",
+  "committedAt": "2026-10-16T12:47:16+00:00",
+  "builtAt": "2026-10-17"
+ },
+ "layers": {
+  "common": {
+   "ak": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Warranty Deed"
+     }
+    }
+   },
+   "al": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Warranty Deed"
+     }
+    }
+   },
+   "ar": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Warranty Deed"
+     },
+     "jurisdiction-tax-form": {
+      "name": "Real Property Tax Affidavit",
+      "notarize": true
+     }
+    },
+    "fields": {
+     "Address": {
+      "required": true
+     },
+     "Address Line 2": {
+      "required": false
+     },
+     "City": {
+      "required": true
+     },
+     "State": {
+      "required": true
+     },
+     "Zip": {
+      "required": true
+     }
+    }
+   },
+   "az": {
+    "documents": {
+     "proof-of-title": {
+      "name": "General Warranty Deed"
+     }
+    }
+   },
+   "ca/fresno": {
+    "documents": {
+     "proof-of-title": {}
+    }
+   },
+   "ca/marin": {
+    "documents": {
+     "proof-of-title": {}
+    }
+   },
+   "ca/monterey": {
+    "documents": {
+     "proof-of-title": {}
+    }
+   },
+   "ca": {
+    "documents": {
+     "proof-of-title": {},
+     "jurisdiction-tax-form": {
+      "name": "PCOR",
+      "notarize": true
+     }
+    },
+    "fields": {
+     "Phone Number": {
+      "required": true
+     },
+     "What type of property is this?": {
+      "required": true
+     },
+     "Is there a loan secured by this property?": {
+      "required": true,
+      "dependsOnParcel": true
+     },
+     "What is the lender’s name?": {
+      "required": false,
+      "dependsOnParcel": true
+     },
+     "Is this property your principal residence?": {
+      "required": true
+     },
+     "Date you moved in, if this is your principal residence (MM/DD/YYYY)": {
+      "required": false
+     }
+    }
+   },
+   "ca/riverside": {
+    "workflowSupport": "notConfigured"
+   },
+   "ca/san-francisco": {
+    "documents": {
+     "proof-of-title": {},
+     "jurisdiction-tax-form-sf-tta": {
+      "name": "Transfer Tax Affidavit",
+      "notarize": true
+     }
+    },
+    "fields": {
+     "Property street address (used only if the address on file is incomplete)": {
+      "required": false
+     }
+    }
+   },
+   "ca/santa-barbara": {
+    "documents": {
+     "proof-of-title": {}
+    }
+   },
+   "co": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Bargain and Sale Deed"
+     },
+     "jurisdiction-tax-form": {
+      "name": "TD1000",
+      "notarize": true
+     }
+    }
+   },
+   "ct": {
+    "witnessesRequired": true,
+    "documents": {
+     "proof-of-title": {
+      "name": "Warranty Deed"
+     }
+    }
+   },
+   "de": {
+    "documents": {
+     "proof-of-title": {
+      "name": "General Warranty Deed"
+     }
+    }
+   },
+   "fl": {
+    "witnessesRequired": true,
+    "notaryNote": "For the Trust Deed, please sign and print your name as the first witness. Verify and ensure the same from the second witness, who will join the signer.",
+    "documents": {
+     "proof-of-title": {}
+    }
+   },
+   "ga/dekalb": {
+    "documents": {
+     "proof-of-title": {},
+     "jurisdiction-tax-form": {}
+    }
+   },
+   "ga": {
+    "witnessesRequired": true,
+    "notaryNote": "NOTE: Witness Required. If the signer is not in presence of a witness, please add a Witness on Demand through proof.com",
+    "documents": {
+     "proof-of-title": {},
+     "jurisdiction-tax-form": {
+      "name": "PT-61",
+      "notarize": true
+     }
+    }
+   },
+   "hi": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Warranty Deed"
+     }
+    }
+   },
+   "ia": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Warranty Deed"
+     }
+    }
+   },
+   "id": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Warranty Deed"
+     }
+    }
+   },
+   "il": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Quit Claim Deed in Trust"
+     }
+    }
+   },
+   "in": {
+    "documents": {
+     "proof-of-title": {
+      "name": "General Warranty Deed"
+     }
+    }
+   },
+   "ks": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Warranty Deed"
+     }
+    }
+   },
+   "ky": {
+    "documents": {
+     "proof-of-title": {
+      "name": "General Warranty Deed"
+     }
+    }
+   },
+   "la": {
+    "witnessesRequired": true,
+    "notaryNote": "NOTE: Witness Required. Louisiana requires authentic act form with notary and two witnesses.",
+    "documents": {
+     "proof-of-title": {
+      "name": "Act of Sale (Warranty Deed)"
+     }
+    }
+   },
+   "ma": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Warranty Deed"
+     }
+    }
+   },
+   "md": {
+    "documents": {
+     "proof-of-title": {
+      "name": "General Warranty Deed"
+     }
+    }
+   },
+   "me": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Warranty Deed"
+     }
+    }
+   },
+   "mi": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Warranty Deed"
+     }
+    }
+   },
+   "mn": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Warranty Deed"
+     }
+    }
+   },
+   "mo": {
+    "documents": {
+     "proof-of-title": {
+      "name": "General Warranty Deed"
+     }
+    }
+   },
+   "ms": {
+    "documents": {
+     "proof-of-title": {
+      "name": "General Warranty Deed"
+     }
+    }
+   },
+   "mt": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Grant Deed"
+     },
+     "jurisdiction-tax-form": {
+      "name": "Realty Transfer Certificate",
+      "notarize": true
+     }
+    },
+    "fields": {
+     "Address": {
+      "required": true
+     },
+     "Address Line 2": {
+      "required": false
+     },
+     "City": {
+      "required": true
+     },
+     "State": {
+      "required": true
+     },
+     "Zip": {
+      "required": true
+     }
+    }
+   },
+   "nc": {
+    "documents": {
+     "proof-of-title": {
+      "name": "General Warranty Deed"
+     }
+    },
+    "fields": {
+     "Address": {
+      "required": true
+     },
+     "City": {
+      "required": true
+     },
+     "State": {
+      "required": true
+     },
+     "Zip": {
+      "required": true
+     }
+    }
+   },
+   "nd": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Warranty Deed"
+     }
+    }
+   },
+   "ne": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Warranty Deed"
+     }
+    }
+   },
+   "nh": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Warranty Deed"
+     }
+    }
+   },
+   "nj": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Bargain and Sale Deed"
+     }
+    }
+   },
+   "nm": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Trust Grant Deed"
+     }
+    }
+   },
+   "nv": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Grant Bargain and Sale Deed"
+     },
+     "trust-certificate": {
+      "name": "DOV Supporting Documentation",
+      "notarize": true
+     },
+     "jurisdiction-tax-form": {
+      "name": "DOV",
+      "notarize": true
+     }
+    },
+    "fields": {
+     "Address": {
+      "required": true
+     },
+     "City": {
+      "required": true
+     },
+     "State": {
+      "required": true
+     },
+     "Zip": {
+      "required": true
+     }
+    }
+   },
+   "ny": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Bargain and Sale Deed"
+     },
+     "jurisdiction-tax-form": {
+      "name": "TP-584",
+      "notarize": true
+     },
+     "jurisdiction-tax-form-ny-rp": {
+      "name": "RP-5217",
+      "notarize": true
+     }
+    },
+    "fields": {
+     "Address": {
+      "required": true
+     },
+     "City": {
+      "required": true
+     },
+     "State": {
+      "required": true
+     },
+     "Zip": {
+      "required": true
+     }
+    }
+   },
+   "ny/orange": {
+    "documents": {
+     "proof-of-title": {},
+     "jurisdiction-tax-form": {},
+     "jurisdiction-tax-form-ny-rp": {}
+    }
+   },
+   "oh": {
+    "documents": {
+     "proof-of-title": {
+      "name": "General Warranty Deed"
+     }
+    }
+   },
+   "ok": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Special Warranty Deed"
+     }
+    }
+   },
+   "": {
+    "workflowSupport": "supported",
+    "fractionalOwnership": false,
+    "documents": {
+     "proof-of-title": {
+      "name": "Deed",
+      "notarize": true
+     }
+    },
+    "fields": {
+     "How do you hold title, as shown on your current deed?": {
+      "required": true
+     }
+    },
+    "steps": [
+     {
+      "text": "Who currently owns the property?",
+      "actions": [
+       {
+        "prompt": "Email address"
+       },
+       {
+        "prompt": "Grantors (current property owners)"
+       },
+       {
+        "prompt": "Recipients"
+       }
+      ]
+     },
+     {
+      "text": "Preparing your property",
+      "stages": [
+       "Writing a description based on property features",
+       "Generating AI pictures tailored to the location",
+       "Verifying the property’s ownership history",
+       "Legal documents are being reviewed"
+      ]
+     },
+     {
+      "text": "Payment authorization",
+      "actions": [
+       {
+        "prompt": "Pay on first use"
+       }
+      ]
+     },
+     {
+      "text": "Legal documents",
+      "actions": [
+       {
+        "prompt": "Operating Agreement",
+        "document": "operating-agreement"
+       },
+       {
+        "prompt": "Deed",
+        "document": "proof-of-title"
+       },
+       {
+        "prompt": "Local Tax Form",
+        "document": "jurisdiction-tax-form"
+       },
+       {
+        "prompt": "Review and sign"
+       }
+      ]
+     },
+     {
+      "text": "Making it official",
+      "stages": [
+       "Waiting for the county to officially record and stamp the deed",
+       "Setting up your ownership record"
+      ]
+     }
+    ]
+   },
+   "or": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Warranty Deed"
+     }
+    }
+   },
+   "pa": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Special Warranty Deed"
+     }
+    }
+   },
+   "ri": {
+    "fields": {
+     "Mailing Address": {
+      "required": true
+     },
+     "City": {
+      "required": true
+     },
+     "State": {
+      "required": true
+     },
+     "Zip Code": {
+      "required": true
+     }
+    }
+   },
+   "sc": {
+    "documents": {
+     "proof-of-title": {
+      "name": "General Warranty Deed"
+     }
+    }
+   },
+   "sd": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Warranty Deed"
+     }
+    }
+   },
+   "tn": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Warranty Deed"
+     }
+    }
+   },
+   "tx": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Special Warranty Deed"
+     }
+    }
+   },
+   "ut": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Special Warranty Deed"
+     }
+    }
+   },
+   "va": {
+    "documents": {
+     "proof-of-title": {
+      "name": "General Warranty Deed"
+     }
+    }
+   },
+   "vt": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Warranty Deed"
+     }
+    }
+   },
+   "wa": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Statutory Warranty Deed"
+     }
+    }
+   },
+   "wa/pierce": {
+    "documents": {
+     "proof-of-title": {}
+    },
+    "fields": {
+     "Phone Number": {
+      "required": true
+     }
+    }
+   },
+   "wi": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Warranty Deed"
+     }
+    }
+   },
+   "wv": {
+    "documents": {
+     "proof-of-title": {}
+    }
+   },
+   "wy": {
+    "documents": {
+     "proof-of-title": {
+      "name": "Warranty Deed"
+     }
+    }
+   }
+  }
+ }
+}

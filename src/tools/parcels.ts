@@ -1,6 +1,7 @@
 import { getParcelIndex, type ParcelIndexToken } from "../clients/graphql.js";
 import { MAINNET_WARNING, NETWORK_LABEL, WEB_BASE } from "../config.js";
 import { US_COUNTY_ROWS } from "../data/us-counties.js";
+import { COVERAGE_AS_OF, coverageStatus, type CoverageStatus } from "./coverage.js";
 
 /**
  * find_parcel: any US address or parcel number to a parcel identity, whether it is
@@ -405,13 +406,22 @@ async function searchParcel(args: FindParcelArgs) {
     };
   }
   const addToFabrica = point ? onRampLink(point, top.hit) : `${WEB_BASE}/go`;
+  const { countyKey } = locate(top.hit.path);
+  const coverage = countyKey ? { status: coverageStatus(countyKey), asOf: COVERAGE_AS_OF } : null;
   return {
     query,
     match: "single",
     parcel: toCandidate(top.hit, null),
     links: { addToFabrica },
-    note: `${point ? "The link opens the on-ramp for this parcel. Nothing is created until a person opens it and decides there." : "The parcel's location could not be looked up, so the link opens the on-ramp search page; the address or parcel number can be entered there."} ${COVERAGE_NOTE}`,
+    ...(coverage ? { coverage } : {}),
+    note: `${point ? "The link opens the on-ramp for this parcel. Nothing is created until a person opens it and decides there." : "The parcel's location could not be looked up, so the link opens the on-ramp search page; the address or parcel number can be entered there."} ${coverage ? coverageNote(coverage.status) : COVERAGE_NOTE}`,
   };
+}
+
+function coverageNote(status: CoverageStatus): string {
+  if (status === "supported") return `The on-ramp is set up for this county (on-ramp rules as of ${COVERAGE_AS_OF}); check_coverage lists the documents and steps it asks for.`;
+  if (status === "notConfigured") return `The on-ramp is not set up for this county yet (on-ramp rules as of ${COVERAGE_AS_OF}), so the owner may not be able to finish online; contact_support can ask Fabrica about it.`;
+  return `Fabrica does not take property in this county through the on-ramp (on-ramp rules as of ${COVERAGE_AS_OF}).`;
 }
 
 /** Per-client limit on find_parcel calls, per warm server instance (the type-ahead is metered). */

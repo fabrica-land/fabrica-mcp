@@ -75,6 +75,7 @@ Set `FABRICA_NETWORK=sepolia` in the server's environment for the testnet.
 | `get_portfolio_image` | Map image showing all properties owned by a wallet (inline, dark/light themes) |
 | `ask_fabrica` | Cited passages from Fabrica's docs, help center and the US trust agreement that answer a question about how Fabrica works |
 | `find_parcel` | Any US address or parcel number (APN) to a parcel: on Fabrica or not, and the on-ramp link to add it. No owner names; 30 lookups per minute per client |
+| `check_coverage` | Whether a US county (or state) can be added through the on-ramp, and what it asks the owner for. From a table of the on-ramp rules, dated and refreshed by hand (`npm run coverage:build`) |
 | `contact_support` | Hand a question to Fabrica support: help center section, support email, and a prefilled mailto with the summary and property link. Sends nothing itself |
 
 ### Knowledge layer

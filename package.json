@@ -31,7 +31,8 @@
     "schema:refresh": "node scripts/refresh-api-schema.mjs",
     "knowledge:build": "node scripts/build-knowledge.mjs",
     "regression": "node scripts/regression/run.mjs",
-    "knowledge:check": "node scripts/build-knowledge.mjs --check"
+    "knowledge:check": "node scripts/build-knowledge.mjs --check",
+    "coverage:build": "node scripts/build-coverage.mjs"
   },
   "keywords": [
     "mcp",

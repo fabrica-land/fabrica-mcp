@@ -48,6 +48,7 @@ ui/
     tax.ts            # get_tax_status (also the taxes line on get_property)
     knowledge.ts      # ask_fabrica
     parcels.ts        # find_parcel (Regrid type-ahead via the API, /go on-ramp link, per-client limit)
+    coverage.ts       # check_coverage (static on-ramp rules table in src/data/onramp-coverage.json, built by scripts/build-coverage.mjs)
     support.ts        # contact_support (help center link, support email, prefilled mailto; nothing sent)
   knowledge/
     index.ts          # typed, validated loader for generated/index.json (committed)
