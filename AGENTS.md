@@ -18,7 +18,7 @@ Fabrica tokenizes real property (land) as ERC-1155 NFTs on Ethereum. A legal tru
 ```
 src/
   config.ts           # Network config, contract addresses, legal notices
-  server.ts           # createServer(): registers all 12 tools
+  server.ts           # createServer(): registers every tool
   index.ts            # stdio entrypoint (local installs)
   http.ts             # stateless Streamable HTTP handler (hosted)
   vercel.ts           # Vercel function entry, bundled by scripts/build-vercel.mjs
@@ -35,6 +35,7 @@ ui/
     scoring.ts        # explain_confidence_score
     borrowing.ts      # get_borrow_quote
     activity.ts       # get_activity
+    marketplace.ts    # get_order_book
     images.ts         # get_property_image, get_portfolio_image
     knowledge.ts      # ask_fabrica
   knowledge/
@@ -76,6 +77,7 @@ The Apollo API routes subgraph data internally, so all onchain and offchain prop
 **Key API behaviors:**
 
 - **`tokens` query has NO `first`/`skip` pagination.** Returns all matching tokens. Pagination is client-side.
+- **Marketplace orders:** unfiltered `token.marketplaceListings` / `marketplaceBids` return every status (active, encumbered, pending, expired, canceled, filled), and `marketplaceBidCount` counts expired offers too. `get_order_book` filters client-side and treats a live order past its `endTime` as expired. `price` is the raw onchain amount (scale by `decimals`); `usdPrice` is dollars. `encumbrance` is set when the property is collateral for a loan the sale must pay off.
 - **Nested fields `loans`, `marketplaceListings`, `marketplaceBids` are NOT available on list queries** (tokens list, wallet.tokens). Use scalar fields (`supplyUnderLoan`, `marketplacePrice`) instead. Nested fields only work on single `token()` queries.
 - **`loans` query requires `network` or `networkIn`** — errors without one.
 - **`loanStartedEvents`, `loanRepaidEvents`, `loanLiquidatedEvents` require `first!` and `skip!`** (non-nullable).

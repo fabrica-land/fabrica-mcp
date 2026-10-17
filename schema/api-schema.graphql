@@ -917,7 +917,7 @@ type PoolLendingOnchainValuationModel {
 }
 
 """
-The READ aggregator's freshness surface. `isStale` is that aggregator's freshness, not the pool's `priceOracle()` gate: on a split, borrow capacity is zero regardless of `isStale`. The subgraph-sourced fields (`lastHeartbeat`, `currentCycle`, `minValidCycle`) are null when the indexer could not be read (see `indexerUnavailableReason`) or has no legacy validator row yet; `isStale` and `maxSilence` are read live on-chain and always reported. Only populated inside `Token.poolLendingLiquidity`.
+The READ aggregator's freshness surface. `isStale` is that aggregator's freshness, not the pool's `priceOracle()` gate: on a split, borrow capacity is zero regardless of `isStale`. The subgraph-sourced fields (legacy `lastHeartbeat`, `currentCycle`, `minValidCycle`) are null when the indexer could not be read (see `indexerUnavailableReason`) or has no legacy validator row yet; `isStale` and `maxSilence` are read live on-chain and always reported. Only populated inside `Token.poolLendingLiquidity`.
 """
 type PoolLendingOracleFeedModel {
   """
@@ -931,12 +931,12 @@ type PoolLendingOracleFeedModel {
   indexerUnavailableReason: String
 
   """
-  `isStale` is the READ aggregator's freshness verdict: true when the legacy `isHeartbeatFresh(validatorId)` gate reports the feed not fresh, or, for Round 3 feeds, when the `max_silence` check fails or the eligibility read fails (`eligibility_unavailable`). Capacity never reads this bit; a split read/execution oracle zeros capacity regardless (see `capacityBlockReason`).
+  `isStale` is the READ aggregator's freshness verdict: true when the legacy `isHeartbeatFresh(validatorId)` gate reports the feed not fresh, or, for Round 3 feeds, when fewer than `minLiveSources` price writers have a valid cycle close within `maxSilence` of the latest block. It reports price writer liveness only: `failedCheck` decides capacity, and an eligibility refusal does not set `isStale`. Capacity never reads this bit; a split read/execution oracle zeros capacity regardless (see `capacityBlockReason`). When a Round 3 feed's `writers()` or `minLiveSources()` read fails, liveness is unknown and `oracleFeed` is null.
   """
   isStale: Boolean!
 
   """
-  Unix seconds of the last keeper heartbeat, from the subgraph (may lag the chain by the indexing delay). Null before the first heartbeat or while the indexer is unavailable. Do not derive staleness from this and the wall clock — use `isStale`.
+  Unix seconds of the last keeper heartbeat. Legacy feeds read it from the subgraph (may lag the chain by the indexing delay); null before the first heartbeat or while the indexer is unavailable. Round 3 feeds read it live on-chain: the `minLiveSources`-th newest live price writer cycle close. On a stale feed it is the newest live close, null when no writer is live or the read failed. Do not derive staleness from this and the wall clock — use `isStale`.
   """
   lastHeartbeat: String
 
@@ -986,7 +986,7 @@ type PoolLendingPoolModel {
   onchainValuation: PoolLendingOnchainValuationModel
 
   """
-  `isStale` is the READ aggregator's freshness verdict: true when the legacy `isHeartbeatFresh(validatorId)` gate reports the feed not fresh, or, for Round 3 feeds, when the `max_silence` check fails or the eligibility read fails (`eligibility_unavailable`). Capacity never reads this bit; a split read/execution oracle zeros capacity regardless (see `capacityBlockReason`). Null for SignedQuote pools and on depositor-side reads.
+  `isStale` is the READ aggregator's freshness verdict: true when the legacy `isHeartbeatFresh(validatorId)` gate reports the feed not fresh, or, for Round 3 feeds, when fewer than `minLiveSources` price writers have a valid cycle close within `maxSilence` of the latest block. It reports price writer liveness only: `failedCheck` decides capacity, and an eligibility refusal does not set `isStale`. Capacity never reads this bit; a split read/execution oracle zeros capacity regardless (see `capacityBlockReason`). When a Round 3 feed's `writers()` or `minLiveSources()` read fails, liveness is unknown and `oracleFeed` is null. Null for SignedQuote pools and on depositor-side reads.
   """
   oracleFeed: PoolLendingOracleFeedModel
 
@@ -1054,6 +1054,11 @@ type PoolLendingTickModel {
   value: String!
 }
 
+enum PremintClaimState {
+  CLAIMED
+  UNCLAIMED
+}
+
 type PricingModel {
   confidence: String
   currency: String!
@@ -1094,6 +1099,7 @@ type Query {
   onRamp(contractAddress: String!, network: String!, tokenId: String!): OnRampModel!
   poolLendingPool(address: String!, network: String!): PoolLendingPoolModel
   poolLendingPools(addresses: [String!], network: String!): PoolLendingPoolsResultModel!
+  premintSuccessor(contractAddress: String, network: String!, tokenId: String!): TokenModel
   scoringDescriptors: [ScoringGroupModel!]!
   token(contractAddress: String, network: String, slug: String, tokenId: String): TokenModel!
   tokens(burned: Boolean, contractAddress: String, minListings: Int, minScore: Int, network: String, ownedBy: String, premints: Boolean, sort: TokenSortField, testnets: Boolean): [TokenModel!]!
@@ -1218,6 +1224,7 @@ type TokenModel {
   balances: [BalanceModel!]
   booleanTraits: [TraitBooleanModel!]
   cardDisplayValuation: String!
+  claimState: PremintClaimState
   configuration: ConfigurationModel
   configurationUrl: String
   contractAddress: String!
@@ -1273,6 +1280,7 @@ type TokenModel {
   slug: String!
   street: String
   stringTraits: [TraitStringModel!]
+  supersededByTokenId: String
   supply: String!
   supplyInDefault: String!
   supplyLiquidating: String!

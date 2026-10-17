@@ -9,6 +9,7 @@ import { getProtocolStats } from "./tools/protocol.js";
 import { explainConfidenceScore } from "./tools/scoring.js";
 import { getBorrowQuote } from "./tools/borrowing.js";
 import { getActivity } from "./tools/activity.js";
+import { getOrderBook } from "./tools/marketplace.js";
 import { getPropertyImage, getPortfolioImage } from "./tools/images.js";
 import { askFabrica, ASK_FABRICA_SOURCES } from "./tools/knowledge.js";
 import { NETWORK_LABEL, IS_MAINNET, MAINNET_LEGAL_NOTICE } from "./config.js";
@@ -203,6 +204,22 @@ export function createServer(): McpServer {
       annotations: readOnly("Get activity history"),
     },
     async (args) => jsonResult(await getActivity(args)),
+  );
+
+  server.registerTool(
+    "get_order_book",
+    {
+      title: "Get order book",
+      description: "Get the marketplace order book for one property: the lowest active listing, all listings, and offers sorted from highest to lowest, each with price in USD and in its currency, seller or buyer, expiry (ISO 8601 and relative), any buyer restriction and disclosure documents. Shows whether the property is a premint and whether it is collateral for an active loan, which a sale pays off. Expired, canceled and filled orders are left out unless status is 'all'. Links to the property page, where offers are made.",
+      inputSchema: {
+        tokenId: z.string().optional().describe("The token ID of the property"),
+        slug: z.string().optional().describe("Property slug from the URL"),
+        status: z.enum(["active", "all"]).optional().describe("'active' (default): live orders only. 'all': also expired, canceled and filled orders."),
+        minOfferUsd: z.number().min(0).optional().describe("Only return offers at or above this USD amount"),
+      },
+      annotations: readOnly("Get order book"),
+    },
+    async (args) => jsonResult(await getOrderBook(args)),
   );
 
   server.registerTool(
