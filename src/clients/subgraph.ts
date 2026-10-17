@@ -1,6 +1,7 @@
 import { GraphQLClient, gql } from "graphql-request";
 import type { SubgraphPool } from "../types/index.js";
 import { CONTRACTS, IS_MAINNET } from "../config.js";
+import { TtlCache } from "./cache.js";
 
 const METASTREET_MAINNET_URL =
   "https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-mainnet/3.13.2/gn";
@@ -35,25 +36,31 @@ const POOL_FIELDS = gql`
   }
 `;
 
+const poolsCache = new TtlCache<SubgraphPool[]>();
+
+const GET_FABRICA_POOLS_QUERY = gql`
+  ${POOL_FIELDS}
+  query GetFabricaPools($collateralToken: String!) {
+    pools(where: { collateralToken: $collateralToken }) {
+      ...PoolFields
+    }
+  }
+`;
+
 /**
  * Fetch ALL MetaStreet pools that accept the Fabrica token as collateral.
  * Dynamically discovers pools from the subgraph, no hardcoded pool addresses.
  * Returns null when the subgraph cannot be read, so a failure is never reported as zero.
+ * Cached briefly (failures are not cached).
  */
 export async function getFabricaPools(): Promise<SubgraphPool[] | null> {
-  const query = gql`
-    ${POOL_FIELDS}
-    query GetFabricaPools($collateralToken: String!) {
-      pools(where: { collateralToken: $collateralToken }) {
-        ...PoolFields
-      }
-    }
-  `;
   try {
-    const data = await poolClient.request<{ pools: SubgraphPool[] }>(query, {
-      collateralToken: FABRICA_TOKEN_ADDRESS,
+    return await poolsCache.get(FABRICA_TOKEN_ADDRESS, async () => {
+      const data = await poolClient.request<{ pools: SubgraphPool[] }>(GET_FABRICA_POOLS_QUERY, {
+        collateralToken: FABRICA_TOKEN_ADDRESS,
+      });
+      return data.pools;
     });
-    return data.pools;
   } catch {
     return null;
   }

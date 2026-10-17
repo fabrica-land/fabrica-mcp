@@ -3,33 +3,16 @@ import type { TokenModel } from "../types/index.js";
 import { NETWORK_LABEL, MAINNET_WARNING, IS_MAINNET, CONTRACTS } from "../config.js";
 import { LENDING_POOL_NAME, formatActivityAmount, formatActivitySource, formatLoanProvider, formatUsdcCeiling } from "../labels.js";
 import { propertyPhotos, propertyMapImage, toGatewayUrl } from "./media.js";
-import { estimateFields, formatTokenAmount, sortLoans } from "../format.js";
+import { estimateFields, formatTokenAmount, sortLoans, formatUsd, shortenAddress, capList } from "../format.js";
 import { locationLink, stateName } from "../links.js";
 import { propertyStage, describeStage } from "../lifecycle.js";
 import { summarizeFees } from "../fees.js";
-
-function formatUsd(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const num = parseFloat(value);
-  if (isNaN(num)) return null;
-  return `$${num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
 
 /** USD when the API supplies a USD price; otherwise the native amount and currency, never a guessed "$". */
 function formatOrderPrice(usdPrice: string | null, price: string | null, symbol: string | null): string | null {
   const usd = formatUsd(usdPrice);
   if (usd) return usd;
   return price ? `${price} ${symbol ?? ""}`.trim() : null;
-}
-
-function formatScore(score: number | null): number | null {
-  if (score === null) return null;
-  return score;
-}
-
-function shortenAddress(addr: string | null | undefined): string | null {
-  if (!addr) return null;
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
 function tokenToSummary(token: TokenModel) {
@@ -44,7 +27,7 @@ function tokenToSummary(token: TokenModel) {
       coordinates: token.coordinates ? [token.coordinates.lat, token.coordinates.lon] : null,
     },
     acres: token.acres ? parseFloat(token.acres) : null,
-    confidenceScore: formatScore(token.score),
+    confidenceScore: token.score,
     ...estimateFields(token.estimatedValue),
     hasActiveListing: token.marketplacePrice !== null,
     listingPrice: token.marketplacePrice ? formatUsd(token.marketplacePrice) : null,
@@ -231,6 +214,10 @@ function getRecoveryStatus(score: number | null): { value: number; label: string
   return { value: digit, label: labels[digit] ?? "Unknown" };
 }
 
+/** get_property keeps its response bounded: holders and orders beyond these are counted, not listed. */
+const MAX_HOLDERS = 25;
+const MAX_ORDERS = 20;
+
 /**
  * A premint that was replaced by a minted token no longer loads by its old ID; the API
  * answers "No token or premint found". Follow it to the live successor, as the web app
@@ -287,6 +274,9 @@ export async function getProperty(args: Record<string, unknown>) {
     const activeListings = token.marketplaceListings?.filter(l => l.status === "active") ?? [];
     const activeBids = token.marketplaceBids?.filter(b => b.status === "active") ?? [];
     const activeLoans = token.loans?.filter(l => l.loanStatus === "Active") ?? [];
+    const holders = capList(token.balances ?? [], MAX_HOLDERS);
+    const listings = capList(activeListings, MAX_ORDERS);
+    const bids = capList(activeBids, MAX_ORDERS);
     const recovery = getRecoveryStatus(token.score);
     const fees = summarizeFees(token.fees, token.propertyLink);
     const flags = flagsOf(token);
@@ -337,7 +327,7 @@ export async function getProperty(args: Record<string, unknown>) {
       valuation: {
         ...estimateFields(token.estimatedValue, token.pricing),
         displayValuation: formatUsd(token.cardDisplayValuation) ?? token.cardDisplayValuation,
-        confidenceScore: formatScore(token.score),
+        confidenceScore: token.score,
         scoreBreakdown: token.scoringCheckResults.map(s => ({
           check: s.title,
           group: s.group,
@@ -356,10 +346,11 @@ export async function getProperty(args: Record<string, unknown>) {
         supply: parseInt(token.supply),
         isFractionalized: parseInt(token.supply) > 1,
         supplyUnderLoan: parseInt(token.supplyUnderLoan),
-        holders: token.balances?.map(b => ({
+        holders: holders.items.map(b => ({
           address: b.holder.address,
           balance: b.balance,
-        })) ?? [],
+        })),
+        ...(holders.truncated ? { holdersNote: `The first ${MAX_HOLDERS} of ${holders.total} holders.` } : {}),
       },
       lending: {
         activeLoans: sortLoans(activeLoans).map(l => ({
@@ -379,13 +370,14 @@ export async function getProperty(args: Record<string, unknown>) {
         } : null,
       },
       marketplace: {
-        listings: activeListings.map(l => ({
+        ...(listings.truncated || bids.truncated ? { note: `Up to ${MAX_ORDERS} listings and ${MAX_ORDERS} offers are shown; ${listings.total} active listings and ${bids.total} active offers in all.` } : {}),
+        listings: listings.items.map(l => ({
           price: formatOrderPrice(l.usdPrice, l.price, l.symbol),
           symbol: l.symbol,
           expiresAt: l.endTime,
           seller: shortenAddress(l.makerAddress),
         })),
-        bids: activeBids.map(b => ({
+        bids: bids.items.map(b => ({
           price: formatOrderPrice(b.usdPrice, b.price, b.symbol),
           symbol: b.symbol,
           bidder: shortenAddress(b.makerAddress),

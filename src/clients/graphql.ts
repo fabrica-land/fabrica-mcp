@@ -13,6 +13,8 @@ import type {
   TokenValuationModel,
 } from "../types/index.js";
 import { CONTRACTS, IS_MAINNET, NETWORK } from "../config.js";
+import { TtlCache } from "./cache.js";
+import { LOAN_PAGE_BUDGET, LOAN_PAGE_SIZE } from "./budgets.js";
 
 const DEFAULT_API_URL = "https://api.fabrica.land/graphql";
 
@@ -74,6 +76,18 @@ async function request<T>(
     }
     throw error;
   }
+}
+
+/**
+ * `request` through a short-TTL cache: identical reads within the TTL, and concurrent identical
+ * reads, cost one upstream call. Cached results are shared, so callers never mutate them.
+ */
+function cachedRequest<T>(
+  cache: TtlCache<T>,
+  document: string,
+  variables: Record<string, unknown>,
+): Promise<T> {
+  return cache.get(`${document}\n${JSON.stringify(variables)}`, () => request<T>(document, variables));
 }
 
 /** Filter out tokens with spam/error names that indicate bad metadata */
@@ -158,6 +172,8 @@ const GET_TOKENS_QUERY = gql`
   }
 `;
 
+const tokensCache = new TtlCache<{ tokens: TokenModel[] }>();
+
 export async function getTokens(filters: TokenFilters): Promise<TokenModel[]> {
   const variables: Record<string, unknown> = {};
   if (filters.minScore !== undefined) variables.minScore = filters.minScore;
@@ -168,7 +184,7 @@ export async function getTokens(filters: TokenFilters): Promise<TokenModel[]> {
   if (filters.testnets !== undefined) variables.testnets = filters.testnets;
   if (filters.contractAddress) variables.contractAddress = filters.contractAddress;
   if (filters.sort) variables.sort = filters.sort;
-  const data = await request<{ tokens: TokenModel[] }>(GET_TOKENS_QUERY, variables);
+  const data = await cachedRequest(tokensCache, GET_TOKENS_QUERY, variables);
   return data.tokens;
 }
 
@@ -282,12 +298,14 @@ const GET_TOKEN_WITH_POOL_ORACLE_QUERY = gql`
   }
 `;
 
+const tokenCache = new TtlCache<{ token: TokenModel | null }>();
+
 export async function getToken(
   params: { tokenId?: string; slug?: string; network?: string },
   options: { poolOracle?: boolean } = {},
 ): Promise<TokenModel | null> {
   const document = options.poolOracle ? GET_TOKEN_WITH_POOL_ORACLE_QUERY : GET_TOKEN_QUERY;
-  const data = await request<{ token: TokenModel | null }>(document, {
+  const data = await cachedRequest(tokenCache, document, {
     tokenId: params.tokenId,
     slug: params.slug,
     network: params.network ?? NETWORK,
@@ -327,10 +345,12 @@ const GET_OPERATING_AGREEMENT_QUERY = gql`
   }
 `;
 
+const valuationCache = new TtlCache<{ token: TokenValuationModel | null }>();
+
 export async function getTokenValuation(
   params: { tokenId?: string; slug?: string },
 ): Promise<TokenValuationModel | null> {
-  const data = await request<{ token: TokenValuationModel | null }>(GET_VALUATION_QUERY, {
+  const data = await cachedRequest(valuationCache, GET_VALUATION_QUERY, {
     tokenId: params.tokenId,
     slug: params.slug,
     network: NETWORK,
@@ -345,17 +365,25 @@ const SIGNED_VALUATION_TIMEOUT_MS = 5_000;
  * GraphQL endpoint. Returns null on any failure (HTTP error, timeout, unexpected body): the
  * panel is supplementary and must never fail the tool that asks for it.
  */
+const signedValuationsCache = new TtlCache<SignedValuationPanel>();
+
 export async function getSignedValuations(tokenId: string): Promise<SignedValuationPanel | null> {
-  const base = API_URL.replace(/\/graphql\/?$/, "");
-  const url = `${base}/valuation/v1/${NETWORK}/${CONTRACTS.fabricaToken}/${encodeURIComponent(tokenId)}`;
   try {
-    const response = await fetch(url, { signal: AbortSignal.timeout(SIGNED_VALUATION_TIMEOUT_MS) });
-    if (!response.ok) return null;
-    const body: unknown = await response.json();
-    return isSignedValuationPanel(body) ? body : null;
+    return await signedValuationsCache.get(tokenId, () => fetchSignedValuations(tokenId));
   } catch {
     return null;
   }
+}
+
+/** Throws on any failure, so a failure is not cached. */
+async function fetchSignedValuations(tokenId: string): Promise<SignedValuationPanel> {
+  const base = API_URL.replace(/\/graphql\/?$/, "");
+  const url = `${base}/valuation/v1/${NETWORK}/${CONTRACTS.fabricaToken}/${encodeURIComponent(tokenId)}`;
+  const response = await fetch(url, { signal: AbortSignal.timeout(SIGNED_VALUATION_TIMEOUT_MS) });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const body: unknown = await response.json();
+  if (!isSignedValuationPanel(body)) throw new Error("unexpected valuation panel");
+  return body;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -388,9 +416,11 @@ export interface OperatingAgreementModel {
   operatingAgreement: string | null;
 }
 
+const agreementCache = new TtlCache<{ token: OperatingAgreementModel | null }>();
+
 /** The trust instrument attached to one token, as text. Single-token only: the API refuses it on lists. */
 export async function getOperatingAgreement(tokenId: string): Promise<OperatingAgreementModel | null> {
-  const data = await request<{ token: OperatingAgreementModel | null }>(GET_OPERATING_AGREEMENT_QUERY, { tokenId, network: NETWORK });
+  const data = await cachedRequest(agreementCache, GET_OPERATING_AGREEMENT_QUERY, { tokenId, network: NETWORK });
   return data.token;
 }
 
@@ -549,10 +579,12 @@ const GET_WALLET_QUERY = gql`
   }
 `;
 
+const walletCache = new TtlCache<{ wallet: WalletModel | null }>();
+
 export async function getWallet(walletAddress: string): Promise<WalletModel | null> {
   // Scope the wallet (its tokens, loans and orders) to this deployment's network and
   // contract, so a Sepolia server never returns mainnet records and vice versa.
-  const data = await request<{ wallet: WalletModel | null }>(GET_WALLET_QUERY, {
+  const data = await cachedRequest(walletCache, GET_WALLET_QUERY, {
     walletAddress,
     network: NETWORK,
     testnets: !IS_MAINNET,
@@ -588,10 +620,12 @@ const GET_LOANS_QUERY = gql`
   }
 `;
 
+const loansCache = new TtlCache<{ loans: LoanModel[] }>();
+
 export async function getLoans(
   filters: { network?: string; first?: number; skip?: number } = {},
 ): Promise<LoanModel[]> {
-  const data = await request<{ loans: LoanModel[] }>(GET_LOANS_QUERY, {
+  const data = await cachedRequest(loansCache, GET_LOANS_QUERY, {
     network: filters.network ?? NETWORK,
     first: filters.first ?? 100,
     skip: filters.skip ?? 0,
@@ -599,16 +633,13 @@ export async function getLoans(
   return data.loans;
 }
 
-/** Fetch all loans by paginating through the API */
+/** Fetch all loans by paginating through the API, up to the page budget. Pages are cached. */
 export async function getAllLoans(network = NETWORK): Promise<LoanModel[]> {
-  const pageSize = 100;
   const allLoans: LoanModel[] = [];
-  let skip = 0;
-  for (;;) {
-    const batch = await getLoans({ network, first: pageSize, skip });
+  for (let page = 0; page < LOAN_PAGE_BUDGET; page++) {
+    const batch = await getLoans({ network, first: LOAN_PAGE_SIZE, skip: page * LOAN_PAGE_SIZE });
     allLoans.push(...batch);
-    if (batch.length < pageSize) break;
-    skip += pageSize;
+    if (batch.length < LOAN_PAGE_SIZE) break;
   }
   return allLoans;
 }
@@ -689,8 +720,10 @@ const GET_COUNTY_BOUNDS_QUERY = gql`
   }
 `;
 
+const countyBoundsCache = new TtlCache<{ countyBounds: CountyBoundsModel | null }>();
+
 export async function getCountyBounds(fips: string): Promise<CountyBoundsModel | null> {
-  const data = await request<{ countyBounds: CountyBoundsModel | null }>(GET_COUNTY_BOUNDS_QUERY, { fips });
+  const data = await cachedRequest(countyBoundsCache, GET_COUNTY_BOUNDS_QUERY, { fips });
   return data.countyBounds;
 }
 
