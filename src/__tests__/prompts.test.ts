@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createServer } from "../server.js";
@@ -53,8 +53,26 @@ describe("MCP prompts", () => {
   it("carries the wording rules and the network notice in every prompt", () => {
     for (const [name, text] of Object.entries(PROMPTS)) {
       expect(text, name).toContain("Property checks");
-      expect(text, name).toContain("beneficial interest in the trust");
-      if (IS_MAINNET) expect(text, name).toContain("Legal notice (Ethereum Mainnet)");
+      if (IS_MAINNET) {
+        expect(text, name).toContain("beneficial interest in the trust");
+        expect(text, name).toContain("Legal notice (Ethereum Mainnet)");
+      } else {
+        expect(text, name).toContain("not ownership of any real property");
+      }
+    }
+  });
+
+  it("never calls a test token ownership on Sepolia", async () => {
+    vi.stubEnv("FABRICA_NETWORK", "sepolia");
+    vi.resetModules();
+    try {
+      const testnet = await import("../prompts.js");
+      const text = promptText(testnet.walletReviewPrompt("0xabc"));
+      expect(text).toContain("not ownership of any real property");
+      expect(text).not.toContain("Owning a Fabrica token means owning");
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
     }
   });
 

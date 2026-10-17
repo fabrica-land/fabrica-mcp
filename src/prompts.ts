@@ -12,10 +12,14 @@ import { IS_MAINNET, MAINNET_LEGAL_NOTICE, NETWORK_LABEL } from "./config.js";
 
 const WEB = IS_MAINNET ? "https://fabrica.land" : "https://testnets.fabrica.land";
 
+const OWNERSHIP_RULE = IS_MAINNET
+  ? "- Owning a Fabrica token means owning the beneficial interest in the trust that holds the property. The trustee is designated by the token holder and is, by default, the holder. Fabrica is not a party to the trust and never holds title, custodies property or manages anyone's trust, property or loan."
+  : "- These are test tokens: holding one is not ownership of any real property or of a beneficial interest in a trust. Never present a test token as legal ownership.";
+
 export const WORDING_RULES = `Wording for the answer:
 - The per-property verification is called Property checks. It is a starting point for diligence, not a title search, and the number is never a percentage, grade or rating.
 - The in-app pool is the DeFi lending pool. NFTfi is a retired peer-to-peer integration and appears only as history.
-- Owning a Fabrica token means owning the beneficial interest in the trust that holds the property. The trustee is designated by the token holder and is, by default, the holder. Fabrica is not a party to the trust and never holds title, custodies property or manages anyone's trust, property or loan.
+${OWNERSHIP_RULE}
 - No fixed time and no "instantly" for money moving. Stablecoins are digital dollars.
 - Write "onchain" as one word. No buy, sell or borrow recommendation: lay out the facts and what to verify.`;
 
