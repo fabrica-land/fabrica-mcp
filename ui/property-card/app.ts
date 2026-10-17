@@ -68,11 +68,11 @@ function button(label: string, className: string, url: string): HTMLButtonElemen
   return node;
 }
 
-function actions(link: string, listingPrice: string | null, isPremint: boolean): HTMLDivElement {
+function actions(link: string, buyablePrice: string | null, isPremint: boolean): HTMLDivElement {
   const row = el("div", "actions");
   // Premints can take offers but can't be bought until they are minted.
-  const canBuy = listingPrice !== null && !isPremint;
-  if (canBuy) row.append(button(`Buy · ${listingPrice}`, "cta", actionLink(link, "buy")));
+  const canBuy = buyablePrice !== null && !isPremint;
+  if (canBuy) row.append(button(`Buy · ${buyablePrice}`, "cta", actionLink(link, "buy")));
   row.append(
     button("Make an offer", canBuy ? "secondary" : "cta", actionLink(link, "offer")),
     button("Contact owner", "secondary", actionLink(link, "contact")),
@@ -264,8 +264,11 @@ function render(): void {
   if (canExpand(context)) headEnd.append(iconButton("Expand to fullscreen", EXPAND_ICON, () => setDisplayMode("fullscreen")));
   head.append(titles, headEnd);
 
-  const listing = obj(arr(marketplace.listings)[0]);
+  const listingRows = arr(marketplace.listings).map(obj);
+  const listing = listingRows[0] ?? {};
   const listingPrice = str(listing.price);
+  // Buy only a listing the API says can be bought now; an encumbered one may be blocked by its loan.
+  const buyablePrice = str(listingRows.find((l) => l.buyable !== false)?.price);
   const activeLoans = arr(lending.activeLoans);
   const poolLiquidity = obj(lending.lendingPoolLiquidity);
   const recoveryLabel = str(recovery.label);
@@ -308,7 +311,7 @@ function render(): void {
   const notice = el("div", "notice", isTestnet
     ? "Test property on Sepolia, with no real-world effect."
     : "A real US property. Acquiring its token has legal and financial consequences set out in its trust agreement.");
-  const actionRow = link ? actions(link, listingPrice, data.isPremint === true) : null;
+  const actionRow = link ? actions(link, buyablePrice, data.isPremint === true) : null;
 
   if (!full) {
     const children: HTMLElement[] = [];

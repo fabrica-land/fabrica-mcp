@@ -272,7 +272,7 @@ const TOKEN_DETAIL_FIELDS = gql`
       amountPaidToLenderScaled loanRepaidDate loanLiquidationDate
     }
     poolLendingLiquidity { appraisalBlockReason maxPrincipalScaled maxPrincipalUsdc durations activeLoan { id principal repayment duration maturity } }
-    marketplaceListings { marketplaceId side status price usdPrice symbol supply makerAddress startTime endTime }
+    marketplaceListings { marketplaceId side status price usdPrice symbol supply makerAddress startTime endTime encumbrance { buyable } }
     marketplaceBids { marketplaceId side status price usdPrice symbol supply makerAddress startTime endTime }
     activity { activity source time timestamp network tokenId transactionHash currencyAmount currencyDecimals currencySymbol usdAmount }
     transfers { from { address } to { address } value transactionHash blockTimestamp }

@@ -89,6 +89,26 @@ function makeDetailToken(overrides: Partial<TokenModel> = {}): TokenModel {
 }
 
 describe("getProperty formatting", () => {
+  it("counts live and encumbered orders, drops ended ones, and marks a blocked listing unbuyable", async () => {
+    const order = (o: Record<string, unknown>) => ({
+      marketplaceId: "m", side: "sell", price: "100", usdPrice: "100", symbol: "USDC", supply: "1",
+      makerAddress: "0x1234567890abcdef1234567890abcdef12345678", startTime: "2026-01-01T00:00:00Z", endTime: null, ...o,
+    });
+    vi.mocked(getToken).mockResolvedValueOnce(makeDetailToken({
+      marketplaceListings: [
+        order({ status: "encumbered", encumbrance: { buyable: false } }),
+        order({ status: "active", endTime: "2020-01-01T00:00:00Z" }),
+        order({ status: "active", usdPrice: "120" }),
+      ],
+      marketplaceBids: [order({ side: "buy", status: "pending" }), order({ side: "buy", status: "canceled" })],
+    } as unknown as Partial<TokenModel>));
+    const result = await getProperty({ tokenId: "12345" }) as Record<string, unknown>;
+    const marketplace = result.marketplace as { listingCount: number; offerCount: number; listings: { buyable: boolean }[] };
+    expect(marketplace.listingCount).toBe(2);
+    expect(marketplace.offerCount).toBe(1);
+    expect(marketplace.listings.map(l => l.buyable)).toEqual([false, true]);
+  });
+
   it("formats estimated value as USD", async () => {
     vi.mocked(getToken).mockResolvedValueOnce(makeDetailToken());
     const result = await getProperty({ tokenId: "12345" }) as Record<string, unknown>;

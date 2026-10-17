@@ -386,6 +386,8 @@ export async function getProperty(args: Record<string, unknown>) {
           symbol: l.symbol,
           expiresAt: l.endTime,
           seller: shortenAddress(l.makerAddress),
+          // An encumbered listing the loan blocks still shows, but cannot be bought now.
+          buyable: l.encumbrance?.buyable !== false,
         })),
         bids: bids.items.map(b => ({
           price: formatOrderPrice(b.usdPrice, b.price, b.symbol),
