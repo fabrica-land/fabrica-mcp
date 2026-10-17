@@ -160,6 +160,7 @@ describe("4. no estimate is never $0", () => {
   });
 
   it("distinguishes no sources from sources under the threshold", () => {
+    expect(estimateFields("0.00", [{ value: null }])).toMatchObject({ estimatedValue: null, estimateNote: expect.stringContaining("no valuation source has a value") });
     expect(estimateFields("0.00", [])).toMatchObject({ estimatedValue: null, estimateNote: expect.stringContaining("no valuation source has a value") });
     expect(estimateFields("396647.43")).toEqual({ estimatedValue: "$396,647" });
   });

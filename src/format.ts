@@ -15,7 +15,7 @@ export function formatUsdOrNull(value: string | null | undefined): string | null
  */
 export function estimateFields(
   value: string | null | undefined,
-  pricing?: ReadonlyArray<unknown>,
+  pricing?: ReadonlyArray<{ value: string | null }>,
 ): { estimatedValue: string } | { estimatedValue: null; estimateNote: string } {
   const formatted = formatUsdOrNull(value);
   if (formatted) return { estimatedValue: formatted };
@@ -24,7 +24,7 @@ export function estimateFields(
   }
   return {
     estimatedValue: null,
-    estimateNote: pricing.length === 0
+    estimateNote: !pricing.some(p => Number.parseFloat(p.value ?? "") > 0)
       ? "No estimate: no valuation source has a value for this property yet."
       : "No estimate: no valuation source qualifies for a headline estimate (an automated valuation below the confidence threshold does not count). Source values are listed under pricing.",
   };
