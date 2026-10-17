@@ -188,7 +188,8 @@ export interface ParcelPoint {
 export function parseParcelPoint(body: unknown, path: string): ParcelPoint | null {
   const parcels = isRecord(body) && isRecord(body.parcels) && Array.isArray(body.parcels.features) ? body.parcels.features : [];
   const features = parcels.filter(isRecord);
-  const feature = features.find((f) => isRecord(f.properties) && f.properties.path === path) ?? features[0];
+  // Without an exact path match, only a lone feature is safely this parcel.
+  const feature = features.find((f) => isRecord(f.properties) && f.properties.path === path) ?? (features.length === 1 ? features[0] : undefined);
   if (!feature) return null;
   const fields = isRecord(feature.properties) && isRecord(feature.properties.fields) ? feature.properties.fields : {};
   const polygons = polygonsOf(feature.geometry);

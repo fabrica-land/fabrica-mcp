@@ -80,6 +80,14 @@ describe("find_parcel helpers", () => {
     expect(point?.lon).toBeCloseTo(-96.102, 2);
   });
 
+  it("never picks an unrelated feature when several come back and none has the hit's path", () => {
+    const feature = HUNT_PARCEL.parcels.features[0];
+    const other = { ...feature, properties: { ...feature.properties, path: "/us/tx/hunt/other/1" } };
+    const stale = { ...feature, properties: { ...feature.properties, path: "/us/tx/hunt/other/2" } };
+    expect(parseParcelPoint({ parcels: { features: [other, stale] } }, HUNT_HIT.path)).toBeNull();
+    expect(parseParcelPoint({ parcels: { features: [other] } }, HUNT_HIT.path)).not.toBeNull();
+  });
+
   it("tests points against polygons with holes", () => {
     const polygons = polygonsOf({ type: "Polygon", coordinates: [[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]], [[4, 4], [6, 4], [6, 6], [4, 6], [4, 4]]] });
     expect(pointInPolygons(1, 1, polygons)).toBe(true);
