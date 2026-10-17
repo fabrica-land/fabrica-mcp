@@ -410,3 +410,39 @@ export interface SubgraphPool {
   loansLiquidated: string;
   adminFeeRate: string;
 }
+
+// Order book (get_order_book): the marketplace fields of one token, nothing else
+
+export interface OrderBookOrder {
+  marketplaceId: string;
+  side: "buy" | "sell";
+  status: "active" | "canceled" | "encumbered" | "expired" | "filled" | "pending";
+  price: string;
+  usdPrice: string | null;
+  symbol: string;
+  decimals: number;
+  feeBps: string;
+  supply: string;
+  startTime: string;
+  endTime: string | null;
+  makerAddress: string;
+  maker: { user: { displayName: string | null } | null } | null;
+  restrictedToAddresses: string[] | null;
+  disclosurePackage: { name: string; url: string }[] | null;
+  encumbrance: { buyable: boolean; blockReason: "AWAITING_ALLOWANCE" | "LEGACY_POOL" | "UNDERWATER" | null; loanId: string } | null;
+}
+
+export interface OrderBookToken {
+  tokenId: string;
+  name: string | null;
+  vanityName: string | null;
+  propertyLink: string;
+  isPremint: boolean;
+  claimState: "CLAIMED" | "UNCLAIMED" | null;
+  supersededByTokenId: string | null;
+  isBurned: boolean;
+  supply: string;
+  supplyUnderLoan: string;
+  marketplaceListings: OrderBookOrder[] | null;
+  marketplaceBids: OrderBookOrder[] | null;
+}
