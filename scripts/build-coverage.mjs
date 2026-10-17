@@ -57,8 +57,11 @@ function fields(userProvidedFields) {
     if (!isRecord(field)) continue;
     const entry = {};
     if (typeof field.required === "boolean") entry.required = field.required;
-    // includeIf / requiredIf are evaluated against the parcel's Regrid record by the API.
-    if (field.includeIf !== undefined || field.requiredIf !== undefined) entry.dependsOnParcel = true;
+    // includeIf is evaluated against the parcel's Regrid record; requiredIf names another question's answer.
+    if (field.includeIf !== undefined) entry.dependsOnParcel = true;
+    if (isRecord(field.requiredIf) && typeof field.requiredIf.field === "string" && typeof field.requiredIf.value === "string") {
+      entry.requiredWhen = { question: field.requiredIf.field, answer: field.requiredIf.value };
+    }
     out[label] = entry;
   }
   return Object.keys(out).length > 0 ? out : undefined;

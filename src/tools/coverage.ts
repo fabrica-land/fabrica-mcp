@@ -24,7 +24,11 @@ const layerSchema = z.object({
   witnessesRequired: z.boolean().optional(),
   notaryNote: z.string().optional(),
   documents: z.record(z.string(), z.object({ name: z.string().optional(), notarize: z.boolean().optional() })).optional(),
-  fields: z.record(z.string(), z.object({ required: z.boolean().optional(), dependsOnParcel: z.boolean().optional() })).optional(),
+  fields: z.record(z.string(), z.object({
+    required: z.boolean().optional(),
+    dependsOnParcel: z.boolean().optional(),
+    requiredWhen: z.object({ question: z.string(), answer: z.string() }).optional(),
+  })).optional(),
   steps: z.array(z.object({
     text: z.string(),
     actions: z.array(z.object({ prompt: z.string(), document: z.string().optional() })).optional(),
@@ -100,6 +104,7 @@ function describe(rules: CoverageLayer) {
     question: label,
     required: field.required === true,
     ...(field.dependsOnParcel ? { onlyForSomeParcels: true } : {}),
+    ...(field.requiredWhen ? { requiredWhen: field.requiredWhen } : {}),
   }));
   return {
     fractionalOwnership: rules.fractionalOwnership === true,

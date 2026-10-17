@@ -36,6 +36,11 @@ describe("resolveRules", () => {
     expect(Object.keys(sf.fields ?? {})).toEqual(expect.arrayContaining(["How do you hold title, as shown on your current deed?", "Phone Number", "Property street address (used only if the address on file is incomplete)"]));
   });
 
+  it("keeps a question required by another answer apart from one asked only for some parcels", () => {
+    const lender = resolveRules("ca/fresno").fields?.["What is the lender’s name?"];
+    expect(lender).toEqual({ required: false, dependsOnParcel: true, requiredWhen: { question: "Is there a loan secured by this property?", answer: "Yes" } });
+  });
+
   it("takes the status a county sets over the US default", () => {
     expect(coverageStatus("ca/riverside")).toBe("notConfigured");
     expect(coverageStatus("ca/fresno")).toBe("supported");

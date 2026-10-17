@@ -91,7 +91,11 @@
      },
      "What is the lender’s name?": {
       "required": false,
-      "dependsOnParcel": true
+      "dependsOnParcel": true,
+      "requiredWhen": {
+       "question": "Is there a loan secured by this property?",
+       "answer": "Yes"
+      }
      },
      "Is this property your principal residence?": {
       "required": true
