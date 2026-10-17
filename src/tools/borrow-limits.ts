@@ -45,8 +45,10 @@ export interface PoolCapacity {
   freeLiquidityUsd: number;
   /** Highest loan-to-value any funded ratio tick allows, as a fraction (0.5 for 50%); null when the pool has no ratio tick. */
   maxLtv: number | null;
-  /** What the tick limits allow at this price if every tick were fully funded. */
+  /** What the funded tick limits allow at this price if every one were fully funded. */
   limitAmountUsd: number;
+  /** The same over every configured tick, empty ones included: what full funding would allow. */
+  configuredLimitUsd: number;
   /** What the ratio ticks alone allow at this price; null when the pool has no ratio tick. */
   ltvLimitUsd: number | null;
   /** Which kinds of tick limit kept free liquidity out of the capacity; null when every free dollar counted. */
@@ -61,14 +63,15 @@ export interface PoolCapacity {
  * free up to its own limit.
  */
 export function poolCapacity(pool: PoolLendingPoolWithTicks, priceUsd: number): PoolCapacity {
-  const ticks = pool.ticks.flatMap(t => {
+  const configured = pool.ticks.flatMap(t => {
     const decoded = decodeTick(t.raw);
     if (!decoded) return [];
     const limitUsd = decoded.limitType === "ratio"
       ? (Number(decoded.limit) / BPS) * priceUsd
       : Number(decoded.limit) / 10 ** TICK_DECIMALS;
     return [{ ...decoded, limitUsd, availableUsd: tickUsd(t.available) }];
-  }).filter(t => t.availableUsd >= DUST_USD).sort((a, b) => a.limitUsd - b.limitUsd);
+  });
+  const ticks = configured.filter(t => t.availableUsd >= DUST_USD).sort((a, b) => a.limitUsd - b.limitUsd);
   let capacity = 0;
   // Every tick whose limit left some of its liquidity out, including ticks skipped outright.
   const binding = new Set<LimitType>();
@@ -87,6 +90,7 @@ export function poolCapacity(pool: PoolLendingPoolWithTicks, priceUsd: number): 
     freeLiquidityUsd: ticks.reduce((sum, t) => sum + t.availableUsd, 0),
     maxLtv: ratios.length > 0 ? Math.max(...ratios) : null,
     limitAmountUsd: ticks.reduce((max, t) => Math.max(max, t.limitUsd), 0),
+    configuredLimitUsd: configured.reduce((max, t) => Math.max(max, t.limitUsd), 0),
     ltvLimitUsd: ratioTicks.length > 0 ? Math.max(...ratioTicks.map(t => t.limitUsd)) : null,
     boundBy,
     capacityUsd: capacity,
@@ -269,8 +273,14 @@ export function raiseLevers(input: {
   const unblocked = best === null && floor !== null
     ? input.pools.map(pool => poolCapacity(pool, floor)).reduce<PoolCapacity | null>((top, p) => (top === null || p.capacityUsd > top.capacityUsd ? p : top), null)
     : null;
-  const unblockedAllow = unblocked && unblocked.capacityUsd >= DUST_USD ? usd(unblocked.capacityUsd) : null;
-  const unblockedNote = unblockedAllow && floor !== null ? ` With the block cleared, at an appraisal of ${usd(floor)} (the lowest the pool's rule gives from today's valuation rows) and today's pool liquidity, the ticks would allow up to ${unblockedAllow}.` : "";
+  const unblockedUsd = unblocked && unblocked.capacityUsd >= DUST_USD ? usd(unblocked.capacityUsd) : null;
+  // Each blocker zeroes the price on its own, so an amount is only tied to one blocker when it is the only one.
+  const blockerCount = (input.isPremint ? 1 : 0) + (input.appraisalBlockReason ? 1 : 0)
+    + input.checks.filter(c => POOL_CHECKS[c.checkName] && c.value !== true).length;
+  const unblockedAllow = blockerCount === 1 ? unblockedUsd : null;
+  const unblockedNote = unblockedUsd && floor !== null
+    ? ` ${blockerCount === 1 ? "With this block cleared" : `With all ${blockerCount} blocks listed in toRaise cleared (this one alone does not restore it)`}, at an appraisal of ${usd(floor)} (the lowest the pool's rule gives from today's valuation rows) and today's pool liquidity, the ticks would allow up to ${unblockedUsd}.`
+    : "";
 
   if (input.isPremint) {
     levers.push({
@@ -288,7 +298,9 @@ export function raiseLevers(input: {
         ? "The last property tax verification found taxes past due, so the pool's price for this property is zero."
         : "The property's taxes are not verified as current, so the pool's price for this property is zero.",
       wouldAllow: unblockedAllow,
-      how: `Paying the property taxes and the county's records showing them as paid; Fabrica's tax verification then reads the county again (get_tax_status shows the current state). Recent payments can take time to appear at the county.${unblockedNote}`,
+      how: `${input.appraisalBlockReason === "TAX_DELINQUENT"
+        ? "Paying the past-due taxes and the county's records showing them as paid; Fabrica's tax verification then reads the county again."
+        : "A current tax verification: the taxes may already be paid. Fabrica's verification reads the county's public records, so the block clears once a verification finds them shown as paid; if any are unpaid, paying them comes first."} Recent payments can take time to appear at the county; get_tax_status shows the current state.${unblockedNote}`,
       url: HELP_LOAN_AMOUNT,
     });
   }
@@ -331,7 +343,10 @@ export function raiseLevers(input: {
       });
     }
   }
-  if (best && best.maxLtv !== null && best.ltvLimitUsd !== null) {
+  // The tick reading only speaks for the API's amount when it reproduces it, as in bindingConstraint.
+  const consistent = best !== null && !input.hasActiveLoan
+    && Math.abs(best.capacityUsd - input.maxBorrowUsd) <= Math.max(DUST_USD, input.maxBorrowUsd * MATCH_TOLERANCE);
+  if (best && consistent && best.maxLtv !== null && best.ltvLimitUsd !== null) {
     const target = input.amountUsd !== undefined && input.amountUsd > 0 ? input.amountUsd : null;
     const priceNeeded = target !== null ? target / best.maxLtv : null;
     levers.push({
@@ -346,13 +361,13 @@ export function raiseLevers(input: {
       url: DOCS_VALUATION,
     });
   }
-  if (best && best.limitAmountUsd > best.capacityUsd + DUST_USD) {
+  if (best && consistent && best.configuredLimitUsd > best.capacityUsd + DUST_USD) {
     const target = input.amountUsd !== undefined && input.amountUsd > best.freeLiquidityUsd ? input.amountUsd : null;
     levers.push({
       lever: "pool_liquidity",
       today: `The pool has ${usd(best.freeLiquidityUsd)} free to lend now.`,
-      wouldAllow: usd(best.limitAmountUsd),
-      how: `The pool lends from what lenders deposit; as deposits come in, the amount for this property can rise up to ${usd(best.limitAmountUsd)} at today's price with no step by the owner${target !== null ? `, and ${usd(target)} needs ${usd(target - best.freeLiquidityUsd)} more in deposits` : ""}. get_lending_market shows the pool's totals.`,
+      wouldAllow: usd(best.configuredLimitUsd),
+      how: `The pool lends from what lenders deposit; as deposits come in, the amount for this property can rise up to ${usd(best.configuredLimitUsd)} at today's price with no step by the owner${target !== null ? `, and ${usd(target)} needs ${usd(target - best.freeLiquidityUsd)} more in deposits` : ""}. get_lending_market shows the pool's totals.`,
       url: DOCS_LENDING_POOL,
     });
   }

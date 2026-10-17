@@ -186,7 +186,7 @@ describe("raiseLevers", () => {
     const levers = raiseLevers({ ...base, pools: [LIVE_POOL] });
     expect(levers.map(l => l.lever)).toEqual(["ltv", "pool_liquidity"]);
     expect(levers[0]).toMatchObject({ wouldAllow: "$321,152" });
-    expect(levers[1]).toMatchObject({ today: "The pool has $966 free to lend now.", wouldAllow: "$321,152" });
+    expect(levers[1]).toMatchObject({ today: "The pool has $966 free to lend now.", wouldAllow: "$513,844" });
     expect(levers[1].how).toContain("as deposits come in");
   });
 
@@ -199,11 +199,11 @@ describe("raiseLevers", () => {
   it("gives a zero quote blocked by taxes a step and what the ticks would allow once cleared", () => {
     const levers = raiseLevers({ ...base, maxBorrowUsd: 0, appraisalBlockReason: "TAX_STATUS_UNKNOWN", pools: [ZERO_PRICE_POOL] });
     expect(levers[0]).toMatchObject({ lever: "tax_status", wouldAllow: "$966" });
-    expect(levers[0].how).toContain("Paying the property taxes");
+    expect(levers[0].how).toContain("A current tax verification");
     expect(levers[0].how).toContain("appraisal of $642,305");
   });
 
-  it("names the failing deed and fee checks with the step that clears each", () => {
+  it("names the failing deed and fee checks, and ties the amount to all blocks when there are several", () => {
     const checks = [
       { checkName: "proofOfTitleValid", value: false },
       { checkName: "feesInGoodStanding", value: false },
@@ -212,7 +212,27 @@ describe("raiseLevers", () => {
     const levers = raiseLevers({ ...base, maxBorrowUsd: 0, checks, pools: [ZERO_PRICE_POOL] });
     expect(levers.map(l => l.lever)).toEqual(["deed_check", "fees"]);
     expect(levers[1].how).toContain("Authorize Fee");
-    expect(levers.every(l => l.wouldAllow === "$966")).toBe(true);
+    expect(levers.every(l => l.wouldAllow === null)).toBe(true);
+    expect(levers[0].how).toContain("With all 2 blocks listed in toRaise cleared (this one alone does not restore it)");
+    const single = raiseLevers({ ...base, maxBorrowUsd: 0, checks: [{ checkName: "feesInGoodStanding", value: false }], pools: [ZERO_PRICE_POOL] });
+    expect(single[0]).toMatchObject({ lever: "fees", wouldAllow: "$966" });
+  });
+
+  it("says payment only for past-due taxes, and verification for unknown ones", () => {
+    const unknown = raiseLevers({ ...base, maxBorrowUsd: 0, appraisalBlockReason: "TAX_STATUS_UNKNOWN", pools: [ZERO_PRICE_POOL] })[0];
+    expect(unknown.how).toContain("the taxes may already be paid");
+    const delinquent = raiseLevers({ ...base, maxBorrowUsd: 0, appraisalBlockReason: "TAX_DELINQUENT", pools: [ZERO_PRICE_POOL] })[0];
+    expect(delinquent.how).toContain("Paying the past-due taxes");
+  });
+
+  it("explains an empty pool from its configured ticks", () => {
+    const empty = oraclePool({ oracleValuation: LIVE_POOL.oracleValuation, ticks: [tick(5000, 1, 0)] });
+    const levers = raiseLevers({ ...base, maxBorrowUsd: 0, pools: [empty] });
+    expect(levers.find(l => l.lever === "pool_liquidity")).toMatchObject({ today: "The pool has $0 free to lend now.", wouldAllow: "$321,152" });
+  });
+
+  it("states no tick reading when the ticks do not reproduce the API's amount", () => {
+    expect(raiseLevers({ ...base, maxBorrowUsd: 5000, pools: [LIVE_POOL] })).toEqual([]);
   });
 
   it("says which valuation source is missing when nothing can be priced", () => {
