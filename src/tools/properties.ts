@@ -4,6 +4,7 @@ import { NETWORK_LABEL, MAINNET_WARNING, IS_MAINNET, CONTRACTS } from "../config
 import { LENDING_POOL_NAME, formatActivityAmount, formatActivitySource, formatLoanProvider, formatUsdcCeiling } from "../labels.js";
 import { propertyPhotos, propertyMapImage } from "./media.js";
 import { estimateFields, formatTokenAmount, sortLoans } from "../format.js";
+import { locationLink, stateName } from "../links.js";
 
 function formatUsd(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -51,8 +52,52 @@ function tokenToSummary(token: TokenModel) {
   };
 }
 
+/** "Mohave County", "mohave county", "Mohave" → "mohave". */
+export function normalizeCounty(name: string | null | undefined): string {
+  return (name ?? "").trim().toLowerCase().replace(/\s+/g, " ").replace(/ county$/, "");
+}
+
+/** The name most tokens give for a field, ignoring blanks. */
+function mostCommon(values: ReadonlyArray<string | null | undefined>): string | null {
+  const counts = new Map<string, number>();
+  for (const v of values) {
+    const name = v?.trim();
+    if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  let best: string | null = null;
+  for (const [name, count] of counts) {
+    if (best === null || count > (counts.get(best) ?? 0)) best = name;
+  }
+  return best;
+}
+
+/** One row per state or county: counts, acres and the fabrica.land location page. */
+export function groupTokens(tokens: ReadonlyArray<TokenModel>, groupBy: "state" | "county") {
+  const groups = new Map<string, TokenModel[]>();
+  for (const t of tokens) {
+    const state = t.regionCode?.toUpperCase() ?? "";
+    const key = groupBy === "state" ? state : `${state}|${normalizeCounty(t.district)}`;
+    groups.set(key, [...(groups.get(key) ?? []), t]);
+  }
+  return [...groups.values()].map(members => {
+    const stateName = mostCommon(members.map(t => t.region));
+    const county = groupBy === "county" ? mostCommon(members.map(t => t.district)) : null;
+    const acres = members.reduce((sum, t) => sum + (Number.parseFloat(t.acres ?? "") || 0), 0);
+    return {
+      state: members[0].regionCode,
+      ...(groupBy === "county" ? { county } : {}),
+      properties: members.length,
+      forSale: members.filter(t => t.marketplacePrice !== null).length,
+      totalAcres: Math.round(acres * 100) / 100,
+      locationLink: locationLink({ state: stateName, county }),
+    };
+  }).sort((a, b) => b.properties - a.properties || String(a.county ?? a.state).localeCompare(String(b.county ?? b.state)));
+}
+
 export async function searchProperties(args: Record<string, unknown>) {
   const region = args.region as string | undefined;
+  const county = args.county as string | undefined;
+  const groupBy = args.groupBy as "state" | "county" | undefined;
   const minAcres = args.minAcres as number | undefined;
   const maxAcres = args.maxAcres as number | undefined;
   const minScore = args.minScore as number | undefined;
@@ -78,6 +123,10 @@ export async function searchProperties(args: Record<string, unknown>) {
       const upper = region.toUpperCase();
       tokens = tokens.filter(t => t.regionCode?.toUpperCase() === upper);
     }
+    if (county) {
+      const wanted = normalizeCounty(county);
+      tokens = tokens.filter(t => normalizeCounty(t.district) === wanted);
+    }
     if (minAcres !== undefined) {
       tokens = tokens.filter(t => t.acres !== null && parseFloat(t.acres) >= minAcres);
     }
@@ -88,12 +137,31 @@ export async function searchProperties(args: Record<string, unknown>) {
       tokens = tokens.filter(t => parseInt(t.supplyUnderLoan || "0") > 0);
     }
     const total = tokens.length;
+    // The page for the location asked about: names as the matches spell them, else from the filter.
+    const states = new Set(tokens.map(t => t.regionCode?.toUpperCase()));
+    const counties = new Set(tokens.map(t => normalizeCounty(t.district)));
+    const linkState = region ? stateName(region) ?? mostCommon(tokens.map(t => t.region)) : states.size === 1 ? mostCommon(tokens.map(t => t.region)) : null;
+    const linkCounty = county ? mostCommon(tokens.map(t => t.district)) ?? `${county.trim().replace(/\s+county$/i, "")} County` : null;
+    const link = (region || county) && linkState && (!county || counties.size <= 1)
+      ? { locationLink: locationLink({ state: linkState, county: linkCounty }) }
+      : {};
+    if (groupBy) {
+      return {
+        network: NETWORK_LABEL,
+        ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
+        total,
+        ...link,
+        groupBy,
+        groups: groupTokens(tokens, groupBy),
+      };
+    }
     const page = tokens.slice(offset, offset + limit);
     if (page.length === 0) {
       return {
         network: NETWORK_LABEL,
         ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
         total,
+        ...link,
         properties: [],
         message: total > 0
           ? `No more results: ${total} properties match, and offset ${offset} is past the end.`
@@ -104,6 +172,7 @@ export async function searchProperties(args: Record<string, unknown>) {
       network: NETWORK_LABEL,
       ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
       total,
+      ...link,
       showing: `${offset + 1}-${offset + page.length} of ${total}`,
       properties: page.map(tokenToSummary),
     };
