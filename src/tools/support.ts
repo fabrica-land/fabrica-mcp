@@ -1,5 +1,5 @@
 import { NETWORK, WEB_BASE } from "../config.js";
-import { BIP39_ENGLISH } from "./bip39-english.js";
+import { BIP39_WORDLISTS } from "./bip39-wordlists.js";
 
 /**
  * contact_support, option A: no secret and nothing sent. It returns the help center
@@ -30,41 +30,36 @@ const TOPIC_PAGES: Record<SupportTopic, { label: string; url: string }> = {
 };
 
 /** A label right before a 64-hex value that marks it as a transaction hash, which support may need. */
-const TX_CONTEXT = /(\/tx\/|\b(?:tx|txn|transaction)[ _-]?(?:hash|id)\b\s*(?:is\s*|[:=]\s*)?)$/i;
-/** A recovery-phrase label and its connector, as in "my seed phrase is:" or "mnemonic =". */
-const PHRASE_LABEL = /\b(?:(?:seed|recovery|secret|backup|wallet)[ -](?:phrase|words)|mnemonic)\b(?:\s+(?:is|are|was))?\s*[:=-]?/giu;
+const TX_CONTEXT = /(https?:\/\/[^\s/]+\/(?:\S*\/)?tx\/|\b(?:tx|txn|transaction)[ _-]?(?:hash|id)\b\s*(?:is\s*|[:=]\s*)?)$/i;
 
 /**
  * Key material never goes into a support message: a 64-hex-character value with or without
- * 0x (a private key) unless it directly follows a transaction-hash label or an /tx/ URL, or a run
- * of 12 or more BIP-39 words anywhere in the text (any case, with numbering,
- * bullets and punctuation between them ignored, repeats allowed), even after a lead-in such as "my seed phrase is:".
- * For mnemonics in other BIP-39 languages, 12 or more words of any script right after a
- * recovery-phrase label are refused too.
- * Talking about a lost key is fine.
+ * 0x (a private key) unless it directly follows a transaction-hash label or a block explorer
+ * /tx/ URL, or a run of 12 or more words from one BIP-39 wordlist, in any of the ten standard
+ * languages (any case, with numbering, bullets and punctuation between them ignored, repeats
+ * allowed). Talking about a lost key is fine.
  */
 export function containsSecret(raw: string): boolean {
-  // BIP-39 phrases are NFKD; compose them so a combining mark stays inside its word.
+  // The wordlists are NFC; BIP-39 phrases are often NFKD, so compose before comparing.
   const text = raw.normalize("NFC");
   for (const match of text.matchAll(/(?<![0-9a-zA-Z])(?:0[xX])?[0-9a-fA-F]{64}(?![0-9a-fA-F])/g)) {
-    if (!TX_CONTEXT.test(text.slice(Math.max(0, match.index - 40), match.index))) return true;
+    if (!TX_CONTEXT.test(text.slice(Math.max(0, match.index - 120), match.index))) return true;
   }
-  // Only letters count: numbering, bullets, commas and other separators between words are skipped.
-  let run = 0;
-  for (const word of text.toLowerCase().split(/[^a-z]+/)) {
-    if (word === "") continue;
-    run = BIP39_ENGLISH.has(word) ? run + 1 : 0;
-    if (run >= 12) return true;
+  // Only letters count, so numbering, bullets and punctuation between words are skipped.
+  const words = text.toLowerCase().split(/[^\p{L}\p{M}]+/u).filter((word) => word !== "");
+  // The Chinese wordlists use one Han character per word. Written without spaces, a phrase is
+  // one token of exactly 12 to 24 words; ordinary Chinese prose is not split, or it would match.
+  for (const word of words) {
+    const chars = [...word];
+    if (chars.length >= 12 && chars.length <= 24 && chars.length % 3 === 0 && /^\p{Script=Han}+$/u.test(word)
+      && BIP39_WORDLISTS.some((list) => chars.every((char) => list.has(char)))) return true;
   }
-  // Other BIP-39 languages: after a recovery-phrase label, refuse 12 or more words in any script.
-  for (const match of text.matchAll(PHRASE_LABEL)) {
-    // Chinese wordlists use one Han character per word, often written without spaces.
-    const words = text.slice(match.index + match[0].length).split(/[^\p{L}\p{M}]+/u)
-      .flatMap((word) => (/^\p{Script=Han}+$/u.test(word) ? [...word] : [word]))
-      .filter((word) => word !== "");
-    let count = 0;
-    while (count < words.length && (words[count].length >= 2 || /^\p{Script=Han}$/u.test(words[count]))) count++;
-    if (count >= 12) return true;
+  const runs = BIP39_WORDLISTS.map(() => 0);
+  for (const word of words) {
+    for (const [i, list] of BIP39_WORDLISTS.entries()) {
+      runs[i] = list.has(word) ? runs[i] + 1 : 0;
+      if (runs[i] >= 12) return true;
+    }
   }
   return false;
 }

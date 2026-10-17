@@ -56,10 +56,14 @@ describe("contact_support (links and email)", () => {
     expect(containsSecret("wrong habit note fury wink plate film account shed wood eight please")).toBe(true);
     expect(containsSecret(`- ${"abandon\n- ".repeat(11)}about`)).toBe(true);
     expect(containsSecret(`${"abandon, ".repeat(11)}about`)).toBe(true);
+    expect(containsSecret("frase semilla: ábaco abdomen abeja abierto abogado abono aborto abrazo abrir abuelo abuso acabar")).toBe(true);
+    expect(containsSecret(`my private key is /tx/0x${"ab".repeat(32)}`)).toBe(true);
+    expect(containsSecret(`https://sepolia.etherscan.io/tx/0x${"ab".repeat(32)}`)).toBe(false);
     expect(containsSecret("Mi seed phrase: ábaco abdomen abeja abierto abogado abono aborto abrazo abrir abuelo abuso acabar")).toBe(true);
     expect(containsSecret("recovery phrase: あいこくしん あいさつ あいだ あおぞら あかちゃん あきる あけがた あける あこがれる あさい あさひ あしあと")).toBe(true);
     expect(containsSecret("I lost my seed phrase and cannot open the wallet that holds my parcel token.")).toBe(false);
-    expect(containsSecret("mnemonic: 的 一 是 在 不 了 有 和 人 这 中 大")).toBe(true);
+    expect(containsSecret("的 一 是 在 不 了 有 和 人 这 中 大")).toBe(true);
+    expect(containsSecret("我想出售我在德州的土地，但是系统一直不接受我的身份证明文件，请问应该怎么办？")).toBe(false);
     expect(containsSecret("seed phrase: 的一是在不了有和人这中大")).toBe(true);
     expect(containsSecret("recovery phrase: あいこくしん あいさつ あいだ あおぞら あかちゃん あきる あけがた あける あこがれる あさい あさひ あしあと".normalize("NFKD"))).toBe(true);
     expect(containsSecret("Cannot upload deed because identity check failed during final review step again.")).toBe(false);
