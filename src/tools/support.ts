@@ -56,9 +56,12 @@ export function containsSecret(text: string): boolean {
   }
   // Other BIP-39 languages: after a recovery-phrase label, refuse 12 or more words in any script.
   for (const match of text.matchAll(PHRASE_LABEL)) {
-    const words = text.slice(match.index + match[0].length).split(/[^\p{L}]+/u).filter((word) => word !== "");
+    // Chinese wordlists use one Han character per word, often written without spaces.
+    const words = text.slice(match.index + match[0].length).split(/[^\p{L}]+/u)
+      .flatMap((word) => (/^\p{Script=Han}+$/u.test(word) ? [...word] : [word]))
+      .filter((word) => word !== "");
     let count = 0;
-    while (count < words.length && words[count].length >= 2) count++;
+    while (count < words.length && (words[count].length >= 2 || /^\p{Script=Han}$/u.test(words[count]))) count++;
     if (count >= 12) return true;
   }
   return false;
