@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { handleMcpHttpRequest } from "../http.js";
-import { classifyOutcome, describeRequest, trackUsage, type UsageLine } from "../usage-log.js";
+import { classifyOutcome, describeRequest, scrub, trackUsage, type UsageLine } from "../usage-log.js";
 
 function isUsageLine(value: unknown): value is UsageLine {
   return typeof value === "object" && value !== null && "event" in value && value.event === "mcp_request";
@@ -35,6 +35,22 @@ describe("describeRequest", () => {
       { method: "notifications/initialized" },
     ]);
     expect(JSON.stringify(calls)).not.toContain("0xabc");
+  });
+
+  it("keeps client-controlled identifiers out of the line", () => {
+    const calls = describeRequest([
+      { jsonrpc: "2.0", id: 1, method: "initialize", params: { clientInfo: { name: "agent 0x1234567890abcdef1234 from 203.0.113.9", version: "me@example.com" } } },
+      { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "0xdeadbeefdeadbeef" } },
+      { jsonrpc: "2.0", id: 3, method: "custom/0xdeadbeef" },
+    ]);
+    const raw = JSON.stringify(calls);
+    expect(raw).not.toContain("1234567890abcdef");
+    expect(raw).not.toContain("203.0.113.9");
+    expect(raw).not.toContain("example.com");
+    expect(raw).not.toContain("deadbeef");
+    expect(calls[1]).toEqual({ method: "tools/call", tool: "other" });
+    expect(calls[2]).toEqual({ method: "other" });
+    expect(scrub("claude-ai/1.0 (darwin)")).toBe("claude-ai/1.0 (darwin)");
   });
 
   it("ignores bodies that are not JSON-RPC", () => {

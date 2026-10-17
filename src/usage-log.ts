@@ -32,18 +32,30 @@ function clip(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value.slice(0, MAX_FIELD_CHARS) : undefined;
 }
 
+/** Client-controlled text can carry identifiers: hex runs (wallets, keys), IPs and emails are replaced. */
+export function scrub(value: string): string {
+  return value.replace(/0x[0-9a-f]{6,}|[0-9a-f]{16,}|\b\d{1,3}(\.\d{1,3}){3}\b|[0-9a-f]{0,4}(:[0-9a-f]{0,4}){3,}|[^\s@/]+@[^\s@/]+\.[a-z]{2,}/gi, "[redacted]");
+}
+
+/** JSON-RPC methods worth naming in the read; anything else is logged as "other". */
+const KNOWN_METHODS = new Set(["initialize", "notifications/initialized", "ping", "tools/list", "tools/call", "prompts/list", "prompts/get", "resources/list", "resources/read", "resources/templates/list", "completion/complete", "logging/setLevel", "notifications/cancelled"]);
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function describeMessage(message: unknown): UsageCall | undefined {
   if (!isRecord(message)) return undefined;
-  const method = clip(message.method);
-  if (!method) return undefined;
+  const rawMethod = clip(message.method);
+  if (!rawMethod) return undefined;
+  const method = KNOWN_METHODS.has(rawMethod) ? rawMethod : "other";
   const params = isRecord(message.params) ? message.params : {};
-  const tool = method === "tools/call" ? clip(params.name) : undefined;
+  // Tool names are lowercase words joined by underscores; anything else is not a tool of ours.
+  const rawTool = method === "tools/call" ? clip(params.name) : undefined;
+  const tool = rawTool === undefined ? undefined : /^[a-z][a-z_]{0,63}$/.test(rawTool) ? rawTool : "other";
   const clientInfo = method === "initialize" && isRecord(params.clientInfo) ? params.clientInfo : undefined;
-  const client = clientInfo ? clip([clientInfo.name, clientInfo.version].filter((part) => typeof part === "string").join("/")) : undefined;
+  const rawClient = clientInfo ? clip([clientInfo.name, clientInfo.version].filter((part) => typeof part === "string").join("/")) : undefined;
+  const client = rawClient === undefined ? undefined : scrub(rawClient);
   return { method, ...(tool ? { tool } : {}), ...(client ? { client } : {}) };
 }
 
@@ -97,7 +109,8 @@ export function trackUsage(res: ServerResponse, userAgent: string | undefined, s
   const finalize = (): void => {
     if (logged) return;
     logged = true;
-    const ua = clip(userAgent);
+    const clipped = clip(userAgent);
+    const ua = clipped === undefined ? undefined : scrub(clipped);
     console.log(formatUsageLine({
       event: "mcp_request",
       network: NETWORK,
