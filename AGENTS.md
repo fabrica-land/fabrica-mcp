@@ -52,6 +52,8 @@ ui/
   clients/
     graphql.ts        # Fabrica GraphQL API client (primary data source)
     subgraph.ts       # Lending pool subgraph client (dynamic pool discovery)
+  lifecycle.ts        # propertyStage(): premint, minted, off-ramp, burned (get_property, search rows)
+  fees.ts             # fees assessed on a token, by currency address
   types/
     index.ts          # Shared TypeScript interfaces
   __tests__/          # vitest test suite
@@ -87,6 +89,8 @@ The Apollo API routes subgraph data internally, so all onchain and offchain prop
 - **`loanStartedEvents`, `loanRepaidEvents`, `loanLiquidatedEvents` require `first!` and `skip!`** (non-nullable).
 - **Score is a raw integer** (e.g. 73242). Kept as-is. The `minScore` filter expects this integer scale.
 - **`estimatedValue` is a string decimal** (e.g. "396647.43"). `acres` is also a string.
+
+- **Lifecycle fields are anonymous-safe:** `claimState` (premints only), `supersededByTokenId`, `offRampStatus` (`in-progress` / `complete`, null for premints), `duplicateParcelCount` (null for premints), `fishy` (never true for premints), `fees` (currency is a contract address; amount in its raw units; timestamps mix ISO and epoch ms). `token.onRamp` is null without auth. A premint replaced by a minted token no longer loads (`No token or premint found`); `premintSuccessor` returns the live token.
 
 **Field naming (differs from what you might guess):**
 - WalletModel: `address` (not `walletAddress`), `creditHistory` (not `walletCreditHistory`), `displayName` on nested `user`

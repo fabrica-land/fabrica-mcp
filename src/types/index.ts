@@ -21,7 +21,13 @@ export interface TokenModel {
   supplyInDefault: string;
   isPremint: boolean;
   isClaimedPremint: boolean;
+  claimState?: "CLAIMED" | "UNCLAIMED" | null;
+  supersededByTokenId?: string | null;
+  offRampStatus?: string | null;
   isBurned: boolean;
+  fishy?: boolean;
+  duplicateParcelCount?: number | null;
+  fees?: TokenFees;
   lastOwner: WalletModel | null;
   majorityOwner: UserModel | null;
   majorityOwnerAddress: string | null;
@@ -62,6 +68,22 @@ export interface TokenModel {
   neighborhood: string | null;
   street: string | null;
   address: string | null;
+}
+
+export interface TokenFee {
+  type: string;
+  createdAt: string;
+  currency: string;
+  amount: string;
+  approved: boolean;
+  approvedAt: string | null;
+  paid: boolean;
+  paidAt: string | null;
+}
+
+export interface TokenFees {
+  totalAmount: string;
+  fees: TokenFee[];
 }
 
 export interface WalletModel {
@@ -440,6 +462,7 @@ export interface OrderBookToken {
   isPremint: boolean;
   claimState: "CLAIMED" | "UNCLAIMED" | null;
   supersededByTokenId: string | null;
+  offRampStatus: string | null;
   isBurned: boolean;
   supply: string;
   supplyUnderLoan: string;

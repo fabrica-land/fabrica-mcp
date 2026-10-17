@@ -78,8 +78,8 @@ Replace `/absolute/path/to/fabrica-mcp` with the actual path where you cloned th
 
 | Tool | Description |
 |---|---|
-| `search_properties` | Search tokenized properties by location, size, Property checks, listing status |
-| `get_property` | Full property details: legal, valuation, ownership, loans, media |
+| `search_properties` | Search tokenized properties by location, size, Property checks, listing status; each row carries its lifecycle stage |
+| `get_property` | Full property details: legal, valuation, ownership, loans, media, lifecycle stage, assessed fees, duplicate-parcel flags |
 | `get_lending_market` | Lending overview: loan counts, loans, DeFi lending pool stats, average APR, events |
 | `get_portfolio` | Wallet holdings, credit history, loan positions |
 | `get_protocol_stats` | Protocol-wide metrics: properties, estimated value, loan volume and counts, lending pool TVL |
