@@ -38,7 +38,7 @@ describe("poolCapacity", () => {
 });
 
 describe("bindingConstraint", () => {
-  const base = { hasActiveLoan: false, taxBlocked: false, oracleReasons: [] as string[] };
+  const base: { hasActiveLoan: boolean; taxBlocked: boolean; oracleReasons: string[] } = { hasActiveLoan: false, taxBlocked: false, oracleReasons: [] };
 
   it("says the pool's liquidity binds, with the amount the LTV alone would allow", () => {
     const result = bindingConstraint({ ...base, maxBorrowUsd: 966.245127, pools: [LIVE_POOL] });
@@ -80,7 +80,7 @@ describe("describeAppraisalDerivation", () => {
 });
 
 describe("pools that cannot lend and fixed-dollar limits", () => {
-  const base = { hasActiveLoan: false, taxBlocked: false, oracleReasons: [] as string[] };
+  const base: { hasActiveLoan: boolean; taxBlocked: boolean; oracleReasons: string[] } = { hasActiveLoan: false, taxBlocked: false, oracleReasons: [] };
   const quote = (price: string) => ({ quote: { price, currency: "0x", timestamp: 1, duration: 1 } });
 
   it("leaves out an unsigned quote even when its ticks would lend the most", () => {
@@ -115,7 +115,7 @@ describe("describeAppraisalDerivation follows the rule", () => {
 });
 
 describe("binding limits across several ticks", () => {
-  const base = { hasActiveLoan: false, taxBlocked: false, oracleReasons: [] as string[] };
+  const base: { hasActiveLoan: boolean; taxBlocked: boolean; oracleReasons: string[] } = { hasActiveLoan: false, taxBlocked: false, oracleReasons: [] };
   const dollars = (limit: bigint, available: bigint) => ({ raw: ((limit * 10n ** 18n) << 8n).toString(), available: (available * 10n ** 18n).toString() });
 
   it("remembers an earlier capped tick when a later one adds all it has", () => {

@@ -44,6 +44,15 @@ const avmAndPrycd = valuationToken({
   }),
 });
 
+const onchainPool = oraclePool({
+  address: "0x1111111111111111111111111111111111111111",
+  pricing: "OnchainOracle",
+  oracleValuation: null,
+  onchainPrice: { priceUsdc6: "9000000000", confidenceScore: 9250, cycle: "4", valuedAt: "1792000000", sourceId: 2 },
+  oracleFeed: { lastHeartbeat: "1792100000", maxSilence: "86400", isStale: false, currentCycle: "5", minValidCycle: "3", indexerUnavailableReason: null },
+  onchainValuation: { usablePriceUsdc6: null, capacityBlockReason: null, failedCheck: "min_sources" },
+});
+
 const onchainOracle = valuationToken({
   ...avmAndPrycd,
   tokenId: "200",
@@ -54,14 +63,7 @@ const onchainOracle = valuationToken({
     durations: [30],
     activeLoan: null,
     appraisalBlockReason: null,
-    pools: [oraclePool({
-      address: "0x1111111111111111111111111111111111111111",
-      pricing: "OnchainOracle",
-      oracleValuation: null,
-      onchainPrice: { priceUsdc6: "9000000000", confidenceScore: 9250, cycle: "4", valuedAt: "1792000000", sourceId: 2 },
-      oracleFeed: { lastHeartbeat: "1792100000", maxSilence: "86400", isStale: false, currentCycle: "5", minValidCycle: "3", indexerUnavailableReason: null },
-      onchainValuation: { usablePriceUsdc6: null, capacityBlockReason: null, failedCheck: "min_sources" },
-    })],
+    pools: [onchainPool],
   }),
 });
 
@@ -183,7 +185,7 @@ describe("get_borrow_quote states why capacity is zero", () => {
   it("gives the oracle reason", async () => {
     vi.mocked(getToken).mockResolvedValue(tokenDetailWithPoolOracle({
       tokenId: onchainOracle.tokenId, name: onchainOracle.name, estimatedValue: onchainOracle.estimatedValue, supplyUnderLoan: "0", loans: [],
-      poolLendingLiquidity: onchainOracle.poolLendingLiquidity,
+      poolLendingLiquidity: poolLendingLiquidityWithOracle({ maxPrincipalScaled: "0", maxPrincipalUsdc: "0", durations: [30], activeLoan: null, appraisalBlockReason: null, pools: [onchainPool] }),
     }));
     const result = await getBorrowQuote({ tokenId: "200" });
     expect(result).toMatchObject({
@@ -236,8 +238,8 @@ describe("appraisal provenance by pool pricing", () => {
       onchainPrice: { priceUsdc6: "6174527000", confidenceScore: 9250, cycle: "4", valuedAt: "1792000000", sourceId: 2 },
       onchainValuation: { usablePriceUsdc6: "6174527000", capacityBlockReason: null, failedCheck: null },
     });
-    vi.mocked(getTokenValuation).mockResolvedValue(valuationToken({ ...avmAndPrycd, poolLendingLiquidity: poolLendingLiquidityWithOracle({ ...avmAndPrycd.poolLendingLiquidity!, pools: [pool] }) }));
-    vi.mocked(getSignedValuations).mockResolvedValue(null as never);
+    vi.mocked(getTokenValuation).mockResolvedValue(valuationToken({ ...avmAndPrycd, poolLendingLiquidity: poolLendingLiquidityWithOracle({ maxPrincipalScaled: "325.684574", maxPrincipalUsdc: "325684574", pools: [pool] }) }));
+    vi.mocked(getSignedValuations).mockResolvedValue(null);
     const result = await getValuation({ tokenId: "100" });
     if ("error" in result) throw new Error(result.error);
     expect(result.oracle?.pools[0]).not.toHaveProperty("appraisal");

@@ -225,7 +225,6 @@ const POOL_ORACLE_FIELDS = gql`
       onchainPrice { priceUsdc6 confidenceScore cycle valuedAt sourceId }
       oracleFeed { lastHeartbeat maxSilence isStale currentCycle minValidCycle indexerUnavailableReason }
       onchainValuation { usablePriceUsdc6 capacityBlockReason failedCheck }
-      ticks { raw available }
     }
   }
 `;
@@ -313,14 +312,14 @@ const GET_TOKEN_QUERY = gql`
   }
 `;
 
-/** GetToken plus each pool's oracle state; only get_borrow_quote asks for it. */
+/** GetToken plus each pool's oracle state and ticks; only get_borrow_quote asks for it (the ticks bound the loan). */
 const GET_TOKEN_WITH_POOL_ORACLE_QUERY = gql`
   ${POOL_ORACLE_FIELDS}
   ${TOKEN_DETAIL_FIELDS}
   query GetTokenWithPoolOracle($tokenId: String, $slug: String, $network: String) {
     token(tokenId: $tokenId, slug: $slug, network: $network) {
       ...TokenDetailFields
-      poolLendingLiquidity { ...PoolOracleFields }
+      poolLendingLiquidity { ...PoolOracleFields pools { ticks { raw available } } }
     }
   }
 `;

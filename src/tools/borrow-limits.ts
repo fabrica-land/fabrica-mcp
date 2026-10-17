@@ -1,4 +1,4 @@
-import type { PoolLendingPoolValuation } from "../types/index.js";
+import type { PoolLendingPoolValuation, PoolLendingPoolWithTicks } from "../types/index.js";
 
 /** The valuation rows the appraisal reads; modelVersion is not needed. */
 type PricingRow = { source: string; scope: string; value: string | null; confidence: string | null };
@@ -60,7 +60,7 @@ export interface PoolCapacity {
  * order of their limit (a ratio tick's limit is that share of the price), each adding what it has
  * free up to its own limit.
  */
-export function poolCapacity(pool: PoolLendingPoolValuation, priceUsd: number): PoolCapacity {
+export function poolCapacity(pool: PoolLendingPoolWithTicks, priceUsd: number): PoolCapacity {
   const ticks = pool.ticks.flatMap(t => {
     const decoded = decodeTick(t.raw);
     if (!decoded) return [];
@@ -121,7 +121,7 @@ export function bindingConstraint(input: {
   hasActiveLoan: boolean;
   taxBlocked: boolean;
   oracleReasons: readonly string[];
-  pools: readonly PoolLendingPoolValuation[];
+  pools: readonly PoolLendingPoolWithTicks[];
 }) {
   const priced = input.pools.flatMap(pool => {
     const price = collateralPriceUsd(pool);
@@ -135,40 +135,31 @@ export function bindingConstraint(input: {
     ltvLimitedAmount: best.ltvLimitUsd !== null ? usd(best.ltvLimitUsd) : null,
     tickLimitAmount: usd(best.limitAmountUsd),
   } : {};
+  const reading = (limitedBy: LimitedBy, explanation: string) => ({ limitedBy, explanation, ...details });
   if (input.maxBorrowUsd <= 0) {
-    if (input.taxBlocked) return { limitedBy: "tax_status" as LimitedBy, explanation: "The property's taxes are not known to be current, so the pool's price for it is set to zero.", ...details };
+    if (input.taxBlocked) return reading("tax_status", "The property's taxes are not known to be current, so the pool's price for it is set to zero.");
     // A pool that can price the property but is empty explains the zero better than another pool's oracle failure.
-    if (best && best.freeLiquidityUsd < DUST_USD) return { limitedBy: "pool_liquidity" as LimitedBy, explanation: "The pool has no free liquidity to lend right now.", ...details };
-    if (priced.length === 0 || input.oracleReasons.length > 0) return { limitedBy: "oracle" as LimitedBy, explanation: input.oracleReasons[0] ?? "No pool has a usable price for this property.", ...details };
-    return { limitedBy: input.hasActiveLoan ? "existing_loan" as LimitedBy : "unknown" as LimitedBy, explanation: input.hasActiveLoan ? "The property already backs a loan, so the pool shows no new capacity." : "The API reports no capacity and states no reason.", ...details };
+    if (best && best.freeLiquidityUsd < DUST_USD) return reading("pool_liquidity", "The pool has no free liquidity to lend right now.");
+    if (priced.length === 0 || input.oracleReasons.length > 0) return reading("oracle", input.oracleReasons[0] ?? "No pool has a usable price for this property.");
+    return input.hasActiveLoan
+      ? reading("existing_loan", "The property already backs a loan, so the pool shows no new capacity.")
+      : reading("unknown", "The API reports no capacity and states no reason.");
   }
   if (input.hasActiveLoan) {
-    return { limitedBy: "existing_loan" as LimitedBy, explanation: "The property already backs a loan; the amount is net of it.", ...details };
+    return reading("existing_loan", "The property already backs a loan; the amount is net of it.");
   }
   if (!best || Math.abs(best.capacityUsd - input.maxBorrowUsd) > Math.max(DUST_USD, input.maxBorrowUsd * MATCH_TOLERANCE)) {
-    return { limitedBy: "unknown" as LimitedBy, explanation: "The pool's ticks do not reproduce the API's amount, so the binding limit is not stated.", ...details };
+    return reading("unknown", "The pool's ticks do not reproduce the API's amount, so the binding limit is not stated.");
   }
   if (best.capacityUsd >= best.freeLiquidityUsd - DUST_USD) {
-    return {
-      limitedBy: "pool_liquidity" as LimitedBy,
-      explanation: `The amount is all the free liquidity in the pool (${usd(best.freeLiquidityUsd)}). It says nothing about the property's value: at the pool's highest loan-to-value${best.maxLtv !== null ? ` (${percent(best.maxLtv)})` : ""} the ${usd(best.priceUsd)} collateral price would support up to ${usd(best.limitAmountUsd)} under the pool's tick limits once the pool holds the deposits.`,
-      ...details,
-    };
+    return reading("pool_liquidity", `The amount is all the free liquidity in the pool (${usd(best.freeLiquidityUsd)}). It says nothing about the property's value: at the pool's highest loan-to-value${best.maxLtv !== null ? ` (${percent(best.maxLtv)})` : ""} the ${usd(best.priceUsd)} collateral price would support up to ${usd(best.limitAmountUsd)} under the pool's tick limits once the pool holds the deposits.`);
   }
   if (best.boundBy === "absolute" || best.boundBy === "mixed") {
-    return {
-      limitedBy: "pool_limit" as LimitedBy,
-      explanation: best.boundBy === "absolute"
-        ? `A fixed dollar ceiling on the pool's ticks caps the amount, not the property's value; the pool holds ${usd(best.freeLiquidityUsd)} free.`
-        : `The pool's tick limits cap the amount: some are fixed dollar ceilings and some are loan-to-value limits${best.maxLtv !== null ? ` (up to ${percent(best.maxLtv)})` : ""} against the ${usd(best.priceUsd)} collateral price; the pool holds ${usd(best.freeLiquidityUsd)} free.`,
-      ...details,
-    };
+    return reading("pool_limit", best.boundBy === "absolute"
+      ? `A fixed dollar ceiling on the pool's ticks caps the amount, not the property's value; the pool holds ${usd(best.freeLiquidityUsd)} free.`
+      : `The pool's tick limits cap the amount: some are fixed dollar ceilings and some are loan-to-value limits${best.maxLtv !== null ? ` (up to ${percent(best.maxLtv)})` : ""} against the ${usd(best.priceUsd)} collateral price; the pool holds ${usd(best.freeLiquidityUsd)} free.`);
   }
-  return {
-    limitedBy: "ltv" as LimitedBy,
-    explanation: `The pool's loan-to-value limits${best.maxLtv !== null ? ` (up to ${percent(best.maxLtv)})` : ""} against the ${usd(best.priceUsd)} collateral price cap the amount; the pool holds ${usd(best.freeLiquidityUsd)} free.`,
-    ...details,
-  };
+  return reading("ltv", `The pool's loan-to-value limits${best.maxLtv !== null ? ` (up to ${percent(best.maxLtv)})` : ""} against the ${usd(best.priceUsd)} collateral price cap the amount; the pool holds ${usd(best.freeLiquidityUsd)} free.`);
 }
 
 function amount(value: string | null | undefined): number | null {

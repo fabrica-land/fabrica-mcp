@@ -259,8 +259,7 @@ describe("ENG-4462: bounded responses", () => {
 
 describe("loan counts per provider", () => {
   it("counts loans in default and liquidating so the statuses add up to the total", () => {
-    const loan = (loanStatus: string) => ({ loanProvider: "FabricaPool", loanStatus }) as unknown as Parameters<typeof countsByProvider>[0][number];
-    const counts = Object.values(countsByProvider([loan("Active"), loan("Default"), loan("Liquidating"), loan("Repaid")]))[0];
+    const counts = Object.values(countsByProvider([loan(), loan({ loanStatus: "Default" }), loan({ loanStatus: "Liquidating" }), loan({ loanStatus: "Repaid" })]))[0];
     expect(counts).toMatchObject({ total: 4, active: 1, repaid: 1, liquidated: 0, inDefault: 1, liquidating: 1 });
   });
 });
