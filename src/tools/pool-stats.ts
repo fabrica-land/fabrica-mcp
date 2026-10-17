@@ -58,6 +58,7 @@ export function buildPoolStats(pools: SubgraphPool[] | null) {
     note: available > 0
       ? `Pool values are deposits in the ${agg.poolCount === 1 ? "pool" : "pools"} listed, read now. ${CAPACITY_POINTER}`
       : `The ${agg.poolCount === 1 ? "pool" : "pools"} read (${poolIds.join(", ")}) ${agg.poolCount === 1 ? "shows" : "show"} no deposits available to borrow right now. This is the pool's current deposits, not a statement that lending is closed. ${CAPACITY_POINTER}`,
+    ...(agg.totalsFromTicks ? { totalsSource: "Summed from the pool's ticks, because the pool-level totals in the data source read zero." } : {}),
     raw: {
       decimals: POOL_VALUE_DECIMALS,
       totalValueLocked: agg.totalValueLocked,
