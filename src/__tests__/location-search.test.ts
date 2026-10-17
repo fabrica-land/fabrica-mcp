@@ -114,6 +114,15 @@ describe("grouped search review fixes", () => {
     expect(groupTokens([noCounty] as never, "county")).toEqual([]);
   });
 
+  it("leaves tokens with no state out of state and county groups", async () => {
+    const noState = { ...tokens[0], tokenId: "6", regionCode: null };
+    vi.mocked(getTokens).mockResolvedValueOnce([...tokens, noState] as never);
+    const result = await searchProperties({ groupBy: "state" }) as { groups: Array<Record<string, unknown>>; ungroupedCount?: number };
+    expect(result.groups.map(g => g.state)).toEqual(["CO", "AZ"]);
+    expect(result.ungroupedCount).toBe(1);
+    expect(groupTokens([noState] as never, "county")).toEqual([]);
+  });
+
   it("ignores a non-string county and an unknown groupBy", async () => {
     const result = await searchProperties({ region: "CO", county: 42, groupBy: "city" }) as Record<string, unknown>;
     expect(result.total).toBe(3);

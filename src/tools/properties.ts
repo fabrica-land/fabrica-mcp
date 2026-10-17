@@ -73,9 +73,18 @@ function mostCommon(values: ReadonlyArray<string | null | undefined>): string | 
 
 export type GroupBy = "state" | "county";
 
-/** Tokens a county grouping leaves out because the API gives them no county. */
+/** The state or state|county a token groups under; null when the record lacks that location. */
+function groupKey(t: TokenModel, groupBy: GroupBy): string | null {
+  const state = t.regionCode?.trim().toUpperCase() ?? "";
+  if (!state) return null;
+  if (groupBy === "state") return state;
+  const county = normalizeCounty(t.district);
+  return county ? `${state}|${county}` : null;
+}
+
+/** Tokens a grouping leaves out because the API gives them no state (or no county, by county). */
 export function ungroupedCount(tokens: ReadonlyArray<TokenModel>, groupBy: GroupBy): number {
-  return groupBy === "county" ? tokens.filter(t => !normalizeCounty(t.district)).length : 0;
+  return tokens.filter(t => groupKey(t, groupBy) === null).length;
 }
 
 function optionalString(value: unknown): string | undefined {
@@ -90,11 +99,9 @@ function optionalGroupBy(value: unknown): GroupBy | undefined {
 export function groupTokens(tokens: ReadonlyArray<TokenModel>, groupBy: GroupBy) {
   const groups = new Map<string, TokenModel[]>();
   for (const t of tokens) {
-    const state = t.regionCode?.toUpperCase() ?? "";
-    const countyKey = normalizeCounty(t.district);
-    // A token with no county is not a county; ungroupedCount reports it.
-    if (groupBy === "county" && !countyKey) continue;
-    const key = groupBy === "state" ? state : `${state}|${countyKey}`;
+    // A record with no state (or no county, by county) is not a location; ungroupedCount reports it.
+    const key = groupKey(t, groupBy);
+    if (key === null) continue;
     groups.set(key, [...(groups.get(key) ?? []), t]);
   }
   return [...groups.values()].map(members => {
@@ -176,7 +183,7 @@ export async function searchProperties(args: Record<string, unknown>) {
         totalGroups: groups.length,
         showing: groupPage.length > 0 ? `${offset + 1}-${offset + groupPage.length} of ${groups.length}` : `none: offset ${offset} is past the last of ${groups.length} groups`,
         groups: groupPage,
-        ...(ungrouped > 0 ? { ungroupedCount: ungrouped, ungroupedNote: `${ungrouped} matching ${ungrouped === 1 ? "property has" : "properties have"} no county in the record and ${ungrouped === 1 ? "is" : "are"} not in any county group.` } : {}),
+        ...(ungrouped > 0 ? { ungroupedCount: ungrouped, ungroupedNote: `${ungrouped} matching ${ungrouped === 1 ? "property has" : "properties have"} no ${groupBy === "county" ? "state or county" : "state"} in the record and ${ungrouped === 1 ? "is" : "are"} not in any group.` } : {}),
       };
     }
     const page = tokens.slice(offset, offset + limit);
