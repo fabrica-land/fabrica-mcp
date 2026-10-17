@@ -37,6 +37,11 @@ ui/
     activity.ts       # get_activity
     images.ts         # get_property_image, get_portfolio_image
     documents.ts      # get_trust_documents
+    knowledge.ts      # ask_fabrica
+  knowledge/
+    index.ts          # typed, validated loader for generated/index.json (committed)
+    search.ts         # BM25 retrieval with Fabrica synonyms and compound-term normalization
+    facts.ts          # wording red lines the tests check the top passages against
   clients/
     graphql.ts        # Fabrica GraphQL API client (primary data source)
     subgraph.ts       # Lending pool subgraph client (dynamic pool discovery)

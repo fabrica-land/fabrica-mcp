@@ -1,0 +1,19 @@
+{
+  "docs": {
+    "repo": "fabrica-land/docs",
+    "ref": "v3.0",
+    "pinned": "15895179f0f028363560ee67359813764d2c8a52"
+  },
+  "help": {
+    "sitemap": "https://help.fabrica.land/sitemap.xml",
+    "pinned": "b96e166957b5e757658488eb821ee3f15b7c4ec1e9c7e72ea3a8a20f6007706d"
+  },
+  "trust-agreement": {
+    "repo": "fabrica-land/fabrica-connectors",
+    "ref": "main",
+    "rawUrl": "https://raw.githubusercontent.com/fabrica-land/fabrica-connectors/{ref}/connectors/us/us-trust-agreement.md",
+    "url": "https://github.com/fabrica-land/fabrica-connectors/blob/main/connectors/us/us-trust-agreement.md",
+    "title": "Fabrica Trust Agreement (US)",
+    "pinned": "sha256:ffd3868476c2b2e844cfdf44bb0e64c3822d00072a371f1ed712f3bff79a89b7"
+  }
+}
