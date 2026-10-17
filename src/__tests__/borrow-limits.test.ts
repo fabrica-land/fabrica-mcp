@@ -150,3 +150,21 @@ describe("zero capacity across pools", () => {
     expect(bindingConstraint({ hasActiveLoan: false, taxBlocked: false, oracleReasons: ["The other pool's oracle is stale."], maxBorrowUsd: 0, pools: [empty, oraclePool()] })).toMatchObject({ limitedBy: "pool_liquidity" });
   });
 });
+
+describe("explanations name the limit that applies", () => {
+  const base: { hasActiveLoan: boolean; taxBlocked: boolean; oracleReasons: string[] } = { hasActiveLoan: false, taxBlocked: false, oracleReasons: [] };
+  const signed = { signature: "0x", quote: { price: "2000000000", currency: "0x", timestamp: 1, duration: 1 } };
+
+  it("puts an existing loan ahead of another pool's oracle failure", () => {
+    const funded = oraclePool({ oracleValuation: signed, ticks: [tick(1000, 1, 500)] });
+    expect(bindingConstraint({ ...base, hasActiveLoan: true, oracleReasons: ["The other pool's oracle is stale."], maxBorrowUsd: 0, pools: [funded, oraclePool()] })).toMatchObject({ limitedBy: "existing_loan" });
+  });
+
+  it("quotes the ratio ceiling, not a larger fixed one, as what the loan-to-value supports", () => {
+    const pool = oraclePool({ oracleValuation: signed, ticks: [tick(1000, 1, 50), { raw: ((5000n * 10n ** 18n) << 8n).toString(), available: (50n * 10n ** 18n).toString() }] });
+    const result = bindingConstraint({ ...base, maxBorrowUsd: 100, pools: [pool] });
+    expect(result).toMatchObject({ limitedBy: "pool_liquidity", ltvLimitedAmount: "$200" });
+    expect(result.explanation).toContain("would support up to $200");
+    expect(result.explanation).not.toContain("$5,000");
+  });
+});

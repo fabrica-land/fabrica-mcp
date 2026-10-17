@@ -140,6 +140,8 @@ export function bindingConstraint(input: {
     if (input.taxBlocked) return reading("tax_status", "The property's taxes are not known to be current, so the pool's price for it is set to zero.");
     // A pool that can price the property but is empty explains the zero better than another pool's oracle failure.
     if (best && best.freeLiquidityUsd < DUST_USD) return reading("pool_liquidity", "The pool has no free liquidity to lend right now.");
+    // With a usable pool that holds liquidity, an existing loan explains the zero better than another pool's oracle failure.
+    if (best && input.hasActiveLoan) return reading("existing_loan", "The property already backs a loan, so the pool shows no new capacity.");
     if (priced.length === 0 || input.oracleReasons.length > 0) return reading("oracle", input.oracleReasons[0] ?? "No pool has a usable price for this property.");
     return input.hasActiveLoan
       ? reading("existing_loan", "The property already backs a loan, so the pool shows no new capacity.")
@@ -152,7 +154,7 @@ export function bindingConstraint(input: {
     return reading("unknown", "The pool's ticks do not reproduce the API's amount, so the binding limit is not stated.");
   }
   if (best.capacityUsd >= best.freeLiquidityUsd - DUST_USD) {
-    return reading("pool_liquidity", `The amount is all the free liquidity in the pool (${usd(best.freeLiquidityUsd)}). It says nothing about the property's value: at the pool's highest loan-to-value${best.maxLtv !== null ? ` (${percent(best.maxLtv)})` : ""} the ${usd(best.priceUsd)} collateral price would support up to ${usd(best.limitAmountUsd)} under the pool's tick limits once the pool holds the deposits.`);
+    return reading("pool_liquidity", `The amount is all the free liquidity in the pool (${usd(best.freeLiquidityUsd)}). It says nothing about the property's value: ${best.ltvLimitUsd !== null && best.maxLtv !== null ? `at the pool's highest loan-to-value (${percent(best.maxLtv)}) the ${usd(best.priceUsd)} collateral price would support up to ${usd(best.ltvLimitUsd)}` : `the pool's tick limits would allow up to ${usd(best.limitAmountUsd)}`} once the pool holds the deposits.`);
   }
   if (best.boundBy === "absolute" || best.boundBy === "mixed") {
     return reading("pool_limit", best.boundBy === "absolute"

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { aggregatePoolStats, MAX_TICKS, withTickTotals } from "../clients/subgraph.js";
 import type { SubgraphPool } from "../types/index.js";
+import { loan } from "./fixtures.js";
 
 function makePool(overrides: Partial<SubgraphPool> = {}): SubgraphPool {
   return {
@@ -119,7 +120,7 @@ describe("buildPoolStats with the API's loan records", () => {
     durations: [], rates: [], maxBorrows: [], loansOriginated: "95", loansActive: "1", loansRepaid: "84", loansLiquidated: "0", adminFeeRate: "0",
     ...overrides,
   });
-  const liquidated = (loanContract: string) => ({ loanStatus: "Liquidated" as const, loanContract });
+  const liquidated = (loanContract: string) => loan({ loanStatus: "Liquidated", loanContract });
 
   it("reports the records' liquidation count when the subgraph's lags, and says so", async () => {
     const { buildPoolStats } = await import("../tools/pool-stats.js");
