@@ -33,6 +33,7 @@ const POOL_FIELDS = gql`
     loansRepaid
     loansLiquidated
     adminFeeRate
+    ticks(first: 1000, where: { value_gt: "0" }) { value available }
   }
 `;
 
@@ -59,7 +60,7 @@ export async function getFabricaPools(): Promise<SubgraphPool[] | null> {
       const data = await poolClient.request<{ pools: SubgraphPool[] }>(GET_FABRICA_POOLS_QUERY, {
         collateralToken: FABRICA_TOKEN_ADDRESS,
       });
-      return data.pools;
+      return data.pools.map(withTickTotals);
     });
   } catch {
     return null;
@@ -74,6 +75,36 @@ function sumValues(values: string[]): string {
   return String(values.reduce((sum, v) => sum + parseFloat(v), 0));
 }
 
+/** Page size of the nonzero-tick query in POOL_FIELDS. */
+export const MAX_TICKS = 1000;
+
+const isZero = (v: string) => /^0*$/.test(v) || Number(v) === 0;
+
+/**
+ * The subgraph's pool-level totals can read 0 while its ticks hold the deposits. When that
+ * happens, derive the totals from the ticks: locked = sum of tick value, available = sum of
+ * tick available, used = locked - available. Pools whose totals are populated pass through.
+ */
+export function withTickTotals(pool: SubgraphPool): SubgraphPool {
+  const ticks = pool.ticks ?? [];
+  // Only ticks holding value are fetched, up to MAX_TICKS. A full page may be partial, and a
+  // partial sum would understate the pool, so keep the subgraph's own totals then.
+  if (ticks.length === 0 || ticks.length >= MAX_TICKS) return pool;
+  if (![pool.totalValueLocked, pool.totalValueUsed, pool.totalValueAvailable].every(isZero)) return pool;
+  if (!ticks.every(t => /^\d+$/.test(t.value) && /^\d+$/.test(t.available))) return pool;
+  const locked = ticks.reduce((sum, t) => sum + BigInt(t.value), 0n);
+  if (locked === 0n) return pool;
+  const available = ticks.reduce((sum, t) => sum + BigInt(t.available), 0n);
+  const used = locked > available ? locked - available : 0n;
+  return {
+    ...pool,
+    totalValueLocked: locked.toString(),
+    totalValueUsed: used.toString(),
+    totalValueAvailable: available.toString(),
+    totalsFromTicks: true,
+  };
+}
+
 /** Aggregate stats across all Fabrica pools */
 export function aggregatePoolStats(pools: SubgraphPool[]) {
   if (pools.length === 0) return null;
@@ -86,6 +117,7 @@ export function aggregatePoolStats(pools: SubgraphPool[]) {
     loansActive: pools.reduce((sum, p) => sum + parseInt(p.loansActive), 0),
     loansRepaid: pools.reduce((sum, p) => sum + parseInt(p.loansRepaid), 0),
     loansLiquidated: pools.reduce((sum, p) => sum + parseInt(p.loansLiquidated), 0),
+    totalsFromTicks: pools.some(p => p.totalsFromTicks === true),
   };
 }
 

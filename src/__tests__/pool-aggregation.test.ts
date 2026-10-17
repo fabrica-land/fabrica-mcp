@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { aggregatePoolStats } from "../clients/subgraph.js";
+import { aggregatePoolStats, MAX_TICKS, withTickTotals } from "../clients/subgraph.js";
 import type { SubgraphPool } from "../types/index.js";
 
 function makePool(overrides: Partial<SubgraphPool> = {}): SubgraphPool {
@@ -68,5 +68,45 @@ describe("aggregatePoolStats", () => {
     expect(result!.loansLiquidated).toBe(5);
     // TVL should sum
     expect(parseFloat(result!.totalValueLocked)).toBeCloseTo(3000000000000000000000);
+  });
+});
+
+describe("withTickTotals", () => {
+  const E18 = 10n ** 18n;
+  const zeroTotals = { totalValueLocked: "0", totalValueUsed: "0", totalValueAvailable: "0" };
+
+  it("derives totals from the ticks when the pool totals read zero", () => {
+    // Shape of the mainnet pool on 2026-10-17: 1,395.25 deposited, 966.25 available, one 429 loan.
+    const pool = makePool({
+      ...zeroTotals,
+      ticks: [
+        { value: (1000n * E18).toString(), available: (571n * E18).toString() },
+        { value: (39525n * E18 / 100n).toString(), available: (39525n * E18 / 100n).toString() },
+      ],
+    });
+    const result = withTickTotals(pool);
+    expect(result.totalsFromTicks).toBe(true);
+    expect(result.totalValueLocked).toBe((139525n * E18 / 100n).toString());
+    expect(result.totalValueAvailable).toBe((96625n * E18 / 100n).toString());
+    expect(result.totalValueUsed).toBe((429n * E18).toString());
+    expect(aggregatePoolStats([result])!.totalsFromTicks).toBe(true);
+  });
+
+  it("keeps populated pool totals as they are", () => {
+    const pool = makePool({ ticks: [{ value: "1", available: "1" }] });
+    expect(withTickTotals(pool)).toBe(pool);
+    expect(aggregatePoolStats([pool])!.totalsFromTicks).toBe(false);
+  });
+
+  it("keeps zero when the ticks are empty too", () => {
+    const pool = makePool({ ...zeroTotals, ticks: [{ value: "0", available: "0" }] });
+    expect(withTickTotals(pool)).toBe(pool);
+    expect(withTickTotals(makePool({ ...zeroTotals }))).toEqual(makePool({ ...zeroTotals }));
+  });
+
+  it("keeps the subgraph totals when a full page of ticks may be partial", () => {
+    const ticks = Array.from({ length: MAX_TICKS }, () => ({ value: "1", available: "1" }));
+    const pool = makePool({ ...zeroTotals, ticks });
+    expect(withTickTotals(pool)).toBe(pool);
   });
 });

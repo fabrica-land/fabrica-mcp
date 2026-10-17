@@ -443,6 +443,10 @@ export interface SubgraphPool {
   loansRepaid: string;
   loansLiquidated: string;
   adminFeeRate: string;
+  /** Per-tick deposits (18-decimal scaled), used when the pool totals read 0. */
+  ticks?: { value: string; available: string }[];
+  /** True when the totals above were derived from the ticks. */
+  totalsFromTicks?: boolean;
 }
 
 // Order book (get_order_book): the marketplace fields of one token, nothing else
