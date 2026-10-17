@@ -344,10 +344,25 @@ export function matchIndexByQuery(query: string, scope: { state?: string; county
     if (!wanted || !own || own.number !== wanted.number) return false;
     // East and West Stagecoach Lane are different streets; a direction given on one side only is not a conflict.
     if (own.direction && wanted.direction && own.direction !== wanted.direction) return false;
-    // Street words must agree as far as both go, so "Palo Colorado Rd" matches "Palo Colorado Road" but not "Palo Alto Rd".
-    const shared = Math.min(own.street.length, wanted.street.length);
-    return own.street.slice(0, shared).every((word, i) => word === wanted.street[i]);
+    return sameStreet(own.street, wanted.street);
   });
+}
+
+const SUFFIX_ABBREVIATIONS = new Set(Object.values(STREET_SUFFIXES));
+
+/**
+ * The same complete street: "Palo Colorado Rd" and "Palo Colorado Road" match, and so does
+ * "Palo Colorado" with no suffix, but "Main St" and "Main St Extension" or "Palo Alto Rd" do not.
+ */
+function sameStreet(a: readonly string[], b: readonly string[]): boolean {
+  const split = (words: readonly string[]) => {
+    const last = words[words.length - 1];
+    return words.length > 1 && SUFFIX_ABBREVIATIONS.has(last) ? { core: words.slice(0, -1), suffix: last } : { core: words, suffix: null };
+  };
+  const x = split(a);
+  const y = split(b);
+  if (x.suffix && y.suffix && x.suffix !== y.suffix) return false;
+  return x.core.length === y.core.length && x.core.every((word, i) => word === y.core[i]);
 }
 
 function indexCandidate(token: ParcelIndexToken): ParcelCandidate {

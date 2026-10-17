@@ -353,4 +353,12 @@ describe("type-ahead fallback helpers", () => {
     expect(matchIndexByQuery("29078 W Stagecoach Ln", { state: "AZ" }, tokens).map((t) => t.tokenId)).toEqual(["w", "x"]);
     expect(matchIndexByQuery("29078 W Stagecoach Ln", { state: "AZ", county: "Yavapai" }, tokens).map((t) => t.tokenId)).toEqual(["w"]);
   });
+
+  it("needs the whole street, with or without its suffix", () => {
+    const tokens = [parcelToken({ tokenId: "e", name: "123 Main Street Extension, Town, TX", regionCode: "TX" })];
+    expect(matchIndexByQuery("123 Main Street", { state: "TX" }, tokens)).toEqual([]);
+    const plain = [parcelToken({ tokenId: "p", name: "37497 Palo Colorado Road, Carmel, CA", regionCode: "CA" })];
+    expect(matchIndexByQuery("37497 Palo Colorado", { state: "CA" }, plain).map((t) => t.tokenId)).toEqual(["p"]);
+    expect(matchIndexByQuery("37497 Palo Colorado Ln", { state: "CA" }, plain)).toEqual([]);
+  });
 });

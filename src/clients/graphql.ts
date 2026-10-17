@@ -881,7 +881,7 @@ export async function getParcelIndex(): Promise<ParcelIndexToken[]> {
 
 const GET_NETWORK_ACTIVITY_QUERY = gql`
   query GetNetworkActivity($testnets: Boolean, $contractAddress: String) {
-    tokens(burned: false, premints: false, testnets: $testnets, contractAddress: $contractAddress) {
+    tokens(burned: true, premints: false, testnets: $testnets, contractAddress: $contractAddress) {
       tokenId
       name
       vanityName
@@ -892,7 +892,7 @@ const GET_NETWORK_ACTIVITY_QUERY = gql`
 
 const networkActivityCache = new TtlCache<GetNetworkActivityQuery>();
 
-/** Every minted, unburned token on this network with its activity feed (about 2,000 events on mainnet, one request). */
+/** Every minted token on this network, burned ones included (their history and Burn event stay), with its activity feed (one request). */
 export async function getNetworkActivity(): Promise<NetworkActivityToken[]> {
   const data = await cachedRequest(networkActivityCache, GET_NETWORK_ACTIVITY_QUERY, {
     testnets: !IS_MAINNET,
