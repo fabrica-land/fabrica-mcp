@@ -225,6 +225,7 @@ const POOL_ORACLE_FIELDS = gql`
       onchainPrice { priceUsdc6 confidenceScore cycle valuedAt sourceId }
       oracleFeed { lastHeartbeat maxSilence isStale currentCycle minValidCycle indexerUnavailableReason }
       onchainValuation { usablePriceUsdc6 capacityBlockReason failedCheck }
+      ticks { raw available }
     }
   }
 `;
@@ -719,7 +720,7 @@ export async function getWallet(walletAddress: string): Promise<WalletModel | nu
 
 const LOAN_FIELDS = gql`
   fragment LoanFields on LoanModel {
-    loanId loanStatus loanProvider loanType
+    loanId loanStatus loanProvider loanType loanContract
     principalScaled currencySymbol
     aprPercent interestForDurationPercent
     durationFormatted maturityDate startTime

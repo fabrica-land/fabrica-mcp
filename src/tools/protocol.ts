@@ -66,7 +66,7 @@ export async function getProtocolStats() {
         liquidatedLoans: liquidatedLoans.length,
         loanVolumeByCurrency: loanVolumeByCurrency(loans),
         ...(loansMayBeIncomplete(loans) ? { note: LOANS_INCOMPLETE_NOTE } : {}),
-        lendingPools: buildPoolStats(pools),
+        lendingPools: buildPoolStats(pools, loans),
       },
       marketplace: {
         activeListings: activeListingsCount,

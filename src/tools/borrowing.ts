@@ -2,6 +2,7 @@ import { getToken, propertyLookupError } from "../clients/graphql.js";
 import { LENDING_POOL_NAME, describeAppraisalBlock, formatLoanProvider, formatUsdcCeiling } from "../labels.js";
 import { estimateFields, formatDurationDays, formatRawTokenAmount, formatTokenAmount, formatUnixTime, shortenAddress } from "../format.js";
 import { describePoolOracle, zeroCapacityReasons } from "./valuation.js";
+import { bindingConstraint, collateralPriceUsd, describeAppraisalDerivation } from "./borrow-limits.js";
 import { type ArgsOf, propertyRefInputs } from "./inputs.js";
 
 /** Pool loan amounts are raw USDC units (6 decimals). */
@@ -83,11 +84,26 @@ export async function getBorrowQuote(args: GetBorrowQuoteArgs) {
     }
     const appraisalBlock = describeAppraisalBlock(pool?.appraisalBlockReason);
     if (appraisalBlock) result.appraisalBlock = appraisalBlock;
-    if (pool?.pools && pool.pools.length > 0) result.oracle = pool.pools.map(describePoolOracle);
+    if (pool) {
+      const oracleReasons = zeroCapacityReasons(pool).filter(r => r !== appraisalBlock);
+      result.limits = bindingConstraint({
+        maxBorrowUsd: hasCapacity ? capacity : 0,
+        hasActiveLoan: hasActiveLoan || pool.activeLoan !== null,
+        taxBlocked: appraisalBlock !== null,
+        oracleReasons,
+        pools: pool.pools ?? [],
+      });
+    }
+    if (pool?.pools && pool.pools.length > 0) {
+      result.oracle = pool.pools.map(p => {
+        const appraisal = describeAppraisalDerivation(collateralPriceUsd(p), token.pricing);
+        return { ...describePoolOracle(p), ...(appraisal ? { appraisal } : {}) };
+      });
+    }
     result.summary = hasActiveLoan
       ? "This property already has an active loan. Additional borrowing may be limited."
       : pool && hasCapacity
-        ? `Up to ${formatUsdcCeiling(pool.maxPrincipalScaled)} advertised by the ${LENDING_POOL_NAME}. This is an estimate; the amount and rate are set by a live quote when borrowing.`
+        ? `Up to ${formatUsdcCeiling(pool.maxPrincipalScaled)} advertised by the ${LENDING_POOL_NAME}${result.limits && typeof result.limits === "object" && "limitedBy" in result.limits && result.limits.limitedBy === "pool_liquidity" ? ", which is all the pool has free to lend right now, not a verdict on the property's value" : ""}. This is an estimate; the amount and rate are set by a live quote when borrowing.`
         : "No borrowing options currently available for this property.";
     return result;
   } catch (e) {

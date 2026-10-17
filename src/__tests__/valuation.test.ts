@@ -104,7 +104,7 @@ describe("get_valuation", () => {
       estimate: { value: "$8,211", basedOn: ["Prycd"], asOf: "2026-10-13T03:03:02.064Z" },
       sources: [
         { source: "Fabrica AVM (automated valuation model)", scope: "land", value: "$9,100", confidence: "60.000", modelVersion: "1.14.1" },
-        { scope: "improvements", value: null, note: "This source published no value for this scope." },
+        { scope: "improvements", value: null, note: expect.stringContaining("The Fabrica AVM published no value for this scope") },
         { source: "Prycd", value: "$8,211", modelVersion: null },
       ],
       assessor: { land: "$15,930", lastSale: "$25,000", total: null },

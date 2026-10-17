@@ -154,6 +154,7 @@ export function oraclePool(overrides: Partial<PoolLendingPoolValuation> = {}): P
     onchainPrice: null,
     oracleFeed: null,
     onchainValuation: null,
+    ticks: [],
     ...overrides,
   };
 }
@@ -261,6 +262,7 @@ export function loan(overrides: Partial<LoanModel> = {}): LoanModel {
     loanStatus: "Active",
     loanProvider: "PoolLending",
     loanType: "Fixed",
+    loanContract: "0x842ffbf1ad5314503904626122376f71603a3cf9",
     principalScaled: "1000",
     currencySymbol: "USDC",
     aprPercent: 12,

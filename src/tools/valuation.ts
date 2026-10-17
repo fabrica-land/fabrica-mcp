@@ -14,6 +14,7 @@ import {
 import type { PoolLendingLiquidityWithOracle, PoolLendingPoolValuation, SignedValuationPanel, ValuationPricing } from "../types/index.js";
 import { formatUsd, shortenAddress } from "../format.js";
 import { type ArgsOf, propertyRefInputs } from "./inputs.js";
+import { APPRAISAL_RULE, collateralPriceUsd, describeAppraisalDerivation } from "./borrow-limits.js";
 
 const ASSESSOR_SOURCE = "regrid-county-assessor";
 /** Sources the API's `estimatedValue` is taken from: the lower of their land values when both exist. */
@@ -58,7 +59,9 @@ function sourceRow(p: ValuationPricing) {
     confidence: p.confidence,
     asOf: p.timestamp,
     modelVersion: p.modelVersion || null,
-    ...(p.value === null ? { note: "This source published no value for this scope." } : {}),
+    ...(p.value === null ? { note: p.source === "fabrica-avm"
+      ? `The Fabrica AVM published no value for this scope${parseAmount(p.confidence) === 0 ? " (confidence 0)" : ""}. The API does not say why (for example no comparable sales, or the parcel outside the model's coverage), so the gap is not a judgment on the property.`
+      : "This source published no value for this scope." } : {}),
   };
 }
 
@@ -77,13 +80,13 @@ function describeAssessor(pricing: ValuationPricing[]) {
   };
 }
 
-function describeSignedValuations(panel: SignedValuationPanel | null) {
+function describeSignedValuations(panel: SignedValuationPanel | null, pricing: ValuationPricing[]) {
   if (!panel) {
     return { asOf: null, entries: [], note: "The signed valuation service did not answer; the other sections are unaffected." };
   }
   return {
     asOf: panel.asOf,
-    note: "Each quote is the collateral price in USDC that the DeFi lending pool lends against. It is separate from the estimate.",
+    note: `Each quote is the collateral price in USDC that the DeFi lending pool lends against. ${APPRAISAL_RULE}`,
     entries: panel.valuations.map(v => ({
       source: v.source,
       version: v.version,
@@ -94,6 +97,7 @@ function describeSignedValuations(panel: SignedValuationPanel | null) {
       signed: v.signature !== null,
       ...(v.reason ? { reason: describeSignedValuationReason(v.reason) } : {}),
       ...(v.quote && parseAmount(v.quote.price) === 0 ? { reason: "The API found no valid valuation for this source, so the quote is zero." } : {}),
+      ...(v.quote ? { derivation: describeAppraisalDerivation((parseAmount(v.quote.price) ?? 0) / 1e6, pricing)?.derivation ?? null } : {}),
     })),
   };
 }
@@ -190,12 +194,15 @@ export async function getValuation(args: GetValuationArgs) {
       cardDisplayValuation: formatUsd(token.cardDisplayValuation),
       sources: token.pricing.filter(p => p.source !== ASSESSOR_SOURCE).map(sourceRow),
       assessor: describeAssessor(token.pricing),
-      signedValuations: describeSignedValuations(panel),
+      signedValuations: describeSignedValuations(panel, token.pricing),
       oracle: liquidity ? {
         lendingPool: LENDING_POOL_NAME,
         maxBorrow: maxBorrow > 0 ? formatUsdcCeiling(liquidity.maxPrincipalScaled) : null,
         appraisalBlock: describeAppraisalBlock(liquidity.appraisalBlockReason),
-        pools: (liquidity.pools ?? []).map(describePoolOracle),
+        pools: (liquidity.pools ?? []).map(p => {
+          const appraisal = describeAppraisalDerivation(collateralPriceUsd(p), token.pricing);
+          return { ...describePoolOracle(p), ...(appraisal ? { appraisal } : {}) };
+        }),
         ...(maxBorrow > 0 ? {} : { noCapacityReasons: zeroCapacityReasons(liquidity) }),
       } : null,
       reportUrl: token.valuationReportUrl,

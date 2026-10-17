@@ -66,7 +66,7 @@ Set `FABRICA_NETWORK=sepolia` in the server's environment for the testnet.
 | `get_property_map` | GeoJSON boundary data for mapping and spatial analysis |
 | `get_tax_status` | Property tax status from Property checks (current, past due, unknown), its basis, check dates and whether it limits borrowing |
 | `get_trust_documents` | The legal record: trust, trust agreement (name, version, link, text on request), legal description, parcel IDs, deed reference, uploaded documents |
-| `get_borrow_quote` | Borrowing options for a property: DeFi lending pool liquidity, durations, current loans, and why capacity is zero when it is |
+| `get_borrow_quote` | Borrowing options for a property: DeFi lending pool liquidity, durations, current loans, what limits the amount (pool liquidity, LTV, tax status, oracle), and why capacity is zero when it is |
 | `get_valuation` | Every value the API holds for a property with its source, date and confidence: estimate, AVM, Prycd, county assessor, signed valuations, pool oracle state |
 | `get_activity` | Activity feed for a property or wallet, or the recent activity across the whole network: transfers, loans, sales, mints |
 | `get_order_book` | Listings and offers on a property: prices, sellers and buyers, expiry, whether a loan blocks each listing, premint state |
