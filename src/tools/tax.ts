@@ -1,6 +1,6 @@
 import { getTaxStatusToken, getScoreRecord, isTokenNotFound } from "../clients/graphql.js";
 import { MAINNET_WARNING } from "../config.js";
-import type { AppraisalBlockReason, ScoreRecord, ScoringCheckResult } from "../types/index.js";
+import type { AppraisalBlockReason, ScoreRecord } from "../types/index.js";
 import { LENDING_POOL_NAME } from "../labels.js";
 
 const TAX_CHECK = "propertyTaxesCurrent";
@@ -18,14 +18,6 @@ function checkFromRecord(record: ScoreRecord | null): boolean | null {
   if (value === 1 || value === true) return true;
   if (value === 0 || value === false) return false;
   return null;
-}
-
-/**
- * Without the score record only the GraphQL list is left, and it reports an unverified
- * check as false, so a false there cannot tell past due from never verified.
- */
-function checkFromList(results: ScoringCheckResult[] | null | undefined): boolean | null {
-  return results?.find(r => r.checkName === TAX_CHECK)?.value === true ? true : null;
 }
 
 /** Combines the check with the lending block reason, which the API derives from the same check. */
@@ -59,7 +51,6 @@ export async function loadTaxSignals(token: {
   tokenId: string;
   contractAddress: string;
   isPremint: boolean;
-  scoringCheckResults: ScoringCheckResult[] | null;
   poolLendingLiquidity: { appraisalBlockReason?: AppraisalBlockReason | null } | null;
 }) {
   const warnings: string[] = [];
@@ -68,12 +59,13 @@ export async function loadTaxSignals(token: {
     try {
       record = await getScoreRecord(token.contractAddress, token.tokenId);
     } catch (e) {
-      warnings.push(`Score record unavailable, so the check dates are missing: ${e instanceof Error ? e.message : String(e)}`);
+      warnings.push(`Score record unavailable, so the tax status is unknown: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
-  // A check past its expiry no longer says anything about the taxes today.
+  // Only the score record says whether the check is still in force: a check past its expiry,
+  // or one whose expiry cannot be read (the GraphQL list has no dates), says nothing about today.
   const checkExpired = record?.expiresAt ? Date.parse(record.expiresAt) < Date.now() : false;
-  const check = checkExpired ? null : record ? checkFromRecord(record) : checkFromList(token.scoringCheckResults);
+  const check = record && !checkExpired ? checkFromRecord(record) : null;
   const blockReason = token.poolLendingLiquidity?.appraisalBlockReason ?? null;
   return { ...resolveTaxStatus(check, blockReason), blockReason, checkExpired, checkedAt: record?.updatedAt ?? null, nextCheckBy: record?.expiresAt ?? null, warnings };
 }

@@ -541,7 +541,6 @@ const GET_TAX_STATUS_QUERY = gql`
       isPremint
       district
       regionCode
-      scoringCheckResults { checkName group title value }
       poolLendingLiquidity { appraisalBlockReason }
     }
   }

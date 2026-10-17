@@ -5,7 +5,7 @@ vi.mock("../clients/graphql.js", () => ({
   getToken: vi.fn(),
   getTokens: vi.fn().mockResolvedValue([]),
   getCountyBounds: vi.fn(),
-  getScoreRecord: vi.fn().mockResolvedValue({ checks: { propertyTaxesCurrent: 1 }, updatedAt: "2026-10-17T00:32:12.498Z", expiresAt: "2026-11-10T00:00:00.000Z" }),
+  getScoreRecord: vi.fn().mockResolvedValue({ checks: { propertyTaxesCurrent: 1 }, updatedAt: "2026-10-17T00:32:12.498Z", expiresAt: "2999-01-01T00:00:00.000Z" }),
   DEFAULT_MIN_SCORE: 72032,
   filterSpamTokens: vi.fn((tokens: unknown[]) => tokens),
 }));

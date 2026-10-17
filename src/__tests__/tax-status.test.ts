@@ -22,7 +22,6 @@ function makeToken(blockReason: AppraisalBlockReason | null = null, overrides: P
     isPremint: false,
     district: "Taos County",
     regionCode: "NM",
-    scoringCheckResults: [{ checkName: "propertyTaxesCurrent", group: "pastTitleAndLoad", title: "Property Taxes Current", value: true }],
     poolLendingLiquidity: { appraisalBlockReason: blockReason },
     ...overrides,
   };
@@ -127,19 +126,18 @@ describe("get_tax_status", () => {
     expect(result.affectsLending).toBe(true);
   });
 
-  it("does not read an unverified check as past due when the score record is unavailable", async () => {
-    vi.mocked(getTaxStatusToken).mockResolvedValueOnce(makeToken(null, {
-      scoringCheckResults: [{ checkName: "propertyTaxesCurrent", group: "pastTitleAndLoad", title: "Property Taxes Current", value: false }],
-    }));
+  it("reports unknown with a warning when the score record is unavailable", async () => {
+    vi.mocked(getTaxStatusToken).mockResolvedValueOnce(makeToken());
     vi.mocked(getScoreRecord).mockRejectedValueOnce(new Error("Fabrica score API request failed (HTTP 502)"));
     const result = await getTaxStatus({ tokenId: "1" }) as Record<string, unknown>;
     expect(result.status).toBe("unknown");
     expect(result.checkedAt).toBeNull();
     expect((result.warnings as string[])[0]).toContain("HTTP 502");
+    expect((result.warnings as string[])[0]).toContain("tax status is unknown");
   });
 
   it("skips the score API for a premint and says why the status is unknown", async () => {
-    vi.mocked(getTaxStatusToken).mockResolvedValueOnce(makeToken(null, { isPremint: true, scoringCheckResults: [], poolLendingLiquidity: null }));
+    vi.mocked(getTaxStatusToken).mockResolvedValueOnce(makeToken(null, { isPremint: true, poolLendingLiquidity: null }));
     const result = await getTaxStatus({ tokenId: "1" }) as Record<string, unknown>;
     expect(getScoreRecord).not.toHaveBeenCalled();
     expect(result.status).toBe("unknown");

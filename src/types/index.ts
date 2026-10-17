@@ -519,7 +519,6 @@ export interface TaxStatusToken {
   isPremint: boolean;
   district: string | null;
   regionCode: string | null;
-  scoringCheckResults: ScoringCheckResult[] | null;
   poolLendingLiquidity: { appraisalBlockReason: AppraisalBlockReason | null } | null;
 }
 
