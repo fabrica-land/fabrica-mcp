@@ -1,28 +1,15 @@
-import {
-  getAllLoans,
-  getLoanStartedEvents,
-  getLoanRepaidEvents,
-  getLoanLiquidatedEvents,
-} from "../clients/graphql.js";
-import { getFabricaPools, aggregatePoolStats } from "../clients/subgraph.js";
+import { getAllLoans } from "../clients/graphql.js";
+import { getFabricaPools } from "../clients/subgraph.js";
 import type { LoanModel } from "../types/index.js";
-import { LENDING_POOL_NAME, formatLoanProvider, loanVolumeByCurrency } from "../labels.js";
+import { formatLoanProvider, loanVolumeByCurrency } from "../labels.js";
+import { estimateFields, formatTokenAmount, sortLoans } from "../format.js";
+import { buildPoolStats } from "./pool-stats.js";
 
-function formatUsd(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const num = parseFloat(value);
-  if (isNaN(num)) return null;
-  return `$${num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
+const RECENT_EVENT_COUNT = 10;
 
 function shortenAddress(addr: string | null | undefined): string | null {
   if (!addr) return null;
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-}
-
-function formatPoolValue(raw: string, decimals: number): string {
-  const num = parseFloat(raw) / Math.pow(10, decimals);
-  return `$${num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
 function loanSummary(loan: LoanModel) {
@@ -30,7 +17,7 @@ function loanSummary(loan: LoanModel) {
     loanId: loan.loanId,
     provider: formatLoanProvider(loan.loanProvider),
     status: loan.loanStatus,
-    principal: `${loan.principalScaled} ${loan.currencySymbol ?? ""}`.trim(),
+    principal: formatTokenAmount(loan.principalScaled, loan.currencySymbol),
     apr: loan.aprPercent !== null ? `${loan.aprPercent.toFixed(1)}%` : null,
     duration: loan.durationFormatted,
     maturityDate: loan.maturityDate,
@@ -40,16 +27,48 @@ function loanSummary(loan: LoanModel) {
     collateral: loan.token ? {
       tokenId: loan.token.tokenId,
       name: loan.token.name,
-      estimatedValue: formatUsd(loan.token.estimatedValue),
+      ...estimateFields(loan.token.estimatedValue),
     } : { tokenId: loan.collateralId },
     ...(loan.loanStatus === "Repaid" ? {
-      amountRepaid: loan.amountPaidToLenderScaled ? `${loan.amountPaidToLenderScaled} ${loan.currencySymbol ?? ""}`.trim() : null,
+      amountRepaid: formatTokenAmount(loan.amountPaidToLenderScaled, loan.currencySymbol),
       repaidDate: loan.loanRepaidDate,
     } : {}),
     ...(loan.loanStatus === "Liquidated" ? {
       liquidationDate: loan.loanLiquidationDate,
     } : {}),
   };
+}
+
+/**
+ * The latest loan events (started, repaid, liquidated) across all lenders, derived from the loan
+ * records. The API's event lists have no ordering argument and return the oldest events first,
+ * so they cannot answer "recent".
+ */
+function recentLoanEvents(loans: ReadonlyArray<LoanModel>) {
+  const events = loans.flatMap(loan => {
+    const base = {
+      loanId: loan.loanId,
+      principal: formatTokenAmount(loan.principalScaled, loan.currencySymbol),
+      borrower: shortenAddress(loan.borrower?.address),
+      provider: formatLoanProvider(loan.loanProvider),
+      collateralTokenId: loan.collateralId,
+    };
+    return [
+      { type: "loan_started" as const, date: loan.startTime, ...base },
+      ...(loan.loanRepaidDate ? [{
+        type: "loan_repaid" as const,
+        date: loan.loanRepaidDate,
+        ...base,
+        amountPaid: formatTokenAmount(loan.amountPaidToLenderScaled, loan.currencySymbol),
+      }] : []),
+      ...(loan.loanLiquidationDate ? [{ type: "loan_liquidated" as const, date: loan.loanLiquidationDate, ...base }] : []),
+    ];
+  });
+  const time = (d: string | null) => {
+    const t = Date.parse(d ?? "");
+    return Number.isFinite(t) ? t : 0;
+  };
+  return events.sort((a, b) => time(b.date) - time(a.date)).slice(0, RECENT_EVENT_COUNT);
 }
 
 export async function getLendingMarket(args: Record<string, unknown>) {
@@ -59,12 +78,9 @@ export async function getLendingMarket(args: Record<string, unknown>) {
   const since = args.since as string | undefined;
   const limit = Math.min(Math.max(Math.trunc((args.limit as number | undefined) ?? 20), 1), 100);
   try {
-    const [allLoans, pools, startedEvents, repaidEvents, liquidatedEvents] = await Promise.all([
+    const [allLoans, pools] = await Promise.all([
       getAllLoans(),
       getFabricaPools(),
-      getLoanStartedEvents(10),
-      getLoanRepaidEvents(10),
-      getLoanLiquidatedEvents(10),
     ]);
     let filtered = allLoans;
     if (status && status !== "all") {
@@ -96,55 +112,6 @@ export async function getLendingMarket(args: Record<string, unknown>) {
     const avgApr = activeLoans.length > 0
       ? activeLoans.reduce((sum, l) => sum + (l.aprPercent ?? 0), 0) / activeLoans.length
       : 0;
-    const agg = aggregatePoolStats(pools);
-    const poolStats = agg ? {
-      name: LENDING_POOL_NAME,
-      poolCount: agg.poolCount,
-      pools: pools.map(p => p.id),
-      totalValueLocked: formatPoolValue(agg.totalValueLocked, 18),
-      totalValueUsed: formatPoolValue(agg.totalValueUsed, 18),
-      totalValueAvailable: formatPoolValue(agg.totalValueAvailable, 18),
-      utilization: agg.totalValueLocked !== "0"
-        ? `${((parseFloat(agg.totalValueUsed) / parseFloat(agg.totalValueLocked)) * 100).toFixed(1)}%`
-        : "0%",
-      loansOriginated: agg.loansOriginated,
-      loansActive: agg.loansActive,
-      loansRepaid: agg.loansRepaid,
-      loansLiquidated: agg.loansLiquidated,
-      currency: "USDC",
-    } : null;
-    const recentEvents = [
-      ...startedEvents.map(e => ({
-        type: "loan_started" as const,
-        date: e.blockTimestamp,
-        loanId: e.loanId,
-        principal: e.loanPrincipalAmount,
-        borrower: shortenAddress(e.borrower),
-        provider: formatLoanProvider(e.loanProvider),
-        collateralTokenId: e.nftCollateralId,
-      })),
-      ...repaidEvents.map(e => ({
-        type: "loan_repaid" as const,
-        date: e.blockTimestamp,
-        loanId: e.loanId,
-        principal: e.loanPrincipalAmount,
-        amountPaid: e.amountPaidToLender,
-        borrower: shortenAddress(e.borrower),
-        collateralTokenId: e.nftCollateralId,
-      })),
-      ...liquidatedEvents.map(e => ({
-        type: "loan_liquidated" as const,
-        date: e.blockTimestamp,
-        loanId: e.loanId,
-        principal: e.loanPrincipalAmount,
-        borrower: shortenAddress(e.borrower),
-        collateralTokenId: e.nftCollateralId,
-      })),
-    ].sort((a, b) => {
-      const ta = parseInt(a.date) || new Date(a.date).getTime();
-      const tb = parseInt(b.date) || new Date(b.date).getTime();
-      return tb - ta;
-    }).slice(0, 10);
     return {
       summary: {
         totalLoans: allLoans.length,
@@ -154,9 +121,11 @@ export async function getLendingMarket(args: Record<string, unknown>) {
         volumeByCurrency: loanVolumeByCurrency(allLoans),
         averageAPR: avgApr > 0 ? `${avgApr.toFixed(1)}%` : "N/A",
       },
-      poolStats,
-      loans: filtered.slice(0, limit).map(loanSummary),
-      recentEvents,
+      poolStats: buildPoolStats(pools),
+      loans: sortLoans(filtered).slice(0, limit).map(loanSummary),
+      loansOrder: "Active loans first, then most recently started first.",
+      recentEvents: recentLoanEvents(allLoans),
+      recentEventsScope: `The ${RECENT_EVENT_COUNT} most recent loan events (started, repaid, liquidated) across all lenders, from the loan records. A type missing here has no event among the latest ${RECENT_EVENT_COUNT}; lifetime counts are in summary.`,
     };
   } catch (e) {
     return { error: `Failed to get lending market: ${e instanceof Error ? e.message : String(e)}` };
