@@ -200,7 +200,13 @@ function passageId(source, url, index) {
  * public wording never calls its code open source (AGENTS.md, Public Wording Rules); the
  * trust agreement, a legal instrument under CC0, is a different matter and stays.
  */
-const EXCLUDED_PASSAGE_PATTERNS = [/\b(token )?contracts? (is|are) open[- ]source\b/i, /\bcode (is|are) open[- ]source\b/i];
+// A clause that puts "open source" and "contract" or "code" together, in either order, whatever
+// the grammar ("the contracts are open source", "open-source lending-pool contracts"). A comma
+// ends the clause, so "the trust agreement is open source, and the contracts live on Ethereum" stays.
+const EXCLUDED_PASSAGE_PATTERNS = [
+  /open[- ]sourced?\b[^.,;:\n]{0,60}\b(contracts?|code|codebase)\b/i,
+  /\b(contracts?|code|codebase)\b[^.,;:\n]{0,60}\bopen[- ]sourced?\b/i,
+];
 
 function toPassages(source, title, url, updatedAt, text) {
   return splitIntoPassages(text, title)

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getKnowledgeIndex } from "../knowledge/index.js";
 import { searchPassages, tokenize } from "../knowledge/search.js";
-import { FORBIDDEN_EVERYWHERE, RED_LINES } from "../knowledge/facts.js";
+import { FORBIDDEN_EVERYWHERE, FORBIDDEN_PATTERNS, RED_LINES } from "../knowledge/facts.js";
 import { askFabrica } from "../tools/knowledge.js";
 
 /**
@@ -43,6 +43,7 @@ describe("knowledge index", () => {
     for (const passage of index.passages) {
       const lower = passage.text.toLowerCase();
       for (const phrase of FORBIDDEN_EVERYWHERE) expect(lower, `${passage.url} contains "${phrase}"`).not.toContain(phrase);
+      for (const pattern of FORBIDDEN_PATTERNS) expect(passage.text, `${passage.url} matches ${pattern}`).not.toMatch(pattern);
     }
   });
 });
