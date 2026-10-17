@@ -11,6 +11,8 @@ import type {
   TrustDocumentsToken,
   SignedValuationPanel,
   TokenValuationModel,
+  TaxStatusToken,
+  ScoreRecord,
 } from "../types/index.js";
 import { CONTRACTS, IS_MAINNET, NETWORK } from "../config.js";
 import { TtlCache } from "./cache.js";
@@ -269,7 +271,7 @@ const TOKEN_DETAIL_FIELDS = gql`
       collateralId
       amountPaidToLenderScaled loanRepaidDate loanLiquidationDate
     }
-    poolLendingLiquidity { maxPrincipalScaled maxPrincipalUsdc durations activeLoan { id principal repayment duration maturity } }
+    poolLendingLiquidity { appraisalBlockReason maxPrincipalScaled maxPrincipalUsdc durations activeLoan { id principal repayment duration maturity } }
     marketplaceListings { marketplaceId side status price usdPrice symbol supply makerAddress startTime endTime }
     marketplaceBids { marketplaceId side status price usdPrice symbol supply makerAddress startTime endTime }
     activity { activity source time timestamp network tokenId transactionHash currencyAmount currencyDecimals currencySymbol usdAmount }
@@ -526,6 +528,80 @@ export async function getTrustDocuments(
   return data.token;
 }
 
+// --- Tax status ---
+
+const GET_TAX_STATUS_QUERY = gql`
+  query GetTaxStatus($tokenId: String, $slug: String, $network: String) {
+    token(tokenId: $tokenId, slug: $slug, network: $network) {
+      tokenId
+      network
+      contractAddress
+      name
+      vanityName
+      isPremint
+      district
+      regionCode
+      poolLendingLiquidity { appraisalBlockReason }
+    }
+  }
+`;
+
+const taxStatusCache = new TtlCache<{ token: TaxStatusToken | null }>();
+
+export async function getTaxStatusToken(
+  params: { tokenId?: string; slug?: string },
+): Promise<TaxStatusToken | null> {
+  const data = await cachedRequest(taxStatusCache, GET_TAX_STATUS_QUERY, {
+    tokenId: params.tokenId,
+    slug: params.slug,
+    network: NETWORK,
+  });
+  return data.token;
+}
+
+
+function isScoreRecord(value: unknown): value is ScoreRecord {
+  return typeof value === "object" && value !== null && "checks" in value && typeof value.checks === "object" && value.checks !== null;
+}
+
+/** get_property waits on the score record inline, so a slow score API must not hold it for the full API timeout. */
+const SCORE_RECORD_TIMEOUT_MS = 5_000;
+
+const scoreRecordCache = new TtlCache<ScoreRecord | null>();
+
+/**
+ * The latest score record of an existing token, which carries the raw check values (the
+ * GraphQL list reports an unverified check as false) and when the checks expire. Call it
+ * only for a token the GraphQL API returned. Null when the API has no record (404).
+ */
+export function getScoreRecord(contractAddress: string, tokenId: string): Promise<ScoreRecord | null> {
+  return scoreRecordCache.get(`${contractAddress}:${tokenId}`, () => fetchScoreRecord(contractAddress, tokenId));
+}
+
+/** Throws on an HTTP failure, so a failure is not cached. */
+async function fetchScoreRecord(contractAddress: string, tokenId: string): Promise<ScoreRecord | null> {
+  const base = API_URL.replace(/\/graphql\/?$/, "");
+  const url = `${base}/${encodeURIComponent(NETWORK)}/${encodeURIComponent(contractAddress)}/${encodeURIComponent(tokenId)}/score`;
+  let response: Response;
+  try {
+    response = await fetch(url, { signal: AbortSignal.timeout(SCORE_RECORD_TIMEOUT_MS) });
+  } catch (error) {
+    if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
+      throw new Error(`Fabrica score API did not respond within ${SCORE_RECORD_TIMEOUT_MS / 1000} s.`);
+    }
+    throw error;
+  }
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`Fabrica score API request failed (HTTP ${response.status})`);
+  const body: unknown = await response.json();
+  if (!isScoreRecord(body)) throw new Error("Fabrica score API returned an unexpected record shape");
+  return {
+    checks: body.checks,
+    updatedAt: "updatedAt" in body && typeof body.updatedAt === "string" ? body.updatedAt : null,
+    expiresAt: "expiresAt" in body && typeof body.expiresAt === "string" ? body.expiresAt : null,
+  };
+}
+
 // --- Wallet query ---
 
 const WALLET_FIELDS = gql`
@@ -738,6 +814,7 @@ export const API_DOCUMENTS: ReadonlyArray<{ name: string; document: string }> = 
   { name: "GetValuation", document: GET_VALUATION_QUERY },
   { name: "GetOperatingAgreement", document: GET_OPERATING_AGREEMENT_QUERY },
   { name: "GetTrustDocuments", document: GET_TRUST_DOCUMENTS_QUERY },
+  { name: "GetTaxStatus", document: GET_TAX_STATUS_QUERY },
   { name: "GetWallet", document: GET_WALLET_QUERY },
   { name: "GetLoans", document: GET_LOANS_QUERY },
   { name: "GetLoanStartedEvents", document: GET_LOAN_STARTED_EVENTS_QUERY },

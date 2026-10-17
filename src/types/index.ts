@@ -508,3 +508,23 @@ export interface TrustDocumentsToken {
     media: { type: string | null }[] | null;
   } | null;
 }
+
+/** What GetTaxStatus selects for one token. */
+export interface TaxStatusToken {
+  tokenId: string;
+  network: string;
+  contractAddress: string;
+  name: string | null;
+  vanityName: string | null;
+  isPremint: boolean;
+  district: string | null;
+  regionCode: string | null;
+  poolLendingLiquidity: { appraisalBlockReason: AppraisalBlockReason | null } | null;
+}
+
+/** The REST score record (GET /:network/:contract/:tokenId/score). Check values are 1, 0, true, false or null. */
+export interface ScoreRecord {
+  checks: Record<string, number | boolean | null>;
+  updatedAt: string | null;
+  expiresAt: string | null;
+}
