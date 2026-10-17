@@ -382,3 +382,81 @@ describe("type-ahead fallback helpers", () => {
     expect(matchIndexByQuery("37497 Palo Colorado Ln", { state: "CA" }, plain)).toEqual([]);
   });
 });
+
+describe("find_parcel with a list", () => {
+  const fetchMock = vi.fn<typeof fetch>();
+  const sfOutline = sfParcel([[[-122.42, 37.79], [-122.41, 37.79], [-122.41, 37.80], [-122.42, 37.80], [-122.42, 37.79]]]);
+  beforeEach(() => {
+    vi.stubGlobal("fetch", fetchMock);
+    vi.mocked(getParcelIndex).mockClear();
+    // Answers by URL: the list runs several lookups at once, so call order is not fixed.
+    fetchMock.mockImplementation(async (input) => {
+      const url = new URL(String(input));
+      const query = url.searchParams.get("query") ?? "";
+      if (url.pathname.endsWith("/regrid-apn")) return respond(url.searchParams.get("parcelnumb") === "71359" ? HUNT_PARCEL : sfOutline);
+      if (query === "1707 Jones St San Francisco") return respond([SF_HIT]);
+      if (query === "71359") return respond([HUNT_HIT]);
+      if (query === "1707 Jones St") return respond([SF_HIT, HUNT_HIT]);
+      return respond([]);
+    });
+  });
+  afterEach(() => {
+    fetchMock.mockReset();
+    vi.unstubAllGlobals();
+  });
+
+  it("returns one row per resolved query and the rest unresolved with the reason, reading Fabrica's records once", async () => {
+    const { findParcelWithUsage } = await import("../tools/parcels.js");
+    const { result, onFabrica } = await findParcelWithUsage({ queries: ["1707 Jones St, San Francisco", "71359", "1707 Jones St", "nowhere at all"] });
+    expect(getParcelIndex).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({
+      network: expect.any(String),
+      queries: 4,
+      rows: [
+        { query: "1707 Jones St, San Francisco", onFabrica: true, tokenId: "4737315677965897536", county: "San Francisco" },
+        { query: "71359", onFabrica: false, apn: "71359", county: "Hunt", coverage: "supported", addToFabrica: expect.stringContaining("/go?") },
+      ],
+      unresolved: [
+        { query: "1707 Jones St", reason: expect.stringContaining("2 parcels match"), candidates: expect.any(Array) },
+        { query: "nowhere at all", reason: expect.stringContaining("No US parcel matched") },
+      ],
+    });
+    // The ambiguous row names a Fabrica token by parcel number, so it counts as on Fabrica; the empty one settles nothing.
+    expect(onFabrica).toEqual([true, false, true]);
+    const raw = JSON.stringify(result);
+    expect(raw).not.toContain("OWNER");
+    expect(raw).not.toContain("PRIVATE");
+  });
+
+  it("flags a single query for the usage log, and nothing when it settles nothing", async () => {
+    const { findParcelWithUsage } = await import("../tools/parcels.js");
+    expect((await findParcelWithUsage({ query: "71359" })).onFabrica).toEqual([false]);
+    expect((await findParcelWithUsage({ query: "nowhere at all" })).onFabrica).toEqual([]);
+  });
+
+  it("refuses query and queries together, and neither", async () => {
+    expect(await findParcel({ query: "71359", queries: ["71359"] })).toMatchObject({ error: expect.stringContaining("not both") });
+    expect(await findParcel({})).toMatchObject({ error: expect.stringContaining("Give query") });
+  });
+
+  it("takes 10 queries in one call and refuses an 11th with the limit in the message", async () => {
+    const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
+    const { InMemoryTransport } = await import("@modelcontextprotocol/sdk/inMemory.js");
+    const { createServer } = await import("../server.js");
+    const seen: boolean[][] = [];
+    const server = createServer({ onFindParcel: (flags) => seen.push([...flags]) });
+    const client = new Client({ name: "batch-test", version: "0.0.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    const ten = Array.from({ length: 10 }, (_, i) => (i % 2 === 0 ? "71359" : "1707 Jones St, San Francisco"));
+    const ok = await client.callTool({ name: "find_parcel", arguments: { queries: ten } });
+    expect(ok.isError).toBeFalsy();
+    const content = ok.content as { type: string; text: string }[];
+    expect(JSON.parse(content[0]?.text ?? "{}").rows).toHaveLength(10);
+    expect(seen).toEqual([[false, true, false, true, false, true, false, true, false, true]]);
+    const eleven = await client.callTool({ name: "find_parcel", arguments: { queries: [...ten, "71359"] } }).catch((error: unknown) => ({ isError: true, content: [{ type: "text", text: String(error) }] }));
+    expect(eleven.isError).toBe(true);
+    expect(JSON.stringify(eleven.content)).toContain("at most 10 queries per call");
+    await client.close();
+  }, 30_000);
+});

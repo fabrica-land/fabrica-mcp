@@ -14,7 +14,7 @@ import { getPropertyImage, getPortfolioImage, getPropertyImageInput, getPortfoli
 import { getTrustDocuments, getTrustDocumentsInput } from "./tools/documents.js";
 import { getTaxStatus, getTaxStatusInput } from "./tools/tax.js";
 import { askFabrica, askFabricaInput } from "./tools/knowledge.js";
-import { findParcel, findParcelInput } from "./tools/parcels.js";
+import { findParcelInput, findParcelWithUsage, MAX_BATCH_QUERIES } from "./tools/parcels.js";
 import { checkCoverage, checkCoverageInput, COVERAGE_AS_OF } from "./tools/coverage.js";
 import { registerPrompts } from "./prompts.js";
 import { contactSupport, contactSupportInput } from "./tools/support.js";
@@ -52,7 +52,12 @@ function jsonResult(result: object): CallToolResult {
   };
 }
 
-export function createServer(): McpServer {
+export interface ServerHooks {
+  /** Receives, per find_parcel call, whether each settled query named a parcel on Fabrica (the usage log's split). */
+  onFindParcel?: (onFabrica: readonly boolean[]) => void;
+}
+
+export function createServer(hooks: ServerHooks = {}): McpServer {
   // `instructions` belongs in the SDK's ServerOptions (second argument), not in the
   // Implementation record. Passed in the first argument it rode along inside
   // `serverInfo`, where no client reads it, so the mainnet legal notice never
@@ -273,11 +278,15 @@ export function createServer(): McpServer {
     "find_parcel",
     {
       title: "Find a US parcel",
-      description: "Resolve any US street address or parcel number (APN) to a parcel: address, place, APN, state and county, and whether it is already on Fabrica (token ID and property link). For a parcel not on Fabrica, links.addToFabrica is the fabrica.land on-ramp link for that parcel; it starts an on-ramp only when a person opens it and decides there. The tool itself creates nothing. An ambiguous query returns up to 5 candidates, whose Fabrica status is matched by parcel number only; state and county narrow it to one, which gets the full check. When the US parcel search is not answering, properties already on Fabrica that the query names come back from Fabrica's own records as unconfirmed candidates (match: unconfirmed, matchSource: fabrica-index); present them as likely, not confirmed. Owner names from parcel data are never returned. Limited to 30 lookups per minute per client.",
+      description: `Resolve any US street address or parcel number (APN) to a parcel: address, place, APN, state and county, and whether it is already on Fabrica (token ID and property link). For a parcel not on Fabrica, links.addToFabrica is the fabrica.land on-ramp link for that parcel; it starts an on-ramp only when a person opens it and decides there. The tool itself creates nothing. An ambiguous query returns up to 5 candidates, whose Fabrica status is matched by parcel number only; state and county narrow it to one, which gets the full check. When the US parcel search is not answering, properties already on Fabrica that the query names come back from Fabrica's own records as unconfirmed candidates (match: unconfirmed, matchSource: fabrica-index); present them as likely, not confirmed. Owner names from parcel data are never returned. For a list, queries takes up to ${MAX_BATCH_QUERIES} addresses or parcel numbers under one state and county scope and returns one row per resolved query (onFabrica, tokenId or addToFabrica, coverage) plus an unresolved list with the reason. Limited to 30 lookups per minute per client; each query in a list counts as one.`,
       inputSchema: findParcelInput,
       annotations: readOnly("Find a US parcel"),
     },
-    async (args) => jsonResult(await findParcel(args)),
+    async (args) => {
+      const { result, onFabrica } = await findParcelWithUsage(args);
+      hooks.onFindParcel?.(onFabrica);
+      return jsonResult(result);
+    },
   );
   server.registerTool(
     "check_coverage",

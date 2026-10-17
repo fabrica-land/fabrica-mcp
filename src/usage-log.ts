@@ -29,6 +29,22 @@ export interface UsageLine {
   status: number;
   outcome: UsageOutcome;
   durationMs: number;
+  /** On find_parcel lines: whether the settled queries named parcels on Fabrica, none did, or both. Absent when none settled. */
+  onFabrica?: boolean | "mixed";
+}
+
+export interface UsageTracker {
+  /** The calls the request carries, from describeRequest. */
+  recordCalls: (calls: UsageCall[]) => void;
+  /** One flag per settled find_parcel query: on Fabrica or not. Never the query itself. */
+  noteOnFabrica: (flags: readonly boolean[]) => void;
+}
+
+/** true or false when every flag agrees, "mixed" when they differ, undefined when there are none. */
+export function summarizeOnFabrica(seen: ReadonlySet<boolean>): boolean | "mixed" | undefined {
+  if (seen.size === 0) return undefined;
+  if (seen.size > 1) return "mixed";
+  return seen.has(true);
 }
 
 function clip(value: unknown): string | undefined {
@@ -90,12 +106,13 @@ function chunkToString(chunk: unknown): string {
  * Scans the response body for error markers as it is written and logs one line
  * when the response finishes. Call before anything is written to `res`.
  */
-export function trackUsage(res: ServerResponse, userAgent: string | undefined, started: number = Date.now()): (calls: UsageCall[]) => void {
+export function trackUsage(res: ServerResponse, userAgent: string | undefined, started: number = Date.now()): UsageTracker {
   // Only the markers found are kept, so a large result early in a batch cannot hide a later error.
   let carry = "";
   let rpcError = false;
   let toolError = false;
   let calls: UsageCall[] = [];
+  const onFabrica = new Set<boolean>();
   const capture = (chunk: unknown): void => {
     const text = carry + chunkToString(chunk);
     rpcError ||= RPC_ERROR_MARKER.test(text);
@@ -120,6 +137,7 @@ export function trackUsage(res: ServerResponse, userAgent: string | undefined, s
     logged = true;
     const clipped = clip(userAgent);
     const ua = clipped === undefined ? undefined : scrub(clipped);
+    const fabricaSplit = summarizeOnFabrica(onFabrica);
     console.log(formatUsageLine({
       event: "mcp_request",
       network: NETWORK,
@@ -128,12 +146,18 @@ export function trackUsage(res: ServerResponse, userAgent: string | undefined, s
       status: res.statusCode,
       outcome: res.writableFinished ? classifyOutcome(res.statusCode, `${rpcError ? '"error":{' : ""}${toolError ? '"isError":true' : ""}`) : "aborted",
       durationMs: Date.now() - started,
+      ...(fabricaSplit !== undefined ? { onFabrica: fabricaSplit } : {}),
     }));
   };
   // A client that disconnects mid-call fires `close` without `finish`; that call is still counted.
   res.once("finish", finalize);
   res.once("close", finalize);
-  return (parsed) => {
-    calls = parsed;
+  return {
+    recordCalls: (parsed) => {
+      calls = parsed;
+    },
+    noteOnFabrica: (flags) => {
+      for (const flag of flags) onFabrica.add(flag);
+    },
   };
 }

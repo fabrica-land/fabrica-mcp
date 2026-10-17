@@ -54,10 +54,10 @@ export function workParcelListPrompt(parcels: string): GetPromptResult {
   return prompt(`Work through this list of US parcels (addresses or parcel numbers), one per line or comma-separated:
 ${parcels}
 
-For each parcel, call find_parcel once (with state and county when the list gives them). If it returns several candidates, call it again with the state and county the list implies, or mark the row as ambiguous. Then:
+Call find_parcel with queries: up to 10 rows per call, grouped so each call shares one state and county (pass them as state and county when the list gives them). Each resolved row comes back with onFabrica; each unresolved one with a reason. Re-run an unresolved row on its own with the state and county the list implies, or mark it as ambiguous. Then:
 - On Fabrica: note the token ID and property link; get_property for the listing and loan state if the list is short.
 - Not on Fabrica: note the on-ramp link (links.addToFabrica). Opening it starts adding the parcel; the owner decides there.
-End with one table: input, matched address, county and state, APN, on Fabrica (token ID) or on-ramp link, notes. find_parcel is limited per client per minute, so a long list goes in batches.`);
+End with one table: input, matched address, county and state, APN, on Fabrica (token ID) or on-ramp link, notes. find_parcel counts each query as one lookup against a per-client limit of 30 a minute, so a list longer than 30 waits a minute between batches.`);
 }
 
 export function walletReviewPrompt(wallet: string): GetPromptResult {
