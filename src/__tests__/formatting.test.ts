@@ -5,6 +5,7 @@ vi.mock("../clients/graphql.js", () => ({
   getToken: vi.fn(),
   getTokens: vi.fn().mockResolvedValue([]),
   getCountyBounds: vi.fn(),
+  getScoreRecord: vi.fn().mockResolvedValue({ checks: { propertyTaxesCurrent: 1 }, updatedAt: "2026-10-17T00:32:12.498Z", expiresAt: "2026-11-10T00:00:00.000Z" }),
   DEFAULT_MIN_SCORE: 72032,
   filterSpamTokens: vi.fn((tokens: unknown[]) => tokens),
 }));
@@ -106,6 +107,14 @@ describe("getProperty formatting", () => {
     vi.mocked(getToken).mockResolvedValueOnce(makeDetailToken());
     const result = await getProperty({ tokenId: "12345" }) as Record<string, unknown>;
     expect(result.acres).toBe(40.5);
+  });
+
+  it("shows a one-line taxes summary", async () => {
+    vi.mocked(getToken).mockResolvedValueOnce(makeDetailToken());
+    const result = await getProperty({ tokenId: "12345" }) as Record<string, unknown>;
+    const taxes = result.taxes as Record<string, unknown>;
+    expect(taxes.status).toBe("current");
+    expect(taxes.summary).toBe("Fabrica's checks found the property taxes current as of 2026-10-17.");
   });
 
   it("includes operating agreement URL for legal review", async () => {

@@ -7,6 +7,7 @@ import { estimateFields, formatTokenAmount, sortLoans, formatUsd, shortenAddress
 import { locationLink, stateName } from "../links.js";
 import { propertyStage, describeStage } from "../lifecycle.js";
 import { summarizeFees } from "../fees.js";
+import { loadTaxSignals, taxSummary } from "./tax.js";
 
 /** USD when the API supplies a USD price; otherwise the native amount and currency, never a guessed "$". */
 function formatOrderPrice(usdPrice: string | null, price: string | null, symbol: string | null): string | null {
@@ -290,6 +291,8 @@ export async function getProperty(args: Record<string, unknown>) {
     if (parseInt(token.supplyInDefault || "0") > 0) {
       warnings.push("Property has supply currently in default");
     }
+    const tax = await loadTaxSignals(token);
+    warnings.push(...tax.warnings);
     return {
       ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
       tokenId: token.tokenId,
@@ -315,6 +318,12 @@ export async function getProperty(args: Record<string, unknown>) {
         coordinates: token.coordinates ? { lat: token.coordinates.lat, lon: token.coordinates.lon } : null,
       },
       acres: token.acres ? parseFloat(token.acres) : null,
+      taxes: {
+        status: tax.status,
+        summary: taxSummary(tax.status, tax.checkedAt, token.isPremint),
+        checkedAt: tax.checkedAt,
+        details: "get_tax_status",
+      },
       legal: {
         description: token.definition?.claim ?? null,
         holdingEntity: token.definition?.holdingEntity ?? null,

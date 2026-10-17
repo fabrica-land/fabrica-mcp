@@ -40,6 +40,7 @@ ui/
     marketplace.ts    # get_order_book
     images.ts         # get_property_image, get_portfolio_image
     documents.ts      # get_trust_documents
+    tax.ts            # get_tax_status (also the taxes line on get_property)
     knowledge.ts      # ask_fabrica
   knowledge/
     index.ts          # typed, validated loader for generated/index.json (committed)

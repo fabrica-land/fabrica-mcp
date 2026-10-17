@@ -11,6 +11,8 @@ import type {
   TrustDocumentsToken,
   SignedValuationPanel,
   TokenValuationModel,
+  TaxStatusToken,
+  ScoreRecord,
 } from "../types/index.js";
 import { CONTRACTS, IS_MAINNET, NETWORK } from "../config.js";
 import { TtlCache } from "./cache.js";
@@ -269,7 +271,7 @@ const TOKEN_DETAIL_FIELDS = gql`
       collateralId
       amountPaidToLenderScaled loanRepaidDate loanLiquidationDate
     }
-    poolLendingLiquidity { maxPrincipalScaled maxPrincipalUsdc durations activeLoan { id principal repayment duration maturity } }
+    poolLendingLiquidity { appraisalBlockReason maxPrincipalScaled maxPrincipalUsdc durations activeLoan { id principal repayment duration maturity } }
     marketplaceListings { marketplaceId side status price usdPrice symbol supply makerAddress startTime endTime }
     marketplaceBids { marketplaceId side status price usdPrice symbol supply makerAddress startTime endTime }
     activity { activity source time timestamp network tokenId transactionHash currencyAmount currencyDecimals currencySymbol usdAmount }
@@ -526,6 +528,62 @@ export async function getTrustDocuments(
   return data.token;
 }
 
+// --- Tax status ---
+
+const GET_TAX_STATUS_QUERY = gql`
+  query GetTaxStatus($tokenId: String, $slug: String, $network: String) {
+    token(tokenId: $tokenId, slug: $slug, network: $network) {
+      tokenId
+      network
+      contractAddress
+      name
+      vanityName
+      isPremint
+      district
+      regionCode
+      scoringCheckResults { checkName group title value }
+      poolLendingLiquidity { appraisalBlockReason }
+    }
+  }
+`;
+
+export async function getTaxStatusToken(
+  params: { tokenId?: string; slug?: string },
+): Promise<TaxStatusToken | null> {
+  const data = await request<{ token: TaxStatusToken | null }>(GET_TAX_STATUS_QUERY, {
+    tokenId: params.tokenId,
+    slug: params.slug,
+    network: NETWORK,
+  });
+  return data.token;
+}
+
+/** The REST API sits next to the GraphQL endpoint (https://api.fabrica.land/graphql -> https://api.fabrica.land). */
+const REST_BASE_URL = (process.env.FABRICA_API_URL ?? DEFAULT_API_URL).replace(/\/graphql\/?$/, "");
+
+function isScoreRecord(value: unknown): value is ScoreRecord {
+  return typeof value === "object" && value !== null && "checks" in value && typeof value.checks === "object" && value.checks !== null;
+}
+
+/**
+ * The latest score record of an existing token, which carries the raw check values (the
+ * GraphQL list reports an unverified check as false) and when the checks expire. Call it
+ * only for a token the GraphQL API returned. Null when the API has no record.
+ */
+export async function getScoreRecord(contractAddress: string, tokenId: string): Promise<ScoreRecord | null> {
+  const url = `${REST_BASE_URL}/${encodeURIComponent(NETWORK)}/${encodeURIComponent(contractAddress)}/${encodeURIComponent(tokenId)}/score`;
+  const response = await fetch(url, { signal: AbortSignal.timeout(API_TIMEOUT_MS) });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`Fabrica score API request failed (HTTP ${response.status})`);
+  const body: unknown = await response.json();
+  if (!isScoreRecord(body)) return null;
+  return {
+    checks: body.checks,
+    updatedAt: "updatedAt" in body && typeof body.updatedAt === "string" ? body.updatedAt : null,
+    expiresAt: "expiresAt" in body && typeof body.expiresAt === "string" ? body.expiresAt : null,
+  };
+}
+
 // --- Wallet query ---
 
 const WALLET_FIELDS = gql`
@@ -738,6 +796,7 @@ export const API_DOCUMENTS: ReadonlyArray<{ name: string; document: string }> = 
   { name: "GetValuation", document: GET_VALUATION_QUERY },
   { name: "GetOperatingAgreement", document: GET_OPERATING_AGREEMENT_QUERY },
   { name: "GetTrustDocuments", document: GET_TRUST_DOCUMENTS_QUERY },
+  { name: "GetTaxStatus", document: GET_TAX_STATUS_QUERY },
   { name: "GetWallet", document: GET_WALLET_QUERY },
   { name: "GetLoans", document: GET_LOANS_QUERY },
   { name: "GetLoanStartedEvents", document: GET_LOAN_STARTED_EVENTS_QUERY },
