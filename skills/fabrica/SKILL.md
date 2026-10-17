@@ -5,7 +5,7 @@ description: Look up, diligence and add US land on Fabrica. On Ethereum mainnet 
 
 # Fabrica
 
-Fabrica puts US land onchain. A trust holds title at the county; an ERC-1155 token on Ethereum is the beneficial interest in that trust. An authorized transfer of the token transfers the beneficial interest, and with it ownership of the property. A token held by a lending, escrow or bridge contract, or moved without the owner's authorization, does not move beneficial ownership. Owners can sell, buy and borrow against land through the DeFi lending pool.
+Fabrica puts US land onchain. A trust holds title at the county; an ERC-1155 token on Ethereum is the beneficial interest in that trust. An authorized transfer of the token transfers the beneficial interest in the trust; the trust keeps title. A token held by a lending, escrow or bridge contract, or moved without the owner's authorization, does not move beneficial ownership. Owners can sell, buy and borrow against land through the DeFi lending pool.
 
 ## Connect
 
@@ -46,7 +46,7 @@ Claude Code, mainnet: `claude mcp add --transport http fabrica https://mcp.fabri
 
 **Work a parcel list.** `find_parcel` once per address or parcel number (with state and county when known); re-run ambiguous ones with state and county. On Fabrica: token ID and property link. Not on Fabrica: the on-ramp link. One table at the end. `find_parcel` is limited to 30 calls per minute per client, so long lists go in batches.
 
-**Review a wallet.** `get_portfolio`, then `get_property` for each holding (Property checks from `propertyChecks`, passed of total), each active loan's principal, APR and maturity with its property, then `get_activity`. Summarize holdings, what is owed and when, and what needs attention soon.
+**Review a wallet.** `get_portfolio`, then `get_property` for each holding (Property checks from `propertyChecks`, passed of total), each active loan's principal, APR and maturity with its property, then `get_activity`. Summarize holdings, then loans where the wallet borrows (what it owes and when) separately from loans where it lends (what it is owed and when), and what needs attention soon.
 
 **Add land.** `find_parcel` for the parcel; if it is not on Fabrica, the on-ramp link `find_parcel` returns in `links.addToFabrica` (it already points at the active network, with the parcel filled in). The owner submits the property and how title is held, Fabrica reviews title, the owner verifies identity, a trust is created, the owner signs the deed and trust documents (normally with a remote online notary), the deed is recorded, and the token is issued. The setup fee is authorized up front and charged once, at the first sale, loan or use in another app. Steps: https://docs.fabrica.land/docs/on-ramp. Fees: https://docs.fabrica.land/docs/fees. Obligations: https://docs.fabrica.land/docs/property-obligations. Fabrica operates in all 50 states; the on-ramp page shows what each county requires.
 
