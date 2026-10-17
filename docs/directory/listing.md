@@ -88,7 +88,7 @@ No authentication. All data is public.
 > 5. "Show the portfolio, a portfolio map and the recent activity of the wallet that owns it, then the latest activity across Fabrica." (get_portfolio, get_portfolio_image, get_activity)
 > 6. "Give me Fabrica's protocol statistics." (get_protocol_stats)
 > 7. "Is 1707 Jones St, San Francisco, CA on Fabrica, and can I add land in Coconino County, Arizona?" (find_parcel, check_coverage)
-> 8. "How does the Fabrica trust work? If the docs do not cover my question, how do I reach support?" (ask_fabrica, contact_support)
+> 8. "How does the Fabrica trust work? Then draft an email to Fabrica support asking for help with my onramp." (ask_fabrica, contact_support)
 
 Confirm you have run every tool yourself. Our record: `npm run regression` against the hosted mainnet server, 45/45 cases on 2026-10-17 (after the stale `get_activity` case was updated), plus the card seen rendering in Claude on 2026-10-17.
 
