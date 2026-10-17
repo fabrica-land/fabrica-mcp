@@ -1,0 +1,21 @@
+# Usage reads
+
+Who calls the hosted servers (`mcp.fabrica.land/mcp`, `mcp-testnet.fabrica.land/mcp`), which tools, and how often they fail. One dated note per read (`YYYY-MM-DD.md`), weekly for the first month after the log line shipped, then monthly.
+
+## The log line
+
+`src/usage-log.ts` writes one JSON line to stdout per POST, which Vercel keeps as the function's runtime logs:
+
+```json
+{"event":"mcp_request","network":"ethereum","calls":[{"method":"tools/call","tool":"get_property"}],"userAgent":"claude-user/1.0","status":200,"outcome":"ok","durationMs":412}
+```
+
+- `calls`: JSON-RPC `method`, the `tool` name on `tools/call`, and `client` (`name/version` from `clientInfo`) on `initialize`. At most 10 per batch.
+- `outcome`: `ok`, `tool_error` (the tool returned `isError`), `rpc_error` (JSON-RPC error, such as invalid arguments), `http_error` (status 400 and up).
+- Never in the line: tool arguments, wallet addresses, IPs.
+
+## Taking a read
+
+1. Vercel dashboard, team `fabrica`, project `fabrica-mcp` (then `fabrica-mcp-testnet`), Logs, filter the message on `mcp_request`, export for the period. Or `vercel logs` for the project.
+2. Count: requests per day, distinct `client` values on `initialize` and distinct `userAgent` values (leave out our own harness, `http-test`, `usage-test`), calls per `tool`, error rate (`outcome` other than `ok` over all `tools/call`), p50/p95 `durationMs`.
+3. Write `docs/usage/YYYY-MM-DD.md`: period, distinct external clients, calls per tool, error rate, anything surprising.
