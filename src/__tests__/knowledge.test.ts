@@ -79,6 +79,12 @@ describe("retrieval", () => {
     });
   }
 
+  it("returns at most one hit per page section", () => {
+    const hits = searchPassages(index.passages, "trustee duties", { limit: 5 });
+    const keys = hits.map((hit) => `${hit.passage.url}#${hit.passage.sectionTitle}`);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
   it("filters by source", () => {
     const hits = searchPassages(index.passages, "trustee duties", { limit: 5, source: "trust-agreement" });
     expect(hits.length).toBeGreaterThan(0);

@@ -46,4 +46,12 @@ export const RED_LINES: RedLine[] = [
 ];
 
 /** Phrases that never belong in any text the server emits about Fabrica. */
-export const FORBIDDEN_EVERYWHERE: string[] = ["open source platform", "guaranteed return", "always equal $1", "always worth $1"];
+export const FORBIDDEN_EVERYWHERE: string[] = [
+  "open source platform",
+  "contracts are open source",
+  "contract is open source",
+  "code is open source",
+  "guaranteed return",
+  "always equal $1",
+  "always worth $1",
+];
