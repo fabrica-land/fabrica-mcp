@@ -2,7 +2,7 @@ import { getTokens, getToken, getCountyBounds, DEFAULT_MIN_SCORE, filterSpamToke
 import type { TokenModel } from "../types/index.js";
 import { NETWORK_LABEL, MAINNET_WARNING, IS_MAINNET, CONTRACTS } from "../config.js";
 import { LENDING_POOL_NAME, formatActivityAmount, formatActivitySource, formatLoanProvider, formatUsdcCeiling } from "../labels.js";
-import { propertyPhotos, propertyMapImage } from "./media.js";
+import { propertyPhotos, propertyMapImage, toGatewayUrl } from "./media.js";
 
 function formatUsd(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -173,7 +173,9 @@ export async function getProperty(args: Record<string, unknown>) {
       legal: {
         description: token.definition?.claim ?? null,
         holdingEntity: token.definition?.holdingEntity ?? null,
-        operatingAgreement: token.operatingAgreementUrl ?? token.operatingAgreement,
+        // The agreement text is long (about 150 KB); get_trust_documents returns it on request.
+        operatingAgreement: token.operatingAgreementUrl ? toGatewayUrl(token.operatingAgreementUrl) ?? token.operatingAgreementUrl : null,
+        operatingAgreementName: token.operatingAgreementName,
         registrar: token.definition?.offchainRegistrar ?? null,
         proofOfTitle: token.configuration?.proofOfTitle ?? null,
       },

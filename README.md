@@ -84,6 +84,7 @@ Replace `/absolute/path/to/fabrica-mcp` with the actual path where you cloned th
 | `get_portfolio` | Wallet holdings, credit history, loan positions |
 | `get_protocol_stats` | Protocol-wide metrics: properties, estimated value, loan volume and counts, lending pool TVL |
 | `get_property_map` | GeoJSON boundary data for mapping and spatial analysis |
+| `get_trust_documents` | The legal record: trust, trust agreement (name, version, link, text on request), legal description, parcel IDs, deed reference, uploaded documents |
 | `get_borrow_quote` | Borrowing options for a property: DeFi lending pool liquidity, durations, current loans |
 | `get_activity` | Activity feed for a property or wallet: transfers, loans, sales, mints |
 | `explain_confidence_score` | Decode the numeric encoding of Property checks (5 digits, formerly called the confidence score) into verification groups |

@@ -10,6 +10,7 @@ import { explainConfidenceScore } from "./tools/scoring.js";
 import { getBorrowQuote } from "./tools/borrowing.js";
 import { getActivity } from "./tools/activity.js";
 import { getPropertyImage, getPortfolioImage } from "./tools/images.js";
+import { getTrustDocuments } from "./tools/documents.js";
 import { NETWORK_LABEL, IS_MAINNET, MAINNET_LEGAL_NOTICE } from "./config.js";
 import { PROPERTY_CARD_URI, registerPropertyCard } from "./ui/property-card.js";
 
@@ -17,7 +18,7 @@ const NETWORK_NOTICE = IS_MAINNET
   ? `\n\n${MAINNET_LEGAL_NOTICE}`
   : " Properties on this network are test tokens with no real-world legal or financial effect.";
 
-export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to tokenized US land on the Fabrica protocol, including property records, Property checks, parcel boundaries and maps, the lending market, borrow quotes, wallet portfolios and activity. Network: ${NETWORK_LABEL}. Company overview: https://about.fabrica.land.${NETWORK_NOTICE}`;
+export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to tokenized US land on the Fabrica protocol, including property records, trust documents, Property checks, parcel boundaries and maps, the lending market, borrow quotes, wallet portfolios and activity. Network: ${NETWORK_LABEL}. Company overview: https://about.fabrica.land.${NETWORK_NOTICE}`;
 
 /**
  * MCP Apps (the property card) ship testnet-first: on by default on Sepolia, and on mainnet
@@ -82,7 +83,7 @@ export function createServer(): McpServer {
 
   const getPropertyConfig = {
     title: "Get property details",
-    description: `Get comprehensive details about a specific tokenized property on Fabrica (${NETWORK_LABEL}), including legal description, valuation, Property checks (with their 5-digit numeric encoding), current ownership and holders, active loans, marketplace listings and offers, recent activity, photos and a parcel map image link. Boundary geometry is returned by get_property_map.${IS_MAINNET ? " The response includes the URL of the operating agreement (the trust instrument) that governs the token." : ""}`,
+    description: `Get comprehensive details about a specific tokenized property on Fabrica (${NETWORK_LABEL}), including legal description, valuation, Property checks (with their 5-digit numeric encoding), current ownership and holders, active loans, marketplace listings and offers, recent activity, photos and a parcel map image link. Boundary geometry is returned by get_property_map.${IS_MAINNET ? " The response includes the URL of the operating agreement (the trust instrument) that governs the token; get_trust_documents returns the full legal record." : ""}`,
     inputSchema: {
       tokenId: z.string().optional().describe("The token ID of the property"),
       slug: z.string().optional().describe("Property slug from the URL (e.g. 'us/nevada/elko-county/elko/apn-063025003')"),
@@ -156,6 +157,21 @@ export function createServer(): McpServer {
       annotations: readOnly("Get property boundary (GeoJSON)"),
     },
     async (args) => jsonResult(await getPropertyMap(args)),
+  );
+
+  server.registerTool(
+    "get_trust_documents",
+    {
+      title: "Get trust documents",
+      description: `Get the legal record of a tokenized property: the trust that holds it (holding entity, formation date), the trust agreement that governs the token (name, version, link), the legal description, the parcel identifiers (FIPS, APN, county, state), the recorded deed reference and grantor, and documents the owner uploaded. The agreement text is included only when includeAgreementText is true (it is long). Property checks are not a title search or title insurance.${IS_MAINNET ? " The token represents the beneficial interest in the trust; the trustee is designated by the token holder and is, by default, the holder." : ""}`,
+      inputSchema: {
+        tokenId: z.string().optional().describe("The token ID of the property"),
+        slug: z.string().optional().describe("Property slug from the URL"),
+        includeAgreementText: z.boolean().optional().describe("Also return the full text of the trust agreement, about 150 KB (default: false; the link is always returned)"),
+      },
+      annotations: readOnly("Get trust documents"),
+    },
+    async (args) => jsonResult(await getTrustDocuments(args)),
   );
 
   server.registerTool(

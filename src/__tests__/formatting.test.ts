@@ -55,7 +55,7 @@ function makeDetailToken(overrides: Partial<TokenModel> = {}): TokenModel {
     imageUrlDark: null,
     imageUrlLight: null,
     mintedAt: "2024-01-15T00:00:00Z",
-    operatingAgreement: null,
+    operatingAgreementName: "Fabrica US Trust v4.4",
     operatingAgreementUrl: "https://fabrica.land/agreement/test",
     majorityOwnerAddress: "0xabcdef1234567890abcdef1234567890abcdef12",
     majorityOwner: { displayName: "TestUser", profilePath: "/u/testuser" },

@@ -41,7 +41,7 @@ export interface TokenModel {
   poolLendingLiquidity: PoolLendingLiquidityModel | null;
   configuration: ConfigurationModel | null;
   definition: DefinitionModel | null;
-  operatingAgreement: string | null;
+  operatingAgreementName: string | null;
   operatingAgreementUrl: string | null;
   imageUrlDark: string | null;
   imageUrlLight: string | null;
@@ -160,6 +160,13 @@ export interface ConfigurationModel {
   proofOfTitle: ProofOfTitle | null;
   propertyNickName: string | null;
   userDescription: string | null;
+}
+
+export interface ConfigurationDocument {
+  type: string;
+  source: string;
+  description: string | null;
+  order: string | null;
 }
 
 export interface ConfigurationMedia {
@@ -330,4 +337,33 @@ export interface SubgraphPool {
   loansRepaid: string;
   loansLiquidated: string;
   adminFeeRate: string;
+}
+
+/** The legal record of one token, as selected by GetTrustDocuments (single-token query only). */
+export interface TrustDocumentsToken {
+  tokenId: string;
+  network: string;
+  contractAddress: string;
+  name: string | null;
+  vanityName: string | null;
+  propertyLink: string;
+  isPremint: boolean;
+  district: string | null;
+  regionCode: string | null;
+  validator: string | null;
+  metadataUri: string | null;
+  operatingAgreementName: string | null;
+  operatingAgreementUrl: string | null;
+  operatingAgreement?: string | null;
+  definition: {
+    claim: string;
+    holdingEntity: string;
+    offchainRegistrar: { admin: string; adminId: string; country: string; propertyId: string };
+  } | null;
+  configuration: {
+    holdingEntityDate: string | null;
+    proofOfTitle: { document: string | null; documentId: string | null; documentName: string | null; grantor: string | null; source: string | null } | null;
+    documents: ConfigurationDocument[] | null;
+    media: { type: string | null }[] | null;
+  } | null;
 }

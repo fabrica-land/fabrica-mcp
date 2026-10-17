@@ -7,6 +7,7 @@ import type {
   LoanRepaidEvent,
   LoanLiquidatedEvent,
   CountyBoundsModel,
+  TrustDocumentsToken,
 } from "../types/index.js";
 import { CONTRACTS, IS_MAINNET, NETWORK } from "../config.js";
 
@@ -205,7 +206,7 @@ const TOKEN_DETAIL_FIELDS = gql`
     imageUrlDark
     imageUrlLight
     mintedAt
-    operatingAgreement
+    operatingAgreementName
     operatingAgreementUrl
     majorityOwnerAddress
     majorityOwner { displayName profilePath }
@@ -249,6 +250,49 @@ export async function getToken(
     tokenId: params.tokenId,
     slug: params.slug,
     network: params.network ?? NETWORK,
+  });
+  return data.token;
+}
+
+// --- Trust documents query ---
+
+const GET_TRUST_DOCUMENTS_QUERY = gql`
+  query GetTrustDocuments($tokenId: String, $slug: String, $network: String, $withText: Boolean!) {
+    token(tokenId: $tokenId, slug: $slug, network: $network) {
+      tokenId
+      network
+      contractAddress
+      name
+      vanityName
+      propertyLink
+      isPremint
+      district
+      regionCode
+      validator
+      metadataUri
+      operatingAgreementName
+      operatingAgreementUrl
+      operatingAgreement @include(if: $withText)
+      definition { claim holdingEntity offchainRegistrar { admin adminId country propertyId } }
+      configuration {
+        holdingEntityDate
+        proofOfTitle { document documentId documentName grantor source }
+        documents { type source description order }
+        media { type }
+      }
+    }
+  }
+`;
+
+/** The legal record of one token. The agreement text (about 150 KB) is fetched only when asked for. */
+export async function getTrustDocuments(
+  params: { tokenId?: string; slug?: string; withText: boolean },
+): Promise<TrustDocumentsToken | null> {
+  const data = await request<{ token: TrustDocumentsToken | null }>(GET_TRUST_DOCUMENTS_QUERY, {
+    tokenId: params.tokenId,
+    slug: params.slug,
+    network: NETWORK,
+    withText: params.withText,
   });
   return data.token;
 }
@@ -458,6 +502,7 @@ export async function getCountyBounds(fips: string): Promise<CountyBoundsModel |
 export const API_DOCUMENTS: ReadonlyArray<{ name: string; document: string }> = [
   { name: "GetTokens", document: GET_TOKENS_QUERY },
   { name: "GetToken", document: GET_TOKEN_QUERY },
+  { name: "GetTrustDocuments", document: GET_TRUST_DOCUMENTS_QUERY },
   { name: "GetWallet", document: GET_WALLET_QUERY },
   { name: "GetLoans", document: GET_LOANS_QUERY },
   { name: "GetLoanStartedEvents", document: GET_LOAN_STARTED_EVENTS_QUERY },
