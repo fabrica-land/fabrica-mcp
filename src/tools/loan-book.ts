@@ -167,7 +167,7 @@ export function matchPoolLoan(loan: LoanModel, poolLoans: ReadonlyArray<Subgraph
   const pool = loan.loanContract.toLowerCase();
   const candidates = poolLoans.filter(p => p.pool.id.toLowerCase() === pool && p.collateralTokenIds.includes(loan.collateralId));
   const start = Math.floor(Date.parse(loan.startTime) / 1000);
-  return candidates.find(p => Number(p.timestamp) === start) ?? (candidates.length === 1 ? candidates[0] : null);
+  return candidates.find(p => Number(p.timestamp) === start) ?? null;
 }
 
 function poolAmount(raw: string | null): number | null {

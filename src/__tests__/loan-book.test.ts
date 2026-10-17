@@ -179,6 +179,7 @@ describe("loan book helpers", () => {
   it("matches a pool loan by pool, collateral and start second", () => {
     expect(matchPoolLoan(loans[2], [poolLoan({ id: "0xother", timestamp: "1" }), poolLoan()])?.id).toBe("0xabc");
     expect(matchPoolLoan(loans[2], [poolLoan({ pool: { id: "0xelse" } })])).toBeNull();
+    expect(matchPoolLoan(loans[2], [poolLoan({ timestamp: "1" })])).toBeNull();
   });
 
   it("lists the last 12 months, empty ones included", () => {
