@@ -18,7 +18,7 @@ Fabrica tokenizes real property (land) as ERC-1155 NFTs on Ethereum. A legal tru
 ```
 src/
   config.ts           # Network config, contract addresses, legal notices
-  server.ts           # createServer(): registers all 11 tools
+  server.ts           # createServer(): registers all 13 tools
   index.ts            # stdio entrypoint (local installs)
   http.ts             # stateless Streamable HTTP handler (hosted)
   usage-log.ts        # one structured log line per request, no arguments or IPs (docs/usage/)
@@ -35,8 +35,19 @@ ui/
     protocol.ts       # get_protocol_stats
     scoring.ts        # explain_confidence_score
     borrowing.ts      # get_borrow_quote
+    valuation.ts      # get_valuation (GraphQL GetValuation + REST /valuation/v1)
     activity.ts       # get_activity
     images.ts         # get_property_image, get_portfolio_image
+    knowledge.ts      # ask_fabrica
+  knowledge/
+    index.ts          # typed, validated loader for generated/index.json (committed)
+    search.ts         # BM25 retrieval with Fabrica synonyms and compound-term normalization
+    facts.ts          # wording red lines the tests check the top passages against
+    documents.ts      # whole documents reassembled from the index, for resources
+  resources/
+    knowledge.ts      # fabrica://docs, fabrica://help, fabrica://legal, fabrica://property/{tokenId}/trust-agreement, fabrica://network
+  # scripts/build-knowledge.mjs builds the index; scripts/knowledge-diff.mjs and
+  # .github/workflows/refresh-knowledge.yml open the daily refresh pull request
   clients/
     graphql.ts        # Fabrica GraphQL API client (primary data source)
     subgraph.ts       # Lending pool subgraph client (dynamic pool discovery)

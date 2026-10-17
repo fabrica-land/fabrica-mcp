@@ -194,6 +194,10 @@ export interface PoolLendingLiquidityModel {
   maxPrincipalUsdc: string;
   durations: number[];
   activeLoan: PoolLendingLoanModel | null;
+  /** Selected on single-token queries only. */
+  appraisalBlockReason?: AppraisalBlockReason | null;
+  /** Selected on single-token queries only. */
+  pools?: PoolLendingPoolValuation[];
 }
 
 export interface PoolLendingLoanModel {
@@ -310,6 +314,81 @@ export interface LoanLiquidatedEvent {
 
 export interface CountyBoundsModel {
   geoJson: Record<string, unknown>;
+}
+
+// Valuation and pool oracle types (get_valuation, get_borrow_quote)
+
+export type AppraisalBlockReason = "TAX_DELINQUENT" | "TAX_STATUS_UNKNOWN" | "OTHER";
+
+export interface PoolLendingQuote {
+  price: string;
+  currency: string;
+  timestamp: number;
+  duration: number;
+}
+
+export interface PoolLendingPoolValuation {
+  address: string;
+  pricing: "SignedQuote" | "OnchainOracle";
+  oracleValuation: { quote: PoolLendingQuote; signature: string | null } | null;
+  onchainPrice: {
+    priceUsdc6: string | null;
+    confidenceScore: number | null;
+    cycle: string | null;
+    valuedAt: string | null;
+    sourceId: number | null;
+  } | null;
+  oracleFeed: {
+    lastHeartbeat: string | null;
+    maxSilence: string;
+    isStale: boolean;
+    currentCycle: string | null;
+    minValidCycle: string | null;
+    indexerUnavailableReason: string | null;
+  } | null;
+  onchainValuation: {
+    usablePriceUsdc6: string | null;
+    capacityBlockReason: string | null;
+    failedCheck: string | null;
+  } | null;
+}
+
+export interface ValuationPricing {
+  source: string;
+  scope: string;
+  currency: string;
+  value: string | null;
+  confidence: string | null;
+  timestamp: string;
+  modelVersion: string;
+}
+
+export interface TokenValuationModel {
+  tokenId: string;
+  name: string | null;
+  vanityName: string | null;
+  isPremint: boolean;
+  estimatedValue: string;
+  cardDisplayValuation: string;
+  valuationReportUrl: string | null;
+  pricing: ValuationPricing[];
+  poolLendingLiquidity: PoolLendingLiquidityModel | null;
+}
+
+/** One entry of the REST `/valuation/v1` panel: a signed valuation the lending pool can use. */
+export interface SignedValuation {
+  source: string;
+  version: string;
+  signer: string;
+  signature: string | null;
+  quote: { price: string; currency: string; timestamp: number; duration: number } | null;
+  reason?: string;
+}
+
+export interface SignedValuationPanel {
+  networkName: string;
+  asOf: string;
+  valuations: SignedValuation[];
 }
 
 // Goldsky MetaStreet Pool subgraph types

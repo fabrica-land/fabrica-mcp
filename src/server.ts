@@ -8,16 +8,19 @@ import { getPortfolio } from "./tools/portfolio.js";
 import { getProtocolStats } from "./tools/protocol.js";
 import { explainConfidenceScore } from "./tools/scoring.js";
 import { getBorrowQuote } from "./tools/borrowing.js";
+import { getValuation } from "./tools/valuation.js";
 import { getActivity } from "./tools/activity.js";
 import { getPropertyImage, getPortfolioImage } from "./tools/images.js";
+import { askFabrica, ASK_FABRICA_SOURCES } from "./tools/knowledge.js";
 import { NETWORK_LABEL, IS_MAINNET, MAINNET_LEGAL_NOTICE } from "./config.js";
 import { PROPERTY_CARD_URI, registerPropertyCard } from "./ui/property-card.js";
+import { registerKnowledgeResources } from "./resources/knowledge.js";
 
 const NETWORK_NOTICE = IS_MAINNET
   ? `\n\n${MAINNET_LEGAL_NOTICE}`
   : " Properties on this network are test tokens with no real-world legal or financial effect.";
 
-export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to tokenized US land on the Fabrica protocol, including property records, Property checks, parcel boundaries and maps, the lending market, borrow quotes, wallet portfolios and activity. Network: ${NETWORK_LABEL}. Company overview: https://about.fabrica.land.${NETWORK_NOTICE}`;
+export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to tokenized US land on the Fabrica protocol, including property records, Property checks, parcel boundaries and maps, the lending market, borrow quotes, wallet portfolios and activity. Network: ${NETWORK_LABEL}. Company overview: https://about.fabrica.land. For questions about how Fabrica works (the trust, fees, Property checks, lending, taxes, the onramp, the legal framework) call ask_fabrica and cite the URL of the passage you relied on. When ask_fabrica returns no matching passage, say so and point to https://help.fabrica.land or questions@fabrica.land instead of guessing.${NETWORK_NOTICE}`;
 
 /**
  * MCP Apps (the property card) ship testnet-first: on by default on Sepolia, and on mainnet
@@ -176,7 +179,7 @@ export function createServer(): McpServer {
     "get_borrow_quote",
     {
       title: "Get borrow quote",
-      description: "Get borrowing options for a specific tokenized property: DeFi lending pool liquidity (max loan amount, durations) and existing loan status. Answers questions such as 'How much can I borrow against this property?'. The amount is an estimate; the rate is set by a live quote when borrowing.",
+      description: "Get borrowing options for a specific tokenized property: DeFi lending pool liquidity (max loan amount, durations), existing loan status, and the reasons when the pool shows no capacity (tax status, price oracle checks). Answers questions such as 'How much can I borrow against this property?'. The amount is an estimate; the rate is set by a live quote when borrowing.",
       inputSchema: {
         tokenId: z.string().optional().describe("The token ID of the property"),
         slug: z.string().optional().describe("Property slug from the URL"),
@@ -184,6 +187,20 @@ export function createServer(): McpServer {
       annotations: readOnly("Get borrow quote"),
     },
     async (args) => jsonResult(await getBorrowQuote(args)),
+  );
+
+  server.registerTool(
+    "get_valuation",
+    {
+      title: "Get valuation sources",
+      description: "Get every value the Fabrica API holds for a property, each with its source, date and confidence: the estimate and the sources it comes from, the Fabrica AVM, Prycd and county assessor figures, the signed valuations the DeFi lending pool reads, the pool's oracle state (feed freshness, onchain price, usable price) with the reason when a price is missing, and the valuation report link. Presents data with its provenance; it suggests no price.",
+      inputSchema: {
+        tokenId: z.string().optional().describe("The token ID of the property"),
+        slug: z.string().optional().describe("Property slug from the URL"),
+      },
+      annotations: readOnly("Get valuation sources"),
+    },
+    async (args) => jsonResult(await getValuation(args)),
   );
 
   server.registerTool(
@@ -253,5 +270,21 @@ export function createServer(): McpServer {
       };
     },
   );
+  server.registerTool(
+    "ask_fabrica",
+    {
+      title: "Ask Fabrica",
+      description:
+        "Answer questions about how Fabrica works from Fabrica's own published documents: docs.fabrica.land, the help center and the US trust agreement. Returns the best matching passages with their URLs, so an answer can be cited. Covers the trust structure, fees, Property checks, lending, property taxes, the onramp and offramp, the legal framework, the glossary and the MCP server itself. When the question names a specific property, wallet or listing, the result also suggests which lookup tool to call. Retrieval is lexical over a committed index, with no external call.",
+      inputSchema: {
+        question: z.string().min(3).max(1000).describe("The question in plain language, e.g. 'Who is the trustee of the trust that holds my property?'"),
+        maxPassages: z.number().int().min(1).max(10).optional().describe("How many passages to return (1-10, default 5)"),
+        source: z.enum(ASK_FABRICA_SOURCES).optional().describe("Restrict to one source: 'docs', 'help' (help center), 'trust-agreement', or 'all' (default)"),
+      },
+      annotations: readOnly("Ask Fabrica"),
+    },
+    async (args) => jsonResult(await askFabrica(args)),
+  );
+  registerKnowledgeResources(server);
   return server;
 }
