@@ -53,6 +53,7 @@ function token(overrides: Partial<OrderBookToken>): OrderBookToken {
     isPremint: false,
     claimState: null,
     supersededByTokenId: null,
+    offRampStatus: null,
     isBurned: false,
     supply: "1",
     supplyUnderLoan: "0",
@@ -129,7 +130,7 @@ describe("get_order_book", () => {
     expect(result).toMatchObject({
       isPremint: true,
       claimState: "CLAIMED",
-      stage: "premint, claimed by the owner and not yet minted",
+      stage: "premint_claimed",
       listing: null,
       offerCount: 1,
       offers: [{ price: "$12", amount: "12 USDC", status: "active" }],

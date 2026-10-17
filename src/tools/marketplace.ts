@@ -1,6 +1,7 @@
 import { getOrderBook as fetchOrderBook, getPremintSuccessor, isTokenNotFound } from "../clients/graphql.js";
 import type { OrderBookOrder, OrderBookToken } from "../types/index.js";
 import { MAINNET_WARNING, NETWORK_LABEL } from "../config.js";
+import { propertyStage } from "../lifecycle.js";
 
 const DAY_MS = 86_400_000;
 
@@ -95,14 +96,6 @@ function byUsd(direction: 1 | -1) {
   };
 }
 
-function stageOf(token: OrderBookToken): string {
-  if (token.isBurned) return "burned";
-  if (!token.isPremint) return "minted";
-  if (token.claimState === "UNCLAIMED") return "premint, not yet claimed by the owner";
-  if (token.claimState === "CLAIMED") return "premint, claimed by the owner and not yet minted";
-  return "premint";
-}
-
 /**
  * Load the order book, following a premint that was replaced by a minted token: its old ID
  * either still loads with `supersededByTokenId` set or no longer loads at all. The live
@@ -176,7 +169,7 @@ export async function getOrderBook({ tokenId, slug, status, minOfferUsd }: Order
       network: NETWORK_LABEL,
       tokenId: token.tokenId,
       name: token.name ?? token.vanityName,
-      stage: stageOf(token),
+      stage: propertyStage(token),
       ...(replacedPremintTokenId ? { replacesPremintTokenId: replacedPremintTokenId } : {}),
       isPremint: token.isPremint,
       claimState: token.claimState,

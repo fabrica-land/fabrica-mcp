@@ -1,9 +1,11 @@
-import { getTokens, getToken, getCountyBounds, DEFAULT_MIN_SCORE, filterSpamTokens } from "../clients/graphql.js";
+import { getTokens, getToken, getCountyBounds, getPremintSuccessor, isTokenNotFound, DEFAULT_MIN_SCORE, filterSpamTokens } from "../clients/graphql.js";
 import type { TokenModel } from "../types/index.js";
 import { NETWORK_LABEL, MAINNET_WARNING, IS_MAINNET, CONTRACTS } from "../config.js";
 import { LENDING_POOL_NAME, formatActivityAmount, formatActivitySource, formatLoanProvider, formatUsdcCeiling } from "../labels.js";
 import { propertyPhotos, propertyMapImage } from "./media.js";
 import { estimateFields, formatTokenAmount, sortLoans } from "../format.js";
+import { propertyStage, describeStage } from "../lifecycle.js";
+import { summarizeFees } from "../fees.js";
 
 function formatUsd(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -46,6 +48,7 @@ function tokenToSummary(token: TokenModel) {
     hasActiveListing: token.marketplacePrice !== null,
     listingPrice: token.marketplacePrice ? formatUsd(token.marketplacePrice) : null,
     hasActiveLoan: hasLoan,
+    stage: propertyStage(token),
     owner: shortenAddress(token.majorityOwnerAddress),
     propertyLink: token.propertyLink,
   };
@@ -124,6 +127,48 @@ function getRecoveryStatus(score: number | null): { value: number; label: string
   return { value: digit, label: labels[digit] ?? "Unknown" };
 }
 
+/**
+ * A premint that was replaced by a minted token no longer loads by its old ID; the API
+ * answers "No token or premint found". Follow it to the live successor, as the web app
+ * does for an old link.
+ */
+async function getTokenOrSuccessor(tokenId: string | undefined, slug: string | undefined): Promise<{ token: TokenModel | null; replacedPremintTokenId: string | null }> {
+  try {
+    return { token: await getToken({ tokenId, slug }), replacedPremintTokenId: null };
+  } catch (e) {
+    if (!tokenId || !isTokenNotFound(e)) throw e;
+    const successorId = await getPremintSuccessor(tokenId);
+    if (!successorId) throw e;
+    return { token: await getToken({ tokenId: successorId }), replacedPremintTokenId: tokenId };
+  }
+}
+
+function lifecycleOf(token: TokenModel, replacedPremintTokenId: string | null) {
+  const stage = propertyStage(token);
+  return {
+    stage,
+    description: describeStage(stage),
+    ...(token.claimState ? { claimState: token.claimState } : {}),
+    ...(token.supersededByTokenId ? { successorTokenId: token.supersededByTokenId } : {}),
+    ...(replacedPremintTokenId ? { replacesPremintTokenId: replacedPremintTokenId, note: `Token ${replacedPremintTokenId} was a premint that has been replaced by this minted token.` } : {}),
+    ...(token.offRampStatus ? { offRampStatus: token.offRampStatus } : {}),
+  };
+}
+
+function flagsOf(token: TokenModel): string[] {
+  const flags: string[] = [];
+  const duplicates = token.duplicateParcelCount ?? 0;
+  if (duplicates > 0) {
+    flags.push(duplicates === 1
+      ? "Another token on Fabrica claims the same parcel (same county APN and holding trust)."
+      : `${duplicates} other tokens on Fabrica claim the same parcel (same county APN and holding trust).`);
+  }
+  if (token.fishy) {
+    flags.push("The Fabrica marketplace does not sell this property: its Property checks are below the marketplace threshold, or its proof of title is not verified.");
+  }
+  return flags;
+}
+
 export async function getProperty(args: Record<string, unknown>) {
   const tokenId = args.tokenId as string | undefined;
   const slug = args.slug as string | undefined;
@@ -131,7 +176,7 @@ export async function getProperty(args: Record<string, unknown>) {
     return { error: "Either tokenId or slug is required" };
   }
   try {
-    const token = await getToken({ tokenId, slug });
+    const { token, replacedPremintTokenId } = await getTokenOrSuccessor(tokenId, slug);
     if (!token) {
       return { error: `No property found with ${tokenId ? `token ID ${tokenId}` : `slug ${slug}`}` };
     }
@@ -139,6 +184,8 @@ export async function getProperty(args: Record<string, unknown>) {
     const activeBids = token.marketplaceBids?.filter(b => b.status === "active") ?? [];
     const activeLoans = token.loans?.filter(l => l.loanStatus === "Active") ?? [];
     const recovery = getRecoveryStatus(token.score);
+    const fees = summarizeFees(token.fees, token.propertyLink);
+    const flags = flagsOf(token);
     const warnings: string[] = [];
     if (recovery && recovery.value !== 7) {
       warnings.push(`Recovery status: ${recovery.label}; the property may be disputed or voided`);
@@ -157,6 +204,9 @@ export async function getProperty(args: Record<string, unknown>) {
       name: token.name ?? token.vanityName,
       propertyLink: token.propertyLink,
       isPremint: token.isPremint,
+      lifecycle: lifecycleOf(token, replacedPremintTokenId),
+      ...(fees ? { fees } : {}),
+      ...(flags.length > 0 ? { flags } : {}),
       recoveryStatus: recovery,
       ...(warnings.length > 0 ? { warnings } : {}),
       location: {

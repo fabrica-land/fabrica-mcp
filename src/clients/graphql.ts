@@ -123,6 +123,9 @@ const TOKENS_LIST_FIELDS = gql`
     supplyUnderLoan
     isPremint
     isBurned
+    claimState
+    supersededByTokenId
+    offRampStatus
     majorityOwnerAddress
   }
 `;
@@ -212,7 +215,13 @@ const TOKEN_DETAIL_FIELDS = gql`
     supplyInDefault
     isPremint
     isClaimedPremint
+    claimState
+    supersededByTokenId
+    offRampStatus
     isBurned
+    fishy
+    duplicateParcelCount
+    fees { totalAmount fees { type createdAt currency amount approved approvedAt paid paidAt } }
     score
     scoringCheckResults { checkName group title value }
     validator
@@ -401,7 +410,7 @@ const GET_ORDER_BOOK_QUERY = gql`
   query GetOrderBook($tokenId: String, $slug: String, $network: String) {
     token(tokenId: $tokenId, slug: $slug, network: $network) {
       tokenId name vanityName propertyLink
-      isPremint claimState supersededByTokenId isBurned
+      isPremint claimState supersededByTokenId offRampStatus isBurned
       supply supplyUnderLoan
       marketplaceListings { ...OrderBookOrderFields }
       marketplaceBids { ...OrderBookOrderFields }
