@@ -313,7 +313,11 @@ async function searchParcel(args: FindParcelArgs) {
   } catch {
     indexNote = "Could not check which of these parcels are already on Fabrica; onFabrica is null for all of them.";
   }
-  const matched = scoped.map((hit) => ({ hit, token: matchByApn(hit, tokens) }));
+  const byApn = scoped.map((hit) => ({ hit, token: matchByApn(hit, tokens) }));
+  // Two parcels sharing a county and parcel number cannot both be the token's parcel, and the index has no Regrid
+  // path to tell them apart, so neither gets it by number (a single match still gets the outline check below).
+  const shared = new Set(byApn.flatMap(({ token }, i) => token && byApn.some((other, j) => j !== i && other.token === token) ? [token.tokenId] : []));
+  const matched = byApn.map(({ hit, token }) => ({ hit, token: token && !shared.has(token.tokenId) ? token : null }));
   const [top, second] = matched;
   const single = top !== undefined && (second === undefined || (exactApn.length === 0 && top.hit.score - second.hit.score >= CLEAR_LEAD));
   if (!top || !single) {

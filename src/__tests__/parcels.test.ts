@@ -212,6 +212,15 @@ describe("findParcel", () => {
     expect(result).toMatchObject({ match: "single", parcel: { state: "TX" } });
   });
 
+  it("gives a token to neither of two parcels that share its county and parcel number", async () => {
+    const a = { ...SF_HIT, headline: "Unit A", path: "/us/ca/san-francisco/downtown/1" };
+    const b = { ...SF_HIT, headline: "Unit B", path: "/us/ca/san-francisco/downtown/2" };
+    fetchMock.mockResolvedValueOnce(respond([a, b]));
+    const result = await findParcel({ query: "0151010", state: "CA", county: "San Francisco" });
+    expect(result).toMatchObject({ match: "ambiguous" });
+    expect("candidates" in result ? (result.candidates ?? []).map((c) => c.onFabrica) : []).toEqual([null, null]);
+  });
+
   it("reports a search failure as an error, not a throw", async () => {
     fetchMock.mockResolvedValueOnce(respond({ message: "Error fetching type-ahead result from Regrid" }, 502));
     expect(await findParcel({ query: "1707 Jones St" })).toMatchObject({ error: expect.stringContaining("HTTP 502") });
