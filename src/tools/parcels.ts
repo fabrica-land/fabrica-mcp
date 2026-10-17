@@ -254,16 +254,14 @@ function inState(hit: TypeAheadHit, state: string | undefined): boolean {
 }
 
 /**
- * The type-ahead scopes only by county, so a state given without a county goes into the address text
- * (where Regrid weighs it) instead of being applied only after a nationwide search. Anything not shaped
- * like a street address, parcel numbers included, is sent as is: extra words would stop it matching.
+ * The type-ahead scopes only by county. When a state given without a county finds nothing in that state,
+ * the search is retried once with the state in the text, where Regrid weighs it. Returns null when there
+ * is nothing to retry (no state, a county scope, or the query already names the state).
  */
-export function searchText(query: string, state: string | undefined, countyScoped: boolean): string {
-  if (!state || countyScoped) return query;
+export function stateRetryText(query: string, state: string | undefined, countyScoped: boolean): string | null {
+  if (!state || countyScoped) return null;
   const code = state.toUpperCase();
-  // A street address opens with a house number and a street name ("1707 Jones St", "100 5th Ave"); parcel numbers like "ABC 123" do not.
-  const looksLikeAddress = /^\d+[a-z]?\s+(\d+(st|nd|rd|th)\b|[a-z])/i.test(query);
-  if (!looksLikeAddress || query.toUpperCase().split(/[^A-Z]+/).includes(code)) return query;
+  if (query.toUpperCase().split(/[^A-Z]+/).includes(code)) return null;
   return `${query}, ${code}`;
 }
 
@@ -287,15 +285,20 @@ async function searchParcel(args: FindParcelArgs) {
   if (args.county && !scope) {
     return { error: `No single US county matches "${args.county}"${args.state ? ` in ${args.state.toUpperCase()}` : ""}. A two-letter state and the county name (for example state "AZ", county "Navajo") identify it.` };
   }
-  const params = new URLSearchParams({ query: searchText(query, args.state, scope !== null) });
-  if (scope) params.set("adminId", scope.county.fips);
-  let hits: TypeAheadHit[];
+  const typeAhead = async (text: string): Promise<TypeAheadHit[]> => {
+    const params = new URLSearchParams({ query: text });
+    if (scope) params.set("adminId", scope.county.fips);
+    return parseTypeAhead(await fetchJson(`${API_BASE}/regrid/type-ahead?${params.toString()}`));
+  };
+  let inScope: TypeAheadHit[];
   try {
-    hits = parseTypeAhead(await fetchJson(`${API_BASE}/regrid/type-ahead?${params.toString()}`));
+    inScope = (await typeAhead(query)).filter((hit) => inState(hit, args.state));
+    // Parcel numbers go in as typed (extra words stop them matching); only an empty in-state result pays for a second search.
+    const retry = inScope.length === 0 ? stateRetryText(query, args.state, scope !== null) : null;
+    if (retry !== null) inScope = (await typeAhead(retry)).filter((hit) => inState(hit, args.state));
   } catch (error) {
     return { error: `The parcel search did not answer (${error instanceof Error ? error.message : "unknown error"}). Try again shortly.` };
   }
-  const inScope = hits.filter((hit) => inState(hit, args.state));
   // A query that is a parcel number matching exactly one parcel in scope is that parcel.
   const exactApn = inScope.filter((hit) => hit.apn !== null && normalizeApn(hit.apn) === normalizeApn(query));
   // Several parcels sharing that exact number stay ambiguous: a score lead says nothing about which one is meant.

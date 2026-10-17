@@ -22,7 +22,7 @@ vi.mock("../clients/graphql.js", () => ({
 }));
 
 const { getParcelIndex } = await import("../clients/graphql.js");
-const { allowFindParcel, findParcel, matchByApn, parseParcelPoint, parseTypeAhead, pointInPolygons, polygonsOf, resolveCounty, searchText, FIND_PARCEL_LIMIT_PER_MINUTE } = await import("../tools/parcels.js");
+const { allowFindParcel, findParcel, matchByApn, parseParcelPoint, parseTypeAhead, pointInPolygons, polygonsOf, resolveCounty, stateRetryText, FIND_PARCEL_LIMIT_PER_MINUTE } = await import("../tools/parcels.js");
 
 const SF_HIT = { category: "parcel", context: "San Francisco, CA", headline: "1707 Jones St", owner: "SOMEONE PRIVATE", parcelnumb: "0151010", path: "/us/ca/san-francisco/downtown/12801", score: 85, type: "Parcel" };
 const HUNT_HIT = { category: "parcel", context: "Greenville, TX", headline: "1707 Jones St", owner: "ANOTHER OWNER", parcelnumb: "71359", path: "/us/tx/hunt/greenville/20283", score: 80, type: "Parcel" };
@@ -94,15 +94,11 @@ describe("find_parcel helpers", () => {
     expect(parseParcelPoint({ parcels: { features: [other] } }, HUNT_HIT.path)).not.toBeNull();
   });
 
-  it("puts a state given without a county into an address search, never into a parcel number", () => {
-    expect(searchText("1707 Jones St", "tx", false)).toBe("1707 Jones St, TX");
-    expect(searchText("1707 Jones St, Greenville TX", "TX", false)).toBe("1707 Jones St, Greenville TX");
-    expect(searchText("1707 Jones St", "TX", true)).toBe("1707 Jones St");
-    expect(searchText("015-1010", "CA", false)).toBe("015-1010");
-    expect(searchText("ABC 123", "TX", false)).toBe("ABC 123");
-    expect(searchText("100 5th Ave", "NY", false)).toBe("100 5th Ave, NY");
-    expect(searchText("123 456", "TX", false)).toBe("123 456");
-    expect(searchText("1707 Jones St", undefined, false)).toBe("1707 Jones St");
+  it("retries with the state in the text only when there is a state, no county, and the query does not name it", () => {
+    expect(stateRetryText("123-45 67th Ave", "ny", false)).toBe("123-45 67th Ave, NY");
+    expect(stateRetryText("1707 Jones St, Greenville TX", "TX", false)).toBeNull();
+    expect(stateRetryText("1707 Jones St", "TX", true)).toBeNull();
+    expect(stateRetryText("1707 Jones St", undefined, false)).toBeNull();
   });
 
   it("tests points against polygons with holes", () => {
@@ -206,6 +202,14 @@ describe("findParcel", () => {
     expect(result).toMatchObject({ match: "ambiguous" });
     expect("candidates" in result ? (result.candidates ?? []).map((c) => c.apn) : []).toEqual(["71359", "71-359"]);
     expect("links" in result).toBe(false);
+  });
+
+  it("sends the query as typed first and retries with the state only when nothing in that state came back", async () => {
+    fetchMock.mockResolvedValueOnce(respond([SF_HIT])).mockResolvedValueOnce(respond([HUNT_HIT])).mockResolvedValueOnce(respond(HUNT_PARCEL));
+    const result = await findParcel({ query: "1707 Jones St", state: "TX" });
+    expect(new URL(String(fetchMock.mock.calls[0]?.[0])).searchParams.get("query")).toBe("1707 Jones St");
+    expect(new URL(String(fetchMock.mock.calls[1]?.[0])).searchParams.get("query")).toBe("1707 Jones St, TX");
+    expect(result).toMatchObject({ match: "single", parcel: { state: "TX" } });
   });
 
   it("reports a search failure as an error, not a throw", async () => {
