@@ -12,7 +12,7 @@ vi.mock("../clients/graphql.js", () => ({
 
 import { getToken } from "../clients/graphql.js";
 import { getProperty } from "../tools/properties.js";
-import type { TokenModel } from "../types/index.js";
+import type { MarketplaceOrderModel, TokenModel, WalletModel } from "../types/index.js";
 
 function makeDetailToken(overrides: Partial<TokenModel> = {}): TokenModel {
   return {
@@ -88,25 +88,41 @@ function makeDetailToken(overrides: Partial<TokenModel> = {}): TokenModel {
   } as unknown as TokenModel;
 }
 
+const emptyLoans = { loanCount: "0", totalPrincipalValue: "0", totalPaidValue: "0", averageDurationDays: "0" };
+const maker: WalletModel = {
+  address: "0x1234567890abcdef1234567890abcdef12345678",
+  user: { displayName: "Seller", profilePath: null, profileUrl: null, avatarUrl: null },
+  tokens: [], tokenCount: "0", totalValue: "0", totalAcres: "0", totalCollateralValue: "0",
+  totalOutstandingLoansUSDC: null, propertyCountUnderLoan: "0",
+  activity: [], loansTaken: [], loansMade: [], marketplaceOffersMade: [],
+  creditHistory: {
+    activeLoans: emptyLoans, defaultedLoans: emptyLoans, liquidatedLoans: emptyLoans,
+    repaidLoans: emptyLoans, totalLoans: emptyLoans, tokens: { tokenCount: "0", totalEstimatedValue: "0" },
+  },
+};
+
+function makeOrder(overrides: Partial<MarketplaceOrderModel>): MarketplaceOrderModel {
+  return {
+    marketplaceId: "m", tokenId: "12345", contractAddress: "0x5cbeb7A0df7Ed85D82a472FD56d81ed550f3Ea95",
+    network: "ethereum", side: "sell", status: "active", price: "100", usdPrice: "100", symbol: "USDC",
+    supply: "1", maker, makerAddress: maker.address, startTime: "2026-01-01T00:00:00Z", endTime: null,
+    ...overrides,
+  };
+}
+
 describe("getProperty formatting", () => {
   it("counts live and encumbered orders, drops ended ones, and lists a blocked listing after the buyable ones", async () => {
-    const order = (o: Record<string, unknown>) => ({
-      marketplaceId: "m", side: "sell", price: "100", usdPrice: "100", symbol: "USDC", supply: "1",
-      makerAddress: "0x1234567890abcdef1234567890abcdef12345678", startTime: "2026-01-01T00:00:00Z", endTime: null, ...o,
-    });
     vi.mocked(getToken).mockResolvedValueOnce(makeDetailToken({
       marketplaceListings: [
-        order({ status: "encumbered", encumbrance: { buyable: false } }),
-        order({ status: "active", endTime: "2020-01-01T00:00:00Z" }),
-        order({ status: "active", usdPrice: "120" }),
+        makeOrder({ status: "encumbered", encumbrance: { buyable: false } }),
+        makeOrder({ status: "active", endTime: "2020-01-01T00:00:00Z" }),
+        makeOrder({ status: "active", usdPrice: "120" }),
       ],
-      marketplaceBids: [order({ side: "buy", status: "pending" }), order({ side: "buy", status: "canceled" })],
-    } as unknown as Partial<TokenModel>));
-    const result = await getProperty({ tokenId: "12345" }) as Record<string, unknown>;
-    const marketplace = result.marketplace as { listingCount: number; offerCount: number; listings: { buyable: boolean }[] };
-    expect(marketplace.listingCount).toBe(2);
-    expect(marketplace.offerCount).toBe(1);
-    expect(marketplace.listings.map(l => l.buyable)).toEqual([true, false]);
+      marketplaceBids: [makeOrder({ side: "buy", status: "pending" }), makeOrder({ side: "buy", status: "canceled" })],
+    }));
+    expect(await getProperty({ tokenId: "12345" })).toMatchObject({
+      marketplace: { listingCount: 2, offerCount: 1, listings: [{ buyable: true }, { buyable: false }] },
+    });
   });
 
   it("formats estimated value as USD", async () => {
