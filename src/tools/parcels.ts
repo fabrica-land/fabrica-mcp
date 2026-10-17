@@ -261,8 +261,8 @@ function inState(hit: TypeAheadHit, state: string | undefined): boolean {
 export function searchText(query: string, state: string | undefined, countyScoped: boolean): string {
   if (!state || countyScoped) return query;
   const code = state.toUpperCase();
-  // A street address opens with a house number and a word ("1707 Jones St"); parcel numbers like "ABC 123" do not.
-  const looksLikeAddress = /^\d+[a-z]?\s+[a-z]/i.test(query);
+  // A street address opens with a house number and a street name ("1707 Jones St", "100 5th Ave"); parcel numbers like "ABC 123" do not.
+  const looksLikeAddress = /^\d+[a-z]?\s+(\d+(st|nd|rd|th)\b|[a-z])/i.test(query);
   if (!looksLikeAddress || query.toUpperCase().split(/[^A-Z]+/).includes(code)) return query;
   return `${query}, ${code}`;
 }

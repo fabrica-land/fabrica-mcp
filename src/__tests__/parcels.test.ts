@@ -100,6 +100,8 @@ describe("find_parcel helpers", () => {
     expect(searchText("1707 Jones St", "TX", true)).toBe("1707 Jones St");
     expect(searchText("015-1010", "CA", false)).toBe("015-1010");
     expect(searchText("ABC 123", "TX", false)).toBe("ABC 123");
+    expect(searchText("100 5th Ave", "NY", false)).toBe("100 5th Ave, NY");
+    expect(searchText("123 456", "TX", false)).toBe("123 456");
     expect(searchText("1707 Jones St", undefined, false)).toBe("1707 Jones St");
   });
 
