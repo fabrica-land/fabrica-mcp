@@ -3,6 +3,10 @@
 // owner photos follow when the property has any. All data arrives from the tool result,
 // and user-provided text is only ever set through textContent.
 import { App } from "@modelcontextprotocol/ext-apps";
+import {
+  canHover, checksSubline, chooseLayout, estimateSourceLine, failedChecks, safeArea, taxChip, usdcAmount,
+  type HostContextLike, type Layout,
+} from "./view.js";
 
 type Theme = "light" | "dark";
 
@@ -10,6 +14,7 @@ const root = document.getElementById("root");
 const app = new App({ name: "Fabrica property card", version: "0.1.0" });
 let theme: Theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 let current: Record<string, unknown> | null = null;
+let checksOpen = false;
 
 function obj(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? Object.fromEntries(Object.entries(value)) : {};
@@ -28,12 +33,6 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
   if (className) node.className = className;
   if (text) node.textContent = text;
   return node;
-}
-
-/** "2,500 USDC" → "Up to 2,500 USDC", rounded down like the server; nothing when there is no capacity. */
-function borrowCapacity(maxPrincipal: unknown): string | null {
-  const amount = Math.floor(Number.parseFloat((str(maxPrincipal) ?? "").replace(/,/g, "")));
-  return Number.isFinite(amount) && amount > 0 ? `Up to ${amount.toLocaleString("en-US")} USDC` : null;
 }
 
 // Buttons may only open Fabrica's own pages over https.
@@ -101,15 +100,79 @@ function slide(src: string, tag: string, fallbackText: string, link: string | nu
   return button;
 }
 
-function fact(label: string, value: string | null): HTMLDivElement | null {
+function fact(label: string, value: string | null, subline: string | null = null): HTMLDivElement | null {
   if (!value) return null;
   const node = el("div", "fact");
   node.append(el("div", "k", label), el("div", "v", value));
+  if (subline) node.append(el("div", "s", subline));
   return node;
 }
 
+function chip(text: string | null): HTMLSpanElement | null {
+  return text ? el("span", "chip", text) : null;
+}
+
+/** Property checks as a fact that opens the list of checks that did not pass. */
+function checksFact(text: string, subline: string | null, failed: string[]): HTMLElement {
+  const wrap = el("div", "fact checks");
+  const toggle = el("button", "fact-toggle");
+  toggle.type = "button";
+  toggle.setAttribute("aria-expanded", String(checksOpen));
+  toggle.append(el("div", "k", "Property checks"), el("div", "v", text));
+  if (subline) toggle.append(el("div", "s", subline));
+  wrap.append(toggle);
+  if (failed.length > 0) {
+    // Toggled in place: a full re-render would reload the images and reset the gallery.
+    wrap.classList.toggle("open", checksOpen);
+    toggle.onclick = () => {
+      checksOpen = !checksOpen;
+      wrap.classList.toggle("open", checksOpen);
+      toggle.setAttribute("aria-expanded", String(checksOpen));
+    };
+    const list = el("ul", "tip");
+    list.setAttribute("aria-label", "Checks not passed");
+    failed.forEach((name) => list.append(el("li", undefined, name)));
+    wrap.append(list);
+  } else {
+    toggle.disabled = true;
+  }
+  return wrap;
+}
+
+function gallery(slides: HTMLButtonElement[], layout: Layout): HTMLElement[] {
+  const strip = el("div", "gallery");
+  strip.append(...slides);
+  if (layout !== "compact" || slides.length < 2) return [strip];
+  // Swipe position, shown as dots under the strip on touch layouts.
+  const dots = el("div", "dots");
+  dots.setAttribute("aria-hidden", "true");
+  const marks = slides.map((_, index) => el("span", index === 0 ? "dot on" : "dot"));
+  dots.append(...marks);
+  strip.onscroll = () => {
+    const width = strip.clientWidth || 1;
+    const active = Math.min(marks.length - 1, Math.round(strip.scrollLeft / width));
+    marks.forEach((mark, index) => mark.classList.toggle("on", index === active));
+  };
+  return [strip, dots];
+}
+
+function applyHostContext(): Layout {
+  const context = app.getHostContext() as HostContextLike | undefined;
+  const layout = chooseLayout(context, window.innerWidth);
+  const html = document.documentElement;
+  html.dataset.theme = theme;
+  html.dataset.layout = layout;
+  html.dataset.hover = String(canHover(context, window.matchMedia("(hover: hover)").matches));
+  const insets = safeArea(context);
+  html.style.setProperty("--safe-top", `${insets.top}px`);
+  html.style.setProperty("--safe-right", `${insets.right}px`);
+  html.style.setProperty("--safe-bottom", `${insets.bottom}px`);
+  html.style.setProperty("--safe-left", `${insets.left}px`);
+  return layout;
+}
+
 function render(): void {
-  document.documentElement.dataset.theme = theme;
+  const layout = applyHostContext();
   if (!root || !current) return;
   const data = current;
   const error = str(data.error);
@@ -123,20 +186,22 @@ function render(): void {
   const marketplace = obj(data.marketplace);
   const media = obj(data.media);
   const recovery = obj(data.recoveryStatus);
+  const legal = obj(data.legal);
+  const taxes = obj(data.taxes);
   const link = fabricaUrl(str(data.propertyLink));
   const isTestnet = str(data.network) === "sepolia";
 
-  const gallery = el("div", "gallery");
+  const slides: HTMLButtonElement[] = [];
   const mapImage = str(obj(media.mapImage)[theme]);
-  if (mapImage) gallery.append(slide(mapImage, "Parcel map", "Map unavailable", link));
+  if (mapImage) slides.push(slide(mapImage, "Parcel map", "Map unavailable", link));
   const photos = arr(media.photos).map(obj);
   photos.forEach((photo, index) => {
     const src = str(photo.thumbnailUrl) ?? str(photo.url);
-    if (src) gallery.append(slide(src, `Photo ${index + 1} of ${photos.length}`, "Photo unavailable", link));
+    if (src) slides.push(slide(src, `Photo ${index + 1} of ${photos.length}`, "Photo unavailable", link));
   });
 
   const head = el("div", "head");
-  const titles = el("div");
+  const titles = el("div", "titles");
   const place = [str(location.place), str(location.district), str(location.regionCode) ?? str(location.region)].filter(Boolean).join(", ");
   const acres = num(data.acres);
   const sub = [place, acres !== null ? `${acres.toLocaleString("en-US", { maximumFractionDigits: 2 })} acres` : null].filter(Boolean).join(" · ");
@@ -144,8 +209,20 @@ function render(): void {
   head.append(titles, el("span", "pill", isTestnet ? "Sepolia testnet" : "Ethereum mainnet"));
 
   const listing = obj(arr(marketplace.listings)[0]);
+  const listingPrice = str(listing.price);
   const activeLoans = arr(lending.activeLoans);
   const poolLiquidity = obj(lending.lendingPoolLiquidity);
+  const recoveryLabel = str(recovery.label);
+
+  const chips = el("div", "chips");
+  const chipNodes = [
+    chip(listingPrice ? `Listed at ${listingPrice}` : "Not listed for sale"),
+    chip(activeLoans.length > 0 ? `${activeLoans.length} active loan${activeLoans.length > 1 ? "s" : ""}` : "No active loan"),
+    chip(taxChip(taxes.status)),
+    chip(str(legal.operatingAgreementName)),
+  ].filter((node): node is HTMLSpanElement => node !== null);
+  chips.append(...chipNodes);
+
   const checks = obj(data.propertyChecks);
   const passed = num(checks.passed);
   const total = num(checks.total);
@@ -154,21 +231,26 @@ function render(): void {
   const checksText = passed !== null && total !== null && total > 0
     ? `${passed} of ${total} pass`
     : encoding !== null ? `Encoding ${encoding}` : null;
-  const recoveryLabel = str(recovery.label);
+  const checksLine = recoveryLabel && recoveryLabel !== "Normal" ? recoveryLabel : checksSubline(passed, total);
+  const failed = failedChecks(arr(checks.results).map(obj));
+
+  const estimate = str(valuation.estimatedValue);
+  const capacity = usdcAmount(poolLiquidity.maxPrincipal);
   const facts = el("div", "facts");
   const factNodes = [
-    fact("Property checks", checksText !== null ? `${checksText}${recoveryLabel && recoveryLabel !== "Normal" ? ` · ${recoveryLabel}` : ""}` : null),
-    fact("Estimated value", str(valuation.estimatedValue)),
-    fact("Listed for sale", str(listing.price)),
+    fact("Estimated value", estimate, estimateSourceLine(estimate, arr(valuation.pricing).map(obj))),
+    checksText !== null ? checksFact(checksText, checksLine, failed) : null,
     activeLoans.length > 0
       ? fact("Lending", `${activeLoans.length} active loan${activeLoans.length > 1 ? "s" : ""}`)
-      : fact("Borrow capacity (estimate)", borrowCapacity(poolLiquidity.maxPrincipal)),
-  ].filter((node): node is HTMLDivElement => node !== null);
+      : fact("Borrow now (estimate)", capacity !== null ? `Up to ${capacity.toLocaleString("en-US")} USDC` : null, "What the DeFi lending pool can lend today"),
+  ].filter((node): node is HTMLElement => node !== null);
   facts.append(...factNodes);
+  if (layout === "regular" && factNodes.length > 1) facts.classList.add(`n${Math.min(factNodes.length, 4)}`);
 
   const children: HTMLElement[] = [];
-  if (gallery.childElementCount > 0) children.push(gallery);
+  if (slides.length > 0) children.push(...gallery(slides, layout));
   children.push(head);
+  if (chipNodes.length > 0) children.push(chips);
   if (factNodes.length > 0) children.push(facts);
   arr(data.warnings).forEach((warning) => {
     const text = str(warning);
@@ -177,10 +259,10 @@ function render(): void {
   const description = str(media.userDescription);
   if (description) children.push(el("p", "desc", description));
 
-  if (link) children.push(actions(link, str(listing.price), data.isPremint === true));
   children.push(el("div", "notice", isTestnet
     ? "Test property on Sepolia, with no real-world effect."
     : "A real US property. Acquiring its token has legal and financial consequences set out in its trust agreement."));
+  if (link) children.push(actions(link, listingPrice, data.isPremint === true));
   root.replaceChildren(...children);
 }
 
@@ -200,11 +282,18 @@ app.ontoolresult = (result) => {
 };
 
 app.onhostcontextchanged = (context) => {
-  if (context.theme === "light" || context.theme === "dark") {
-    theme = context.theme;
-    render();
-  }
+  // The SDK merges each partial update into getHostContext(); re-render on any of them
+  // (theme, container size, platform, safe area).
+  if (context.theme === "light" || context.theme === "dark") theme = context.theme;
+  render();
 };
+
+// The frame itself can change width (a resized chat column) without a host notification.
+// Re-render only when that changes the layout: autoResize changes the frame height too.
+window.addEventListener("resize", () => {
+  const context = app.getHostContext() as HostContextLike | undefined;
+  if (chooseLayout(context, window.innerWidth) !== document.documentElement.dataset.layout) render();
+});
 
 await app.connect();
 const hostTheme = app.getHostContext()?.theme;

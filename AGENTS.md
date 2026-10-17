@@ -27,7 +27,10 @@ src/
   ui/generated/       # gitignored: HTML built from /ui by scripts/build-ui.mjs
 ui/
   property-card/      # the MCP App view (index.html template + app.ts), bundled with the
-                      # MCP Apps SDK into one self-contained HTML string (no CDN scripts)
+                      # MCP Apps SDK into one self-contained HTML string (no CDN scripts).
+                      # view.ts: layout from the host context (compact under 480 px or on a
+                      # phone, regular otherwise), hover, safe areas, fact lines; unit tested
+  fonts/              # Open Sauce Two (OFL) subset, served at /fonts by the hosted server
   tools/
     properties.ts     # search_properties, get_property, get_property_map
     lending.ts        # get_lending_market

@@ -6,6 +6,12 @@ import { WIDGET_IMAGE_ORIGINS } from "../tools/media.js";
 /** MCP App view for get_property: parcel map, owner photos and key facts. */
 export const PROPERTY_CARD_URI = "ui://fabrica/property-card";
 
+/**
+ * Origin of the card's brand font files: the mainnet server's static /fonts (copied there
+ * by scripts/build-vercel.mjs). ui/property-card/index.html names the same origin.
+ */
+export const FONT_ORIGIN = "https://mcp.fabrica.land";
+
 export function registerPropertyCard(server: McpServer): void {
   registerAppResource(
     server,
@@ -17,7 +23,7 @@ export function registerPropertyCard(server: McpServer): void {
         uri: PROPERTY_CARD_URI,
         mimeType: RESOURCE_MIME_TYPE,
         text: PROPERTY_CARD_HTML,
-        _meta: { ui: { csp: { resourceDomains: WIDGET_IMAGE_ORIGINS }, prefersBorder: true } },
+        _meta: { ui: { csp: { resourceDomains: [...WIDGET_IMAGE_ORIGINS, FONT_ORIGIN] }, prefersBorder: true } },
       }],
     }),
   );
