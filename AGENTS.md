@@ -48,6 +48,7 @@ ui/
     tax.ts            # get_tax_status (also the taxes line on get_property)
     knowledge.ts      # ask_fabrica
     parcels.ts        # find_parcel (Regrid type-ahead via the API, /go on-ramp link, per-client limit)
+    coverage.ts       # check_coverage (static on-ramp rules table in src/data/onramp-coverage.json, built by scripts/build-coverage.mjs)
     support.ts        # contact_support (help center link, support email, prefilled mailto; nothing sent)
     inputs.ts         # zod pieces shared by the tools' input schemas (property reference, image size)
   knowledge/
@@ -83,7 +84,7 @@ ui/
 - `graphql-request` for GraphQL clients
 - `tsup` for building (ESM, `dts: false` due to TS6 deprecation)
 - `vitest` for testing
-- Published to npm as `@fabrica-land/mcp` (`npx -y @fabrica-land/mcp` runs the stdio server); `prepublishOnly` runs typecheck, tests and build
+- Not published to npm: the hosted server is the only supported distribution (`package.json` is `private`)
 
 ---
 
@@ -234,7 +235,7 @@ Run tests with `npm test` (vitest). Tests cover config, scoring, spam filtering,
 
 **Hosted:** `https://mcp.fabrica.land/mcp` (mainnet) and `https://mcp-testnet.fabrica.land/mcp` (Sepolia). Two Vercel projects on this repo, each with `FABRICA_NETWORK` set in its environment; `npm run build:vercel` writes a Build Output API bundle (`.vercel/output`). Stateless: a fresh server and transport per POST, JSON responses, no sessions. Keep it that way unless a feature truly needs sessions.
 
-**Local:** `npx -y @fabrica-land/mcp` (stdio). Publishing: bump `version` in `package.json` and in `createServer()` (`src/server.ts`), then `npm publish` from a clean `main` checkout; `prepublishOnly` runs typecheck, tests and build, and `publishConfig.access` is public. From source: `npm install && npm run build`, then `node dist/index.js`.
+**Local (unsupported, for development):** `npm install && npm run build`, then `node dist/index.js` (stdio). The package is not published to npm.
 
 ---
 
