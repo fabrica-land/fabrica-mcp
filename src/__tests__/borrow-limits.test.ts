@@ -113,3 +113,33 @@ describe("describeAppraisalDerivation follows the rule", () => {
     expect(describeAppraisalDerivation(30000, pricing)).toMatchObject({ derivation: expect.stringContaining("county assessment") });
   });
 });
+
+describe("binding limits across several ticks", () => {
+  const base = { hasActiveLoan: false, taxBlocked: false, oracleReasons: [] as string[] };
+  const dollars = (limit: bigint, available: bigint) => ({ raw: ((limit * 10n ** 18n) << 8n).toString(), available: (available * 10n ** 18n).toString() });
+
+  it("remembers an earlier capped tick when a later one adds all it has", () => {
+    const pool = oraclePool({ oracleValuation: { signature: "0x", quote: { price: "100000000000", currency: "0x", timestamp: 1, duration: 1 } }, ticks: [dollars(100n, 200n), dollars(300n, 50n)] });
+    expect(poolCapacity(pool, 100000).capacityUsd).toBe(150);
+    expect(bindingConstraint({ ...base, maxBorrowUsd: 150, pools: [pool] })).toMatchObject({ limitedBy: "pool_limit" });
+  });
+
+  it("names both kinds when fixed and loan-to-value limits each hold liquidity back", () => {
+    const pool = oraclePool({ oracleValuation: { signature: "0x", quote: { price: "2000000000", currency: "0x", timestamp: 1, duration: 1 } }, ticks: [dollars(100n, 200n), tick(1000, 1, 500)] });
+    const result = bindingConstraint({ ...base, maxBorrowUsd: 200, pools: [pool] });
+    expect(result).toMatchObject({ limitedBy: "pool_limit" });
+    expect(result.explanation).toContain("fixed dollar ceilings and some are loan-to-value limits");
+  });
+});
+
+describe("describeAppraisalDerivation names the rule it matched", () => {
+  const pricing = [
+    { source: "prycd", scope: "land", value: "200000", confidence: "50" },
+    { source: "fabrica-avm", scope: "land", value: "100000", confidence: "50" },
+  ];
+
+  it("gives the Prycd-only rule for a Prycd price beside a lower AVM, and the lower-of rule for the AVM", () => {
+    expect(describeAppraisalDerivation(100000, pricing)).toMatchObject({ rule: expect.stringContaining("Prycd-only"), derivation: expect.stringContaining("Prycd") });
+    expect(describeAppraisalDerivation(50000, pricing)).toMatchObject({ rule: expect.stringContaining("lower of the Prycd and Fabrica AVM"), derivation: expect.stringContaining("Fabrica AVM") });
+  });
+});

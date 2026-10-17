@@ -49,8 +49,8 @@ export interface PoolCapacity {
   limitAmountUsd: number;
   /** What the ratio ticks alone allow at this price; null when the pool has no ratio tick. */
   ltvLimitUsd: number | null;
-  /** Which kind of tick limit stopped the capacity short of the free liquidity; null when liquidity ran out first. */
-  boundBy: LimitType | null;
+  /** Which kinds of tick limit kept free liquidity out of the capacity; null when every free dollar counted. */
+  boundBy: LimitType | "mixed" | null;
   /** What the ticks can lend now: each tick adds its free liquidity up to its own limit. */
   capacityUsd: number;
 }
@@ -70,13 +70,15 @@ export function poolCapacity(pool: PoolLendingPoolValuation, priceUsd: number): 
     return [{ ...decoded, limitUsd, availableUsd: tickUsd(t.available) }];
   }).filter(t => t.availableUsd >= DUST_USD).sort((a, b) => a.limitUsd - b.limitUsd);
   let capacity = 0;
-  let boundBy: LimitType | null = null;
+  // Every tick whose limit left some of its liquidity out, including ticks skipped outright.
+  const binding = new Set<LimitType>();
   for (const tick of ticks) {
-    if (tick.limitUsd <= capacity) continue;
     const filled = capacity + tick.availableUsd;
-    boundBy = filled > tick.limitUsd ? tick.limitType : null;
+    if (filled > tick.limitUsd + 1e-9) binding.add(tick.limitType);
+    if (tick.limitUsd <= capacity) continue;
     capacity = Math.min(filled, tick.limitUsd);
   }
+  const boundBy = binding.size === 0 ? null : binding.size > 1 ? "mixed" : [...binding][0];
   const ratioTicks = ticks.filter(t => t.limitType === "ratio");
   const ratios = ratioTicks.map(t => Number(t.limit) / BPS);
   return {
@@ -152,10 +154,12 @@ export function bindingConstraint(input: {
       ...details,
     };
   }
-  if (best.boundBy === "absolute") {
+  if (best.boundBy === "absolute" || best.boundBy === "mixed") {
     return {
       limitedBy: "pool_limit" as LimitedBy,
-      explanation: `A fixed dollar ceiling on the pool's ticks caps the amount, not the property's value; the pool holds ${usd(best.freeLiquidityUsd)} free.`,
+      explanation: best.boundBy === "absolute"
+        ? `A fixed dollar ceiling on the pool's ticks caps the amount, not the property's value; the pool holds ${usd(best.freeLiquidityUsd)} free.`
+        : `The pool's tick limits cap the amount: some are fixed dollar ceilings and some are loan-to-value limits${best.maxLtv !== null ? ` (up to ${percent(best.maxLtv)})` : ""} against the ${usd(best.priceUsd)} collateral price; the pool holds ${usd(best.freeLiquidityUsd)} free.`,
       ...details,
     };
   }
@@ -182,15 +186,21 @@ function appraisalCandidates(pricing: readonly PricingRow[]) {
     const value = amount(row?.value);
     const confidence = amount(row?.confidence);
     if (value === null || confidence === null || value <= 0 || confidence <= 0) return [];
-    return [{ value: value * (confidence / 100), text: `${label} land value ${usd(value)} x its confidence ${confidence}% = ${usd(value * (confidence / 100))}` }];
+    return [{ value: value * (confidence / 100), text: `${label} land value ${usd(value)} x its confidence ${confidence}% = ${usd(value * (confidence / 100))}`, rule: SAFE_RULE }];
   };
   const assessor = amount(pricing.find(p => p.source === "regrid-county-assessor" && p.scope === "parcel")?.value);
   const prycd = adjusted("prycd", "Prycd");
-  if (prycd.length > 0) return [...prycd, ...adjusted("fabrica-avm", "Fabrica AVM").filter(avm => avm.value < prycd[0].value)];
-  return assessor !== null && assessor > 0 ? [{ value: assessor * 0.3, text: `county assessment ${usd(assessor)} x 0.3 = ${usd(assessor * 0.3)}` }] : [];
+  if (prycd.length > 0) {
+    const lowerAvm = adjusted("fabrica-avm", "Fabrica AVM").filter(avm => avm.value < prycd[0].value);
+    // With a lower AVM beside it, a price equal to Prycd can only come from the Prycd-only rule.
+    return [{ ...prycd[0], rule: lowerAvm.length > 0 ? PRYCD_ONLY_RULE : prycd[0].rule }, ...lowerAvm];
+  }
+  return assessor !== null && assessor > 0 ? [{ value: assessor * 0.3, text: `county assessment ${usd(assessor)} x 0.3 = ${usd(assessor * 0.3)}`, rule: PRYCD_ONLY_RULE }] : [];
 }
 
-export const APPRAISAL_RULE = "The pool's price is the API's appraisal: the lower of the Prycd and Fabrica AVM land values, each multiplied by its own confidence; with no Prycd value, 30% of the county assessment. It is a haircut of the estimate, not a separate valuation.";
+const SAFE_RULE = "The pool's price is the API's appraisal: the lower of the Prycd and Fabrica AVM land values, each multiplied by its own confidence. It is a haircut of the estimate, not a separate valuation.";
+const PRYCD_ONLY_RULE = "The pool's price is the API's Prycd-only appraisal: the Prycd land value multiplied by its confidence, or with no Prycd value 30% of the county assessment. It is a haircut of the estimate, not a separate valuation.";
+export const APPRAISAL_RULE = "The pool's price is the API's appraisal, by the pool's oracle rule: either the lower of the Prycd and Fabrica AVM land values, each multiplied by its own confidence, or the Prycd value alone (30% of the county assessment when there is none). It is a haircut of the estimate, not a separate valuation.";
 
 /** How a signed or oracle price was derived from the valuation rows, when one of the rule's inputs reproduces it. */
 export function describeAppraisalDerivation(priceUsd: number | null, pricing: readonly PricingRow[]) {
@@ -198,5 +208,5 @@ export function describeAppraisalDerivation(priceUsd: number | null, pricing: re
   const match = appraisalCandidates(pricing)
     .filter(c => Math.abs(c.value - priceUsd) <= Math.max(1, priceUsd * 0.001))
     .sort((a, b) => a.value - b.value)[0];
-  return { rule: APPRAISAL_RULE, ...(match ? { derivation: match.text } : { derivation: null, note: "No current valuation row reproduces this price exactly; it may come from rows updated since." }) };
+  return { rule: match?.rule ?? APPRAISAL_RULE, ...(match ? { derivation: match.text } : { derivation: null, note: "No current valuation row reproduces this price exactly; it may come from rows updated since." }) };
 }
