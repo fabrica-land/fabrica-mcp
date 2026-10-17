@@ -22,7 +22,7 @@ Claude Code, mainnet: `claude mcp add --transport http fabrica https://mcp.fabri
 
 | Tool | What it answers |
 |---|---|
-| `search_properties` | Properties by location, size, Property checks, listing status |
+| `search_properties` | Properties by location, size, Property checks, listing status, price, price per acre, distance from a point (`near`); sorted with `sortBy` |
 | `get_property` | One property: location, owner wallet, valuation, listing, loans, operating agreement link |
 | `get_valuation` | Every value held for a property, each with its source, date and confidence, and the pool's oracle state |
 | `get_trust_documents` | The legal record: the trust, the trust agreement (name, version, link), legal description, parcel identifiers, deed reference and owner-uploaded documents |
@@ -45,6 +45,8 @@ Claude Code, mainnet: `claude mcp add --transport http fabrica https://mcp.fabri
 ## Loops
 
 **Due diligence on a property.** `get_property` (its `propertyChecks` give how many Property checks pass), then `explain_confidence_score` with the numeric encoding of Property checks, then `get_tax_status`, `get_valuation` with its source, `get_order_book` and `get_trust_documents`, then `get_borrow_quote` and `get_activity`. Report each fact with its source. End with what to verify independently: the county record of the deed into the trust, a title search or title insurance, taxes paid to date. Never a buy recommendation.
+
+**Find land for a buyer.** One `search_properties` call with the filters the person gave: `region` or `county`, `minAcres` and `maxAcres`, `maxPrice` or `maxPricePerAcre` (listed properties only), `near: { lat, lon, radiusMiles }` for "within N miles of", and `sortBy` (`pricePerAcre`, `price`, `acres`, `newest`, `distance`). Each row carries `pricePerAcre` with its basis (listing or estimate) and, with `near`, `distanceMiles` (straight-line). Then `get_property` on the shortlist. Never a buy recommendation.
 
 **Work a parcel list.** `find_parcel` once per address or parcel number (with state and county when known); re-run ambiguous ones with state and county. On Fabrica: token ID and property link. Not on Fabrica: the on-ramp link. One table at the end. `find_parcel` is limited to 30 calls per minute per client, so long lists go in batches.
 

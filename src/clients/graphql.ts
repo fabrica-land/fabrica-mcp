@@ -168,6 +168,7 @@ const TOKENS_LIST_FIELDS = gql`
     claimState
     supersededByTokenId
     offRampStatus
+    mintedAt
     majorityOwnerAddress
   }
 `;
