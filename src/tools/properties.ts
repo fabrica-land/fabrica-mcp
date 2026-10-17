@@ -102,7 +102,9 @@ export function groupTokens(tokens: ReadonlyArray<TokenModel>, groupBy: GroupBy)
     // A record with no state (or no county, by county) is not a location; ungroupedCount reports it.
     const key = groupKey(t, groupBy);
     if (key === null) continue;
-    groups.set(key, [...(groups.get(key) ?? []), t]);
+    const members = groups.get(key);
+    if (members) members.push(t);
+    else groups.set(key, [t]);
   }
   return [...groups.values()].map(members => {
     const fullState = mostCommon(members.map(t => t.region)) ?? stateName(members[0].regionCode);
@@ -152,6 +154,8 @@ export async function searchProperties(args: Record<string, unknown>) {
       const wanted = normalizeCounty(county);
       tokens = tokens.filter(t => normalizeCounty(t.district) === wanted);
     }
+    // The location page is named from the region/county matches, before other filters can empty the list.
+    const locationTokens = tokens;
     if (minAcres !== undefined) {
       tokens = tokens.filter(t => t.acres !== null && parseFloat(t.acres) >= minAcres);
     }
@@ -163,10 +167,10 @@ export async function searchProperties(args: Record<string, unknown>) {
     }
     const total = tokens.length;
     // The page for the location asked about: names as the matches spell them, else from the filter.
-    const states = new Set(tokens.map(t => t.regionCode?.toUpperCase()));
-    const counties = new Set(tokens.map(t => normalizeCounty(t.district)));
-    const linkState = region ? stateName(region) ?? mostCommon(tokens.map(t => t.region)) : states.size === 1 ? mostCommon(tokens.map(t => t.region)) : null;
-    const linkCounty = county ? mostCommon(tokens.map(t => t.district)) ?? `${county.trim().replace(/\s+county$/i, "")} County` : null;
+    const states = new Set(locationTokens.map(t => t.regionCode?.toUpperCase()));
+    const counties = new Set(locationTokens.map(t => normalizeCounty(t.district)));
+    const linkState = region ? stateName(region) ?? mostCommon(locationTokens.map(t => t.region)) : states.size === 1 ? mostCommon(locationTokens.map(t => t.region)) ?? stateName([...states][0]) : null;
+    const linkCounty = county ? mostCommon(locationTokens.map(t => t.district)) ?? `${county.trim().replace(/\s+county$/i, "")} County` : null;
     const link = (region || county) && linkState && (!county || counties.size <= 1)
       ? { locationLink: locationLink({ state: linkState, county: linkCounty }) }
       : {};

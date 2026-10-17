@@ -128,6 +128,12 @@ describe("grouped search review fixes", () => {
     expect(groupTokens([noName] as never, "county")[0].locationLink).toBe(`${PLATFORM_URL}/us/colorado/costilla-county`);
   });
 
+  it("keeps the county page link when another filter removes every match", async () => {
+    const result = await searchProperties({ county: "Costilla", minAcres: 1000 }) as Record<string, unknown>;
+    expect(result.total).toBe(0);
+    expect(result.locationLink).toBe(`${PLATFORM_URL}/us/colorado/costilla-county`);
+  });
+
   it("ignores a non-string county and an unknown groupBy", async () => {
     const result = await searchProperties({ region: "CO", county: 42, groupBy: "city" }) as Record<string, unknown>;
     expect(result.total).toBe(3);
