@@ -71,12 +71,30 @@ function mostCommon(values: ReadonlyArray<string | null | undefined>): string | 
   return best;
 }
 
+export type GroupBy = "state" | "county";
+
+/** Tokens a county grouping leaves out because the API gives them no county. */
+export function ungroupedCount(tokens: ReadonlyArray<TokenModel>, groupBy: GroupBy): number {
+  return groupBy === "county" ? tokens.filter(t => !normalizeCounty(t.district)).length : 0;
+}
+
+function optionalString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function optionalGroupBy(value: unknown): GroupBy | undefined {
+  return value === "state" || value === "county" ? value : undefined;
+}
+
 /** One row per state or county: counts, acres and the fabrica.land location page. */
-export function groupTokens(tokens: ReadonlyArray<TokenModel>, groupBy: "state" | "county") {
+export function groupTokens(tokens: ReadonlyArray<TokenModel>, groupBy: GroupBy) {
   const groups = new Map<string, TokenModel[]>();
   for (const t of tokens) {
     const state = t.regionCode?.toUpperCase() ?? "";
-    const key = groupBy === "state" ? state : `${state}|${normalizeCounty(t.district)}`;
+    const countyKey = normalizeCounty(t.district);
+    // A token with no county is not a county; ungroupedCount reports it.
+    if (groupBy === "county" && !countyKey) continue;
+    const key = groupBy === "state" ? state : `${state}|${countyKey}`;
     groups.set(key, [...(groups.get(key) ?? []), t]);
   }
   return [...groups.values()].map(members => {
@@ -96,8 +114,8 @@ export function groupTokens(tokens: ReadonlyArray<TokenModel>, groupBy: "state" 
 
 export async function searchProperties(args: Record<string, unknown>) {
   const region = args.region as string | undefined;
-  const county = args.county as string | undefined;
-  const groupBy = args.groupBy as "state" | "county" | undefined;
+  const county = optionalString(args.county);
+  const groupBy = optionalGroupBy(args.groupBy);
   const minAcres = args.minAcres as number | undefined;
   const maxAcres = args.maxAcres as number | undefined;
   const minScore = args.minScore as number | undefined;
@@ -146,13 +164,19 @@ export async function searchProperties(args: Record<string, unknown>) {
       ? { locationLink: locationLink({ state: linkState, county: linkCounty }) }
       : {};
     if (groupBy) {
+      const groups = groupTokens(tokens, groupBy);
+      const groupPage = groups.slice(offset, offset + limit);
+      const ungrouped = ungroupedCount(tokens, groupBy);
       return {
         network: NETWORK_LABEL,
         ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
         total,
         ...link,
         groupBy,
-        groups: groupTokens(tokens, groupBy),
+        totalGroups: groups.length,
+        showing: groupPage.length > 0 ? `${offset + 1}-${offset + groupPage.length} of ${groups.length}` : `none: offset ${offset} is past the last of ${groups.length} groups`,
+        groups: groupPage,
+        ...(ungrouped > 0 ? { ungroupedCount: ungrouped, ungroupedNote: `${ungrouped} matching ${ungrouped === 1 ? "property has" : "properties have"} no county in the record and ${ungrouped === 1 ? "is" : "are"} not in any county group.` } : {}),
       };
     }
     const page = tokens.slice(offset, offset + limit);

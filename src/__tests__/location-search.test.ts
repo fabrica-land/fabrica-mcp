@@ -23,7 +23,8 @@ vi.mock("../clients/subgraph.js", () => ({
   aggregatePoolStats: vi.fn().mockReturnValue(null),
 }));
 
-import { searchProperties, normalizeCounty } from "../tools/properties.js";
+import { getTokens } from "../clients/graphql.js";
+import { searchProperties, normalizeCounty, groupTokens } from "../tools/properties.js";
 import { getProtocolStats } from "../tools/protocol.js";
 import { locationLink, slugifyPlaceName, PLATFORM_URL } from "../links.js";
 
@@ -92,5 +93,30 @@ describe("location link with no matches", () => {
     const result = await searchProperties({ region: "CO", county: "Saguache" }) as Record<string, unknown>;
     expect(result.total).toBe(0);
     expect(result.locationLink).toBe(`${PLATFORM_URL}/us/colorado/saguache-county`);
+  });
+});
+
+describe("grouped search review fixes", () => {
+  const noCounty = { ...tokens[0], tokenId: "5", district: null };
+
+  it("pages through the groups with limit and offset", async () => {
+    const result = await searchProperties({ groupBy: "county", limit: 1, offset: 1 }) as Record<string, unknown>;
+    expect(result.totalGroups).toBe(3);
+    expect(result.showing).toBe("2-2 of 3");
+    expect(result.groups).toHaveLength(1);
+  });
+
+  it("leaves tokens with no county out of county groups and counts them", async () => {
+    vi.mocked(getTokens).mockResolvedValueOnce([...tokens, noCounty] as never);
+    const result = await searchProperties({ region: "CO", groupBy: "county" }) as { groups: Array<Record<string, unknown>>; ungroupedCount?: number };
+    expect(result.groups.map(g => g.county)).toEqual(["Costilla County", "Huerfano County"]);
+    expect(result.ungroupedCount).toBe(1);
+    expect(groupTokens([noCounty] as never, "county")).toEqual([]);
+  });
+
+  it("ignores a non-string county and an unknown groupBy", async () => {
+    const result = await searchProperties({ region: "CO", county: 42, groupBy: "city" }) as Record<string, unknown>;
+    expect(result.total).toBe(3);
+    expect(result).not.toHaveProperty("groups");
   });
 });
