@@ -66,7 +66,15 @@ const SOURCE_LABELS: Record<string, string> = {
 
 interface PricingEntry {
   source?: unknown;
+  scope?: unknown;
+  asOf?: unknown;
   value?: unknown;
+}
+
+/** "lastSale" -> "last sale"; nothing for a missing scope. */
+export function scopeLabel(scope: unknown): string | null {
+  if (typeof scope !== "string" || scope === "") return null;
+  return scope.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
 }
 
 /**
@@ -79,7 +87,10 @@ export function estimateSourceLine(estimate: string | null, pricing: PricingEntr
   // Prefer a valuation source; the county assessor is named only when it is the one the estimate equals.
   const match = pricing.find((p) => p.value === estimate && typeof p.source === "string" && p.source !== "regrid-county-assessor")
     ?? pricing.find((p) => p.value === estimate && p.source === "regrid-county-assessor");
-  if (match && typeof match.source === "string") parts.push(SOURCE_LABELS[match.source] ?? match.source);
+  if (match && typeof match.source === "string") {
+    const date = shortDate(match.asOf);
+    parts.push([SOURCE_LABELS[match.source] ?? match.source, date].filter(Boolean).join(", "));
+  }
   const assessor = pricing.find((p) => p.source === "regrid-county-assessor" && typeof p.value === "string");
   if (assessor && typeof assessor.value === "string" && assessor.value !== estimate) parts.push(`assessor ${assessor.value}`);
   return parts.length > 0 ? parts.join(" · ") : null;
@@ -128,25 +139,35 @@ export function canExpand(context: HostContextLike | undefined): boolean {
 export type Tab = "Overview" | "Value" | "Lending" | "Documents" | "Activity";
 export const TABS: readonly Tab[] = ["Overview", "Value", "Lending", "Documents", "Activity"];
 
-/** Pricing sources that returned a value, labelled, without repeats. */
-export function pricingRows(pricing: PricingEntry[]): { label: string; value: string }[] {
-  const rows: { label: string; value: string }[] = [];
+/**
+ * Pricing sources that returned a value, each labelled with its scope (land, parcel, last sale)
+ * so figures from one source stay distinguishable, and dated. Exact repeats are dropped.
+ */
+export function pricingRows(pricing: PricingEntry[]): { label: string; value: string; asOf: string | null }[] {
+  const rows: { label: string; value: string; asOf: string | null }[] = [];
   for (const p of pricing) {
     if (typeof p.source !== "string" || typeof p.value !== "string" || p.value.trim() === "") continue;
-    const label = SOURCE_LABELS[p.source] ?? p.source;
-    if (!rows.some((r) => r.label === label && r.value === p.value)) rows.push({ label, value: p.value });
+    const scope = scopeLabel(p.scope);
+    const label = [SOURCE_LABELS[p.source] ?? p.source, scope].filter(Boolean).join(", ");
+    if (!rows.some((r) => r.label === label && r.value === p.value)) rows.push({ label, value: p.value, asOf: shortDate(p.asOf) });
   }
   return rows;
 }
 
 const IPFS_GATEWAY = "https://ipfs.fabrica.land/ipfs/";
+const DOCUMENT_HOSTS = new Set(["ipfs.fabrica.land", "fabrica.land", "testnets.fabrica.land"]);
 
-/** A document link on Fabrica's IPFS gateway: ipfs:// URIs are rewritten, other hosts dropped. */
+/** A document link on Fabrica's own hosts: ipfs:// URIs go to its gateway, other hosts are dropped. */
 export function documentUrl(uri: unknown): string | null {
   if (typeof uri !== "string") return null;
   const cid = /^ipfs:\/\/(?:ipfs\/)?([A-Za-z0-9]+(?:\/[^\s]*)?)$/.exec(uri.trim());
   if (cid) return IPFS_GATEWAY + cid[1];
-  return uri.startsWith(IPFS_GATEWAY) ? uri : null;
+  try {
+    const url = new URL(uri);
+    return url.protocol === "https:" && DOCUMENT_HOSTS.has(url.hostname) ? url.toString() : null;
+  } catch {
+    return null;
+  }
 }
 
 const ACTIVITY_LABELS: Record<string, string> = {

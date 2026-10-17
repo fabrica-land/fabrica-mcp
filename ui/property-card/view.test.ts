@@ -46,13 +46,13 @@ describe("host capabilities", () => {
 describe("fact lines", () => {
   const pricing = [
     { source: "fabrica-avm", value: null },
-    { source: "prycd", value: "$771,075" },
-    { source: "regrid-county-assessor", value: "$357,000" },
+    { source: "prycd", scope: "land", asOf: "2026-10-13T03:03:24.446Z", value: "$771,075" },
+    { source: "regrid-county-assessor", scope: "land", asOf: "2026-10-12T03:00:52.299Z", value: "$357,000" },
   ];
 
   it("names the source the estimate equals and the assessor figure", () => {
-    expect(estimateSourceLine("$771,075", pricing)).toBe("Prycd · assessor $357,000");
-    expect(estimateSourceLine("$357,000", pricing)).toBe("County assessor");
+    expect(estimateSourceLine("$771,075", pricing)).toBe("Prycd, Oct 13, 2026 · assessor $357,000");
+    expect(estimateSourceLine("$357,000", pricing)).toBe("County assessor, Oct 12, 2026");
     expect(estimateSourceLine(null, pricing)).toBeNull();
   });
 
@@ -92,19 +92,26 @@ describe("display modes", () => {
 });
 
 describe("fullscreen panels", () => {
-  it("lists each pricing source that has a value once", () => {
+  it("lists each pricing source and scope that has a value once, dated", () => {
     expect(pricingRows([
-      { source: "fabrica-avm", value: null },
-      { source: "prycd", value: "$771,075" },
-      { source: "prycd", value: "$771,075" },
-      { source: "regrid-county-assessor", value: "$357,000" },
-    ])).toEqual([{ label: "Prycd", value: "$771,075" }, { label: "County assessor", value: "$357,000" }]);
+      { source: "fabrica-avm", scope: "land", value: null },
+      { source: "prycd", scope: "land", asOf: "2026-10-13T03:03:24.446Z", value: "$771,075" },
+      { source: "prycd", scope: "land", asOf: "2026-10-13T03:03:24.446Z", value: "$771,075" },
+      { source: "regrid-county-assessor", scope: "land", value: "$357,000" },
+      { source: "regrid-county-assessor", scope: "lastSale", value: "$290,000" },
+    ])).toEqual([
+      { label: "Prycd, land", value: "$771,075", asOf: "Oct 13, 2026" },
+      { label: "County assessor, land", value: "$357,000", asOf: null },
+      { label: "County assessor, last sale", value: "$290,000", asOf: null },
+    ]);
   });
 
   it("opens documents only on Fabrica's IPFS gateway", () => {
     expect(documentUrl("ipfs://bafybeiea37nz")).toBe("https://ipfs.fabrica.land/ipfs/bafybeiea37nz");
     expect(documentUrl("https://ipfs.fabrica.land/ipfs/bafkrei")).toBe("https://ipfs.fabrica.land/ipfs/bafkrei");
+    expect(documentUrl("https://fabrica.land/agreement/test")).toBe("https://fabrica.land/agreement/test");
     expect(documentUrl("https://evil.example/ipfs/x")).toBeNull();
+    expect(documentUrl("http://fabrica.land/agreement/test")).toBeNull();
     expect(documentUrl("javascript:alert(1)")).toBeNull();
     expect(documentUrl(null)).toBeNull();
   });

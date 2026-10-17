@@ -338,6 +338,8 @@ export async function getProperty(args: Record<string, unknown>) {
         scoreBreakdown: checkResults,
         pricing: token.pricing.map(p => ({
           source: p.source,
+          scope: p.scope,
+          asOf: p.timestamp,
           value: formatUsd(p.value),
           currency: p.currency,
           confidence: p.confidence,
@@ -373,6 +375,8 @@ export async function getProperty(args: Record<string, unknown>) {
         } : null,
       },
       marketplace: {
+        listingCount: listings.total,
+        offerCount: bids.total,
         ...(listings.truncated || bids.truncated ? { note: `Up to ${MAX_ORDERS} listings and ${MAX_ORDERS} offers are shown; ${listings.total} active listings and ${bids.total} active offers in all.` } : {}),
         listings: listings.items.map(l => ({
           price: formatOrderPrice(l.usdPrice, l.price, l.symbol),

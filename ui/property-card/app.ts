@@ -340,13 +340,16 @@ function render(): void {
       const sources = pricingRows(arr(valuation.pricing).map(obj));
       // The estimate row only when no source row already shows the same figure.
       const estimateRow: [string, string | null][] = sources.some((r) => r.value === estimate) ? [] : [["Estimate", estimate]];
+      const sourceRows = sources.map((r): [string, string] => [r.label, r.asOf ? `${r.value} · ${r.asOf}` : r.value]);
       return [
-        section("Estimated value", rows([...estimateRow, ...sources.map((r): [string, string] => [r.label, r.value])])),
+        section("Estimated value", rows([...estimateRow, ...sourceRows])),
         section("Property checks", checkList(arr(checks.results).map(obj)),
           el("p", "muted small", "Property checks are a starting point for your own research, not a title search or title insurance.")),
       ].filter((n): n is HTMLElement => n !== null);
     },
     Lending: () => {
+      // The tool caps the bids it lists; offerCount is the full count.
+      const offerCount = num(marketplace.offerCount) ?? arr(marketplace.bids).length;
       const loans = activeLoans.map(obj).map((loan) => rows([
         ["Principal", str(loan.principal)], ["APR", str(loan.apr)], ["Duration", str(loan.duration)],
         ["Matures", shortDate(loan.maturityDate)], ["Provider", str(loan.provider)],
@@ -358,7 +361,7 @@ function render(): void {
         section(activeLoans.length > 0 ? "Active loans" : "No active loan", ...loans),
         section("Marketplace", rows([
           ["Listed at", listingPrice], ["Listing ends", shortDate(listing.expiresAt)],
-          ["Offers", arr(marketplace.bids).length > 0 ? String(arr(marketplace.bids).length) : "None"],
+          ["Offers", offerCount > 0 ? offerCount.toLocaleString("en-US") : "None"],
         ])),
       ].filter((n): n is HTMLElement => n !== null);
     },
