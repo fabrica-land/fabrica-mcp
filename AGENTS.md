@@ -81,7 +81,7 @@ ui/
 - `graphql-request` for GraphQL clients
 - `tsup` for building (ESM, `dts: false` due to TS6 deprecation)
 - `vitest` for testing
-- Not yet published to npm — installed from source
+- Published to npm as `@fabrica-land/mcp` (`npx -y @fabrica-land/mcp` runs the stdio server); `prepublishOnly` runs typecheck, tests and build
 
 ---
 
@@ -230,14 +230,7 @@ Run tests with `npm test` (vitest). Tests cover config, scoring, spam filtering,
 
 **Hosted:** `https://mcp.fabrica.land/mcp` (mainnet) and `https://mcp-testnet.fabrica.land/mcp` (Sepolia). Two Vercel projects on this repo, each with `FABRICA_NETWORK` set in its environment; `npm run build:vercel` writes a Build Output API bundle (`.vercel/output`). Stateless: a fresh server and transport per POST, JSON responses, no sessions. Keep it that way unless a feature truly needs sessions.
 
-**Local:** not yet published to npm. Install from source:
-
-```bash
-git clone https://github.com/fabrica-land/fabrica-mcp.git
-cd fabrica-mcp && npm install && npm run build
-```
-
-Then configure your MCP client with `node /path/to/fabrica-mcp/dist/index.js`.
+**Local:** `npx -y @fabrica-land/mcp` (stdio). Publishing: bump `version` in `package.json` and in `createServer()` (`src/server.ts`), then `npm publish` from a clean `main` checkout; `prepublishOnly` runs typecheck, tests and build, and `publishConfig.access` is public. From source: `npm install && npm run build`, then `node dist/index.js`.
 
 ---
 
