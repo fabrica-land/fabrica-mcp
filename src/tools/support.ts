@@ -31,12 +31,16 @@ const TOPIC_PAGES: Record<SupportTopic, { label: string; url: string }> = {
 
 /** A label right before a 64-hex value that marks it as a transaction hash, which support may need. */
 const TX_CONTEXT = /(\/tx\/|\b(?:tx|txn|transaction)[ _-]?(?:hash|id)\b\s*(?:is\s*|[:=]\s*)?)$/i;
+/** A recovery-phrase label and its connector, as in "my seed phrase is:" or "mnemonic =". */
+const PHRASE_LABEL = /\b(?:(?:seed|recovery|secret|backup|wallet)[ -](?:phrase|words)|mnemonic)\b(?:\s+(?:is|are|was))?\s*[:=-]?/giu;
 
 /**
  * Key material never goes into a support message: a 64-hex-character value with or without
  * 0x (a private key) unless it directly follows a transaction-hash label or an /tx/ URL, or a run
  * of 12 or more BIP-39 words anywhere in the text (any case, with numbering,
  * bullets and punctuation between them ignored, repeats allowed), even after a lead-in such as "my seed phrase is:".
+ * For mnemonics in other BIP-39 languages, 12 or more words of any script right after a
+ * recovery-phrase label are refused too.
  * Talking about a lost key is fine.
  */
 export function containsSecret(text: string): boolean {
@@ -49,6 +53,13 @@ export function containsSecret(text: string): boolean {
     if (word === "") continue;
     run = BIP39_ENGLISH.has(word) ? run + 1 : 0;
     if (run >= 12) return true;
+  }
+  // Other BIP-39 languages: after a recovery-phrase label, refuse 12 or more words in any script.
+  for (const match of text.matchAll(PHRASE_LABEL)) {
+    const words = text.slice(match.index + match[0].length).split(/[^\p{L}]+/u).filter((word) => word !== "");
+    let count = 0;
+    while (count < words.length && words[count].length >= 2) count++;
+    if (count >= 12) return true;
   }
   return false;
 }
