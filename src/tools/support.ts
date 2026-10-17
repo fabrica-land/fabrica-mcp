@@ -43,7 +43,9 @@ const PHRASE_LABEL = /\b(?:(?:seed|recovery|secret|backup|wallet)[ -](?:phrase|w
  * recovery-phrase label are refused too.
  * Talking about a lost key is fine.
  */
-export function containsSecret(text: string): boolean {
+export function containsSecret(raw: string): boolean {
+  // BIP-39 phrases are NFKD; compose them so a combining mark stays inside its word.
+  const text = raw.normalize("NFC");
   for (const match of text.matchAll(/(?<![0-9a-zA-Z])(?:0[xX])?[0-9a-fA-F]{64}(?![0-9a-fA-F])/g)) {
     if (!TX_CONTEXT.test(text.slice(Math.max(0, match.index - 40), match.index))) return true;
   }
@@ -57,7 +59,7 @@ export function containsSecret(text: string): boolean {
   // Other BIP-39 languages: after a recovery-phrase label, refuse 12 or more words in any script.
   for (const match of text.matchAll(PHRASE_LABEL)) {
     // Chinese wordlists use one Han character per word, often written without spaces.
-    const words = text.slice(match.index + match[0].length).split(/[^\p{L}]+/u)
+    const words = text.slice(match.index + match[0].length).split(/[^\p{L}\p{M}]+/u)
       .flatMap((word) => (/^\p{Script=Han}+$/u.test(word) ? [...word] : [word]))
       .filter((word) => word !== "");
     let count = 0;

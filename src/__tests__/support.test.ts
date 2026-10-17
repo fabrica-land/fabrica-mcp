@@ -61,6 +61,7 @@ describe("contact_support (links and email)", () => {
     expect(containsSecret("I lost my seed phrase and cannot open the wallet that holds my parcel token.")).toBe(false);
     expect(containsSecret("mnemonic: 的 一 是 在 不 了 有 和 人 这 中 大")).toBe(true);
     expect(containsSecret("seed phrase: 的一是在不了有和人这中大")).toBe(true);
+    expect(containsSecret("recovery phrase: あいこくしん あいさつ あいだ あおぞら あかちゃん あきる あけがた あける あこがれる あさい あさひ あしあと".normalize("NFKD"))).toBe(true);
     expect(containsSecret("Cannot upload deed because identity check failed during final review step again.")).toBe(false);
     const result = contactSupport({ summary: "A question about my parcel \ud800 listing." });
     expect("mailto" in result).toBe(true);
