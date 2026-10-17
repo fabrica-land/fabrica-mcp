@@ -29,42 +29,10 @@ import { getProperty, searchProperties } from "../tools/properties.js";
 import { propertyStage } from "../lifecycle.js";
 import { formatFeeAmount, isoTime, summarizeFees } from "../fees.js";
 import type { TokenModel } from "../types/index.js";
+import { tokenDetail } from "./fixtures.js";
 
 function token(overrides: Partial<TokenModel> = {}): TokenModel {
-  return {
-    tokenId: "12345",
-    network: "ethereum",
-    contractAddress: "0x5cbeb7A0df7Ed85D82a472FD56d81ed550f3Ea95",
-    name: "Test Ranch",
-    slug: "us/texas/travis/test-ranch",
-    propertyLink: "https://fabrica.land/property/ethereum/12345",
-    coordinates: { lat: 30.267, lon: -97.743 },
-    acres: "40.5",
-    regionCode: "TX",
-    supply: "1",
-    supplyUnderLoan: "0",
-    supplyLiquidating: "0",
-    supplyInDefault: "0",
-    isPremint: false,
-    isClaimedPremint: false,
-    isBurned: false,
-    score: 73242,
-    scoringCheckResults: [],
-    estimatedValue: "1000",
-    marketplacePrice: null,
-    pricing: [],
-    loans: [],
-    marketplaceListings: [],
-    marketplaceBids: [],
-    activity: [],
-    claimState: null,
-    supersededByTokenId: null,
-    offRampStatus: null,
-    fishy: false,
-    duplicateParcelCount: 0,
-    fees: { totalAmount: "0", fees: [] },
-    ...overrides,
-  } as unknown as TokenModel;
+  return tokenDetail({ propertyLink: "https://fabrica.land/property/ethereum/12345", ...overrides });
 }
 
 const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";

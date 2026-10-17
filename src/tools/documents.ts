@@ -2,6 +2,8 @@ import { getTrustDocuments as fetchTrustDocuments, propertyLookupError } from ".
 import type { ConfigurationDocument } from "../types/index.js";
 import { IS_MAINNET, MAINNET_WARNING } from "../config.js";
 import { toGatewayUrl } from "./media.js";
+import { z } from "zod";
+import { type ArgsOf, propertyRefInputs } from "./inputs.js";
 
 const TRUST_NOTE = IS_MAINNET
   ? "The token represents the beneficial interest in this trust. The trustee is designated by the token holder and is, by default, the holder."
@@ -33,10 +35,15 @@ export function orderDocuments(documents: ConfigurationDocument[] | null | undef
     .map(({ d }) => ({ type: d.type, description: d.description, url: gatewayOrRaw(d.source) }));
 }
 
-export async function getTrustDocuments(args: Record<string, unknown>) {
-  const tokenId = args.tokenId as string | undefined;
-  const slug = args.slug as string | undefined;
-  const includeAgreementText = (args.includeAgreementText as boolean | undefined) ?? false;
+export const getTrustDocumentsInput = {
+  ...propertyRefInputs,
+  includeAgreementText: z.boolean().optional().describe("Also return the full text of the trust agreement, about 150 KB (default: false; the link is always returned)"),
+};
+export type GetTrustDocumentsArgs = ArgsOf<typeof getTrustDocumentsInput>;
+
+export async function getTrustDocuments(args: GetTrustDocumentsArgs) {
+  const { tokenId, slug } = args;
+  const includeAgreementText = args.includeAgreementText ?? false;
   if (!tokenId && !slug) {
     return { error: "Either tokenId or slug is required" };
   }

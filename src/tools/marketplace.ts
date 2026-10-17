@@ -2,6 +2,8 @@ import { getOrderBook as fetchOrderBook, getPremintSuccessor, isTokenNotFound } 
 import type { OrderBookOrder, OrderBookToken } from "../types/index.js";
 import { MAINNET_WARNING, NETWORK_LABEL } from "../config.js";
 import { propertyStage } from "../lifecycle.js";
+import { z } from "zod";
+import { type ArgsOf, propertyRefInputs } from "./inputs.js";
 
 const DAY_MS = 86_400_000;
 
@@ -128,12 +130,12 @@ async function loadOrderBook(tokenId: string | undefined, slug: string | undefin
   return { token, replacedPremintTokenId: null };
 }
 
-export interface OrderBookArgs {
-  tokenId?: string;
-  slug?: string;
-  status?: "active" | "all";
-  minOfferUsd?: number;
-}
+export const getOrderBookInput = {
+  ...propertyRefInputs,
+  status: z.enum(["active", "all"]).optional().describe("'active' (default): live orders only. 'all': also expired, canceled and filled orders."),
+  minOfferUsd: z.number().min(0).optional().describe("Only return offers at or above this USD amount"),
+};
+export type OrderBookArgs = ArgsOf<typeof getOrderBookInput>;
 
 export async function getOrderBook({ tokenId, slug, status, minOfferUsd }: OrderBookArgs) {
   const includeAll = status === "all";

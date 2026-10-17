@@ -4,7 +4,7 @@
 // and user-provided text is only ever set through textContent.
 import { App } from "@modelcontextprotocol/ext-apps";
 import {
-  activityLabel, canExpand, canHover, checksSubline, chooseLayout, documentUrl, estimateSourceLine, failedChecks,
+  activityLabel, canExpand, canHover, checksSubline, chooseLayout, documentUrl, estimateSourceLine, fabricaUrl, failedChecks,
   isFullscreen, pricingRows, safeArea, shortDate, TABS, taxChip, usdcAmount,
   type HostContextLike, type Layout, type Tab,
 } from "./view.js";
@@ -35,19 +35,6 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
   if (className) node.className = className;
   if (text) node.textContent = text;
   return node;
-}
-
-// Buttons may only open Fabrica's own pages over https.
-const FABRICA_HOSTS = new Set(["fabrica.land", "testnets.fabrica.land"]);
-
-function fabricaUrl(link: string | null): string | null {
-  if (!link) return null;
-  try {
-    const url = new URL(link);
-    return url.protocol === "https:" && FABRICA_HOSTS.has(url.hostname) ? url.toString() : null;
-  } catch {
-    return null;
-  }
 }
 
 /**

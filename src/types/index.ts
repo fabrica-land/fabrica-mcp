@@ -1,413 +1,115 @@
-// Fabrica GraphQL API types — derived from live schema introspection
+// Types of what the Fabrica API returns to this server.
+//
+// Everything the GraphQL client reads is typed by the operation that fetches it: the types in
+// src/clients/generated/operations.ts are generated (npm run codegen) from the schema snapshot
+// and the documents in src/clients/graphql.ts, so a field is in a type exactly when the query
+// selects it, with the schema's own nullability. The aliases below name those shapes the way
+// the tools talk about them. The hand-written types at the end cover the REST and subgraph
+// responses, which have no schema to generate from.
+import type {
+  GetCountyBoundsQuery,
+  GetLoanLiquidatedEventsQuery,
+  GetLoanRepaidEventsQuery,
+  GetLoanStartedEventsQuery,
+  GetOperatingAgreementQuery,
+  GetOrderBookQuery,
+  GetParcelIndexQuery,
+  GetPremintSuccessorQuery,
+  GetTaxStatusQuery,
+  GetTokenWithPoolOracleQuery,
+  GetTrustDocumentsQuery,
+  GetValuationQuery,
+  LoanFieldsFragment,
+  PoolOracleFieldsFragment,
+  TokenDetailFieldsFragment,
+  TokenListFieldsFragment,
+  WalletFieldsFragment,
+} from "../clients/generated/operations.js";
 
-export interface Coordinates {
-  lat: number;
-  lon: number;
-}
+export type {
+  ActivitySource,
+  ActivityType,
+  AppraisalBlockReason,
+  LoanProvider,
+  LoanStatus,
+  LoanType,
+  MarketplaceOrderBlockReason,
+  MarketplaceOrderSide,
+  MarketplaceOrderStatus,
+  PremintClaimState,
+} from "../clients/generated/operations.js";
 
-export interface TokenModel {
-  tokenId: string;
-  network: string;
-  contractAddress: string;
-  name: string | null;
-  vanityName: string | null;
-  slug: string;
-  propertyLink: string;
-  coordinates: Coordinates;
-  geoJson: Record<string, unknown> | null;
-  supply: string;
-  supplyUnderLoan: string;
-  supplyLiquidating: string;
-  supplyInDefault: string;
-  isPremint: boolean;
-  isClaimedPremint: boolean;
-  claimState?: "CLAIMED" | "UNCLAIMED" | null;
-  supersededByTokenId?: string | null;
-  offRampStatus?: string | null;
-  isBurned: boolean;
-  fishy?: boolean;
-  duplicateParcelCount?: number | null;
-  fees?: TokenFees;
-  lastOwner: WalletModel | null;
-  majorityOwner: UserModel | null;
-  majorityOwnerAddress: string | null;
-  balances: BalanceModel[] | null;
-  transfers: TransferModel[] | null;
-  score: number | null;
-  scoringCheckResults: ScoringCheckResult[];
-  validator: string | null;
-  marketplaceBids: MarketplaceOrderModel[] | null;
-  marketplaceListings: MarketplaceOrderModel[] | null;
-  marketplaceBidCount: number;
-  marketplacePrice: string | null;
-  pricing: PricingModel[];
-  estimatedValue: string;
-  cardDisplayValuation: string;
-  loans: LoanModel[];
-  poolLendingLiquidity: PoolLendingLiquidityModel | null;
-  configuration: ConfigurationModel | null;
-  definition: DefinitionModel | null;
-  operatingAgreementName: string | null;
-  operatingAgreementUrl: string | null;
-  imageUrlDark: string | null;
-  imageUrlLight: string | null;
-  mintedAt: string | null;
-  booleanTraits: TraitBoolean[] | null;
-  decimalTraits: TraitDecimal[] | null;
-  stringTraits: TraitString[] | null;
-  activity: ActivityModel[];
-  acres: string | null;
-  country: string | null;
-  countryCode: string | null;
-  region: string | null;
-  regionCode: string | null;
-  postCode: string | null;
-  district: string | null;
-  place: string | null;
-  locality: string | null;
-  neighborhood: string | null;
-  street: string | null;
-  address: string | null;
-}
+// --- Tokens ---
 
-export interface TokenFee {
-  type: string;
-  createdAt: string;
-  currency: string;
-  amount: string;
-  approved: boolean;
-  approvedAt: string | null;
-  paid: boolean;
-  paidAt: string | null;
-}
+/** One row of a token list (GetTokens): what search_properties and the protocol stats read. */
+export type TokenListItem = TokenListFieldsFragment;
 
-export interface TokenFees {
-  totalAmount: string;
-  fees: TokenFee[];
-}
+/** One token in full (GetToken): what get_property and the per-property tools read. */
+export type TokenDetail = TokenDetailFieldsFragment;
 
-export interface WalletModel {
-  address: string;
-  user: UserModel;
-  tokens: TokenModel[];
-  tokenCount: string;
-  totalValue: string;
-  totalAcres: string;
-  totalCollateralValue: string;
-  totalOutstandingLoansUSDC: string | null;
-  propertyCountUnderLoan: string;
-  creditHistory: WalletCreditHistory;
-  activity: ActivityModel[];
-  loansTaken: LoanModel[] | null;
-  loansMade: LoanModel[] | null;
-  marketplaceOffersMade: MarketplaceOrderModel[] | null;
-}
+/** GetToken with each pool's oracle state (GetTokenWithPoolOracle), for get_borrow_quote. */
+export type TokenDetailWithPoolOracle = GetTokenWithPoolOracleQuery["token"];
 
-export interface UserModel {
-  displayName: string;
-  profilePath: string | null;
-  profileUrl: string | null;
-  avatarUrl: string | null;
-}
+/** The full token shape; `TokenDetail` under its historical name. */
+export type TokenModel = TokenDetail;
 
-export interface LoanModel {
-  loanId: string;
-  loanStatus: "Active" | "Default" | "Liquidated" | "Liquidating" | "Repaid";
-  loanProvider: "PoolLending" | "NFTfi";
-  loanType: "Fixed" | "Prorated";
-  principal: string;
-  principalScaled: string;
-  currency: string;
-  currencySymbol: string | null;
-  interestForDurationBps: number;
-  interestForDurationPercent: number;
-  aprBps: number | null;
-  aprPercent: number | null;
-  durationSeconds: string;
-  durationFormatted: string;
-  maturityDate: string;
-  startTime: string;
-  maxRepayment: string;
-  maxRepaymentScaled: string;
-  collateralId: string;
-  collateralContract: string;
-  borrower: WalletModel;
-  lender: WalletModel | null;
-  token: TokenModel | null;
-  loanContract: string;
-  networkName: string;
-  amountPaidToLender: string | null;
-  amountPaidToLenderScaled: string | null;
-  loanRepaidDate: string | null;
-  loanLiquidationDate: string | null;
-}
+export type Coordinates = TokenDetail["coordinates"];
+export type TokenFees = TokenDetail["fees"];
+export type TokenFee = TokenFees["fees"][number];
+export type ScoringCheckResult = TokenDetail["scoringCheckResults"][number];
+export type PricingModel = TokenDetail["pricing"][number];
+export type ConfigurationModel = NonNullable<TokenDetail["configuration"]>;
+export type ConfigurationMedia = NonNullable<ConfigurationModel["media"]>[number];
+export type DefinitionModel = NonNullable<TokenDetail["definition"]>;
+export type ActivityModel = TokenDetail["activity"][number];
+export type BalanceModel = NonNullable<TokenDetail["balances"]>[number];
+export type TransferModel = NonNullable<TokenDetail["transfers"]>[number];
+/** A listing or offer as a token carries it; the order book selects more (OrderBookOrder). */
+export type MarketplaceOrderModel = NonNullable<TokenDetail["marketplaceListings"]>[number];
+/** A token's own loan rows; the lending market's rows are `LoanModel`. */
+export type TokenLoan = TokenDetail["loans"][number];
+export type PoolLendingLiquidityModel = NonNullable<TokenDetail["poolLendingLiquidity"]>;
+export type PoolLendingLoanModel = NonNullable<PoolLendingLiquidityModel["activeLoan"]>;
+/** Pool liquidity with each pool's oracle state: selected by GetTokenWithPoolOracle and GetValuation only. */
+export type PoolLendingLiquidityWithOracle = NonNullable<TokenDetailWithPoolOracle["poolLendingLiquidity"]>;
 
-export interface MarketplaceOrderModel {
-  marketplaceId: string;
-  tokenId: string;
-  contractAddress: string;
-  network: string;
-  side: "buy" | "sell";
-  status: "active" | "canceled" | "encumbered" | "expired" | "filled" | "pending";
-  price: string;
-  usdPrice: string | null;
-  symbol: string;
-  supply: string;
-  maker: WalletModel;
-  makerAddress: string;
-  startTime: string;
-  endTime: string | null;
-  /** Set on an encumbered order; buyable is false when the loan blocks a purchase. */
-  encumbrance?: { buyable: boolean } | null;
-}
+// --- Wallets ---
 
-export interface ScoringCheckResult {
-  checkName: string;
-  group: string;
-  title: string;
-  value: boolean;
-}
+export type WalletModel = WalletFieldsFragment;
+export type WalletToken = WalletModel["tokens"][number];
+export type WalletCreditHistory = WalletModel["creditHistory"];
+export type WalletLoanCreditBucket = WalletCreditHistory["totalLoans"];
+export type UserModel = WalletModel["user"];
 
-export interface PricingModel {
-  source: string;
-  scope: string;
-  currency: string;
-  value: string | null;
-  confidence: string | null;
-  timestamp: string;
-}
+// --- Loans and loan events (GetLoans and the event queries) ---
 
-export interface ConfigurationModel {
-  holdingEntityDate: string | null;
-  media: ConfigurationMedia[] | null;
-  partner: string | null;
-  proofOfTitle: ProofOfTitle | null;
-  propertyNickName: string | null;
-  userDescription: string | null;
-}
+export type LoanModel = LoanFieldsFragment;
+/** The collateral summary a lending-market loan carries (`loan.token`). */
+export type LoanCollateralToken = NonNullable<LoanModel["token"]>;
+export type LoanStartedEvent = GetLoanStartedEventsQuery["loanStartedEvents"][number];
+export type LoanRepaidEvent = GetLoanRepaidEventsQuery["loanRepaidEvents"][number];
+export type LoanLiquidatedEvent = GetLoanLiquidatedEventsQuery["loanLiquidatedEvents"][number];
 
-export interface ConfigurationDocument {
-  type: string;
-  source: string;
-  description: string | null;
-  order: string | null;
-}
+// --- Single-token queries with their own selections ---
 
-export interface ConfigurationMedia {
-  source: string;
-  type: string | null;
-  description: string | null;
-  order: string | null;
-}
+export type CountyBoundsModel = NonNullable<GetCountyBoundsQuery["countyBounds"]>;
+export type OrderBookToken = GetOrderBookQuery["token"];
+export type OrderBookOrder = NonNullable<OrderBookToken["marketplaceListings"]>[number];
+export type PremintSuccessor = GetPremintSuccessorQuery["premintSuccessor"];
+export type TrustDocumentsToken = GetTrustDocumentsQuery["token"];
+export type ConfigurationDocument = NonNullable<NonNullable<TrustDocumentsToken["configuration"]>["documents"]>[number];
+export type TaxStatusToken = GetTaxStatusQuery["token"];
+export type OperatingAgreementModel = GetOperatingAgreementQuery["token"];
+export type ParcelIndexToken = GetParcelIndexQuery["tokens"][number];
 
-export interface ProofOfTitle {
-  document: string | null;
-  documentName: string | null;
-  source: string | null;
-}
+// --- Valuation and pool oracle (get_valuation, get_borrow_quote) ---
 
-export interface DefinitionModel {
-  claim: string;
-  coordinates: Coordinates;
-  geoJson: Record<string, unknown> | null;
-  holdingEntity: string;
-  offchainRegistrar: OffchainRegistrar;
-}
+export type TokenValuationModel = GetValuationQuery["token"];
+export type ValuationPricing = TokenValuationModel["pricing"][number];
+export type PoolLendingPoolValuation = PoolOracleFieldsFragment["pools"][number];
+export type PoolLendingQuote = NonNullable<PoolLendingPoolValuation["oracleValuation"]>["quote"];
 
-export interface OffchainRegistrar {
-  admin: string;
-  country: string;
-  propertyId: string;
-}
-
-export interface PoolLendingLiquidityModel {
-  maxPrincipalScaled: string;
-  maxPrincipalUsdc: string;
-  durations: number[];
-  activeLoan: PoolLendingLoanModel | null;
-  /** Selected on single-token queries only. */
-  appraisalBlockReason?: AppraisalBlockReason | null;
-  /** Selected on single-token queries only. */
-  pools?: PoolLendingPoolValuation[];
-}
-
-export interface PoolLendingLoanModel {
-  id: string;
-  poolAddress: string;
-  borrowerAddress: string;
-  principal: string;
-  repayment: string;
-  duration: string;
-  maturity: string;
-}
-
-export interface ActivityModel {
-  activity: string;
-  source: string;
-  time: string;
-  timestamp: number;
-  network: string;
-  tokenId: string | null;
-  transactionHash: string | null;
-  currencyAmount: string | null;
-  currencyDecimals: number | null;
-  currencySymbol: string | null;
-  usdAmount: string | null;
-  durationSeconds: string | null;
-}
-
-export interface BalanceModel {
-  balance: string;
-  holder: WalletModel;
-  tokenId: string;
-}
-
-export interface TransferModel {
-  from: WalletModel | null;
-  to: WalletModel | null;
-  value: string;
-  transactionHash: string;
-  blockTimestamp: string;
-}
-
-export interface TraitBoolean {
-  key: string;
-  displayName: string;
-  value: boolean | null;
-}
-
-export interface TraitDecimal {
-  key: string;
-  displayName: string;
-  value: number | null;
-}
-
-export interface TraitString {
-  key: string;
-  displayName: string;
-  value: string | null;
-}
-
-export interface WalletCreditHistory {
-  activeLoans: WalletLoanCreditBucket;
-  defaultedLoans: WalletLoanCreditBucket;
-  liquidatedLoans: WalletLoanCreditBucket;
-  repaidLoans: WalletLoanCreditBucket;
-  totalLoans: WalletLoanCreditBucket;
-  tokens: WalletTokenCreditBucket;
-}
-
-export interface WalletLoanCreditBucket {
-  loanCount: string;
-  totalPrincipalValue: string;
-  totalPaidValue: string;
-  averageDurationDays: string;
-}
-
-export interface WalletTokenCreditBucket {
-  tokenCount: string;
-  totalEstimatedValue: string;
-}
-
-export interface LoanStartedEvent {
-  loanId: string;
-  borrower: string;
-  lender: string | null;
-  loanPrincipalAmount: string;
-  loanDuration: string;
-  loanStartTime: string;
-  loanInterestRateForDurationInBasisPoints: number;
-  loanProvider: string;
-  nftCollateralId: string;
-  transactionHash: string;
-  blockTimestamp: string;
-}
-
-export interface LoanRepaidEvent {
-  loanId: string;
-  borrower: string;
-  lender: string | null;
-  loanPrincipalAmount: string;
-  amountPaidToLender: string;
-  adminFee: string;
-  nftCollateralId: string;
-  transactionHash: string;
-  blockTimestamp: string;
-}
-
-export interface LoanLiquidatedEvent {
-  loanId: string;
-  borrower: string;
-  lender: string | null;
-  loanPrincipalAmount: string;
-  loanLiquidationDate: string;
-  nftCollateralId: string;
-  transactionHash: string;
-  blockTimestamp: string;
-}
-
-export interface CountyBoundsModel {
-  geoJson: Record<string, unknown>;
-}
-
-// Valuation and pool oracle types (get_valuation, get_borrow_quote)
-
-export type AppraisalBlockReason = "TAX_DELINQUENT" | "TAX_STATUS_UNKNOWN" | "OTHER";
-
-export interface PoolLendingQuote {
-  price: string;
-  currency: string;
-  timestamp: number;
-  duration: number;
-}
-
-export interface PoolLendingPoolValuation {
-  address: string;
-  pricing: "SignedQuote" | "OnchainOracle";
-  oracleValuation: { quote: PoolLendingQuote; signature: string | null } | null;
-  onchainPrice: {
-    priceUsdc6: string | null;
-    confidenceScore: number | null;
-    cycle: string | null;
-    valuedAt: string | null;
-    sourceId: number | null;
-  } | null;
-  oracleFeed: {
-    lastHeartbeat: string | null;
-    maxSilence: string;
-    isStale: boolean;
-    currentCycle: string | null;
-    minValidCycle: string | null;
-    indexerUnavailableReason: string | null;
-  } | null;
-  onchainValuation: {
-    usablePriceUsdc6: string | null;
-    capacityBlockReason: string | null;
-    failedCheck: string | null;
-  } | null;
-}
-
-export interface ValuationPricing {
-  source: string;
-  scope: string;
-  currency: string;
-  value: string | null;
-  confidence: string | null;
-  timestamp: string;
-  modelVersion: string;
-}
-
-export interface TokenValuationModel {
-  tokenId: string;
-  name: string | null;
-  vanityName: string | null;
-  isPremint: boolean;
-  estimatedValue: string;
-  cardDisplayValuation: string;
-  valuationReportUrl: string | null;
-  pricing: ValuationPricing[];
-  poolLendingLiquidity: PoolLendingLiquidityModel | null;
-}
+// --- REST responses (no schema; shapes checked at the boundary in the client) ---
 
 /** One entry of the REST `/valuation/v1` panel: a signed valuation the lending pool can use. */
 export interface SignedValuation {
@@ -425,7 +127,14 @@ export interface SignedValuationPanel {
   valuations: SignedValuation[];
 }
 
-// Goldsky MetaStreet Pool subgraph types
+/** The REST score record (GET /:network/:contract/:tokenId/score). Check values are 1, 0, true, false or null. */
+export interface ScoreRecord {
+  checks: Record<string, number | boolean | null>;
+  updatedAt: string | null;
+  expiresAt: string | null;
+}
+
+// --- Goldsky lending pool subgraph ---
 
 export interface SubgraphPool {
   id: string;
@@ -447,90 +156,4 @@ export interface SubgraphPool {
   ticks?: { value: string; available: string }[];
   /** True when the totals above were derived from the ticks. */
   totalsFromTicks?: boolean;
-}
-
-// Order book (get_order_book): the marketplace fields of one token, nothing else
-
-export interface OrderBookOrder {
-  marketplaceId: string;
-  side: "buy" | "sell";
-  status: "active" | "canceled" | "encumbered" | "expired" | "filled" | "pending";
-  price: string;
-  usdPrice: string | null;
-  symbol: string;
-  decimals: number;
-  feeBps: string;
-  supply: string;
-  startTime: string;
-  endTime: string | null;
-  makerAddress: string;
-  maker: { user: { displayName: string | null } | null } | null;
-  restrictedToAddresses: string[] | null;
-  disclosurePackage: { name: string; url: string }[] | null;
-  encumbrance: { buyable: boolean; blockReason: "AWAITING_ALLOWANCE" | "LEGACY_POOL" | "UNDERWATER" | null; loanId: string } | null;
-}
-
-export interface OrderBookToken {
-  tokenId: string;
-  name: string | null;
-  vanityName: string | null;
-  propertyLink: string;
-  isPremint: boolean;
-  claimState: "CLAIMED" | "UNCLAIMED" | null;
-  supersededByTokenId: string | null;
-  offRampStatus: string | null;
-  isBurned: boolean;
-  supply: string;
-  supplyUnderLoan: string;
-  marketplaceListings: OrderBookOrder[] | null;
-  marketplaceBids: OrderBookOrder[] | null;
-}
-
-/** The legal record of one token, as selected by GetTrustDocuments (single-token query only). */
-export interface TrustDocumentsToken {
-  tokenId: string;
-  network: string;
-  contractAddress: string;
-  name: string | null;
-  vanityName: string | null;
-  propertyLink: string;
-  isPremint: boolean;
-  district: string | null;
-  regionCode: string | null;
-  validator: string | null;
-  metadataUri: string | null;
-  operatingAgreementName: string | null;
-  operatingAgreementUrl: string | null;
-  operatingAgreement?: string | null;
-  definition: {
-    claim: string;
-    holdingEntity: string;
-    offchainRegistrar: { admin: string; adminId: string; country: string; propertyId: string };
-  } | null;
-  configuration: {
-    holdingEntityDate: string | null;
-    proofOfTitle: { document: string | null; documentId: string | null; documentName: string | null; grantor: string | null; source: string | null } | null;
-    documents: ConfigurationDocument[] | null;
-    media: { type: string | null }[] | null;
-  } | null;
-}
-
-/** What GetTaxStatus selects for one token. */
-export interface TaxStatusToken {
-  tokenId: string;
-  network: string;
-  contractAddress: string;
-  name: string | null;
-  vanityName: string | null;
-  isPremint: boolean;
-  district: string | null;
-  regionCode: string | null;
-  poolLendingLiquidity: { appraisalBlockReason: AppraisalBlockReason | null } | null;
-}
-
-/** The REST score record (GET /:network/:contract/:tokenId/score). Check values are 1, 0, true, false or null. */
-export interface ScoreRecord {
-  checks: Record<string, number | boolean | null>;
-  updatedAt: string | null;
-  expiresAt: string | null;
 }

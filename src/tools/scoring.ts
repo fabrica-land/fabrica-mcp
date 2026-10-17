@@ -1,4 +1,6 @@
 import { getToken, propertyLookupError } from "../clients/graphql.js";
+import { z } from "zod";
+import type { ArgsOf } from "./inputs.js";
 
 const MAX_SCORE = 75342;
 
@@ -72,9 +74,14 @@ function decomposeScore(score: number) {
   return digits;
 }
 
-export async function explainConfidenceScore(args: Record<string, unknown>) {
-  const tokenId = args.tokenId as string | undefined;
-  const rawScore = args.score as number | undefined;
+export const explainConfidenceScoreInput = {
+  tokenId: z.string().optional().describe("Look up and explain the Property checks of this property"),
+  score: z.number().int().min(0).optional().describe("The 5-digit Property checks number to explain, as an integer (e.g. 73242)"),
+};
+export type ExplainConfidenceScoreArgs = ArgsOf<typeof explainConfidenceScoreInput>;
+
+export async function explainConfidenceScore(args: ExplainConfidenceScoreArgs) {
+  const { tokenId, score: rawScore } = args;
   if (!tokenId && rawScore === undefined) {
     return { error: "Provide either tokenId or score to explain" };
   }

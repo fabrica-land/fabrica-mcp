@@ -1,6 +1,8 @@
 import { getWallet } from "../clients/graphql.js";
 import { formatLoanProvider } from "../labels.js";
 import { capList, estimateFields, formatTokenAmount, sortLoans, formatUsd, shortenAddress } from "../format.js";
+import { z } from "zod";
+import type { ArgsOf } from "./inputs.js";
 
 const DEFAULT_PROPERTY_LIMIT = 50;
 const MAX_PROPERTY_LIMIT = 200;
@@ -11,10 +13,17 @@ function activeLoansOf<T extends { loanStatus: string; startTime: string | null 
   return sortLoans(loans.filter(l => l.loanStatus === "Active"));
 }
 
-export async function getPortfolio(args: Record<string, unknown>) {
-  const address = typeof args.address === "string" ? args.address : "";
-  const limit = Math.min(Math.max(Math.trunc(typeof args.limit === "number" ? args.limit : DEFAULT_PROPERTY_LIMIT), 1), MAX_PROPERTY_LIMIT);
-  const offset = Math.max(Math.trunc(typeof args.offset === "number" ? args.offset : 0), 0);
+export const getPortfolioInput = {
+  address: z.string().describe("Ethereum wallet address (0x...)"),
+  limit: z.number().int().min(1).max(MAX_PROPERTY_LIMIT).optional().describe(`Max properties to list (default ${DEFAULT_PROPERTY_LIMIT}, max ${MAX_PROPERTY_LIMIT})`),
+  offset: z.number().int().min(0).optional().describe("Properties to skip, for paging (propertiesPage.nextOffset)"),
+};
+export type GetPortfolioArgs = ArgsOf<typeof getPortfolioInput>;
+
+export async function getPortfolio(args: GetPortfolioArgs) {
+  const address = args.address;
+  const limit = Math.min(Math.max(Math.trunc(args.limit ?? DEFAULT_PROPERTY_LIMIT), 1), MAX_PROPERTY_LIMIT);
+  const offset = Math.max(Math.trunc(args.offset ?? 0), 0);
   if (!address) {
     return { error: "address is required (Ethereum wallet address)" };
   }

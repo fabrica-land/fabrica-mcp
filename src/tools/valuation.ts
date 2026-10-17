@@ -11,8 +11,9 @@ import {
   formatValuationSource,
   unixToIso,
 } from "../labels.js";
-import type { PoolLendingLiquidityModel, PoolLendingPoolValuation, SignedValuationPanel, ValuationPricing } from "../types/index.js";
+import type { PoolLendingLiquidityWithOracle, PoolLendingPoolValuation, SignedValuationPanel, ValuationPricing } from "../types/index.js";
 import { formatUsd, shortenAddress } from "../format.js";
+import { type ArgsOf, propertyRefInputs } from "./inputs.js";
 
 const ASSESSOR_SOURCE = "regrid-county-assessor";
 /** Sources the API's `estimatedValue` is taken from: the lower of their land values when both exist. */
@@ -146,7 +147,7 @@ export function describePoolOracle(pool: PoolLendingPoolValuation) {
  * Plain-word reasons a property shows no pool borrowing capacity, from the appraisal block
  * and each pool's oracle state. Empty when the API states no specific reason.
  */
-export function zeroCapacityReasons(liquidity: PoolLendingLiquidityModel | null | undefined): string[] {
+export function zeroCapacityReasons(liquidity: PoolLendingLiquidityWithOracle | null | undefined): string[] {
   if (!liquidity) return [];
   const reasons: string[] = [];
   const appraisal = describeAppraisalBlock(liquidity.appraisalBlockReason);
@@ -161,9 +162,11 @@ export function zeroCapacityReasons(liquidity: PoolLendingLiquidityModel | null 
   return [...new Set(reasons)];
 }
 
-export async function getValuation(args: Record<string, unknown>) {
-  const tokenId = typeof args.tokenId === "string" ? args.tokenId : undefined;
-  const slug = typeof args.slug === "string" ? args.slug : undefined;
+export const getValuationInput = propertyRefInputs;
+export type GetValuationArgs = ArgsOf<typeof getValuationInput>;
+
+export async function getValuation(args: GetValuationArgs) {
+  const { tokenId, slug } = args;
   if (!tokenId && !slug) {
     return { error: "Either tokenId or slug is required" };
   }

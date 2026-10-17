@@ -1,5 +1,7 @@
 import { NETWORK, WEB_BASE } from "../config.js";
 import { BIP39_WORDLISTS } from "./bip39-wordlists.js";
+import { z } from "zod";
+import type { ArgsOf } from "./inputs.js";
 
 /**
  * contact_support, option A: no secret and nothing sent. It returns the help center
@@ -64,11 +66,12 @@ export function containsSecret(raw: string): boolean {
   return false;
 }
 
-export interface ContactSupportArgs {
-  summary: string;
-  topic?: SupportTopic;
-  tokenId?: string;
-}
+export const contactSupportInput = {
+  summary: z.string().min(10).max(2000).describe("What the person is trying to do, what happened, and what was already checked"),
+  topic: z.enum(SUPPORT_TOPICS).optional().describe("Help center section: getting_started, adding_property, buying_selling, borrowing_lending, trust_legal, troubleshooting, other (default)"),
+  tokenId: z.string().regex(/^[0-9]{1,80}$/).optional().describe("Token ID of the property the question is about (digits only)"),
+};
+export type ContactSupportArgs = ArgsOf<typeof contactSupportInput>;
 
 /** Lone UTF-16 surrogates make encodeURIComponent throw; replace them with U+FFFD. */
 function wellFormed(text: string): string {

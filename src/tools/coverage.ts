@@ -3,6 +3,7 @@ import { IS_MAINNET, MAINNET_WARNING, NETWORK_LABEL, WEB_BASE } from "../config.
 import { US_COUNTY_ROWS } from "../data/us-counties.js";
 import table from "../data/onramp-coverage.json";
 import { resolveCounty } from "./parcels.js";
+import type { ArgsOf } from "./inputs.js";
 
 /**
  * check_coverage: whether the on-ramp is set up for a US county, and what it asks of the owner,
@@ -128,12 +129,13 @@ function countiesWithOwnRules(state: string, stateStatus: CoverageStatus) {
   });
 }
 
-export interface CheckCoverageArgs {
-  fips?: string;
-  state?: string;
-  county?: string;
-  ownerType?: OwnerType;
-}
+export const checkCoverageInput = {
+  fips: z.string().regex(/^[0-9]{5}$/).optional().describe("5-digit county FIPS code, e.g. '06065'"),
+  state: z.string().regex(/^[A-Za-z]{2}$/).optional().describe("Two-letter US state code, e.g. 'CA'"),
+  county: z.string().max(80).optional().describe("County name, e.g. 'Riverside' (with state)"),
+  ownerType: z.enum(OWNER_TYPES).optional().describe("Who holds title today: individual (default), entity or concurrent (co-owners)"),
+};
+export type CheckCoverageArgs = ArgsOf<typeof checkCoverageInput>;
 
 function withNetwork<T extends object>(result: T) {
   return { network: NETWORK_LABEL, ...result, ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}) };

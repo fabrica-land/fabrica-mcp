@@ -1,36 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { filterSpamTokens, DEFAULT_MIN_SCORE } from "../clients/graphql.js";
-import type { TokenModel } from "../types/index.js";
+import type { TokenListItem } from "../types/index.js";
+import { tokenListItem } from "./fixtures.js";
 
-function makeToken(overrides: Partial<TokenModel> = {}): TokenModel {
-  return {
-    tokenId: "1",
-    name: "Normal Property",
-    vanityName: null,
-    slug: "test",
-    propertyLink: "https://fabrica.land/test",
-    coordinates: null,
-    acres: "10",
-    region: "Texas",
-    regionCode: "TX",
-    district: "Travis County",
-    place: "Austin",
-    country: "US",
-    countryCode: "US",
-    score: 73242,
-    estimatedValue: "100000",
-    cardDisplayValuation: "$100,000",
-    marketplacePrice: null,
-    marketplaceBidCount: 0,
-    imageUrlDark: null,
-    imageUrlLight: null,
-    supply: "1",
-    supplyUnderLoan: "0",
-    isPremint: false,
-    isBurned: false,
-    majorityOwnerAddress: "0x1234567890abcdef1234567890abcdef12345678",
-    ...overrides,
-  } as TokenModel;
+function makeToken(overrides: Partial<TokenListItem> = {}): TokenListItem {
+  return tokenListItem({ name: "Normal Property", ...overrides });
 }
 
 describe("filterSpamTokens", () => {

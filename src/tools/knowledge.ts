@@ -3,15 +3,18 @@
 import { getKnowledgeIndex, type KnowledgeSource } from "../knowledge/index.js";
 import { searchPassages } from "../knowledge/search.js";
 import { NETWORK_LABEL } from "../config.js";
+import { z } from "zod";
+import type { ArgsOf } from "./inputs.js";
 
 export const ASK_FABRICA_SOURCES = ["docs", "help", "trust-agreement", "all"] as const;
 export type AskFabricaSource = (typeof ASK_FABRICA_SOURCES)[number];
 
-export interface AskFabricaArgs {
-  question: string;
-  maxPassages?: number;
-  source?: AskFabricaSource;
-}
+export const askFabricaInput = {
+  question: z.string().min(3).max(1000).describe("The question in plain language, e.g. 'Who is the trustee of the trust that holds my property?'"),
+  maxPassages: z.number().int().min(1).max(10).optional().describe("How many passages to return (1-10, default 5)"),
+  source: z.enum(ASK_FABRICA_SOURCES).optional().describe("Restrict to one source: 'docs', 'help' (help center), 'trust-agreement', or 'all' (default)"),
+};
+export type AskFabricaArgs = ArgsOf<typeof askFabricaInput>;
 
 export interface AskFabricaPassage {
   title: string;

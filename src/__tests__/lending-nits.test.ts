@@ -28,7 +28,8 @@ import { getBorrowQuote } from "../tools/borrowing.js";
 import { getPortfolio } from "../tools/portfolio.js";
 import { getProperty, getPropertyMap, searchProperties } from "../tools/properties.js";
 import { estimateFields, formatDurationDays, formatRawTokenAmount, sortLoans } from "../format.js";
-import type { SubgraphPool } from "../types/index.js";
+import type { LoanModel, MarketplaceOrderSide, SubgraphPool } from "../types/index.js";
+import { balance, loan, loanToken, marketplaceOrder, poolLendingLiquidityWithOracle, tokenDetailWithPoolOracle, wallet, walletToken } from "./fixtures.js";
 
 function pool(overrides: Partial<SubgraphPool> = {}): SubgraphPool {
   return {
@@ -51,14 +52,14 @@ function pool(overrides: Partial<SubgraphPool> = {}): SubgraphPool {
   };
 }
 
-const loans = [
-  { loanId: "old-repaid", loanProvider: "NFTfi", loanStatus: "Repaid", principalScaled: "500", currencySymbol: "USDC", aprPercent: 10, startTime: "2023-11-15T00:00:00Z", loanRepaidDate: "2023-12-01T00:00:00Z", amountPaidToLenderScaled: "517.568494", loanLiquidationDate: null, collateralId: "1", borrower: { address: "0x1111111111111111111111111111111111111111" }, lender: null, token: null },
-  { loanId: "active-old", loanProvider: "PoolLending", loanStatus: "Active", principalScaled: "429", currencySymbol: "USDC", aprPercent: 13.5, startTime: "2026-01-01T00:00:00Z", loanRepaidDate: null, amountPaidToLenderScaled: null, loanLiquidationDate: null, collateralId: "2", borrower: { address: "0x2222222222222222222222222222222222222222" }, lender: null, token: null },
-  { loanId: "liquidated", loanProvider: "NFTfi", loanStatus: "Liquidated", principalScaled: "0.25", currencySymbol: "WETH", aprPercent: 20, startTime: "2024-01-01T00:00:00Z", loanRepaidDate: null, amountPaidToLenderScaled: null, loanLiquidationDate: "2024-03-01T00:00:00Z", collateralId: "3", borrower: { address: "0x3333333333333333333333333333333333333333" }, lender: null, token: null },
-  { loanId: "active-new", loanProvider: "PoolLending", loanStatus: "Active", principalScaled: "1000", currencySymbol: "USDC", aprPercent: 12, startTime: "2026-08-17T00:00:00Z", loanRepaidDate: null, amountPaidToLenderScaled: null, loanLiquidationDate: null, collateralId: "4", borrower: { address: "0x4444444444444444444444444444444444444444" }, lender: null, token: { tokenId: "4", name: "Lot 4", estimatedValue: "0.00" } },
+const loans: LoanModel[] = [
+  loan({ loanId: "old-repaid", loanProvider: "NFTfi", loanStatus: "Repaid", principalScaled: "500", currencySymbol: "USDC", aprPercent: 10, startTime: "2023-11-15T00:00:00Z", loanRepaidDate: "2023-12-01T00:00:00Z", amountPaidToLenderScaled: "517.568494", collateralId: "1", borrower: { address: "0x1111111111111111111111111111111111111111", user: { displayName: "" } } }),
+  loan({ loanId: "active-old", loanProvider: "PoolLending", loanStatus: "Active", principalScaled: "429", currencySymbol: "USDC", aprPercent: 13.5, startTime: "2026-01-01T00:00:00Z", collateralId: "2", borrower: { address: "0x2222222222222222222222222222222222222222", user: { displayName: "" } } }),
+  loan({ loanId: "liquidated", loanProvider: "NFTfi", loanStatus: "Liquidated", principalScaled: "0.25", currencySymbol: "WETH", aprPercent: 20, startTime: "2024-01-01T00:00:00Z", loanLiquidationDate: "2024-03-01T00:00:00Z", collateralId: "3", borrower: { address: "0x3333333333333333333333333333333333333333", user: { displayName: "" } } }),
+  loan({ loanId: "active-new", loanProvider: "PoolLending", loanStatus: "Active", principalScaled: "1000", currencySymbol: "USDC", aprPercent: 12, startTime: "2026-08-17T00:00:00Z", collateralId: "4", borrower: { address: "0x4444444444444444444444444444444444444444", user: { displayName: "" } }, token: loanToken({ tokenId: "4", name: "Lot 4", estimatedValue: "0.00" }) }),
 ];
 
-const token = {
+const token = tokenDetailWithPoolOracle({
   tokenId: "3775392155688387140",
   network: "ethereum",
   contractAddress: "0x5cbeb7a0df7ed85d82a472fd56d81ed550f3ea95",
@@ -67,7 +68,7 @@ const token = {
   propertyLink: "https://fabrica.land/us/california/santa-cruz-county/felton/zayante/147-madrone-way",
   estimatedValue: "0.00",
   cardDisplayValuation: "25000.00",
-  pricing: [{ source: "FabricaAvm", value: "9000", currency: "USD", confidence: 0.2 }],
+  pricing: [{ source: "FabricaAvm", scope: "land", value: "9000", currency: "USD", confidence: "0.2", timestamp: "2026-09-27T06:09:36.614Z" }],
   score: 75342,
   scoringCheckResults: [],
   acres: "0.2896",
@@ -77,20 +78,20 @@ const token = {
   supplyInDefault: "0",
   coordinates: { lat: 37.05, lon: -122.07 },
   geoJson: { type: "Point", coordinates: [-122.07, 37.05] },
-  definition: { offchainRegistrar: { propertyId: "06087-123" } },
+  definition: { claim: "Lot 1", holdingEntity: "Madrone Trust", geoJson: null, coordinates: { lat: 37.05, lon: -122.07 }, offchainRegistrar: { admin: "Santa Cruz County", country: "US", propertyId: "06087-123" } },
   district: "Santa Cruz County",
   loans: [],
-  poolLendingLiquidity: {
+  poolLendingLiquidity: poolLendingLiquidityWithOracle({
     maxPrincipalScaled: "325.684574",
     maxPrincipalUsdc: "325684574",
     durations: [7776000, 2592000],
-    activeLoan: { principal: "429000000", repayment: "543223339", duration: "62208000", maturity: "1849207487" },
-  },
-};
+    activeLoan: { id: "loan-429", principal: "429000000", repayment: "543223339", duration: "62208000", maturity: "1849207487" },
+  }),
+});
 
 beforeEach(() => {
-  vi.mocked(getAllLoans).mockResolvedValue(loans as never);
-  vi.mocked(getToken).mockResolvedValue(token as never);
+  vi.mocked(getAllLoans).mockResolvedValue(loans);
+  vi.mocked(getToken).mockResolvedValue(token);
   vi.mocked(getFabricaPools).mockResolvedValue([pool()]);
 });
 
@@ -151,7 +152,7 @@ describe("4. no estimate is never $0", () => {
   });
 
   it("explains a missing estimate on search rows and loan collateral", async () => {
-    vi.mocked(getTokens).mockResolvedValue([{ ...token, marketplacePrice: null, majorityOwnerAddress: null }] as never);
+    vi.mocked(getTokens).mockResolvedValue([{ ...token, marketplacePrice: null, majorityOwnerAddress: null }]);
     const search = await searchProperties({}) as { properties: Array<Record<string, unknown>> };
     expect(search.properties[0].estimatedValue).toBeNull();
     expect(search.properties[0].estimateNote).toMatch(/^No estimate/);
@@ -203,14 +204,7 @@ describe("7. loans sorted active first, then newest", () => {
   });
 
   it("orders get_portfolio loans", async () => {
-    vi.mocked(getWallet).mockResolvedValue({
-      address: "0xabc",
-      tokens: [],
-      loansTaken: [loans[1], loans[3]],
-      loansMade: [],
-      creditHistory: null,
-      marketplaceOffersMade: [],
-    } as never);
+    vi.mocked(getWallet).mockResolvedValue(wallet({ address: "0xabc", loansTaken: [loans[1], loans[3]] }));
     const result = await getPortfolio({ address: "0xabc" }) as { lending: { asBorrower: { loans: Array<{ loanId: string }> } } };
     expect(result.lending.asBorrower.loans.map(l => l.loanId)).toEqual(["active-new", "active-old"]);
   });
@@ -226,7 +220,7 @@ describe("7. loans sorted active first, then newest", () => {
 
 describe("display valuation", () => {
   it("formats a decimal and keeps an already formatted value", async () => {
-    vi.mocked(getToken).mockResolvedValue({ ...token, cardDisplayValuation: "$396,647" } as never);
+    vi.mocked(getToken).mockResolvedValue({ ...token, cardDisplayValuation: "$396,647" });
     const result = await getProperty({ tokenId: token.tokenId }) as { valuation: Record<string, unknown> };
     expect(result.valuation.displayValuation).toBe("$396,647");
   });
@@ -234,8 +228,8 @@ describe("display valuation", () => {
 
 describe("ENG-4462: bounded responses", () => {
   it("pages a wallet's properties and keeps the counts whole", async () => {
-    const tokens = Array.from({ length: 7 }, (_, i) => ({ tokenId: String(i), name: `Lot ${i}`, estimatedValue: "1000", supplyUnderLoan: "0", marketplacePrice: null }));
-    vi.mocked(getWallet).mockResolvedValue({ address: "0xabc", tokenCount: "7", tokens, loansTaken: [], loansMade: [], creditHistory: null, marketplaceOffersMade: [] } as never);
+    const tokens = Array.from({ length: 7 }, (_, i) => walletToken({ tokenId: String(i), name: `Lot ${i}`, estimatedValue: "1000", supplyUnderLoan: "0", marketplacePrice: null }));
+    vi.mocked(getWallet).mockResolvedValue(wallet({ address: "0xabc", tokenCount: "7", tokens }));
     const first = await getPortfolio({ address: "0xabc", limit: 3 });
     expect(first).toMatchObject({ propertyCount: 7, propertiesPage: { offset: 0, limit: 3, returned: 3, total: 7, nextOffset: 3 } });
     const last = await getPortfolio({ address: "0xabc", limit: 3, offset: 6 });
@@ -244,14 +238,14 @@ describe("ENG-4462: bounded responses", () => {
   });
 
   it("caps holders and orders on get_property, with the totals", async () => {
-    const balances = Array.from({ length: 30 }, (_, i) => ({ balance: "1", holder: { address: `0x${String(i).padStart(40, "0")}` } }));
-    const order = (side: string) => ({ side, status: "active", price: "1", usdPrice: "1", symbol: "USDC", makerAddress: "0x1234567890123456789012345678901234567890", endTime: null });
+    const balances = Array.from({ length: 30 }, (_, i) => balance({ balance: "1", holder: { address: `0x${String(i).padStart(40, "0")}`, user: { displayName: "" } } }));
+    const order = (side: MarketplaceOrderSide) => marketplaceOrder({ side, status: "active", price: "1", usdPrice: "1", symbol: "USDC", makerAddress: "0x1234567890123456789012345678901234567890", endTime: null });
     vi.mocked(getToken).mockResolvedValue({
       ...token,
       balances,
       marketplaceListings: Array.from({ length: 25 }, () => order("sell")),
       marketplaceBids: Array.from({ length: 3 }, () => order("buy")),
-    } as never);
+    });
     const result = await getProperty({ tokenId: "1" });
     expect(result).toMatchObject({
       ownership: { holdersNote: "The first 25 of 30 holders." },

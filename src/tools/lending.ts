@@ -5,6 +5,8 @@ import type { LoanModel } from "../types/index.js";
 import { formatLoanProvider, loanVolumeByCurrency } from "../labels.js";
 import { estimateFields, formatTokenAmount, sortLoans, shortenAddress } from "../format.js";
 import { buildPoolStats } from "./pool-stats.js";
+import { z } from "zod";
+import type { ArgsOf } from "./inputs.js";
 
 const RECENT_EVENT_COUNT = 10;
 
@@ -67,12 +69,18 @@ function recentLoanEvents(loans: ReadonlyArray<LoanModel>) {
   return events.sort((a, b) => time(b.date) - time(a.date)).slice(0, RECENT_EVENT_COUNT);
 }
 
-export async function getLendingMarket(args: Record<string, unknown>) {
-  const status = args.status as string | undefined;
-  const borrower = args.borrower as string | undefined;
-  const lender = args.lender as string | undefined;
-  const since = args.since as string | undefined;
-  const limit = Math.min(Math.max(Math.trunc((args.limit as number | undefined) ?? 20), 1), 100);
+export const getLendingMarketInput = {
+  status: z.enum(["active", "repaid", "liquidated", "all"]).optional().describe("Filter loans by status (default: 'all')"),
+  borrower: z.string().optional().describe("Filter by borrower wallet address"),
+  lender: z.string().optional().describe("Filter by lender wallet address"),
+  since: z.string().optional().describe("ISO date. Only return loans started after this date."),
+  limit: z.number().int().min(1).max(100).optional().describe("Max loan results (default 20, max 100)"),
+};
+export type GetLendingMarketArgs = ArgsOf<typeof getLendingMarketInput>;
+
+export async function getLendingMarket(args: GetLendingMarketArgs) {
+  const { status, borrower, lender, since } = args;
+  const limit = Math.min(Math.max(Math.trunc(args.limit ?? 20), 1), 100);
   try {
     const [allLoans, pools] = await Promise.all([
       getAllLoans(),

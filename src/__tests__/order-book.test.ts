@@ -36,7 +36,7 @@ function order(overrides: Partial<OrderBookOrder>): OrderBookOrder {
     startTime: "2026-10-01T00:00:00Z",
     endTime: "2026-11-16T00:00:00Z",
     makerAddress: "0x1908d26657e238a9f464a98b1f017f4cbd2066c7",
-    maker: { user: { displayName: null } },
+    maker: { user: { displayName: "" } },
     restrictedToAddresses: null,
     disclosurePackage: null,
     encumbrance: null,
