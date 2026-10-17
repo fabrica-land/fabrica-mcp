@@ -18,6 +18,7 @@ export function cacheTtlMs(): number {
 }
 
 export class TtlCache<V> {
+  /** `expiresAt` is Infinity while the load is pending; the TTL starts when it resolves. */
   private readonly entries = new Map<string, { expiresAt: number; value: Promise<V> }>();
 
   constructor(
@@ -33,10 +34,12 @@ export class TtlCache<V> {
     if (hit && hit.expiresAt > now) return hit.value;
     if (hit) this.entries.delete(key);
     const value = load();
-    this.entries.set(key, { expiresAt: now + this.ttlMs, value });
-    value.catch(() => {
-      if (this.entries.get(key)?.value === value) this.entries.delete(key);
-    });
+    const entry = { expiresAt: Number.POSITIVE_INFINITY, value };
+    this.entries.set(key, entry);
+    value.then(
+      () => { entry.expiresAt = Date.now() + this.ttlMs; },
+      () => { if (this.entries.get(key) === entry) this.entries.delete(key); },
+    );
     for (const oldest of this.entries.keys()) {
       if (this.entries.size <= this.maxEntries) break;
       this.entries.delete(oldest);

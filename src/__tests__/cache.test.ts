@@ -28,6 +28,22 @@ describe("TtlCache", () => {
     expect(load).toHaveBeenCalledTimes(2);
   });
 
+  it("keeps sharing a load that outlasts the TTL, and starts the TTL when it settles", async () => {
+    vi.useFakeTimers();
+    const cache = new TtlCache<number>(1_000);
+    let resolve: (n: number) => void = () => {};
+    const slow = vi.fn(() => new Promise<number>(r => { resolve = r; }));
+    const first = cache.get("k", slow);
+    vi.advanceTimersByTime(5_000);
+    const second = cache.get("k", slow);
+    expect(slow).toHaveBeenCalledTimes(1);
+    resolve(9);
+    await expect(Promise.all([first, second])).resolves.toEqual([9, 9]);
+    vi.advanceTimersByTime(999);
+    await cache.get("k", slow);
+    expect(slow).toHaveBeenCalledTimes(1);
+  });
+
   it("does not cache a failure", async () => {
     const cache = new TtlCache<number>(1_000);
     const load = vi.fn().mockRejectedValueOnce(new Error("down")).mockResolvedValueOnce(7);
