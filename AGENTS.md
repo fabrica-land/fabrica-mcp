@@ -61,7 +61,7 @@ ui/
   # .github/workflows/refresh-knowledge.yml open the daily refresh pull request
   clients/
     graphql.ts        # Fabrica GraphQL API client (primary data source)
-    generated/        # operations.ts: one result type per gql document, from codegen.ts (committed; npm run codegen)
+    generated/        # operations.ts: one result type per gql document, from scripts/codegen.mjs (committed; npm run codegen)
     subgraph.ts       # Lending pool subgraph client (dynamic pool discovery)
     cache.ts          # Short-TTL read cache with in-flight de-duplication (TtlCache)
     budgets.ts        # Read budgets (loan page budget, MAX_LOANS)
@@ -209,7 +209,7 @@ Naming rule: "Property checks" is the name; the number is "the numeric encoding 
 
 - Strict TypeScript. No `any`. No `as` casts (tests included: a fixture is built by a typed helper, never `as never`).
 - Each tool exports its zod input shape next to its function (`searchPropertiesInput`) and takes `ArgsOf<typeof thatShape>` (`src/tools/inputs.ts`); `server.ts` registers the exported shape. The handler's parameter type and the schema the client sees come from one definition, so a tool never reads `args` as `Record<string, unknown>`.
-- API result types come from the queries: `npm run codegen` regenerates `src/clients/generated/operations.ts` from `schema/api-schema.graphql` and the `gql` documents in `src/clients/graphql.ts`. Run it after changing a query or refreshing the schema and commit the result; CI fails on a stale file (`npm run codegen:check`). A field is in a type exactly when the query selects it, so a new field means adding it to the query, not to a hand-written interface.
+- API result types come from the queries: `npm run codegen` (`scripts/codegen.mjs`, driving `@graphql-codegen/core` directly so the toolchain stays on Node 20) regenerates `src/clients/generated/operations.ts` from `schema/api-schema.graphql` and the `gql` documents in `src/clients/graphql.ts`. Run it after changing a query or refreshing the schema and commit the result; CI fails on a stale file (`npm run codegen:check`). A field is in a type exactly when the query selects it, so a new field means adding it to the query, not to a hand-written interface.
 - Prefer `const` and immutable patterns.
 - Keep functions concise. No blank lines between statements inside functions.
 - Error handling: catch errors, return helpful messages, never throw raw errors.
