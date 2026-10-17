@@ -249,6 +249,19 @@ function inState(hit: TypeAheadHit, state: string | undefined): boolean {
   return !state || locate(hit.path).state === state.toUpperCase();
 }
 
+/**
+ * The type-ahead scopes only by county, so a state given without a county goes into the address text
+ * (where Regrid weighs it) instead of being applied only after a nationwide search. Parcel numbers are
+ * sent as is: extra words would stop them matching.
+ */
+export function searchText(query: string, state: string | undefined, countyScoped: boolean): string {
+  if (!state || countyScoped) return query;
+  const code = state.toUpperCase();
+  const looksLikeAddress = /[a-z]/i.test(query) && /\s/.test(query);
+  if (!looksLikeAddress || query.toUpperCase().split(/[^A-Z]+/).includes(code)) return query;
+  return `${query}, ${code}`;
+}
+
 export interface FindParcelArgs {
   query: string;
   state?: string;
@@ -262,7 +275,7 @@ export async function findParcel(args: FindParcelArgs) {
   if (args.county && !scope) {
     return { error: `No single US county matches "${args.county}"${args.state ? ` in ${args.state.toUpperCase()}` : ""}. A two-letter state and the county name (for example state "AZ", county "Navajo") identify it.` };
   }
-  const params = new URLSearchParams({ query });
+  const params = new URLSearchParams({ query: searchText(query, args.state, scope !== null) });
   if (scope) params.set("adminId", scope.county.fips);
   let hits: TypeAheadHit[];
   try {
@@ -275,7 +288,7 @@ export async function findParcel(args: FindParcelArgs) {
   const exactApn = inScope.filter((hit) => hit.apn !== null && normalizeApn(hit.apn) === normalizeApn(query));
   const scoped = (exactApn.length === 1 ? exactApn : inScope).slice(0, MAX_CANDIDATES);
   if (scoped.length === 0) {
-    return { query, match: "none", candidates: [], note: "No US parcel matched. A full street address with city and state, or a parcel number with state and county, narrows the search." };
+    return { query, match: "none", candidates: [], note: `No US parcel matched${args.state && !scope ? ` in ${args.state.toUpperCase()}; adding the county scopes the search itself, not just its results` : ""}. A full street address with city and state, or a parcel number with state and county, narrows the search.` };
   }
   let tokens: ParcelIndexToken[] = [];
   let indexNote: string | null = null;

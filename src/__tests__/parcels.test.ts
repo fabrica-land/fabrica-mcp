@@ -22,7 +22,7 @@ vi.mock("../clients/graphql.js", () => ({
 }));
 
 const { getParcelIndex } = await import("../clients/graphql.js");
-const { allowFindParcel, findParcel, matchByApn, parseParcelPoint, parseTypeAhead, pointInPolygons, polygonsOf, resolveCounty, FIND_PARCEL_LIMIT_PER_MINUTE } = await import("../tools/parcels.js");
+const { allowFindParcel, findParcel, matchByApn, parseParcelPoint, parseTypeAhead, pointInPolygons, polygonsOf, resolveCounty, searchText, FIND_PARCEL_LIMIT_PER_MINUTE } = await import("../tools/parcels.js");
 
 const SF_HIT = { category: "parcel", context: "San Francisco, CA", headline: "1707 Jones St", owner: "SOMEONE PRIVATE", parcelnumb: "0151010", path: "/us/ca/san-francisco/downtown/12801", score: 85, type: "Parcel" };
 const HUNT_HIT = { category: "parcel", context: "Greenville, TX", headline: "1707 Jones St", owner: "ANOTHER OWNER", parcelnumb: "71359", path: "/us/tx/hunt/greenville/20283", score: 80, type: "Parcel" };
@@ -86,6 +86,14 @@ describe("find_parcel helpers", () => {
     const stale = { ...feature, properties: { ...feature.properties, path: "/us/tx/hunt/other/2" } };
     expect(parseParcelPoint({ parcels: { features: [other, stale] } }, HUNT_HIT.path)).toBeNull();
     expect(parseParcelPoint({ parcels: { features: [other] } }, HUNT_HIT.path)).not.toBeNull();
+  });
+
+  it("puts a state given without a county into an address search, never into a parcel number", () => {
+    expect(searchText("1707 Jones St", "tx", false)).toBe("1707 Jones St, TX");
+    expect(searchText("1707 Jones St, Greenville TX", "TX", false)).toBe("1707 Jones St, Greenville TX");
+    expect(searchText("1707 Jones St", "TX", true)).toBe("1707 Jones St");
+    expect(searchText("015-1010", "CA", false)).toBe("015-1010");
+    expect(searchText("1707 Jones St", undefined, false)).toBe("1707 Jones St");
   });
 
   it("tests points against polygons with holes", () => {
