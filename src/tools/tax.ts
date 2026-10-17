@@ -20,13 +20,20 @@ function checkFromRecord(record: ScoreRecord | null): boolean | null {
   return null;
 }
 
-/** Combines the check with the lending block reason, which the API derives from the same check. */
-export function resolveTaxStatus(check: boolean | null, blockReason: AppraisalBlockReason | null | undefined): { status: TaxStatus; basis: TaxBasis } {
+/**
+ * Combines the check with the lending block reason, which the API derives from the same check.
+ * `checkRead` says a fresh score record was read, so a null check means "never verified" rather than "unavailable".
+ */
+export function resolveTaxStatus(
+  check: boolean | null,
+  blockReason: AppraisalBlockReason | null | undefined,
+  checkRead = check !== null,
+): { status: TaxStatus; basis: TaxBasis } {
   // The two signals are read separately and can briefly disagree; when they do, claim neither.
   if (blockReason === "TAX_DELINQUENT" && check === true) return { status: "unknown", basis: "conflicting" };
   if (blockReason === "TAX_STATUS_UNKNOWN" && check !== null) return { status: "unknown", basis: "conflicting" };
   if (blockReason === "TAX_DELINQUENT") return { status: "delinquent", basis: check === false ? "both" : "lendingBlockReason" };
-  if (blockReason === "TAX_STATUS_UNKNOWN") return { status: "unknown", basis: "lendingBlockReason" };
+  if (blockReason === "TAX_STATUS_UNKNOWN") return { status: "unknown", basis: checkRead ? "both" : "lendingBlockReason" };
   if (check === true) return { status: "current", basis: "check" };
   if (check === false) return { status: "delinquent", basis: "check" };
   return { status: "unknown", basis: "none" };
@@ -68,9 +75,10 @@ export async function loadTaxSignals(token: {
   // A check past its expiry, or one whose expiry cannot be read, says nothing about today.
   const expiry = record?.expiresAt ? Date.parse(record.expiresAt) : Number.NaN;
   const checkExpired = Number.isFinite(expiry) && expiry <= Date.now();
-  const check = record && Number.isFinite(expiry) && !checkExpired ? checkFromRecord(record) : null;
+  const checkRead = record !== null && Number.isFinite(expiry) && !checkExpired;
+  const check = checkRead ? checkFromRecord(record) : null;
   const blockReason = token.poolLendingLiquidity?.appraisalBlockReason ?? null;
-  const resolved = resolveTaxStatus(check, blockReason);
+  const resolved = resolveTaxStatus(check, blockReason, checkRead);
   if (resolved.basis === "conflicting") {
     warnings.push(`Fabrica's tax check and the ${LENDING_POOL_NAME}'s tax status disagree; the two are updated separately. Try again shortly.`);
   }

@@ -52,6 +52,7 @@ describe("resolveTaxStatus", () => {
     expect(resolveTaxStatus(false, "TAX_DELINQUENT")).toEqual({ status: "delinquent", basis: "both" });
     expect(resolveTaxStatus(null, "TAX_DELINQUENT")).toEqual({ status: "delinquent", basis: "lendingBlockReason" });
     expect(resolveTaxStatus(null, "TAX_STATUS_UNKNOWN")).toEqual({ status: "unknown", basis: "lendingBlockReason" });
+    expect(resolveTaxStatus(null, "TAX_STATUS_UNKNOWN", true)).toEqual({ status: "unknown", basis: "both" });
     expect(resolveTaxStatus(true, "OTHER")).toEqual({ status: "current", basis: "check" });
     expect(resolveTaxStatus(true, "TAX_DELINQUENT")).toEqual({ status: "unknown", basis: "conflicting" });
     expect(resolveTaxStatus(true, "TAX_STATUS_UNKNOWN")).toEqual({ status: "unknown", basis: "conflicting" });
@@ -142,6 +143,8 @@ describe("get_tax_status", () => {
     vi.mocked(getScoreRecord).mockResolvedValueOnce(record(null));
     const result = await getTaxStatus({ tokenId: "1" }) as Record<string, unknown>;
     expect(result.status).toBe("unknown");
+    expect(result.basis).toBe("both");
+    expect(result.checkedAt).toBe("2026-10-17T00:32:12.498Z");
     expect(result.summary).toContain("never verified, or the last verification expired");
     expect(result.nextSteps).toContain("county treasurer");
     expect(result.nextSteps).toContain("onramp collects tax evidence");
