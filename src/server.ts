@@ -16,6 +16,7 @@ import { getTrustDocuments } from "./tools/documents.js";
 import { getTaxStatus } from "./tools/tax.js";
 import { askFabrica, ASK_FABRICA_SOURCES } from "./tools/knowledge.js";
 import { findParcel } from "./tools/parcels.js";
+import { registerPrompts } from "./prompts.js";
 import { NETWORK_LABEL, IS_MAINNET, MAINNET_LEGAL_NOTICE } from "./config.js";
 import { PROPERTY_CARD_URI, registerPropertyCard } from "./ui/property-card.js";
 import { registerKnowledgeResources } from "./resources/knowledge.js";
@@ -353,5 +354,6 @@ export function createServer(): McpServer {
     async (args) => jsonResult(await findParcel(args)),
   );
   registerKnowledgeResources(server);
+  registerPrompts(server);
   return server;
 }

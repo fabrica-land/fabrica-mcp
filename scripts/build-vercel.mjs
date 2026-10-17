@@ -2,7 +2,7 @@
 // one self-contained function at /mcp plus a landing page at /. The network is
 // fixed per Vercel project by FABRICA_NETWORK (read at runtime by the function,
 // and at build time for the landing page copy).
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
 import { build } from "tsup";
 
 const OUTPUT = ".vercel/output";
@@ -48,6 +48,7 @@ await writeFile(`${OUTPUT}/static/index.html`, `<!doctype html>
 <p>Add this URL to any MCP client (Claude, ChatGPT, Cursor, and others) as a remote server. No install, no API key:</p>
 <p><code id="url">/mcp</code></p>
 <p>Claude Code: <code id="cmd">claude mcp add --transport http fabrica /mcp</code></p>
+<p>Agent skill file: <a href="/skill.md">/skill.md</a></p>
 <p>Source and tool list: <a href="https://github.com/fabrica-land/fabrica-mcp">github.com/fabrica-land/fabrica-mcp</a></p>
 <script>
 const url = location.origin + "/mcp";
@@ -57,5 +58,7 @@ document.getElementById("cmd").textContent = "claude mcp add --transport http ${
 </body>
 </html>
 `);
+// The Fabrica skill file (Agent Skills format), for agents that never connect to the server.
+await copyFile("skills/fabrica/SKILL.md", `${OUTPUT}/static/skill.md`);
 await writeFile(`${OUTPUT}/config.json`, JSON.stringify({ version: 3 }, null, 2));
 console.log(`Built Vercel output for ${networkLabel} in ${OUTPUT}`);
