@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { aggregatePoolStats, MAX_TICKS, withTickTotals } from "../clients/subgraph.js";
 import type { SubgraphPool } from "../types/index.js";
+import { loan } from "./fixtures.js";
 
 function makePool(overrides: Partial<SubgraphPool> = {}): SubgraphPool {
   return {
@@ -108,5 +109,30 @@ describe("withTickTotals", () => {
     const ticks = Array.from({ length: MAX_TICKS }, () => ({ value: "1", available: "1" }));
     const pool = makePool({ ...zeroTotals, ticks });
     expect(withTickTotals(pool)).toBe(pool);
+  });
+});
+
+describe("buildPoolStats with the API's loan records", () => {
+  const subgraphPool = (overrides: Record<string, string> = {}) => ({
+    id: "0x842ffbf1ad5314503904626122376f71603a3cf9", implementation: "0ximpl", collateralToken: { id: "0xtoken" },
+    currencyToken: { id: "0xusdc", symbol: "USDC", decimals: 6 },
+    totalValueLocked: "1000000000000000000000", totalValueUsed: "0", totalValueAvailable: "1000000000000000000000",
+    durations: [], rates: [], maxBorrows: [], loansOriginated: "95", loansActive: "1", loansRepaid: "84", loansLiquidated: "0", adminFeeRate: "0",
+    ...overrides,
+  });
+  const liquidated = (loanContract: string) => loan({ loanStatus: "Liquidated", loanContract });
+
+  it("reports the records' liquidation count when the subgraph's lags, and says so", async () => {
+    const { buildPoolStats } = await import("../tools/pool-stats.js");
+    const loans = [...Array.from({ length: 10 }, () => liquidated("0x842FFBF1AD5314503904626122376f71603a3cf9")), liquidated("0xnftfi")];
+    const stats = buildPoolStats([subgraphPool()], loans);
+    expect(stats).toMatchObject({ loansLiquidated: 10, countsNote: expect.stringContaining("the pool data source counts 0") });
+  });
+
+  it("keeps the subgraph's count when it is not behind", async () => {
+    const { buildPoolStats } = await import("../tools/pool-stats.js");
+    const stats = buildPoolStats([subgraphPool({ loansLiquidated: "2" })], [liquidated("0x842ffbf1ad5314503904626122376f71603a3cf9")]);
+    expect(stats).toMatchObject({ loansLiquidated: 2 });
+    expect(stats).not.toHaveProperty("countsNote");
   });
 });

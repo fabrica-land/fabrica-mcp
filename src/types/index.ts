@@ -109,6 +109,8 @@ export type NetworkActivityToken = GetNetworkActivityQuery["tokens"][number];
 export type TokenValuationModel = GetValuationQuery["token"];
 export type ValuationPricing = TokenValuationModel["pricing"][number];
 export type PoolLendingPoolValuation = PoolOracleFieldsFragment["pools"][number];
+/** A pool as get_borrow_quote reads it: the oracle fields plus the ticks that bound a loan. */
+export type PoolLendingPoolWithTicks = NonNullable<NonNullable<GetTokenWithPoolOracleQuery["token"]>["poolLendingLiquidity"]>["pools"][number];
 export type PoolLendingQuote = NonNullable<PoolLendingPoolValuation["oracleValuation"]>["quote"];
 
 // --- REST responses (no schema; shapes checked at the boundary in the client) ---

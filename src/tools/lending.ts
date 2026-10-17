@@ -69,6 +69,22 @@ function recentLoanEvents(loans: ReadonlyArray<LoanModel>) {
   return events.sort((a, b) => time(b.date) - time(a.date)).slice(0, RECENT_EVENT_COUNT);
 }
 
+/** Loan counts per provider, so the pool's own counts and the retired peer-to-peer loans add up to the summary. */
+export function countsByProvider(loans: ReadonlyArray<LoanModel>) {
+  const counts: Record<string, { total: number; active: number; repaid: number; liquidated: number; inDefault: number; liquidating: number }> = {};
+  for (const loan of loans) {
+    const name = formatLoanProvider(loan.loanProvider) ?? "Unknown provider";
+    const row = counts[name] ??= { total: 0, active: 0, repaid: 0, liquidated: 0, inDefault: 0, liquidating: 0 };
+    row.total += 1;
+    if (loan.loanStatus === "Active") row.active += 1;
+    else if (loan.loanStatus === "Repaid") row.repaid += 1;
+    else if (loan.loanStatus === "Liquidated") row.liquidated += 1;
+    else if (loan.loanStatus === "Default") row.inDefault += 1;
+    else if (loan.loanStatus === "Liquidating") row.liquidating += 1;
+  }
+  return counts;
+}
+
 export const getLendingMarketInput = {
   status: z.enum(["active", "repaid", "liquidated", "all"]).optional().describe("Filter loans by status (default: 'all')"),
   borrower: z.string().optional().describe("Filter by borrower wallet address"),
@@ -122,10 +138,11 @@ export async function getLendingMarket(args: GetLendingMarketArgs) {
         activeLoans: activeLoans.length,
         repaidLoans: repaidLoans.length,
         liquidatedLoans: liquidatedLoans.length,
+        byProvider: countsByProvider(allLoans),
         volumeByCurrency: loanVolumeByCurrency(allLoans),
         averageAPR: avgApr > 0 ? `${avgApr.toFixed(1)}%` : "N/A",
       },
-      poolStats: buildPoolStats(pools),
+      poolStats: buildPoolStats(pools, allLoans),
       loans: sortLoans(filtered).slice(0, limit).map(loanSummary),
       loansOrder: "Active loans first, then most recently started first.",
       recentEvents: recentLoanEvents(allLoans),

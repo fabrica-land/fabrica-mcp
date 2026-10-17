@@ -312,14 +312,14 @@ const GET_TOKEN_QUERY = gql`
   }
 `;
 
-/** GetToken plus each pool's oracle state; only get_borrow_quote asks for it. */
+/** GetToken plus each pool's oracle state and ticks; only get_borrow_quote asks for it (the ticks bound the loan). */
 const GET_TOKEN_WITH_POOL_ORACLE_QUERY = gql`
   ${POOL_ORACLE_FIELDS}
   ${TOKEN_DETAIL_FIELDS}
   query GetTokenWithPoolOracle($tokenId: String, $slug: String, $network: String) {
     token(tokenId: $tokenId, slug: $slug, network: $network) {
       ...TokenDetailFields
-      poolLendingLiquidity { ...PoolOracleFields }
+      poolLendingLiquidity { ...PoolOracleFields pools { ticks { raw available } } }
     }
   }
 `;
@@ -719,7 +719,7 @@ export async function getWallet(walletAddress: string): Promise<WalletModel | nu
 
 const LOAN_FIELDS = gql`
   fragment LoanFields on LoanModel {
-    loanId loanStatus loanProvider loanType
+    loanId loanStatus loanProvider loanType loanContract
     principalScaled currencySymbol
     aprPercent interestForDurationPercent
     durationFormatted maturityDate startTime

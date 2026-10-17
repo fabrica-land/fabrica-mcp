@@ -1,5 +1,5 @@
 import { aggregatePoolStats } from "../clients/subgraph.js";
-import type { SubgraphPool } from "../types/index.js";
+import type { LoanModel, SubgraphPool } from "../types/index.js";
 import { LENDING_POOL_NAME } from "../labels.js";
 
 /** Subgraph pool values are 18-decimal fixed point whatever the pool currency. */
@@ -17,10 +17,23 @@ function formatPoolValue(raw: string): string {
 const CAPACITY_POINTER = "Borrowing capacity for one property comes from get_borrow_quote, which reads the Fabrica API and can differ from these pool totals.";
 
 /**
+ * Liquidated loans on these pools according to the API's loan records, when that is more than the
+ * subgraph counts. The subgraph's counter has read 0 on mainnet while ten pool loans were
+ * liquidated, so the records win and the response says so.
+ */
+export function recordLiquidations(pools: SubgraphPool[], loans: ReadonlyArray<Pick<LoanModel, "loanStatus" | "loanContract">> | undefined, subgraphCount: number): number | null {
+  if (!loans) return null;
+  const ids = new Set(pools.map(p => p.id.toLowerCase()));
+  const fromRecords = loans.filter(l => l.loanStatus === "Liquidated" && ids.has(l.loanContract.toLowerCase())).length;
+  return fromRecords > subgraphCount ? fromRecords : null;
+}
+
+/**
  * DeFi lending pool block shared by get_lending_market and get_protocol_stats.
  * null pools means the subgraph could not be read: the figures are unknown, not zero.
+ * `loans` (the API's loan records) corrects the subgraph's liquidation count when it lags.
  */
-export function buildPoolStats(pools: SubgraphPool[] | null) {
+export function buildPoolStats(pools: SubgraphPool[] | null, loans?: ReadonlyArray<Pick<LoanModel, "loanStatus" | "loanContract">>) {
   if (pools === null) {
     return {
       name: LENDING_POOL_NAME,
@@ -41,6 +54,7 @@ export function buildPoolStats(pools: SubgraphPool[] | null) {
   const available = poolValue(agg.totalValueAvailable);
   const currencies = [...new Set(pools.map(p => p.currencyToken?.symbol).filter((s): s is string => Boolean(s)))];
   const poolIds = pools.map(p => p.id);
+  const liquidatedFromRecords = recordLiquidations(pools, loans, agg.loansLiquidated);
   return {
     name: LENDING_POOL_NAME,
     poolCount: agg.poolCount,
@@ -52,8 +66,9 @@ export function buildPoolStats(pools: SubgraphPool[] | null) {
     loansOriginated: agg.loansOriginated,
     loansActive: agg.loansActive,
     loansRepaid: agg.loansRepaid,
-    loansLiquidated: agg.loansLiquidated,
+    loansLiquidated: liquidatedFromRecords ?? agg.loansLiquidated,
     countsScope: `Lifetime loan counts for the ${agg.poolCount === 1 ? "pool" : "pools"} listed.`,
+    ...(liquidatedFromRecords !== null ? { countsNote: `loansLiquidated comes from the API's loan records (${liquidatedFromRecords} liquidated on ${agg.poolCount === 1 ? "this pool" : "these pools"}); the pool data source counts ${agg.loansLiquidated}.` } : {}),
     currency: currencies.length > 0 ? currencies.join(", ") : null,
     note: available > 0
       ? `Pool values are deposits in the ${agg.poolCount === 1 ? "pool" : "pools"} listed, read now. ${CAPACITY_POINTER}`

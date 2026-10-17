@@ -11,7 +11,7 @@ import type {
   MarketplaceOrderModel,
   PoolLendingLiquidityModel,
   PoolLendingLiquidityWithOracle,
-  PoolLendingPoolValuation,
+  PoolLendingPoolWithTicks,
   TokenDetail,
   TokenDetailWithPoolOracle,
   TokenListItem,
@@ -146,7 +146,7 @@ export function poolLendingLiquidityWithOracle(overrides: Partial<PoolLendingLiq
 }
 
 /** One pool's oracle state inside poolLendingLiquidity.pools. */
-export function oraclePool(overrides: Partial<PoolLendingPoolValuation> = {}): PoolLendingPoolValuation {
+export function oraclePool(overrides: Partial<PoolLendingPoolWithTicks> = {}): PoolLendingPoolWithTicks {
   return {
     address: "0x842Ffbf1AD5314503904626122376f71603A3Cf9",
     pricing: "SignedQuote",
@@ -154,6 +154,7 @@ export function oraclePool(overrides: Partial<PoolLendingPoolValuation> = {}): P
     onchainPrice: null,
     oracleFeed: null,
     onchainValuation: null,
+    ticks: [],
     ...overrides,
   };
 }
@@ -261,6 +262,7 @@ export function loan(overrides: Partial<LoanModel> = {}): LoanModel {
     loanStatus: "Active",
     loanProvider: "PoolLending",
     loanType: "Fixed",
+    loanContract: "0x842ffbf1ad5314503904626122376f71603a3cf9",
     principalScaled: "1000",
     currencySymbol: "USDC",
     aprPercent: 12,
