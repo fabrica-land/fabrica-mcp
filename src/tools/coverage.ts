@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { IS_MAINNET, MAINNET_WARNING, NETWORK_LABEL, WEB_BASE } from "../config.js";
 import { US_COUNTY_ROWS } from "../data/us-counties.js";
 import table from "../data/onramp-coverage.json";
@@ -11,26 +12,32 @@ import { resolveCounty } from "./parcels.js";
  * common file then the signer-type file; this merges the same layers the same way.
  */
 
-export type CoverageStatus = "supported" | "notConfigured" | "unsupported";
 export const OWNER_TYPES = ["individual", "entity", "concurrent"] as const;
 export type OwnerType = (typeof OWNER_TYPES)[number];
 
-interface CoverageLayer {
-  workflowSupport?: CoverageStatus;
-  fractionalOwnership?: boolean;
-  witnessesRequired?: boolean;
-  notaryNote?: string;
-  documents?: Record<string, { name?: string; notarize?: boolean }>;
-  fields?: Record<string, { required?: boolean; dependsOnParcel?: boolean }>;
-  steps?: Array<{ text: string; actions?: Array<{ prompt: string; document?: string }>; stages?: string[] }>;
-}
+const statusSchema = z.enum(["supported", "notConfigured", "unsupported"]);
+export type CoverageStatus = z.infer<typeof statusSchema>;
+const layerSchema = z.object({
+  workflowSupport: statusSchema.optional(),
+  fractionalOwnership: z.boolean().optional(),
+  witnessesRequired: z.boolean().optional(),
+  notaryNote: z.string().optional(),
+  documents: z.record(z.string(), z.object({ name: z.string().optional(), notarize: z.boolean().optional() })).optional(),
+  fields: z.record(z.string(), z.object({ required: z.boolean().optional(), dependsOnParcel: z.boolean().optional() })).optional(),
+  steps: z.array(z.object({
+    text: z.string(),
+    actions: z.array(z.object({ prompt: z.string(), document: z.string().optional() })).optional(),
+    stages: z.array(z.string()).optional(),
+  })).optional(),
+});
+type CoverageLayer = z.infer<typeof layerSchema>;
+const tableSchema = z.object({
+  source: z.object({ commit: z.string(), committedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}T/), builtAt: z.string() }),
+  layers: z.record(z.string(), z.record(z.string(), layerSchema)),
+});
 
-interface CoverageTable {
-  source: { commit: string; committedAt: string; builtAt: string };
-  layers: Record<string, Record<string, CoverageLayer>>;
-}
-
-const TABLE = table as CoverageTable;
+// Checked once at load; the coverage tests fail on a malformed refresh before it ships.
+const TABLE = tableSchema.parse(table);
 export const COVERAGE_AS_OF = TABLE.source.committedAt.slice(0, 10);
 const FEES_URL = "https://docs.fabrica.land/docs/fees";
 
@@ -39,6 +46,8 @@ const COUNTIES_BY_FIPS: ReadonlyMap<string, { key: string; name: string }> = new
   return [fips, { key, name }];
 }));
 const STATES: ReadonlySet<string> = new Set(US_COUNTY_ROWS.map((row) => row.slice(0, 2)));
+/** The states the rules have a layer for (the 50); DC and the territories are in the county table but not in the rules. */
+const RULE_STATES: ReadonlySet<string> = new Set(Object.values(TABLE.layers).flatMap((byPlace) => Object.keys(byPlace).filter((place) => place !== "" && !place.includes("/"))));
 
 const MEANING: Record<CoverageStatus, string> = {
   supported: "The on-ramp is set up for this jurisdiction: an owner can start adding a parcel here online.",
@@ -46,17 +55,19 @@ const MEANING: Record<CoverageStatus, string> = {
   unsupported: "Fabrica does not take property in this jurisdiction through the on-ramp.",
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+function mergeRecords<V extends object>(base?: Record<string, V>, over?: Record<string, V>): Record<string, V> | undefined {
+  if (!base || !over) return over ?? base;
+  const out = { ...base };
+  for (const [key, value] of Object.entries(over)) out[key] = { ...out[key], ...value };
+  return out;
 }
 
-/** Objects merge key by key; anything else from the later layer wins (the build refuses arrays set at two layers). */
-function merge<T>(base: T, over: T | undefined): T {
-  if (over === undefined) return base;
-  if (!isRecord(base) || !isRecord(over)) return over;
-  const out: Record<string, unknown> = { ...base };
-  for (const [key, value] of Object.entries(over)) out[key] = key in out ? merge(out[key], value) : value;
-  return out as T;
+/** Later layers win key by key; documents and questions merge per entry (the build refuses arrays set at two layers). */
+function merge(base: CoverageLayer, over: CoverageLayer | undefined): CoverageLayer {
+  if (!over) return base;
+  const documents = mergeRecords(base.documents, over.documents);
+  const fields = mergeRecords(base.fields, over.fields);
+  return { ...base, ...over, ...(documents ? { documents } : {}), ...(fields ? { fields } : {}) };
 }
 
 /** The rules for a place ("", "ca" or "ca/riverside") as the API would merge them for this owner type. */
@@ -69,9 +80,14 @@ export function resolveRules(place: string, ownerType: OwnerType = "individual")
   }, {});
 }
 
+/** DC and the territories have no rules of their own, and the US layer is written for the states. */
+function inRules(place: string): boolean {
+  return RULE_STATES.has(place.split("/")[0] ?? "");
+}
+
 /** The status the API reports for a county path ("ca/riverside"); it reads unsupported when no layer sets one. */
 export function coverageStatus(place: string): CoverageStatus {
-  return resolveRules(place).workflowSupport ?? "unsupported";
+  return inRules(place) ? resolveRules(place).workflowSupport ?? "unsupported" : "unsupported";
 }
 
 function describe(rules: CoverageLayer) {
@@ -157,7 +173,7 @@ export function checkCoverage(args: CheckCoverageArgs) {
   }
 
   const rules = resolveRules(place, ownerType);
-  const status = rules.workflowSupport ?? "unsupported";
+  const status = inRules(place) ? rules.workflowSupport ?? "unsupported" : "unsupported";
   const stateOnly = !place.includes("/");
   const counties = stateOnly ? countiesWithOwnRules(place, status) : [];
   const details = status === "supported" ? describe(rules) : undefined;

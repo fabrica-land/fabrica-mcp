@@ -113,6 +113,13 @@ describe("checkCoverage", () => {
     }
   });
 
+  it("does not cover DC or the territories, which the rules do not name", () => {
+    expect(checkCoverage({ fips: "72001" })).toMatchObject({ jurisdiction: { state: "PR" }, status: "unsupported" });
+    expect(checkCoverage({ state: "DC" })).toMatchObject({ status: "unsupported" });
+    expect(checkCoverage({ state: "PR" })).not.toHaveProperty("documents");
+    expect(coverageStatus("pr/adjuntas")).toBe("unsupported");
+  });
+
   it("rejects unknown input with a way forward", () => {
     expect(checkCoverage({ fips: "99999" })).toHaveProperty("error");
     expect(checkCoverage({ state: "XX" })).toHaveProperty("error");
