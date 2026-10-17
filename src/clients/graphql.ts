@@ -7,6 +7,8 @@ import type {
   LoanRepaidEvent,
   LoanLiquidatedEvent,
   CountyBoundsModel,
+  SignedValuationPanel,
+  TokenValuationModel,
 } from "../types/index.js";
 import { CONTRACTS, IS_MAINNET, NETWORK } from "../config.js";
 
@@ -24,9 +26,9 @@ export const DEFAULT_MIN_SCORE = 72032;
 /** Token names that indicate spam or errored metadata */
 const SPAM_NAME_PATTERNS = ["SyntaxError", "Error", "BadGatewayException"];
 
-const client = new GraphQLClient(
-  process.env.FABRICA_API_URL ?? DEFAULT_API_URL,
-);
+const API_URL = process.env.FABRICA_API_URL ?? DEFAULT_API_URL;
+
+const client = new GraphQLClient(API_URL);
 
 /**
  * The API answered with a GraphQL `errors[]` payload. This means the request itself
@@ -165,6 +167,21 @@ export async function getTokens(filters: TokenFilters): Promise<TokenModel[]> {
   return data.tokens;
 }
 
+/** Why a pool lends what it lends: the appraisal block, and each pool's oracle state. */
+const POOL_ORACLE_FIELDS = gql`
+  fragment PoolOracleFields on PoolLendingLiquidityModel {
+    appraisalBlockReason
+    pools {
+      address
+      pricing
+      oracleValuation { quote { price currency timestamp duration } signature }
+      onchainPrice { priceUsdc6 confidenceScore cycle valuedAt sourceId }
+      oracleFeed { lastHeartbeat maxSilence isStale currentCycle minValidCycle indexerUnavailableReason }
+      onchainValuation { usablePriceUsdc6 capacityBlockReason failedCheck }
+    }
+  }
+`;
+
 const TOKEN_DETAIL_FIELDS = gql`
   fragment TokenDetailFields on TokenModel {
     tokenId
@@ -225,7 +242,7 @@ const TOKEN_DETAIL_FIELDS = gql`
       collateralId
       amountPaidToLenderScaled loanRepaidDate loanLiquidationDate
     }
-    poolLendingLiquidity { maxPrincipalScaled maxPrincipalUsdc durations activeLoan { id principal repayment duration maturity } }
+    poolLendingLiquidity { maxPrincipalScaled maxPrincipalUsdc durations activeLoan { id principal repayment duration maturity } ...PoolOracleFields }
     marketplaceListings { marketplaceId side status price usdPrice symbol supply makerAddress startTime endTime }
     marketplaceBids { marketplaceId side status price usdPrice symbol supply makerAddress startTime endTime }
     activity { activity source time timestamp network tokenId transactionHash currencyAmount currencyDecimals currencySymbol usdAmount }
@@ -234,6 +251,7 @@ const TOKEN_DETAIL_FIELDS = gql`
 `;
 
 const GET_TOKEN_QUERY = gql`
+  ${POOL_ORACLE_FIELDS}
   ${TOKEN_DETAIL_FIELDS}
   query GetToken($tokenId: String, $slug: String, $network: String) {
     token(tokenId: $tokenId, slug: $slug, network: $network) {
@@ -251,6 +269,62 @@ export async function getToken(
     network: params.network ?? NETWORK,
   });
   return data.token;
+}
+
+// --- Valuation query ---
+
+const GET_VALUATION_QUERY = gql`
+  ${POOL_ORACLE_FIELDS}
+  query GetValuation($tokenId: String, $slug: String, $network: String) {
+    token(tokenId: $tokenId, slug: $slug, network: $network) {
+      tokenId
+      name
+      vanityName
+      isPremint
+      estimatedValue
+      cardDisplayValuation
+      valuationReportUrl
+      pricing { source scope currency value confidence timestamp modelVersion }
+      poolLendingLiquidity { maxPrincipalScaled maxPrincipalUsdc durations activeLoan { id principal repayment duration maturity } ...PoolOracleFields }
+    }
+  }
+`;
+
+export async function getTokenValuation(
+  params: { tokenId?: string; slug?: string },
+): Promise<TokenValuationModel | null> {
+  const data = await request<{ token: TokenValuationModel | null }>(GET_VALUATION_QUERY, {
+    tokenId: params.tokenId,
+    slug: params.slug,
+    network: NETWORK,
+  });
+  return data.token;
+}
+
+const SIGNED_VALUATION_TIMEOUT_MS = 5_000;
+
+/**
+ * The signed valuation panel from the REST API (`/valuation/v1`), on the same host as the
+ * GraphQL endpoint. Returns null on any failure (HTTP error, timeout, unexpected body): the
+ * panel is supplementary and must never fail the tool that asks for it.
+ */
+export async function getSignedValuations(tokenId: string): Promise<SignedValuationPanel | null> {
+  const base = API_URL.replace(/\/graphql\/?$/, "");
+  const url = `${base}/valuation/v1/${NETWORK}/${CONTRACTS.fabricaToken}/${encodeURIComponent(tokenId)}`;
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(SIGNED_VALUATION_TIMEOUT_MS) });
+    if (!response.ok) return null;
+    const body: unknown = await response.json();
+    return isSignedValuationPanel(body) ? body : null;
+  } catch {
+    return null;
+  }
+}
+
+function isSignedValuationPanel(body: unknown): body is SignedValuationPanel {
+  return typeof body === "object" && body !== null
+    && "asOf" in body && typeof body.asOf === "string"
+    && "valuations" in body && Array.isArray(body.valuations);
 }
 
 // --- Wallet query ---
@@ -458,6 +532,7 @@ export async function getCountyBounds(fips: string): Promise<CountyBoundsModel |
 export const API_DOCUMENTS: ReadonlyArray<{ name: string; document: string }> = [
   { name: "GetTokens", document: GET_TOKENS_QUERY },
   { name: "GetToken", document: GET_TOKEN_QUERY },
+  { name: "GetValuation", document: GET_VALUATION_QUERY },
   { name: "GetWallet", document: GET_WALLET_QUERY },
   { name: "GetLoans", document: GET_LOANS_QUERY },
   { name: "GetLoanStartedEvents", document: GET_LOAN_STARTED_EVENTS_QUERY },

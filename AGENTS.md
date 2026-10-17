@@ -18,7 +18,7 @@ Fabrica tokenizes real property (land) as ERC-1155 NFTs on Ethereum. A legal tru
 ```
 src/
   config.ts           # Network config, contract addresses, legal notices
-  server.ts           # createServer(): registers all 12 tools
+  server.ts           # createServer(): registers all 13 tools
   index.ts            # stdio entrypoint (local installs)
   http.ts             # stateless Streamable HTTP handler (hosted)
   vercel.ts           # Vercel function entry, bundled by scripts/build-vercel.mjs
@@ -34,6 +34,7 @@ ui/
     protocol.ts       # get_protocol_stats
     scoring.ts        # explain_confidence_score
     borrowing.ts      # get_borrow_quote
+    valuation.ts      # get_valuation (GraphQL GetValuation + REST /valuation/v1)
     activity.ts       # get_activity
     images.ts         # get_property_image, get_portfolio_image
     knowledge.ts      # ask_fabrica
