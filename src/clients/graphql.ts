@@ -242,7 +242,7 @@ const TOKEN_DETAIL_FIELDS = gql`
       collateralId
       amountPaidToLenderScaled loanRepaidDate loanLiquidationDate
     }
-    poolLendingLiquidity { maxPrincipalScaled maxPrincipalUsdc durations activeLoan { id principal repayment duration maturity } ...PoolOracleFields }
+    poolLendingLiquidity { maxPrincipalScaled maxPrincipalUsdc durations activeLoan { id principal repayment duration maturity } }
     marketplaceListings { marketplaceId side status price usdPrice symbol supply makerAddress startTime endTime }
     marketplaceBids { marketplaceId side status price usdPrice symbol supply makerAddress startTime endTime }
     activity { activity source time timestamp network tokenId transactionHash currencyAmount currencyDecimals currencySymbol usdAmount }
@@ -251,7 +251,6 @@ const TOKEN_DETAIL_FIELDS = gql`
 `;
 
 const GET_TOKEN_QUERY = gql`
-  ${POOL_ORACLE_FIELDS}
   ${TOKEN_DETAIL_FIELDS}
   query GetToken($tokenId: String, $slug: String, $network: String) {
     token(tokenId: $tokenId, slug: $slug, network: $network) {
@@ -260,10 +259,24 @@ const GET_TOKEN_QUERY = gql`
   }
 `;
 
+/** GetToken plus each pool's oracle state; only get_borrow_quote asks for it. */
+const GET_TOKEN_WITH_POOL_ORACLE_QUERY = gql`
+  ${POOL_ORACLE_FIELDS}
+  ${TOKEN_DETAIL_FIELDS}
+  query GetTokenWithPoolOracle($tokenId: String, $slug: String, $network: String) {
+    token(tokenId: $tokenId, slug: $slug, network: $network) {
+      ...TokenDetailFields
+      poolLendingLiquidity { ...PoolOracleFields }
+    }
+  }
+`;
+
 export async function getToken(
   params: { tokenId?: string; slug?: string; network?: string },
+  options: { poolOracle?: boolean } = {},
 ): Promise<TokenModel | null> {
-  const data = await request<{ token: TokenModel | null }>(GET_TOKEN_QUERY, {
+  const document = options.poolOracle ? GET_TOKEN_WITH_POOL_ORACLE_QUERY : GET_TOKEN_QUERY;
+  const data = await request<{ token: TokenModel | null }>(document, {
     tokenId: params.tokenId,
     slug: params.slug,
     network: params.network ?? NETWORK,
@@ -321,10 +334,27 @@ export async function getSignedValuations(tokenId: string): Promise<SignedValuat
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isSignedValuation(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  const quote = value.quote;
+  const quoteOk = quote === null || (isRecord(quote)
+    && typeof quote.price === "string" && typeof quote.currency === "string"
+    && typeof quote.timestamp === "number" && typeof quote.duration === "number");
+  return typeof value.source === "string" && typeof value.version === "string"
+    && typeof value.signer === "string"
+    && (value.signature === null || typeof value.signature === "string")
+    && (value.reason === undefined || typeof value.reason === "string")
+    && quoteOk;
+}
+
+/** The panel's shape, checked entry by entry: anything unexpected makes the whole panel null. */
 function isSignedValuationPanel(body: unknown): body is SignedValuationPanel {
-  return typeof body === "object" && body !== null
-    && "asOf" in body && typeof body.asOf === "string"
-    && "valuations" in body && Array.isArray(body.valuations);
+  return isRecord(body) && typeof body.asOf === "string"
+    && Array.isArray(body.valuations) && body.valuations.every(isSignedValuation);
 }
 
 // --- Wallet query ---
@@ -532,6 +562,7 @@ export async function getCountyBounds(fips: string): Promise<CountyBoundsModel |
 export const API_DOCUMENTS: ReadonlyArray<{ name: string; document: string }> = [
   { name: "GetTokens", document: GET_TOKENS_QUERY },
   { name: "GetToken", document: GET_TOKEN_QUERY },
+  { name: "GetTokenWithPoolOracle", document: GET_TOKEN_WITH_POOL_ORACLE_QUERY },
   { name: "GetValuation", document: GET_VALUATION_QUERY },
   { name: "GetWallet", document: GET_WALLET_QUERY },
   { name: "GetLoans", document: GET_LOANS_QUERY },

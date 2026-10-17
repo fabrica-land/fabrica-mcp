@@ -21,7 +21,7 @@ export async function getBorrowQuote(args: Record<string, unknown>) {
     return { error: "Either tokenId or slug is required" };
   }
   try {
-    const token = await getToken({ tokenId, slug });
+    const token = await getToken({ tokenId, slug }, { poolOracle: true });
     if (!token) {
       return { error: `No property found with ${tokenId ? `token ID ${tokenId}` : `slug ${slug}`}` };
     }
