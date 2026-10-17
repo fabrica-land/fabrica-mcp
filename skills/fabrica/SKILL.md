@@ -5,7 +5,7 @@ description: Look up, diligence and add US land on Fabrica, where each property 
 
 # Fabrica
 
-Fabrica puts US land onchain. A trust holds title at the county; an ERC-1155 token on Ethereum is the beneficial interest in that trust. Transfer the token and ownership of the property moves with it. Owners can sell, buy and borrow against land through the DeFi lending pool.
+Fabrica puts US land onchain. A trust holds title at the county; an ERC-1155 token on Ethereum is the beneficial interest in that trust. An authorized transfer of the token transfers the beneficial interest, and with it ownership of the property. A token held by a lending, escrow or bridge contract, or moved without the owner's authorization, does not move beneficial ownership. Owners can sell, buy and borrow against land through the DeFi lending pool.
 
 ## Connect
 
