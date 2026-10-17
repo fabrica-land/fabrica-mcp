@@ -31,7 +31,7 @@
     { "id": "valuation unknown token", "tool": "get_valuation", "args": { "tokenId": "12345" }, "expect": "error:No property found" },
     { "id": "activity of a property", "tool": "get_activity", "args": { "tokenId": "$tokenId", "limit": 10 }, "expect": "contains:events" },
     { "id": "activity of a wallet", "tool": "get_activity", "args": { "address": "$wallet", "limit": 5 }, "expect": "contains:events" },
-    { "id": "activity no args", "tool": "get_activity", "args": {}, "expect": "error:Provide tokenId" },
+    { "id": "activity no args", "tool": "get_activity", "args": {}, "expect": "contains:every property" },
     { "id": "order book", "tool": "get_order_book", "args": { "tokenId": "$listedTokenId", "status": "all" }, "expect": "contains:listings" },
     { "id": "property image", "tool": "get_property_image", "args": { "tokenId": "$tokenId", "width": 400, "height": 300 }, "expect": "image" },
     { "id": "portfolio", "tool": "get_portfolio", "args": { "address": "$wallet" }, "expect": "contains:portfolioValue" },
