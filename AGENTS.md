@@ -173,7 +173,11 @@ The feature is called **Property checks** in every description and output. The A
 | Tens | Onchain history | 4 | ×10 |
 | Ones | Basic validation | 2 | ×1 |
 
-**Max score: 75342.** Recovery digit: 7=normal, 6=under review, 5=recovery, 1=voided.
+**Max: 75342.** Recovery digit (as the API defines it): 7=Normal, 6=Recovery pending, 5=Reported stolen, 4=Tax sale or foreclosure (Distressed), 1=Void.
+
+Each digit is a category value set by its group's rules, not a count of passing checks: never label a digit "x/y checks pass". Pass counts come from the individual results (`scoringCheckResults`), which `get_property` returns as `propertyChecks { passed, total, encoding, results }` and the property card shows as "9 of 12 pass", like fabrica.land. `valuation.confidenceScore` and `valuation.scoreBreakdown` are deprecated aliases kept for one release.
+
+Naming rule: "Property checks" is the name; the number is "the numeric encoding of Property checks". Never call it a score, rating or percentage in user-facing text. Where checks are introduced, say they are a starting point for your own research, not a title search or title insurance.
 
 ---
 

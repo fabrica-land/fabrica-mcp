@@ -146,11 +146,18 @@ function render(): void {
   const listing = obj(arr(marketplace.listings)[0]);
   const activeLoans = arr(lending.activeLoans);
   const poolLiquidity = obj(lending.lendingPoolLiquidity);
-  const score = num(valuation.confidenceScore);
+  const checks = obj(data.propertyChecks);
+  const passed = num(checks.passed);
+  const total = num(checks.total);
+  // Like fabrica.land: the pass count, falling back to the numeric encoding, labelled as such.
+  const encoding = num(checks.encoding) ?? num(valuation.confidenceScore);
+  const checksText = passed !== null && total !== null && total > 0
+    ? `${passed} of ${total} pass`
+    : encoding !== null ? `Encoding ${encoding}` : null;
   const recoveryLabel = str(recovery.label);
   const facts = el("div", "facts");
   const factNodes = [
-    fact("Property checks", score !== null ? `${score}${recoveryLabel && recoveryLabel !== "Normal" ? ` · ${recoveryLabel}` : ""}` : null),
+    fact("Property checks", checksText !== null ? `${checksText}${recoveryLabel && recoveryLabel !== "Normal" ? ` · ${recoveryLabel}` : ""}` : null),
     fact("Estimated value", str(valuation.estimatedValue)),
     fact("Listed for sale", str(listing.price)),
     activeLoans.length > 0

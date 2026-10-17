@@ -201,9 +201,9 @@ export function createServer(): McpServer {
     "explain_confidence_score",
     {
       title: "Explain Property checks",
-      description: "Explain a Fabrica property's Property checks from their numeric encoding (formerly called the confidence score; the tool name keeps it). The encoding is a 5-digit positional number where each digit represents a different verification group: recovery status (ten-thousands), past title (thousands), ownership (hundreds), onchain history (tens), basic validation (ones). Max score: 75342.",
+      description: "Explain a Fabrica property's Property checks from their numeric encoding (formerly called the confidence score; the tool name keeps it). The encoding is a 5-digit positional number where each digit represents a different verification group: recovery status (ten-thousands), past title (thousands), ownership (hundreds), onchain history (tens), basic validation (ones). Each digit is a category value, not a count; with a tokenId the response also counts the individual checks that pass. Max: 75342. Property checks are a starting point for your own research, not a title search or title insurance.",
       inputSchema: {
-        tokenId: z.string().optional().describe("Look up and explain the score for this property"),
+        tokenId: z.string().optional().describe("Look up and explain the Property checks of this property"),
         score: z.number().int().min(0).optional().describe("The 5-digit Property checks number to explain, as an integer (e.g. 73242)"),
       },
       annotations: readOnly("Explain Property checks"),
