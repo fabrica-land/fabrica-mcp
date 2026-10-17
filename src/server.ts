@@ -362,7 +362,7 @@ export function createServer(): McpServer {
       inputSchema: {
         summary: z.string().min(10).max(2000).describe("What the person is trying to do, what happened, and what was already checked"),
         topic: z.enum(SUPPORT_TOPICS).optional().describe("Help center section: getting_started, adding_property, buying_selling, borrowing_lending, trust_legal, troubleshooting, other (default)"),
-        tokenId: z.string().max(100).optional().describe("Token ID of the property the question is about"),
+        tokenId: z.string().regex(/^[0-9]{1,80}$/).optional().describe("Token ID of the property the question is about (digits only)"),
       },
       annotations: readOnly("Contact Fabrica support"),
     },

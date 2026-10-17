@@ -11,6 +11,7 @@ export const SUPPORT_EMAIL = "questions@fabrica.land";
 const HELP_CENTER = "https://help.fabrica.land/en";
 const WEB = WEB_BASE;
 const MAX_SUMMARY_CHARS = 2000;
+const TOKEN_ID = /^[0-9]{1,80}$/;
 /** Most mail clients cut a mailto URL somewhere past 2,000 characters. */
 const MAX_MAILTO_CHARS = 1900;
 
@@ -47,7 +48,7 @@ export function containsSecret(text: string): boolean {
   const isSeedRun = () => run.length >= 12 && new Set(run).size >= 10;
   for (const raw of text.split(/\s+/)) {
     if (/^\d+[.)]?$/.test(raw)) continue;
-    const word = raw.replace(/^[("'\[]+|[.,;:!?)"'\]]+$/g, "");
+    const word = raw.replace(/^[("'\[]+|[.,;:!?)"'\]]+$/g, "").toLowerCase();
     if (/^[a-z]{3,8}$/.test(word) && !NOT_SEED_WORDS.has(word)) {
       run.push(word);
     } else {
@@ -64,31 +65,41 @@ export interface ContactSupportArgs {
   tokenId?: string;
 }
 
-function mailtoLink(subject: string, body: string): string {
+/** Lone UTF-16 surrogates make encodeURIComponent throw; replace them with U+FFFD. */
+function wellFormed(text: string): string {
+  return text.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "\uFFFD");
+}
+
+/** Shortens the summary, never the property link or footer after it, until the mailto fits. */
+function mailtoLink(subject: string, summary: string, suffix: string[]): string {
   const encode = encodeURIComponent;
   const base = `mailto:${SUPPORT_EMAIL}?subject=${encode(subject)}&body=`;
-  let text = body;
-  while (base.length + encode(text).length > MAX_MAILTO_CHARS && text.length > 0) {
+  const compose = (text: string) => base + encode([text, ...suffix].join("\n\n"));
+  let text = summary;
+  while (compose(text).length > MAX_MAILTO_CHARS && text.length > 0) {
     text = `${text.slice(0, Math.floor(text.length * 0.9)).trimEnd()}…`;
   }
-  return base + encode(text);
+  return compose(text);
 }
 
 export function contactSupport(args: ContactSupportArgs) {
-  const summary = args.summary.trim();
+  const summary = wellFormed(args.summary).trim();
   if (summary.length < 10) return { error: "The summary needs at least a sentence: what the person is trying to do and what went wrong." };
   if (summary.length > MAX_SUMMARY_CHARS) return { error: `The summary is limited to ${MAX_SUMMARY_CHARS} characters.` };
   if (containsSecret(summary)) {
     return { error: "The summary looks like it contains a private key or seed phrase. Those are never needed by support and are left out of any message; remove them and call again. A transaction hash is fine when labeled, as in transaction hash: 0x…, or an etherscan /tx/ link." };
   }
+  if (args.tokenId !== undefined && !TOKEN_ID.test(args.tokenId)) {
+    return { error: "tokenId must be a Fabrica token ID: digits only, as get_property and search_properties return it." };
+  }
   const topic = TOPIC_PAGES[args.topic ?? "other"];
   const propertyLink = args.tokenId ? `${WEB}/property/${NETWORK}/${encodeURIComponent(args.tokenId)}` : null;
   const subject = `Question from an AI agent: ${topic.label}${args.tokenId ? ` (token ${args.tokenId})` : ""}`;
-  const body = [summary, propertyLink ? `Property: ${propertyLink}` : null, "Sent from an AI agent using the Fabrica MCP server."].filter((line) => line !== null).join("\n\n");
+  const suffix = [propertyLink ? `Property: ${propertyLink}` : null, "Sent from an AI agent using the Fabrica MCP server."].filter((line) => line !== null);
   return {
     helpCenterUrl: topic.url,
     email: SUPPORT_EMAIL,
-    mailto: mailtoLink(subject, body),
+    mailto: mailtoLink(subject, summary, suffix),
     ...(propertyLink ? { propertyLink } : {}),
     note: "Nothing has been sent. Opening the mailto link drafts an email to Fabrica support with this summary; the person reviews and sends it, and replies come back by email.",
   };

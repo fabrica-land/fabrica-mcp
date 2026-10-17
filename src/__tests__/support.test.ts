@@ -41,6 +41,20 @@ describe("contact_support (links and email)", () => {
     expect(contactSupport({ summary: `please help, key: ${"cd".repeat(32)}` })).toMatchObject({ error: expect.stringContaining("private key") });
   });
 
+  it("keeps the property link when the summary is cut and refuses a non-numeric token ID", () => {
+    const result = contactSupport({ summary: "word ".repeat(390), tokenId: "123" });
+    if ("error" in result) throw new Error(result.error);
+    expect(result.mailto.length).toBeLessThanOrEqual(1900);
+    expect(decodeURIComponent(result.mailto)).toContain("/property/");
+    expect(contactSupport({ summary: "A question about my property listing.", tokenId: `0x${"ab".repeat(32)}` })).toMatchObject({ error: expect.stringContaining("digits only") });
+  });
+
+  it("catches a capitalized seed phrase and survives malformed Unicode", () => {
+    expect(containsSecret("Abandon ability able about above absent absorb abstract absurd abuse access accident")).toBe(true);
+    const result = contactSupport({ summary: "A question about my parcel \ud800 listing." });
+    expect("mailto" in result).toBe(true);
+  });
+
   it("writes its strings without em dashes", () => {
     const result = contactSupport({ summary: "A question about selling my parcel while it is being added." });
     expect(JSON.stringify(result)).not.toMatch(/—/);
