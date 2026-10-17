@@ -20,22 +20,24 @@ search_properties, get_property (renders the property card), get_lending_market,
 
 **One-liner** (200 max):
 
-> Explore tokenized US land on Fabrica: property records, Property checks, trust documents, parcel maps, borrow quotes, and lookup of any US parcel by address or APN.
+> Find US land for sale, mostly vacant lots and acreage, by state, county and acres, with property records, parcel maps, tax status and borrowing estimates. Look up any US parcel by address or APN.
 
 **Description** (2,000 max):
 
-> Fabrica makes US land programmable. Each property is held in a trust, and an ERC-1155 token on Ethereum represents the beneficial interest in that trust. This connector gives Claude read-only access to Fabrica's public property data, with no account and no setup.
+> Find land for sale across the US, mostly vacant lots and acreage, and research each property's records, parcel map, taxes and value. Look up any US parcel by street address or APN (assessor parcel number) to see whether it is on Fabrica and whether its county is covered. Fabrica gives Claude read-only access to its land marketplace and real estate data, with no account and no setup.
 >
 > With it, Claude can:
-> - Search properties by state, county, size, listing status and loan status
-> - Show a property as a card with its parcel map, photos and key facts, with buttons that open it on Fabrica
-> - Pull a property's full record: legal description, valuation sources, property tax status, ownership, loans, marketplace listings and offers, and the trust agreement that governs the token
+> - Search land for sale by state, county, acres, listing status and loan status
+> - Show a parcel as a card with its parcel map, photos, acreage and key facts, with buttons that open it on Fabrica
+> - Pull a property's full record: legal description, county, valuation sources, property tax status, ownership, marketplace listings and offers, and the trust agreement of the trust that holds title
 > - Explain a property's Property checks, check by check
 > - Return parcel boundaries as GeoJSON, and map images of a parcel or of every property a wallet holds
-> - Look up any US parcel by street address or APN, and say whether its county can be brought onto Fabrica
-> - Summarize the DeFi lending pool and estimate what a property could borrow
+> - Look up any US parcel by address or APN, and say whether its county can be brought onto Fabrica
+> - Estimate what a property could borrow from the DeFi lending pool, and summarize that pool
 > - Show a wallet's portfolio and the onchain activity of a property, a wallet or the whole network
 > - Answer questions about how Fabrica works from its documentation and help center, with links to the source
+>
+> Every property on Fabrica is a real US parcel held in a trust, and an ERC-1155 token on Ethereum represents the beneficial interest in that trust.
 >
 > Every tool is read-only. The connector never signs, sends or changes anything, and it serves public data from Fabrica's own API. The card's buttons open fabrica.land, where any purchase, offer or loan happens.
 >
@@ -59,7 +61,7 @@ search_properties, get_property (renders the property card), get_lending_market,
 
 ## Use cases
 
-- **Primary use cases:** research and due diligence on tokenized land (records, Property checks, trust documents, boundaries, maps, tax status); finding land for sale; checking what a property could borrow; reviewing a wallet's holdings and activity; looking up any US parcel and whether it can be brought onto Fabrica.
+- **Primary use cases:** finding vacant land, lots and acreage for sale; research and due diligence on a parcel (records, Property checks, trust documents, boundaries, maps, tax status); checking what a property could borrow; reviewing a wallet's holdings and activity; looking up any US parcel and whether it can be brought onto Fabrica.
 - **What users need before connecting:** nothing. No account, plan or API key.
 - **Reads, writes or both:** reads only.
 
