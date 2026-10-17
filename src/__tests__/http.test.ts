@@ -49,8 +49,9 @@ describe("hosted HTTP transport", () => {
       "get_order_book",
       "contact_support",
       "check_coverage",
+      "get_loan_book",
     ]));
-    expect(tools).toHaveLength(19);
+    expect(tools).toHaveLength(20);
     expect(client.getInstructions()).toContain("Network:");
     await client.close();
   });

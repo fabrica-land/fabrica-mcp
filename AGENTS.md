@@ -36,6 +36,7 @@ ui/
   tools/
     properties.ts     # search_properties, get_property, get_property_map
     lending.ts        # get_lending_market
+    loan-book.ts      # get_loan_book (loan records joined to the pool subgraph's loan entities for auction proceeds)
     portfolio.ts      # get_portfolio
     protocol.ts       # get_protocol_stats
     scoring.ts        # explain_confidence_score
@@ -117,7 +118,7 @@ The Apollo API routes subgraph data internally, so all onchain and offchain prop
 **Mainnet:** `https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-mainnet/3.13.2/gn`
 **Sepolia:** `https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-sepolia/3.13.1/gn`
 
-Used for DeFi lending pool TVL, utilization, and loan count data. The subgraph, the env var and some internal identifiers keep the MetaStreet name for historical reasons; public-facing text says DeFi lending pool. **Pools are discovered dynamically** by querying all pools that accept the Fabrica collateral token — no hardcoded pool IDs. Mainnet has 1+ pools, Sepolia has 10 (2026-10). Pool values are in 18-decimal format.
+Used for DeFi lending pool TVL, utilization, and loan count data, and (in `get_loan_book`) each pool loan's auction `proceeds`: the API's loan records leave `amountPaidToLenderScaled` empty on liquidated loans. Its `loansLiquidated` counter reads 0 on mainnet while its own loan entities show 10 `CollateralLiquidated` (ENG-5029), so counts come from the loan records. Pool loans join to API loans by pool, collateral token ID and start second (the API's pool `loanId` is not the subgraph loan id). The subgraph, the env var and some internal identifiers keep the MetaStreet name for historical reasons; public-facing text says DeFi lending pool. **Pools are discovered dynamically** by querying all pools that accept the Fabrica collateral token — no hardcoded pool IDs. Mainnet has 1+ pools, Sepolia has 10 (2026-10). Pool values are in 18-decimal format.
 
 ### 3. Fabrica Media Service (Images)
 

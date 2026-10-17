@@ -33,6 +33,7 @@ Claude Code, mainnet: `claude mcp add --transport http fabrica https://mcp.fabri
 | `explain_confidence_score` | What each verification group's value means, decoded from the numeric encoding of Property checks (pass counts come from `get_property`'s `propertyChecks`) |
 | `get_borrow_quote` | What the DeFi lending pool would lend against a property, and what limits it (`limits.limitedBy`): a small amount is often the pool's free liquidity, not a valuation |
 | `get_lending_market` | Loans, pool liquidity, average APR |
+| `get_loan_book` | What has been lent, at what loan-to-value (against today's estimate), where, and what happened to liquidated loans |
 | `get_portfolio` | A wallet's holdings, credit history and loans |
 | `get_portfolio_image` | Map of a wallet's holdings |
 | `get_activity` | Transfers, sales and loans for a property or wallet; with no filter, the newest across the network |

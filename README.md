@@ -61,6 +61,7 @@ Set `FABRICA_NETWORK=sepolia` in the server's environment for the testnet.
 | `search_properties` | Search tokenized properties by state, county, size, Property checks, listing status, listing price and price per acre, or distance from a point; sort by price, price per acre, acres, estimated value, Property checks, mint date or distance. Each row carries its lifecycle stage and price per acre; or counts per state or county, with links to the fabrica.land location pages |
 | `get_property` | Full property details: legal, valuation, ownership, loans, media, lifecycle stage, assessed fees, duplicate-parcel flags |
 | `get_lending_market` | Lending overview: loan counts, loans, DeFi lending pool stats, average APR, events |
+| `get_loan_book` | The lending history as a distribution: loan-to-value bands, exposure by state and acreage, APR and duration spread, liquidations with auction proceeds, originations by month, largest loans |
 | `get_portfolio` | Wallet holdings, credit history, loan positions |
 | `get_protocol_stats` | Protocol-wide metrics: properties, estimated value, loan volume and counts, lending pool TVL |
 | `get_property_map` | GeoJSON boundary data for mapping and spatial analysis |

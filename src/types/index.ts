@@ -161,3 +161,15 @@ export interface SubgraphPool {
   /** True when the totals above were derived from the ticks. */
   totalsFromTicks?: boolean;
 }
+
+/** One loan entity of a lending pool in the subgraph. Amounts are 18-decimal fixed point. */
+export interface SubgraphLoan {
+  id: string;
+  pool: { id: string };
+  status: "Active" | "Repaid" | "Liquidated" | "CollateralLiquidated";
+  timestamp: string;
+  collateralTokenIds: string[];
+  principal: string;
+  /** What the collateral auction paid, once the collateral is liquidated; null before. */
+  proceeds: string | null;
+}

@@ -39,6 +39,8 @@
     { "id": "portfolio not an address", "tool": "get_portfolio", "args": { "address": "not-an-address" }, "expect": "contains:No Fabrica activity" },
     { "id": "portfolio image", "tool": "get_portfolio_image", "args": { "address": "$wallet" }, "expect": "image" },
     { "id": "lending market", "tool": "get_lending_market", "args": {}, "expect": "contains:poolStats" },
+    { "id": "loan book", "tool": "get_loan_book", "args": {}, "expect": "contains:poolCounts" },
+    { "id": "loan book by state", "tool": "get_loan_book", "args": { "provider": "pool", "groupBy": "state", "largest": 3 }, "expect": "contains:groups" },
     { "id": "lending market active", "tool": "get_lending_market", "args": { "status": "active", "limit": 5 }, "expect": "contains:summary" },
     { "id": "lending market repaid since", "tool": "get_lending_market", "args": { "status": "repaid", "since": "2026-01-01", "limit": 3 }, "expect": "contains:summary" },
     { "id": "protocol stats", "tool": "get_protocol_stats", "args": {}, "expect": "contains:totalTokenized" },

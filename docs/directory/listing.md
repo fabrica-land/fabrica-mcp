@@ -12,7 +12,7 @@ Wording rules for every field: "Property checks" (never "confidence score"), "De
 
 The portal syncs them from the server. It should show 19 tools, all read-only, each with a title and `readOnlyHint: true`:
 
-search_properties, get_property (renders the property card), get_lending_market, get_portfolio, get_protocol_stats, get_property_map, get_trust_documents, get_tax_status, explain_confidence_score, get_borrow_quote, get_valuation, get_activity, get_order_book, get_property_image, get_portfolio_image, ask_fabrica, find_parcel, check_coverage, contact_support.
+search_properties, get_property (renders the property card), get_lending_market, get_loan_book, get_portfolio, get_protocol_stats, get_property_map, get_trust_documents, get_tax_status, explain_confidence_score, get_borrow_quote, get_valuation, get_activity, get_order_book, get_property_image, get_portfolio_image, ask_fabrica, find_parcel, check_coverage, contact_support.
 
 ## Listing
 
