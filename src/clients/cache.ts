@@ -37,15 +37,19 @@ export class TtlCache<V> {
     const entry = { expiresAt: Number.POSITIVE_INFINITY, value };
     this.entries.set(key, entry);
     value.then(
-      () => { entry.expiresAt = Date.now() + this.ttlMs; },
+      () => { entry.expiresAt = Date.now() + this.ttlMs; this.trim(); },
       () => { if (this.entries.get(key) === entry) this.entries.delete(key); },
     );
-    // Evict the oldest settled entries; pending loads may briefly exceed the bound so they stay shared.
+    this.trim();
+    return value;
+  }
+
+  /** Evict the oldest settled entries past the bound; pending loads may briefly exceed it so they stay shared. */
+  private trim(): void {
     for (const [oldest, candidate] of this.entries) {
       if (this.entries.size <= this.maxEntries) break;
       if (candidate.expiresAt !== Number.POSITIVE_INFINITY) this.entries.delete(oldest);
     }
-    return value;
   }
 
   get size(): number {
