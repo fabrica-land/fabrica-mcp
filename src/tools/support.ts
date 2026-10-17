@@ -1,4 +1,5 @@
 import { NETWORK, WEB_BASE } from "../config.js";
+import { BIP39_ENGLISH } from "./bip39-english.js";
 
 /**
  * contact_support, option A: no secret and nothing sent. It returns the help center
@@ -28,16 +29,14 @@ const TOPIC_PAGES: Record<SupportTopic, { label: string; url: string }> = {
   other: { label: "Help center", url: `${HELP_CENTER}/` },
 };
 
-/** Common English words that are not BIP-39 words: one of them inside a run means prose, not a seed phrase. */
-const NOT_SEED_WORDS = new Set("the and for with but not was are from our your his her its were been has had did does would could should than them their here some each most too why how who which while after please".split(" "));
 /** A label right before a 64-hex value that marks it as a transaction hash, which support may need. */
 const TX_CONTEXT = /(\/tx\/|\b(?:tx|txn|transaction)[ _-]?(?:hash|id)\b\s*(?:is\s*|[:=]\s*)?)$/i;
 
 /**
  * Key material never goes into a support message: a 64-hex-character value with or without
  * 0x (a private key) unless it directly follows a transaction-hash label or an /tx/ URL, or a run
- * of 12 or more seed-phrase-shaped words anywhere in the text (lowercase, 3 to 8 letters, no
- * common non-BIP-39 word; repeats allowed), even after a lead-in such as "my seed phrase is:".
+ * of 12 or more BIP-39 words anywhere in the text (any case, numbering and punctuation ignored,
+ * repeats allowed), even after a lead-in such as "my seed phrase is:".
  * Talking about a lost key is fine.
  */
 export function containsSecret(text: string): boolean {
@@ -49,7 +48,7 @@ export function containsSecret(text: string): boolean {
   for (const raw of text.split(/\s+/)) {
     if (/^\d+[.)]?$/.test(raw)) continue;
     const word = raw.replace(/^[("'\[]+|[.,;:!?)"'\]]+$/g, "").toLowerCase();
-    if (/^[a-z]{3,8}$/.test(word) && !NOT_SEED_WORDS.has(word)) {
+    if (BIP39_ENGLISH.has(word)) {
       run.push(word);
     } else {
       if (isSeedRun()) return true;
@@ -77,7 +76,8 @@ function mailtoLink(subject: string, summary: string, suffix: string[]): string 
   const compose = (text: string) => base + encode([text, ...suffix].join("\n\n"));
   let text = summary;
   while (compose(text).length > MAX_MAILTO_CHARS && text.length > 0) {
-    text = `${text.slice(0, Math.floor(text.length * 0.9)).trimEnd()}…`;
+    // Never cut between the two halves of a surrogate pair: a lone half makes encodeURIComponent throw.
+    text = `${text.slice(0, Math.floor(text.length * 0.9)).replace(/[\uD800-\uDBFF]$/, "").trimEnd()}…`;
   }
   return compose(text);
 }

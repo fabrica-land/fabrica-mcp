@@ -53,6 +53,8 @@ describe("contact_support (links and email)", () => {
     expect(containsSecret("Abandon ability able about above absent absorb abstract absurd abuse access accident")).toBe(true);
     expect(containsSecret(`key 0X${"AB".repeat(32)}`)).toBe(true);
     expect(containsSecret(`${"abandon ".repeat(11)}about`)).toBe(true);
+    expect(containsSecret("wrong habit note fury wink plate film account shed wood eight please")).toBe(true);
+    expect(containsSecret("Cannot upload deed because identity check failed during final review step again.")).toBe(false);
     const result = contactSupport({ summary: "A question about my parcel \ud800 listing." });
     expect("mailto" in result).toBe(true);
   });
@@ -60,5 +62,11 @@ describe("contact_support (links and email)", () => {
   it("writes its strings without em dashes", () => {
     const result = contactSupport({ summary: "A question about selling my parcel while it is being added." });
     expect(JSON.stringify(result)).not.toMatch(/—/);
+  });
+
+  it("keeps emoji intact when the summary is cut", () => {
+    const summary = `${"x".repeat(1799)}\u{1F600}${"y".repeat(199)}`;
+    const result = contactSupport({ summary });
+    expect("mailto" in result && result.mailto.length).toBeLessThanOrEqual(1900);
   });
 });
