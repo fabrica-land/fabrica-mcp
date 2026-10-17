@@ -19,12 +19,14 @@ Fabrica tokenizes real property (land) as ERC-1155 NFTs on Ethereum. A legal tru
 src/
   config.ts           # Network config, contract addresses, legal notices
   server.ts           # createServer(): registers every tool
+  prompts.ts          # MCP prompts (due_diligence, work_parcel_list, wallet_review, how_to_add_land)
   index.ts            # stdio entrypoint (local installs)
   http.ts             # stateless Streamable HTTP handler (hosted)
   usage-log.ts        # one structured log line per request, no arguments or IPs (docs/usage/)
   vercel.ts           # Vercel function entry, bundled by scripts/build-vercel.mjs
   ui/property-card.ts # registers the property card MCP App resource (ui://fabrica/property-card)
   ui/generated/       # gitignored: HTML built from /ui by scripts/build-ui.mjs
+skills/fabrica/SKILL.md # Agent Skills file, served at /skill.md by scripts/build-vercel.mjs; keep it in step with the tools
 ui/
   property-card/      # the MCP App view (index.html template + app.ts), bundled with the
                       # MCP Apps SDK into one self-contained HTML string (no CDN scripts).

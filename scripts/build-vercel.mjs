@@ -48,6 +48,7 @@ await writeFile(`${OUTPUT}/static/index.html`, `<!doctype html>
 <p>Add this URL to any MCP client (Claude, ChatGPT, Cursor, and others) as a remote server. No install, no API key:</p>
 <p><code id="url">/mcp</code></p>
 <p>Claude Code: <code id="cmd">claude mcp add --transport http fabrica /mcp</code></p>
+<p>Agent skill file: <a href="/skill.md">/skill.md</a></p>
 <p>Source and tool list: <a href="https://github.com/fabrica-land/fabrica-mcp">github.com/fabrica-land/fabrica-mcp</a></p>
 <script>
 const url = location.origin + "/mcp";
@@ -57,6 +58,8 @@ document.getElementById("cmd").textContent = "claude mcp add --transport http ${
 </body>
 </html>
 `);
+// The Fabrica skill file (Agent Skills format), for agents that never connect to the server.
+await copyFile("skills/fabrica/SKILL.md", `${OUTPUT}/static/skill.md`);
 // Brand font for the property card (ui/property-card/index.html), with its licence. The card
 // loads it cross-origin from the host's sandboxed frame, so it needs CORS.
 await mkdir(`${OUTPUT}/static/fonts`, { recursive: true });

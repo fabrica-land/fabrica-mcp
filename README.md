@@ -126,6 +126,10 @@ The same documents are registered as MCP resources, so a person can attach one t
 
 `fabrica://docs/{slug}` and `fabrica://help/{id}` are also resource templates with completion.
 
+## Prompts and skill file
+
+The server offers four MCP prompts: `due_diligence` (one property, ending with what to verify yourself), `work_parcel_list` (a list of addresses or parcel numbers through `find_parcel`), `wallet_review` (holdings, loans and maturities) and `how_to_add_land` (the on-ramp for one parcel). The same loops, the tool list and the legal red lines are in the Agent Skills file [`skills/fabrica/SKILL.md`](skills/fabrica/SKILL.md), served at https://mcp.fabrica.land/skill.md for agents that do not connect to the server.
+
 ## Example Conversations
 
 > "Find me all tokenized properties in Texas"
