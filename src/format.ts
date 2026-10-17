@@ -72,3 +72,24 @@ export function sortLoans<T extends { loanStatus: string; startTime: string | nu
     return activeA - activeB || time(b) - time(a);
   });
 }
+
+/** "$12,500" from a USD decimal string, "$0" included; null when missing or unparseable. */
+export function formatUsd(value: string | null | undefined): string | null {
+  const num = Number.parseFloat(value ?? "");
+  if (!Number.isFinite(num)) return null;
+  return `$${num.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+}
+
+/** "0x842F...3Cf9". */
+export function shortenAddress(addr: string | null | undefined): string | null {
+  if (!addr) return null;
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+}
+
+/**
+ * The first `max` items of an unbounded list, with the total when some are left out, so a
+ * response stays bounded and an agent can still tell the list was cut.
+ */
+export function capList<T>(items: ReadonlyArray<T>, max: number): { items: T[]; total: number; truncated: boolean } {
+  return { items: items.slice(0, max), total: items.length, truncated: items.length > max };
+}

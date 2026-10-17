@@ -1,16 +1,12 @@
+import { LOANS_INCOMPLETE_NOTE, loansMayBeIncomplete } from "../clients/budgets.js";
 import { getAllLoans } from "../clients/graphql.js";
 import { getFabricaPools } from "../clients/subgraph.js";
 import type { LoanModel } from "../types/index.js";
 import { formatLoanProvider, loanVolumeByCurrency } from "../labels.js";
-import { estimateFields, formatTokenAmount, sortLoans } from "../format.js";
+import { estimateFields, formatTokenAmount, sortLoans, shortenAddress } from "../format.js";
 import { buildPoolStats } from "./pool-stats.js";
 
 const RECENT_EVENT_COUNT = 10;
-
-function shortenAddress(addr: string | null | undefined): string | null {
-  if (!addr) return null;
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-}
 
 function loanSummary(loan: LoanModel) {
   return {
@@ -125,6 +121,7 @@ export async function getLendingMarket(args: Record<string, unknown>) {
       loans: sortLoans(filtered).slice(0, limit).map(loanSummary),
       loansOrder: "Active loans first, then most recently started first.",
       recentEvents: recentLoanEvents(allLoans),
+      ...(loansMayBeIncomplete(allLoans) ? { loansNote: LOANS_INCOMPLETE_NOTE } : {}),
       recentEventsScope: `The ${RECENT_EVENT_COUNT} most recent loan events (started, repaid, liquidated) across all lenders, from the loan records. A type missing here has no event among the latest ${RECENT_EVENT_COUNT}; lifetime counts are in summary.`,
     };
   } catch (e) {

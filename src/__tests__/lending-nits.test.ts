@@ -231,3 +231,34 @@ describe("display valuation", () => {
     expect(result.valuation.displayValuation).toBe("$396,647");
   });
 });
+
+describe("ENG-4462: bounded responses", () => {
+  it("pages a wallet's properties and keeps the counts whole", async () => {
+    const tokens = Array.from({ length: 7 }, (_, i) => ({ tokenId: String(i), name: `Lot ${i}`, estimatedValue: "1000", supplyUnderLoan: "0", marketplacePrice: null }));
+    vi.mocked(getWallet).mockResolvedValue({ address: "0xabc", tokenCount: "7", tokens, loansTaken: [], loansMade: [], creditHistory: null, marketplaceOffersMade: [] } as never);
+    const first = await getPortfolio({ address: "0xabc", limit: 3 });
+    expect(first).toMatchObject({ propertyCount: 7, propertiesPage: { offset: 0, limit: 3, returned: 3, total: 7, nextOffset: 3 } });
+    const last = await getPortfolio({ address: "0xabc", limit: 3, offset: 6 });
+    expect(last).toMatchObject({ properties: [{ tokenId: "6" }], propertiesPage: { returned: 1, total: 7 } });
+    expect(last).not.toHaveProperty("propertiesPage.nextOffset");
+  });
+
+  it("caps holders and orders on get_property, with the totals", async () => {
+    const balances = Array.from({ length: 30 }, (_, i) => ({ balance: "1", holder: { address: `0x${String(i).padStart(40, "0")}` } }));
+    const order = (side: string) => ({ side, status: "active", price: "1", usdPrice: "1", symbol: "USDC", makerAddress: "0x1234567890123456789012345678901234567890", endTime: null });
+    vi.mocked(getToken).mockResolvedValue({
+      ...token,
+      balances,
+      marketplaceListings: Array.from({ length: 25 }, () => order("sell")),
+      marketplaceBids: Array.from({ length: 3 }, () => order("buy")),
+    } as never);
+    const result = await getProperty({ tokenId: "1" });
+    expect(result).toMatchObject({
+      ownership: { holdersNote: "The first 25 of 30 holders." },
+      marketplace: { note: expect.stringContaining("25 active listings and 3 active offers") },
+    });
+    const text = JSON.stringify(result);
+    expect(JSON.parse(text).ownership.holders).toHaveLength(25);
+    expect(JSON.parse(text).marketplace.listings).toHaveLength(20);
+  });
+});

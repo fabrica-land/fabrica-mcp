@@ -1,15 +1,10 @@
 import { getToken } from "../clients/graphql.js";
 import { LENDING_POOL_NAME, describeAppraisalBlock, formatLoanProvider, formatUsdcCeiling } from "../labels.js";
-import { estimateFields, formatDurationDays, formatRawTokenAmount, formatTokenAmount, formatUnixTime } from "../format.js";
+import { estimateFields, formatDurationDays, formatRawTokenAmount, formatTokenAmount, formatUnixTime, shortenAddress } from "../format.js";
 import { describePoolOracle, zeroCapacityReasons } from "./valuation.js";
 
 /** Pool loan amounts are raw USDC units (6 decimals). */
 const POOL_CURRENCY_DECIMALS = 6;
-
-function shortenAddress(addr: string | null | undefined): string | null {
-  if (!addr) return null;
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-}
 
 export async function getBorrowQuote(args: Record<string, unknown>) {
   const tokenId = args.tokenId as string | undefined;

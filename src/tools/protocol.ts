@@ -1,19 +1,14 @@
+import { LOANS_INCOMPLETE_NOTE, loansMayBeIncomplete } from "../clients/budgets.js";
 import { getTokens, getAllLoans, DEFAULT_MIN_SCORE, filterSpamTokens } from "../clients/graphql.js";
 import { getFabricaPools } from "../clients/subgraph.js";
 import { CONTRACTS, NETWORK_LABEL, MAINNET_WARNING, IS_MAINNET } from "../config.js";
 import { loanVolumeByCurrency } from "../labels.js";
 import { buildPoolStats } from "./pool-stats.js";
+import { formatUsd } from "../format.js";
 import { groupTokens } from "./properties.js";
 import { PLATFORM_URL } from "../links.js";
 
 const TOP_COUNTY_COUNT = 10;
-
-function formatUsd(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const num = parseFloat(value);
-  if (isNaN(num)) return null;
-  return `$${num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
 
 export async function getProtocolStats() {
   try {
@@ -70,6 +65,7 @@ export async function getProtocolStats() {
         repaidLoans: repaidLoans.length,
         liquidatedLoans: liquidatedLoans.length,
         loanVolumeByCurrency: loanVolumeByCurrency(loans),
+        ...(loansMayBeIncomplete(loans) ? { note: LOANS_INCOMPLETE_NOTE } : {}),
         lendingPools: buildPoolStats(pools),
       },
       marketplace: {

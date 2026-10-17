@@ -129,9 +129,11 @@ export function createServer(): McpServer {
     "get_portfolio",
     {
       title: "Get wallet portfolio",
-      description: "Get a wallet's complete Fabrica portfolio: properties owned, active loans (as borrower or lender), marketplace orders, credit history, and total portfolio value.",
+      description: "Get a wallet's Fabrica portfolio: properties owned (paged), active loans (as borrower or lender), marketplace orders, credit history, and total portfolio value. Counts and totals always cover the whole wallet.",
       inputSchema: {
         address: z.string().describe("Ethereum wallet address (0x...)"),
+        limit: z.number().int().min(1).max(200).optional().describe("Max properties to list (default 50, max 200)"),
+        offset: z.number().int().min(0).optional().describe("Properties to skip, for paging (propertiesPage.nextOffset)"),
       },
       annotations: readOnly("Get wallet portfolio"),
     },
