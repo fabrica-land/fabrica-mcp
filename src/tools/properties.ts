@@ -180,7 +180,7 @@ export async function getProperty(args: Record<string, unknown>) {
       },
       valuation: {
         ...estimateFields(token.estimatedValue, token.pricing),
-        displayValuation: formatUsd(token.cardDisplayValuation),
+        displayValuation: formatUsd(token.cardDisplayValuation) ?? token.cardDisplayValuation,
         confidenceScore: formatScore(token.score),
         scoreBreakdown: token.scoringCheckResults.map(s => ({
           check: s.title,

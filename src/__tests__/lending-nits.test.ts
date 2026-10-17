@@ -222,3 +222,11 @@ describe("7. loans sorted active first, then newest", () => {
     expect(sorted[0].startTime).toBe("2025-01-01T00:00:00Z");
   });
 });
+
+describe("display valuation", () => {
+  it("formats a decimal and keeps an already formatted value", async () => {
+    vi.mocked(getToken).mockResolvedValue({ ...token, cardDisplayValuation: "$396,647" } as never);
+    const result = await getProperty({ tokenId: token.tokenId }) as { valuation: Record<string, unknown> };
+    expect(result.valuation.displayValuation).toBe("$396,647");
+  });
+});
