@@ -92,6 +92,7 @@ Replace `/absolute/path/to/fabrica-mcp` with the actual path where you cloned th
 | `get_property_image` | Static map image of a property's parcel boundary (inline, dark/light themes) |
 | `get_portfolio_image` | Map image showing all properties owned by a wallet (inline, dark/light themes) |
 | `ask_fabrica` | Cited passages from Fabrica's docs, help center and the US trust agreement that answer a question about how Fabrica works |
+| `find_parcel` | Any US address or parcel number (APN) to a parcel: on Fabrica or not, and the on-ramp link to add it. No owner names; 30 lookups per minute per client |
 
 ### Knowledge layer
 

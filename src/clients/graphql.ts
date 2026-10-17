@@ -641,6 +641,43 @@ export async function getCountyBounds(fips: string): Promise<CountyBoundsModel |
   return data.countyBounds;
 }
 
+// --- Parcel matching (find_parcel) ---
+
+const GET_PARCEL_INDEX_QUERY = gql`
+  query GetParcelIndex($testnets: Boolean, $contractAddress: String) {
+    tokens(burned: false, premints: false, testnets: $testnets, contractAddress: $contractAddress) {
+      tokenId
+      name
+      vanityName
+      slug
+      propertyLink
+      regionCode
+      coordinates { lat lon }
+      definition { offchainRegistrar { admin propertyId } }
+    }
+  }
+`;
+
+export interface ParcelIndexToken {
+  tokenId: string;
+  name?: string | null;
+  vanityName?: string | null;
+  slug?: string | null;
+  propertyLink?: string | null;
+  regionCode?: string | null;
+  coordinates?: { lat: number; lon: number } | null;
+  definition?: { offchainRegistrar?: { admin?: string | null; propertyId?: string | null } | null } | null;
+}
+
+/** Every minted, unburned token with its state, APN and coordinates: what find_parcel matches against. */
+export async function getParcelIndex(): Promise<ParcelIndexToken[]> {
+  const data = await request<{ tokens: ParcelIndexToken[] }>(GET_PARCEL_INDEX_QUERY, {
+    testnets: !IS_MAINNET,
+    contractAddress: CONTRACTS.fabricaToken,
+  });
+  return data.tokens;
+}
+
 /**
  * Every document this client sends to the Fabrica API, for the schema-drift test.
  * A query that is not listed here is not covered — add new documents as they are written.
@@ -659,4 +696,5 @@ export const API_DOCUMENTS: ReadonlyArray<{ name: string; document: string }> = 
   { name: "GetCountyBounds", document: GET_COUNTY_BOUNDS_QUERY },
   { name: "GetOrderBook", document: GET_ORDER_BOOK_QUERY },
   { name: "GetPremintSuccessor", document: GET_PREMINT_SUCCESSOR_QUERY },
+  { name: "GetParcelIndex", document: GET_PARCEL_INDEX_QUERY },
 ];

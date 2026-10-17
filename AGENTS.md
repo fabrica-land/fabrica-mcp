@@ -40,6 +40,7 @@ ui/
     marketplace.ts    # get_order_book
     images.ts         # get_property_image, get_portfolio_image
     knowledge.ts      # ask_fabrica
+    parcels.ts        # find_parcel (Regrid type-ahead via the API, /go on-ramp link, per-client limit)
   knowledge/
     index.ts          # typed, validated loader for generated/index.json (committed)
     search.ts         # BM25 retrieval with Fabrica synonyms and compound-term normalization
@@ -52,6 +53,8 @@ ui/
   clients/
     graphql.ts        # Fabrica GraphQL API client (primary data source)
     subgraph.ts       # Lending pool subgraph client (dynamic pool discovery)
+  data/
+    us-counties.ts    # Regrid county paths to FIPS and name (copied from soil-app's /go table)
   types/
     index.ts          # Shared TypeScript interfaces
   __tests__/          # vitest test suite
@@ -193,6 +196,7 @@ The feature is called **Property checks** in every description and output. The A
   - `FABRICA_API_URL` (default: `https://api.fabrica.land/graphql`)
   - `FABRICA_METASTREET_SUBGRAPH_URL` (default: auto-selected per network)
   - `FABRICA_MEDIA_URL` (default: `https://media.fabrica.land`)
+  - `FABRICA_WEB_URL` (default: `https://fabrica.land`, `https://testnets.fabrica.land` on Sepolia): on-ramp links and the APN parcel lookup in `find_parcel`
   - `FABRICA_MCP_APPS` (default: on for Sepolia, off for mainnet): the property card MCP App
 
 ---
