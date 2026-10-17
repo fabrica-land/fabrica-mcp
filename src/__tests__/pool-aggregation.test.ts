@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { aggregatePoolStats, withTickTotals } from "../clients/subgraph.js";
+import { aggregatePoolStats, MAX_TICKS, withTickTotals } from "../clients/subgraph.js";
 import type { SubgraphPool } from "../types/index.js";
 
 function makePool(overrides: Partial<SubgraphPool> = {}): SubgraphPool {
@@ -102,5 +102,11 @@ describe("withTickTotals", () => {
     const pool = makePool({ ...zeroTotals, ticks: [{ value: "0", available: "0" }] });
     expect(withTickTotals(pool)).toBe(pool);
     expect(withTickTotals(makePool({ ...zeroTotals }))).toEqual(makePool({ ...zeroTotals }));
+  });
+
+  it("keeps the subgraph totals when a full page of ticks may be partial", () => {
+    const ticks = Array.from({ length: MAX_TICKS }, () => ({ value: "1", available: "1" }));
+    const pool = makePool({ ...zeroTotals, ticks });
+    expect(withTickTotals(pool)).toBe(pool);
   });
 });

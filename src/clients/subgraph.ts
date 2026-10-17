@@ -33,7 +33,7 @@ const POOL_FIELDS = gql`
     loansRepaid
     loansLiquidated
     adminFeeRate
-    ticks(first: 1000) { value available }
+    ticks(first: 1000, where: { value_gt: "0" }) { value available }
   }
 `;
 
@@ -75,6 +75,9 @@ function sumValues(values: string[]): string {
   return String(values.reduce((sum, v) => sum + parseFloat(v), 0));
 }
 
+/** Page size of the nonzero-tick query in POOL_FIELDS. */
+export const MAX_TICKS = 1000;
+
 const isZero = (v: string) => /^0*$/.test(v) || Number(v) === 0;
 
 /**
@@ -84,7 +87,9 @@ const isZero = (v: string) => /^0*$/.test(v) || Number(v) === 0;
  */
 export function withTickTotals(pool: SubgraphPool): SubgraphPool {
   const ticks = pool.ticks ?? [];
-  if (ticks.length === 0) return pool;
+  // Only ticks holding value are fetched, up to MAX_TICKS. A full page may be partial, and a
+  // partial sum would understate the pool, so keep the subgraph's own totals then.
+  if (ticks.length === 0 || ticks.length >= MAX_TICKS) return pool;
   if (![pool.totalValueLocked, pool.totalValueUsed, pool.totalValueAvailable].every(isZero)) return pool;
   if (!ticks.every(t => /^\d+$/.test(t.value) && /^\d+$/.test(t.available))) return pool;
   const locked = ticks.reduce((sum, t) => sum + BigInt(t.value), 0n);
