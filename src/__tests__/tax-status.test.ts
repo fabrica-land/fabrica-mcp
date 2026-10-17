@@ -51,9 +51,11 @@ describe("resolveTaxStatus", () => {
   it("lets the lending block reason decide, and says when both signals agree", () => {
     expect(resolveTaxStatus(false, "TAX_DELINQUENT")).toEqual({ status: "delinquent", basis: "both" });
     expect(resolveTaxStatus(null, "TAX_DELINQUENT")).toEqual({ status: "delinquent", basis: "lendingBlockReason" });
-    expect(resolveTaxStatus(null, "TAX_STATUS_UNKNOWN")).toEqual({ status: "unknown", basis: "both" });
+    expect(resolveTaxStatus(null, "TAX_STATUS_UNKNOWN")).toEqual({ status: "unknown", basis: "lendingBlockReason" });
     expect(resolveTaxStatus(true, "OTHER")).toEqual({ status: "current", basis: "check" });
     expect(resolveTaxStatus(true, "TAX_DELINQUENT")).toEqual({ status: "unknown", basis: "conflicting" });
+    expect(resolveTaxStatus(true, "TAX_STATUS_UNKNOWN")).toEqual({ status: "unknown", basis: "conflicting" });
+    expect(resolveTaxStatus(false, "TAX_STATUS_UNKNOWN")).toEqual({ status: "unknown", basis: "conflicting" });
   });
 });
 
@@ -154,6 +156,25 @@ describe("get_tax_status", () => {
     expect(result.checkedAt).toBeNull();
     expect((result.warnings as string[])[0]).toContain("HTTP 502");
     expect((result.warnings as string[])[0]).toContain("tax check and its dates could not be read");
+  });
+
+  it("does not claim two signals when the score record is unavailable", async () => {
+    vi.mocked(getTaxStatusToken).mockResolvedValueOnce(makeToken("TAX_STATUS_UNKNOWN"));
+    vi.mocked(getScoreRecord).mockRejectedValueOnce(new Error("Fabrica score API request failed (HTTP 502)"));
+    const result = await getTaxStatus({ tokenId: "1" }) as Record<string, unknown>;
+    expect(result.status).toBe("unknown");
+    expect(result.basis).toBe("lendingBlockReason");
+  });
+
+  it("does not date a result the check disagrees with", async () => {
+    vi.mocked(getTaxStatusToken).mockResolvedValueOnce(makeToken("TAX_STATUS_UNKNOWN"));
+    vi.mocked(getScoreRecord).mockResolvedValueOnce(record(1));
+    const result = await getTaxStatus({ tokenId: "1" }) as Record<string, unknown>;
+    expect(result.status).toBe("unknown");
+    expect(result.basis).toBe("conflicting");
+    expect(result.checkedAt).toBeNull();
+    expect(result.nextCheckBy).toBeNull();
+    expect((result.warnings as string[]).join(" ")).toContain("disagree");
   });
 
   it("skips the score API for a premint and says why the status is unknown", async () => {
