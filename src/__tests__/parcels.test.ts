@@ -66,6 +66,12 @@ describe("find_parcel helpers", () => {
     expect(matchByApn(stLouisCity, [{ ...countyToken, definition: { offchainRegistrar: { admin: "St. Louis City", propertyId: "12-345" } } }])?.tokenId).toBe("7");
   });
 
+  it("strips a five-digit prefix only when it is the parcel's county FIPS", () => {
+    const hit = { headline: "1 Main St", context: "Clayton, MO", apn: "678", path: "/us/mo/st-louis-county/clayton/1", score: 90 };
+    const bare = { tokenId: "8", regionCode: "MO", definition: { offchainRegistrar: { admin: "St. Louis", propertyId: "12345-678" } } };
+    expect(matchByApn(hit, [bare])).toBeNull();
+  });
+
   it("reads only the point, Regrid id and outline from the parcel lookup", () => {
     const point = parseParcelPoint(HUNT_PARCEL, HUNT_HIT.path);
     expect(point).toMatchObject({ lat: 33.132262, lon: -96.100462, regridId: "f89e-uuid" });
@@ -93,6 +99,7 @@ describe("find_parcel helpers", () => {
     expect(searchText("1707 Jones St, Greenville TX", "TX", false)).toBe("1707 Jones St, Greenville TX");
     expect(searchText("1707 Jones St", "TX", true)).toBe("1707 Jones St");
     expect(searchText("015-1010", "CA", false)).toBe("015-1010");
+    expect(searchText("ABC 123", "TX", false)).toBe("ABC 123");
     expect(searchText("1707 Jones St", undefined, false)).toBe("1707 Jones St");
   });
 
@@ -138,6 +145,7 @@ describe("findParcel", () => {
     const result = await findParcel({ query: "1707 Jones St, San Francisco" });
     expect(result).toMatchObject({ match: "single", parcel: { apn: "0151010", county: "San Francisco", onFabrica: { tokenId: "4737315677965897536" } } });
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result).toHaveProperty("network");
     expect(JSON.stringify(result)).not.toContain("PRIVATE");
   });
 

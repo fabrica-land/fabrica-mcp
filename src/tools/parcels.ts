@@ -1,5 +1,5 @@
 import { getParcelIndex, type ParcelIndexToken } from "../clients/graphql.js";
-import { IS_MAINNET } from "../config.js";
+import { IS_MAINNET, MAINNET_WARNING, NETWORK_LABEL } from "../config.js";
 import { US_COUNTY_ROWS } from "../data/us-counties.js";
 
 /**
@@ -120,9 +120,13 @@ function sameCounty(admin: string | null | undefined, countyKey: string | null, 
   return withoutSuffix(countyKey.split("/")[1] ?? "") === adminSlug;
 }
 
-/** The registrar's parcel number, also when it carries a five-digit county FIPS prefix ("06037-018-007"). */
-function registrarApns(propertyId: string): string[] {
-  const unprefixed = /^\d{5}-(.+)$/.exec(propertyId)?.[1];
+/**
+ * The registrar's parcel number, also without a county FIPS prefix ("06037-018-007"), but only when that
+ * prefix is the parcel's own county FIPS: "12345-678" is otherwise a bare parcel number.
+ */
+function registrarApns(propertyId: string, countyFips: string | null): string[] {
+  const prefixed = /^(\d{5})-(.+)$/.exec(propertyId);
+  const unprefixed = prefixed && countyFips !== null && prefixed[1] === countyFips ? prefixed[2] : undefined;
   return unprefixed ? [normalizeApn(propertyId), normalizeApn(unprefixed)] : [normalizeApn(propertyId)];
 }
 
@@ -145,7 +149,7 @@ export function matchByApn(hit: TypeAheadHit, tokens: readonly ParcelIndexToken[
     const registrar = token.definition?.offchainRegistrar;
     return token.regionCode?.toUpperCase() === state
       && registrar?.propertyId !== undefined && registrar.propertyId !== null
-      && registrarApns(registrar.propertyId).includes(apn)
+      && registrarApns(registrar.propertyId, county?.fips ?? null).includes(apn)
       && sameCounty(registrar.admin, countyKey, county);
   }) ?? null;
 }
@@ -251,13 +255,14 @@ function inState(hit: TypeAheadHit, state: string | undefined): boolean {
 
 /**
  * The type-ahead scopes only by county, so a state given without a county goes into the address text
- * (where Regrid weighs it) instead of being applied only after a nationwide search. Parcel numbers are
- * sent as is: extra words would stop them matching.
+ * (where Regrid weighs it) instead of being applied only after a nationwide search. Anything not shaped
+ * like a street address, parcel numbers included, is sent as is: extra words would stop it matching.
  */
 export function searchText(query: string, state: string | undefined, countyScoped: boolean): string {
   if (!state || countyScoped) return query;
   const code = state.toUpperCase();
-  const looksLikeAddress = /[a-z]/i.test(query) && /\s/.test(query);
+  // A street address opens with a house number and a word ("1707 Jones St"); parcel numbers like "ABC 123" do not.
+  const looksLikeAddress = /^\d+[a-z]?\s+[a-z]/i.test(query);
   if (!looksLikeAddress || query.toUpperCase().split(/[^A-Z]+/).includes(code)) return query;
   return `${query}, ${code}`;
 }
@@ -268,7 +273,14 @@ export interface FindParcelArgs {
   county?: string;
 }
 
+/** find_parcel's answer. Every non-error result names the network and, on mainnet, carries the legal notice. */
 export async function findParcel(args: FindParcelArgs) {
+  const result = await searchParcel(args);
+  if ("error" in result) return result;
+  return { network: NETWORK_LABEL, ...result, ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}) };
+}
+
+async function searchParcel(args: FindParcelArgs) {
   const query = args.query.trim();
   if (query.length < 3) return { error: "The query needs at least 3 characters: a street address or a parcel number (APN)." };
   const scope = args.county ? resolveCounty(args.county, args.state) : null;
