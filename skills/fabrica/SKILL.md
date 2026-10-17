@@ -23,6 +23,8 @@ Claude Code: `claude mcp add --transport http fabrica https://mcp.fabrica.land/m
 | `search_properties` | Properties by location, size, Property checks, listing status |
 | `get_property` | One property: location, owner wallet, valuation, listing, loans, operating agreement link |
 | `get_valuation` | Every value held for a property, each with its source, date and confidence, and the pool's oracle state |
+| `get_trust_documents` | The legal record: the trust, the trust agreement (name, version, link), legal description, parcel identifiers, deed reference and owner-uploaded documents |
+| `get_tax_status` | Whether the property's taxes are current, past due or unknown per Property checks, and whether that limits borrowing |
 | `get_order_book` | Listings and offers for one property, with prices, expiry and any loan on it |
 | `get_property_map` | Parcel boundary as GeoJSON |
 | `get_property_image` | Map image of the parcel |
@@ -38,7 +40,7 @@ Claude Code: `claude mcp add --transport http fabrica https://mcp.fabrica.land/m
 
 ## Loops
 
-**Due diligence on a property.** `get_property`, then `explain_confidence_score` with its score, then taxes, valuation with its source, the order book and trust documents where the server has tools for them, then `get_borrow_quote` and `get_activity`. Report each fact with its source. End with what to verify independently: the county record of the deed into the trust, a title search or title insurance, taxes paid to date. Never a buy recommendation.
+**Due diligence on a property.** `get_property`, then `explain_confidence_score` with its score, then `get_tax_status`, `get_valuation` with its source, `get_order_book` and `get_trust_documents`, then `get_borrow_quote` and `get_activity`. Report each fact with its source. End with what to verify independently: the county record of the deed into the trust, a title search or title insurance, taxes paid to date. Never a buy recommendation.
 
 **Work a parcel list.** `find_parcel` once per address or parcel number (with state and county when known); re-run ambiguous ones with state and county. On Fabrica: token ID and property link. Not on Fabrica: the on-ramp link. One table at the end. `find_parcel` is limited to 30 calls per minute per client, so long lists go in batches.
 

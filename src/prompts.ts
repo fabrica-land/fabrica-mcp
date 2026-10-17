@@ -33,10 +33,10 @@ export function dueDiligencePrompt(tokenId: string): GetPromptResult {
   return prompt(`Run due diligence on Fabrica property ${tokenId} with the Fabrica tools, in this order:
 1. get_property: the record (location, acreage, owner wallet, trust and operating agreement link, listing, loans).
 2. explain_confidence_score with the property's score: which Property checks pass and which do not.
-3. get_tax_status, if the server lists it: property tax status as the county reports it.
+3. get_tax_status: whether taxes are current, past due or unknown according to Property checks, and whether that limits borrowing.
 4. get_valuation: the value with its source and confidence level.
 5. get_order_book: the listing and the offers.
-6. get_trust_documents, if the server lists it, else the operating agreement link in get_property: the documents attached to the token.
+6. get_trust_documents: the trust, the trust agreement, the legal description, the deed reference and the documents attached to the token.
 7. get_borrow_quote: the lending position and what the DeFi lending pool would lend.
 8. get_activity for the property: transfers, sales, loans.
 Write a short report with one section per step, each fact with the tool it came from. End with "What to verify yourself": the county record of the deed into the trust, a title search or title insurance, taxes paid to date with the county, and anything a step could not answer. No recommendation to buy.`);
