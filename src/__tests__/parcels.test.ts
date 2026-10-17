@@ -451,8 +451,9 @@ describe("find_parcel with a list", () => {
     const ten = Array.from({ length: 10 }, (_, i) => (i % 2 === 0 ? "71359" : "1707 Jones St, San Francisco"));
     const ok = await client.callTool({ name: "find_parcel", arguments: { queries: ten } });
     expect(ok.isError).toBeFalsy();
-    const content = ok.content as { type: string; text: string }[];
-    expect(JSON.parse(content[0]?.text ?? "{}").rows).toHaveLength(10);
+    const [first] = Array.isArray(ok.content) ? ok.content : [];
+    const text = typeof first === "object" && first !== null && "text" in first && typeof first.text === "string" ? first.text : "{}";
+    expect(JSON.parse(text).rows).toHaveLength(10);
     expect(seen).toEqual([[false, true, false, true, false, true, false, true, false, true]]);
     const eleven = await client.callTool({ name: "find_parcel", arguments: { queries: [...ten, "71359"] } }).catch((error: unknown) => ({ isError: true, content: [{ type: "text", text: String(error) }] }));
     expect(eleven.isError).toBe(true);
