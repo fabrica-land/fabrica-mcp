@@ -50,6 +50,8 @@ ui/
   clients/
     graphql.ts        # Fabrica GraphQL API client (primary data source)
     subgraph.ts       # Lending pool subgraph client (dynamic pool discovery)
+    cache.ts          # Short-TTL read cache with in-flight de-duplication (TtlCache)
+    budgets.ts        # Read budgets (loan page budget, MAX_LOANS)
   types/
     index.ts          # Shared TypeScript interfaces
   __tests__/          # vitest test suite
@@ -190,6 +192,7 @@ The feature is called **Property checks** in every description and output. The A
   - `FABRICA_API_URL` (default: `https://api.fabrica.land/graphql`)
   - `FABRICA_METASTREET_SUBGRAPH_URL` (default: auto-selected per network)
   - `FABRICA_MEDIA_URL` (default: `https://media.fabrica.land`)
+  - `FABRICA_CACHE_TTL_MS` (default: `30000`; `0` disables): how long API and subgraph reads are cached in the process. Every hosted user shares one per-IP API rate limit, so repeated and concurrent identical reads are served once. Tests run with `0` (`vitest.config.ts`)
   - `FABRICA_MCP_APPS` (default: on for Sepolia, off for mainnet): the property card MCP App
 
 ---

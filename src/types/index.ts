@@ -126,7 +126,7 @@ export interface MarketplaceOrderModel {
   contractAddress: string;
   network: string;
   side: "buy" | "sell";
-  status: "active" | "canceled" | "expired" | "filled" | "pending";
+  status: "active" | "canceled" | "encumbered" | "expired" | "filled" | "pending";
   price: string;
   usdPrice: string | null;
   symbol: string;
@@ -240,18 +240,21 @@ export interface TransferModel {
 }
 
 export interface TraitBoolean {
-  trait_type: string;
-  value: boolean;
+  key: string;
+  displayName: string;
+  value: boolean | null;
 }
 
 export interface TraitDecimal {
-  trait_type: string;
-  value: number;
+  key: string;
+  displayName: string;
+  value: number | null;
 }
 
 export interface TraitString {
-  trait_type: string;
-  value: string;
+  key: string;
+  displayName: string;
+  value: string | null;
 }
 
 export interface WalletCreditHistory {
