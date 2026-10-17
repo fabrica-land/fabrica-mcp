@@ -160,22 +160,25 @@ export function checkCoverage(args: CheckCoverageArgs) {
   const status = rules.workflowSupport ?? "unsupported";
   const stateOnly = !place.includes("/");
   const counties = stateOnly ? countiesWithOwnRules(place, status) : [];
-  const details: Partial<ReturnType<typeof describe>> = status === "supported" ? describe(rules) : {};
+  const details = status === "supported" ? describe(rules) : undefined;
+  // On a test network the on-ramp signs and records nothing, so the requirements are labelled as Mainnet's.
+  const shown: Partial<ReturnType<typeof describe>> & { mainnetRequirements?: ReturnType<typeof describe> } =
+    !details ? {} : IS_MAINNET ? details : { mainnetRequirements: details };
   return withNetwork({
     jurisdiction,
     ownerType,
     status,
     meaning: MEANING[status],
-    ...details,
+    ...shown,
     ...(stateOnly ? {
       countiesWithOwnRules: counties,
       scope: counties.length > 0
         ? "This is the state-wide answer. The counties listed have rules of their own; check_coverage with one of them gives its answer."
         : "This is the state-wide answer; no county in this state has rules of its own.",
     } : {}),
-    ...(status === "supported" ? { fee: `A one-time setup fee is authorized during the on-ramp. The amount and when it is charged: ask_fabrica or ${FEES_URL}.` } : {}),
+    ...(status === "supported" && IS_MAINNET ? { fee: `A one-time setup fee is authorized during the on-ramp. The amount and when it is charged: ask_fabrica or ${FEES_URL}.` } : {}),
     links: { addToFabrica: `${WEB_BASE}/go`, fees: FEES_URL },
     source: SOURCE,
-    note: `find_parcel gives the on-ramp link for one parcel. Some questions depend on the parcel (onlyForSomeParcels), so the on-ramp may ask fewer.${IS_MAINNET ? "" : " On this test network the on-ramp is a test flow: no trust is created and no deed is signed or recorded."}`,
+    note: `find_parcel gives the on-ramp link for one parcel. Some questions depend on the parcel (onlyForSomeParcels), so the on-ramp may ask fewer.${IS_MAINNET ? "" : " On this test network the on-ramp is a test flow: no trust is created, no deed is signed or recorded and no fee is charged. mainnetRequirements is what the Ethereum Mainnet on-ramp asks for the same place."}`,
   });
 }

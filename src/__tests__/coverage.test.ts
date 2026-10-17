@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { checkCoverage, coverageStatus, resolveRules, COVERAGE_AS_OF } from "../tools/coverage.js";
 import { US_COUNTY_ROWS } from "../data/us-counties.js";
 import table from "../data/onramp-coverage.json";
@@ -95,6 +95,22 @@ describe("checkCoverage", () => {
     expect(raw).toContain(COVERAGE_AS_OF);
     expect(raw).toContain("refreshed by hand");
     expect(raw).not.toMatch(/\$\d/);
+  });
+
+  it("labels the signing requirements as Mainnet's on Sepolia, with no fee", async () => {
+    vi.stubEnv("FABRICA_NETWORK", "sepolia");
+    vi.resetModules();
+    try {
+      const testnet = await import("../tools/coverage.js");
+      const result = testnet.checkCoverage({ fips: "13089" });
+      expect(result).not.toHaveProperty("documents");
+      expect(result).not.toHaveProperty("fee");
+      expect(result).toMatchObject({ status: "supported", mainnetRequirements: { witnessesRequired: true } });
+      expect(JSON.stringify(result)).toContain("no deed is signed or recorded");
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
   });
 
   it("rejects unknown input with a way forward", () => {
