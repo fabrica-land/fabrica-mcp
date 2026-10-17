@@ -12,6 +12,24 @@ const GROUP_WEIGHTS = [
   { name: "basicValidation", weight: 1, max: 2, title: "Basic Validation", description: "Is the NFT correctly formed?" },
 ] as const;
 
+/**
+ * A ScoreChanged event in words: the new encoding, the one before it (when known) and which
+ * groups moved, e.g. "Past Title & Load 2 to 3 (of 5)".
+ */
+export function describeScoreChange(newValue: string | null | undefined, previousValue: string | null | undefined) {
+  const next = Number.parseInt(newValue ?? "", 10);
+  if (!Number.isInteger(next) || invalidScoreReason(next) !== null) return null;
+  const before = Number.parseInt(previousValue ?? "", 10);
+  const previous = Number.isInteger(before) && invalidScoreReason(before) === null ? before : null;
+  const digit = (score: number, weight: number) => Math.floor(score / weight) % 10;
+  const changed = previous === null ? [] : GROUP_WEIGHTS.flatMap(g => {
+    const from = digit(previous, g.weight);
+    const to = digit(next, g.weight);
+    return from === to ? [] : [`${g.title} ${from} to ${to} (of ${g.max})`];
+  });
+  return { encoding: next, previousEncoding: previous, ...(previous !== null ? { changed } : {}) };
+}
+
 /** The recovery digit as the API defines it: 1=Void, 4=Distressed, 5=Stolen, 6=Recovery Pending, 7=Normal. */
 const RECOVERY_STATUSES: Record<number, { label: string; meaning: string }> = {
   7: { label: "Normal", meaning: "no recovery claim" },

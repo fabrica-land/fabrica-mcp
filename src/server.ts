@@ -81,7 +81,7 @@ export function createServer(): McpServer {
 
   const getPropertyConfig = {
     title: "Get property details",
-    description: `Get comprehensive details about a specific tokenized property on Fabrica (${NETWORK_LABEL}), including legal description, valuation, property tax status, Property checks (with their 5-digit numeric encoding), current ownership and holders, active loans, marketplace listings and offers, recent activity, photos and a parcel map image link. Also its lifecycle stage (premint, minted, removal in progress), fees assessed on the token with approval and payment state (fees is null when none are assessed), and flags for a duplicate parcel claim or the marketplace screen (an empty list when none apply). An old premint ID that was replaced by a minted token returns the successor. Boundary geometry is returned by get_property_map.${IS_MAINNET ? " The response includes the URL of the operating agreement (the trust instrument) that governs the token; get_trust_documents returns the full legal record." : ""}`,
+    description: `Get comprehensive details about a specific tokenized property on Fabrica (${NETWORK_LABEL}), including legal description, valuation, property tax status, Property checks (with their 5-digit numeric encoding), current ownership and holders, active loans, marketplace listings and offers, recent activity, photos and a parcel map image link. Also its lifecycle stage (premint, minted, removal in progress), fees assessed on the token with approval and payment state (fees is null when none are assessed), and flags for a duplicate parcel claim or the marketplace screen (an empty list when none apply). An old premint ID that was replaced by a minted token returns the successor. Boundary geometry is returned by get_property_map.${IS_MAINNET ? " The response includes the URL of the operating agreement (the trust instrument) that governs the token; get_trust_documents returns the full legal record." : ""} Pass display: "fullscreen" to ask a host that renders the property card to open it fullscreen (the host may decline). Owner names: names in Fabrica's own records (the deed grantor) and a holder's chosen display name are returned; owner names from third-party parcel data are never returned.`,
     inputSchema: getPropertyInput,
     annotations: readOnly("Get property details"),
   };
@@ -146,7 +146,7 @@ export function createServer(): McpServer {
     "get_trust_documents",
     {
       title: "Get trust documents",
-      description: `Get the legal record of a tokenized property: the trust that holds it (holding entity, formation date), the trust agreement that governs the token (name, version, link), the legal description, the parcel identifiers (FIPS, APN, county, state), the recorded deed reference and grantor, and documents the owner uploaded. The agreement text is included only when includeAgreementText is true (it is long). Property checks are not a title search or title insurance.${IS_MAINNET ? " The token represents the beneficial interest in the trust; the trustee is designated by the token holder and is, by default, the holder." : ""}`,
+      description: `Get the legal record of a tokenized property: the trust that holds it (holding entity, formation date), the trust agreement that governs the token (name, version, link), the legal description, the parcel identifiers (FIPS, APN, county, state), the recorded deed reference and grantor, and documents the owner uploaded. The agreement text is included only when includeAgreementText is true (it is long); trust.agreementResource is the MCP resource with this token's own agreement. Owner names: names in Fabrica's own records (the deed grantor) and a holder's chosen display name are returned; owner names from third-party parcel data are never returned. Property checks are not a title search or title insurance.${IS_MAINNET ? " The token represents the beneficial interest in the trust; the trustee is designated by the token holder and is, by default, the holder." : ""}`,
       inputSchema: getTrustDocumentsInput,
       annotations: readOnly("Get trust documents"),
     },
@@ -273,7 +273,7 @@ export function createServer(): McpServer {
     "find_parcel",
     {
       title: "Find a US parcel",
-      description: "Resolve any US street address or parcel number (APN) to a parcel: address, place, APN, state and county, and whether it is already on Fabrica (token ID and property link). For a parcel not on Fabrica, links.addToFabrica is the fabrica.land on-ramp link for that parcel; it starts an on-ramp only when a person opens it and decides there. The tool itself creates nothing. An ambiguous query returns up to 5 candidates, whose Fabrica status is matched by parcel number only; state and county narrow it to one, which gets the full check. When the US parcel search is not answering, properties already on Fabrica that the query names come back from Fabrica's own records as unconfirmed candidates (match: unconfirmed, matchSource: fabrica-index); present them as likely, not confirmed. Owner names are never returned. Limited to 30 lookups per minute per client.",
+      description: "Resolve any US street address or parcel number (APN) to a parcel: address, place, APN, state and county, and whether it is already on Fabrica (token ID and property link). For a parcel not on Fabrica, links.addToFabrica is the fabrica.land on-ramp link for that parcel; it starts an on-ramp only when a person opens it and decides there. The tool itself creates nothing. An ambiguous query returns up to 5 candidates, whose Fabrica status is matched by parcel number only; state and county narrow it to one, which gets the full check. When the US parcel search is not answering, properties already on Fabrica that the query names come back from Fabrica's own records as unconfirmed candidates (match: unconfirmed, matchSource: fabrica-index); present them as likely, not confirmed. Owner names from parcel data are never returned. Limited to 30 lookups per minute per client.",
       inputSchema: findParcelInput,
       annotations: readOnly("Find a US parcel"),
     },
@@ -293,11 +293,11 @@ export function createServer(): McpServer {
     "contact_support",
     {
       title: "Contact Fabrica support",
-      description: "Hand a question to Fabrica's support team when the documents (ask_fabrica) do not answer it or a person is needed: a stuck onramp, a document question, a dispute. Returns the help center section for the topic, the support email address, and a mailto link that drafts an email with the summary and the property link. Nothing is sent by this tool; the person sends the email and replies come back by email. Summaries containing a private key or seed phrase are refused.",
+      description: "Hand a question to Fabrica's support team when the documents (ask_fabrica) do not answer it or a person is needed: a stuck onramp, a document question, a dispute. Returns the help center section for the topic, the support email address, and a mailto link that drafts an email with the summary and the property link (the same fabrica.land page the other tools link). subject sets the subject in the person's words; a line saying an AI agent drafted it is added unless discloseAgent is false. Nothing is sent by this tool; the person sends the email and replies come back by email. Summaries containing a private key or seed phrase are refused.",
       inputSchema: contactSupportInput,
       annotations: readOnly("Contact Fabrica support"),
     },
-    async (args) => jsonResult(contactSupport(args)),
+    async (args) => jsonResult(await contactSupport(args)),
   );
   registerKnowledgeResources(server);
   registerPrompts(server);

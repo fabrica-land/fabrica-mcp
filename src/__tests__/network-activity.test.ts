@@ -14,7 +14,7 @@ const { getActivity } = await import("../tools/activity.js");
 function event(activity: ActivityModel["activity"], timestamp: number, network = "ethereum"): ActivityModel {
   return {
     activity, source: "Fabrica", time: new Date(timestamp * 1000).toISOString(), timestamp, network,
-    tokenId: null, transactionHash: null, currencyAmount: null, currencyDecimals: null, currencySymbol: null, usdAmount: null,
+    tokenId: null, transactionHash: null, currencyAmount: null, currencyDecimals: null, currencySymbol: null, usdAmount: null, newValue: null,
   };
 }
 

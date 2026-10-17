@@ -452,6 +452,8 @@ app.ontoolresult = (result) => {
     }
   }
   render();
+  // The agent can ask for the card fullscreen (get_property display: "fullscreen"); the host may decline.
+  if (obj(current.card).displayMode === "fullscreen" && canExpand(app.getHostContext())) setDisplayMode("fullscreen");
 };
 
 app.onhostcontextchanged = (context) => {

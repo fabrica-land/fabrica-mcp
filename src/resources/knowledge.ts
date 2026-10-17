@@ -64,6 +64,27 @@ function networkText(): string {
   return `${lines.join("\n")}\n`;
 }
 
+/**
+ * The generic agreement with what an agent needs before quoting it: which version this is,
+ * that a property may pin another one, and the section list up front (the full text runs
+ * past many clients' read limit, so the contents show what was cut).
+ */
+export function renderTrustAgreement(document: KnowledgeDocument): string {
+  const commit = getKnowledgeIndex().sources["trust-agreement"].commit;
+  const sections = [...document.text.matchAll(/^## (.+)$/gm)].map((match) => match[1]);
+  const lines = [
+    `# ${document.title}`,
+    `Source: ${document.url}`,
+    `Version: the current template on fabrica-connectors main, as indexed ${getKnowledgeIndex().builtAt}${commit ? ` (commit ${commit.slice(0, 7)})` : ""}.`,
+    "",
+    `> Each property is governed by the agreement version attached to its token, which can be older than this one. For a specific property read ${PROPERTY_TRUST_AGREEMENT_TEMPLATE} (its own text, name and version), or call get_trust_documents with includeAgreementText.`,
+    "",
+    ...(sections.length > 0 ? ["## Contents", ...sections.map((title) => `- ${title}`), ""] : []),
+    document.text,
+  ];
+  return `${lines.join("\n")}\n`;
+}
+
 export function registerKnowledgeResources(server: McpServer): void {
   const documents = getKnowledgeDocuments();
   const docs = documents.filter((document) => document.source === "docs");
@@ -86,8 +107,8 @@ export function registerKnowledgeResources(server: McpServer): void {
     server.registerResource(
       "legal:us-trust-agreement",
       TRUST_AGREEMENT_URI,
-      { title: trust.title, description: describe(trust), mimeType: MARKDOWN },
-      async () => markdownResource(TRUST_AGREEMENT_URI, renderKnowledgeDocument(trust)),
+      { title: trust.title, description: `${describe(trust)}. The current template; a property may pin an older version, served at ${PROPERTY_TRUST_AGREEMENT_TEMPLATE}.`, mimeType: MARKDOWN },
+      async () => markdownResource(TRUST_AGREEMENT_URI, renderTrustAgreement(trust)),
     );
   }
 

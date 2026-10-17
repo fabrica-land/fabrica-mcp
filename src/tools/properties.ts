@@ -1,7 +1,7 @@
 import { getTokens, getToken, getCountyBounds, getPremintSuccessor, isTokenNotFound, DEFAULT_MIN_SCORE, filterSpamTokens, propertyLookupError } from "../clients/graphql.js";
 import type { TokenListItem, TokenModel } from "../types/index.js";
 import { NETWORK_LABEL, MAINNET_WARNING, IS_MAINNET, CONTRACTS } from "../config.js";
-import { LENDING_POOL_NAME, formatActivityAmount, formatActivitySource, formatLoanProvider, formatUsdcCeiling } from "../labels.js";
+import { LENDING_POOL_NAME, formatLoanProvider, formatUsdcCeiling } from "../labels.js";
 import { propertyPhotos, propertyMapImage, toGatewayUrl } from "./media.js";
 import { estimateFields, formatTokenAmount, sortLoans, formatUsd, shortenAddress, capList } from "../format.js";
 import { locationLink, stateCode, stateName } from "../links.js";
@@ -10,6 +10,8 @@ import { summarizeFees } from "../fees.js";
 import { loadTaxSignals, taxSummary } from "./tax.js";
 import { countChecks, getRecoveryStatus } from "./scoring.js";
 import { isLiveOrder } from "./marketplace.js";
+import { formatActivity, previousScores } from "./activity.js";
+import type { ActivityModel } from "../types/index.js";
 import { z } from "zod";
 import { type ArgsOf, propertyRefInputs } from "./inputs.js";
 
@@ -182,8 +184,8 @@ export async function searchProperties(args: SearchPropertiesArgs) {
         ...link,
         groupBy,
         totalGroups: groups.length,
-        showing: groupPage.length > 0 ? `${offset + 1}-${offset + groupPage.length} of ${groups.length}` : unknownRegion ? "none" : `none: offset ${offset} is past the last of ${groups.length} groups`,
-        ...(unknownRegion ? { message: unknownRegion } : {}),
+        showing: groupPage.length > 0 ? `${offset + 1}-${offset + groupPage.length} of ${groups.length}` : groups.length === 0 ? "none" : `none: offset ${offset} is past the last of ${groups.length} groups`,
+        ...(unknownRegion ? { message: unknownRegion } : groups.length === 0 ? { message: "No properties match these filters." } : {}),
         groups: groupPage,
         ...(ungrouped > 0 ? { ungroupedCount: ungrouped, ungroupedNote: `${ungrouped} matching ${ungrouped === 1 ? "property has" : "properties have"} no ${groupBy === "county" ? "state or county" : "state"} in the record and ${ungrouped === 1 ? "is" : "are"} not in any group.` } : {}),
       };
@@ -260,7 +262,32 @@ function flagsOf(token: TokenModel): string[] {
   return flags;
 }
 
-export const getPropertyInput = propertyRefInputs;
+const RECENT_ACTIVITY = 10;
+/** get_property keeps the start of the legal description; get_trust_documents returns all of it. */
+export const LEGAL_DESCRIPTION_PREVIEW = 600;
+
+/** The newest events, each ScoreChanged with its new and previous encoding and the groups that moved. */
+function recentActivity(activities: readonly ActivityModel[]) {
+  const previous = previousScores(activities);
+  return activities.slice(0, RECENT_ACTIVITY).map((a, i) => {
+    const { tokenId: _tokenId, ...event } = formatActivity(a, previous.get(i));
+    return event;
+  });
+}
+
+/** The legal description, cut at a word boundary when long. */
+export function legalDescriptionPreview(claim: string | null | undefined): { description: string | null; truncated: boolean } {
+  if (!claim) return { description: null, truncated: false };
+  if (claim.length <= LEGAL_DESCRIPTION_PREVIEW) return { description: claim, truncated: false };
+  const cut = claim.slice(0, LEGAL_DESCRIPTION_PREVIEW);
+  const end = cut.lastIndexOf(" ");
+  return { description: `${(end > LEGAL_DESCRIPTION_PREVIEW / 2 ? cut.slice(0, end) : cut).trimEnd()} [...]`, truncated: true };
+}
+
+export const getPropertyInput = {
+  ...propertyRefInputs,
+  display: z.enum(["inline", "fullscreen"]).optional().describe("Hosts that render the property card: ask for it inline (default) or fullscreen. The host may decline."),
+};
 export type GetPropertyArgs = ArgsOf<typeof getPropertyInput>;
 
 export async function getProperty(args: GetPropertyArgs) {
@@ -297,6 +324,7 @@ export async function getProperty(args: GetPropertyArgs) {
       warnings.push("Property has supply currently in default");
     }
     const tax = await loadTaxSignals(token);
+    const legal = legalDescriptionPreview(token.definition?.claim);
     const checkResults = token.scoringCheckResults?.map(s => ({ check: s.title, group: s.group, passed: s.value })) ?? [];
     warnings.push(...tax.warnings);
     return {
@@ -338,21 +366,20 @@ export async function getProperty(args: GetPropertyArgs) {
         details: "get_tax_status",
       },
       legal: {
-        description: token.definition?.claim ?? null,
+        description: legal.description,
+        ...(legal.truncated ? { descriptionTruncated: true, descriptionNote: `The first ${LEGAL_DESCRIPTION_PREVIEW} of ${(token.definition?.claim.length ?? 0).toLocaleString("en-US")} characters; get_trust_documents returns the full legal description.` } : {}),
         holdingEntity: token.definition?.holdingEntity ?? null,
         // The agreement text is long (about 150 KB); get_trust_documents returns it on request.
         operatingAgreement: token.operatingAgreementUrl ? toGatewayUrl(token.operatingAgreementUrl) ?? token.operatingAgreementUrl : null,
         operatingAgreementName: token.operatingAgreementName,
+        // The resource serves this token's own agreement, which can be an older version than the generic one.
+        operatingAgreementResource: `fabrica://property/${token.tokenId}/trust-agreement`,
         registrar: token.definition?.offchainRegistrar ?? null,
         proofOfTitle: token.configuration?.proofOfTitle ?? null,
       },
       valuation: {
         ...estimateFields(token.estimatedValue, token.pricing),
         displayValuation: formatUsd(token.cardDisplayValuation) ?? token.cardDisplayValuation,
-        // Deprecated aliases of propertyChecks.encoding and propertyChecks.results, kept for one
-        // release; the valuation's own confidence (pricing[].confidence) is a different signal.
-        confidenceScore: token.score,
-        scoreBreakdown: checkResults,
         pricing: token.pricing.map(p => ({
           source: p.source,
           scope: p.scope,
@@ -416,14 +443,9 @@ export async function getProperty(args: GetPropertyArgs) {
         mapImage: propertyMapImage(token.contractAddress, token.tokenId),
         photos: propertyPhotos(token.configuration?.media),
       },
-      recentActivity: token.activity?.slice(0, 10).map(a => ({
-        type: a.activity,
-        source: formatActivitySource(a.source),
-        time: a.time,
-        amount: formatActivityAmount(a),
-        txHash: a.transactionHash,
-      })) ?? [],
+      recentActivity: recentActivity(token.activity ?? []),
       mintedAt: token.mintedAt,
+      ...(args.display ? { card: { displayMode: args.display } } : {}),
     };
   } catch (e) {
     return { error: propertyLookupError(e, { tokenId, slug }, "get property") };

@@ -147,6 +147,19 @@ function buildIndex(passages: Passage[]): Bm25Index {
 
 const indexCache = new WeakMap<Passage[], Bm25Index>();
 
+/** Pages that answer "what is Fabrica / how does it work" as a whole. */
+const OVERVIEW_PAGES = new Set([
+  "https://help.fabrica.land/en/articles/8542384-what-is-fabrica",
+  "https://docs.fabrica.land/docs/architecture",
+]);
+/** Words that leave a question about Fabrica in general ("How does Fabrica work?", "Explain Fabrica"). */
+const GENERAL_WORDS = new Set(["fabrica", "work", "explain", "overview", "platform", "basic", "basics", "tell", "more", "use", "intro", "introduction", "summary", "summarize"].map(stem));
+
+/** A question with no topic beyond Fabrica itself, where a passage that merely shares "work" should not outrank the overview. */
+export function isGeneralQuestion(tokens: readonly string[]): boolean {
+  return tokens.length > 0 && tokens.every((token) => GENERAL_WORDS.has(token));
+}
+
 export interface SearchHit {
   passage: Passage;
   score: number;
@@ -164,8 +177,10 @@ export function searchPassages(passages: Passage[], question: string, options: S
     index = buildIndex(passages);
     indexCache.set(passages, index);
   }
-  const queryTokens = expandQuery(tokenize(question));
+  const questionTokens = tokenize(question);
+  const queryTokens = expandQuery(questionTokens);
   if (queryTokens.length === 0) return [];
+  const general = isGeneralQuestion(questionTokens);
   const total = index.passages.length;
   const hits: SearchHit[] = [];
   for (const entry of index.passages) {
@@ -182,6 +197,12 @@ export function searchPassages(passages: Passage[], question: string, options: S
     if (score > 0) hits.push({ passage: entry.passage, score });
   }
   hits.sort((left, right) => right.score - left.score);
+  if (general) {
+    // A question about Fabrica as a whole: the overview pages lead, in their own score order.
+    // At most three lead, so the rest of the answer can still cite other pages.
+    const lead = hits.filter((hit) => OVERVIEW_PAGES.has(hit.passage.url)).slice(0, 3);
+    hits.splice(0, hits.length, ...lead, ...hits.filter((hit) => !lead.includes(hit)));
+  }
   // One hit per page section: a long section split into several passages should not crowd
   // out distinct evidence from other pages.
   const seen = new Set<string>();

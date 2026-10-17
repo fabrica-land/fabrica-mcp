@@ -4,8 +4,24 @@ import type { ActivityModel } from "../types/index.js";
 import { formatActivityAmount, formatActivitySource } from "../labels.js";
 import { z } from "zod";
 import { type ArgsOf, propertyRefInputs } from "./inputs.js";
+import { describeScoreChange } from "./scoring.js";
 
-function formatActivity(a: ActivityModel) {
+/**
+ * The encoding a ScoreChanged event replaced: the next older ScoreChanged for the same token in a
+ * newest-first feed. Keyed by event index.
+ */
+export function previousScores(activities: readonly ActivityModel[]): Map<number, string | null> {
+  const previous = new Map<number, string | null>();
+  activities.forEach((a, i) => {
+    if (a.activity !== "ScoreChanged") return;
+    const older = activities.slice(i + 1).find(o => o.activity === "ScoreChanged" && o.tokenId === a.tokenId && o.time < a.time);
+    previous.set(i, older?.newValue ?? null);
+  });
+  return previous;
+}
+
+export function formatActivity(a: ActivityModel, previousScore?: string | null) {
+  const scoreChange = a.activity === "ScoreChanged" ? describeScoreChange(a.newValue, previousScore) : null;
   return {
     type: a.activity,
     source: formatActivitySource(a.source),
@@ -13,6 +29,7 @@ function formatActivity(a: ActivityModel) {
     tokenId: a.tokenId ?? null,
     amount: formatActivityAmount(a),
     txHash: a.transactionHash ?? null,
+    ...(scoreChange ? { propertyChecks: scoreChange } : {}),
   };
 }
 
@@ -60,7 +77,8 @@ export async function getActivity(args: GetActivityArgs) {
       activities = activities.filter(a => a.activity.toLowerCase().includes(lower));
     }
     const total = activities.length;
-    const page = activities.slice(0, limit);
+    const previous = previousScores(activities);
+    const page = activities.slice(0, limit).map((a, i) => formatActivity(a, previous.get(i)));
     if (page.length === 0) {
       return { label, total: 0, events: [], message: `No${activityType ? ` "${activityType}"` : ""} activity found for ${label}.` };
     }
@@ -68,7 +86,7 @@ export async function getActivity(args: GetActivityArgs) {
       label,
       total,
       showing: page.length < total ? `${page.length} of ${total}` : `${total}`,
-      events: page.map(formatActivity),
+      events: page,
     };
   } catch (e) {
     return { error: propertyLookupError(e, { tokenId, slug }, "get activity") };
