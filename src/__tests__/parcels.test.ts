@@ -32,7 +32,7 @@ function parcelToken(overrides: Partial<ParcelIndexToken> & Pick<ParcelIndexToke
     ...overrides,
   };
 }
-const { allowFindParcel, findParcel, interiorPoint, matchByApn, matchIndexByQuery, streetKey, typeAheadText, parseParcelPoint, parseTypeAhead, pointInPolygons, polygonsOf, resolveCounty, stateRetryText, FIND_PARCEL_LIMIT_PER_MINUTE } = await import("../tools/parcels.js");
+const { allowFindParcel, findParcel, interiorPoint, matchByApn, matchIndexByQuery, queryLocality, streetKey, typeAheadText, parseParcelPoint, parseTypeAhead, pointInPolygons, polygonsOf, resolveCounty, stateRetryText, FIND_PARCEL_LIMIT_PER_MINUTE } = await import("../tools/parcels.js");
 
 const SF_HIT = { category: "parcel", context: "San Francisco, CA", headline: "1707 Jones St", owner: "SOMEONE PRIVATE", parcelnumb: "0151010", path: "/us/ca/san-francisco/downtown/12801", score: 85, type: "Parcel" };
 const HUNT_HIT = { category: "parcel", context: "Greenville, TX", headline: "1707 Jones St", owner: "ANOTHER OWNER", parcelnumb: "71359", path: "/us/tx/hunt/greenville/20283", score: 80, type: "Parcel" };
@@ -353,6 +353,16 @@ describe("type-ahead fallback helpers", () => {
     expect(matchIndexByQuery("29078 E Stagecoach Ln", { state: "AZ" }, tokens).map((t) => t.tokenId)).toEqual(["x"]);
     expect(matchIndexByQuery("29078 W Stagecoach Ln", { state: "AZ" }, tokens).map((t) => t.tokenId)).toEqual(["w", "x"]);
     expect(matchIndexByQuery("29078 W Stagecoach Ln", { state: "AZ", county: "Yavapai" }, tokens).map((t) => t.tokenId)).toEqual(["w"]);
+  });
+
+  it("holds the city and state written in the address", () => {
+    expect(queryLocality("123 Main St, Reno, NV 89501")).toEqual({ city: "Reno", state: "NV" });
+    expect(queryLocality("123 Main St, Reno")).toEqual({ city: "Reno", state: null });
+    expect(queryLocality("123 Oak Ct")).toEqual({ city: null, state: null });
+    const tokens = [parcelToken({ tokenId: "tx", name: "123 Main St, Austin, TX", regionCode: "TX", place: "Austin" })];
+    expect(matchIndexByQuery("123 Main St, Reno, NV", {}, tokens)).toEqual([]);
+    expect(matchIndexByQuery("123 Main St, Reno, TX", {}, tokens)).toEqual([]);
+    expect(matchIndexByQuery("123 Main St, Austin, Texas", {}, tokens).map((t) => t.tokenId)).toEqual(["tx"]);
   });
 
   it("needs the whole street, with or without its suffix", () => {

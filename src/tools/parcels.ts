@@ -1,5 +1,6 @@
 import { getParcelIndex } from "../clients/graphql.js";
 import type { ParcelIndexToken } from "../types/index.js";
+import { stateCode } from "../links.js";
 import { MAINNET_WARNING, NETWORK_LABEL, WEB_BASE } from "../config.js";
 import { US_COUNTY_ROWS } from "../data/us-counties.js";
 import { z } from "zod";
@@ -331,12 +332,30 @@ export function streetKey(address: string): { number: string; direction: string 
  * registrar parcel number is the query, within the state when one is given. Used only when the
  * parcel search is down, so a parcel already on Fabrica still resolves from Fabrica's own records.
  */
+/**
+ * The city and state written into a comma-separated address: "123 Main St, Reno, NV 89501" gives
+ * { city: "Reno", state: "NV" }. Only the comma form is read; a bare trailing word is too often a suffix ("Ct").
+ */
+export function queryLocality(query: string): { city: string | null; state: string | null } {
+  const parts = query.split(",").map((part) => part.trim()).filter(Boolean);
+  if (parts.length < 2) return { city: null, state: null };
+  const last = parts[parts.length - 1].replace(/\b\d{5}(?:-\d{4})?\b/g, "").trim();
+  const state = stateCode(last);
+  const cityPart = state ? (parts.length >= 3 ? parts[parts.length - 2] : null) : parts[parts.length - 1];
+  return { city: cityPart || null, state };
+}
+
 export function matchIndexByQuery(query: string, scope: { state?: string; county?: string }, tokens: readonly ParcelIndexToken[]): ParcelIndexToken[] {
   const wanted = streetKey(query);
   const apn = normalizeApn(query);
   const county = scope.county ? withoutSuffix(slugify(scope.county)) : null;
+  // The locality in the address text binds too: "123 Main St, Reno, NV" is not 123 Main St in another city or state.
+  const locality = queryLocality(query);
+  const state = scope.state ?? locality.state;
+  const city = locality.city ? slugify(locality.city) : null;
   return tokens.filter((token) => {
-    if (scope.state && token.regionCode?.toUpperCase() !== scope.state.toUpperCase()) return false;
+    if (state && token.regionCode?.toUpperCase() !== state.toUpperCase()) return false;
+    if (city && token.place && slugify(token.place) !== city) return false;
     const tokenCounty = token.district ?? token.definition?.offchainRegistrar?.admin ?? null;
     if (county && tokenCounty && withoutSuffix(slugify(tokenCounty)) !== county) return false;
     const propertyId = token.definition?.offchainRegistrar?.propertyId;
