@@ -105,6 +105,20 @@ npm run knowledge:check                         # exit 1 when a source moved pas
 
 Source pins (docs commit, help center sitemap fingerprint, trust agreement commit) are recorded in `knowledge/sources.json`. The build takes about 30 seconds and the index is under 1 MB.
 
+### Resources
+
+The same documents are registered as MCP resources, so a person can attach one to a conversation from the client's resource picker (Claude's "add from connector", Cursor's `@`) without the agent searching for it. All are `text/markdown`, and every read starts with the source URL and the content's updated date.
+
+| URI | What it is |
+|---|---|
+| `fabrica://docs/<slug>` | Every docs.fabrica.land page (the ten most useful are listed first: obligations, fees, add and remove a property, Property checks, pool lending, the trust, the regulatory framework, the glossary, AI agents) |
+| `fabrica://help/<id>` | Every help center article, by its article id and slug |
+| `fabrica://legal/us-trust-agreement` | The US trust agreement text |
+| `fabrica://property/{tokenId}/trust-agreement` | The operating agreement attached to one token, as the API serves it (versions differ by mint date) |
+| `fabrica://network` | This deployment's network, contract addresses and legal notice |
+
+`fabrica://docs/{slug}` and `fabrica://help/{id}` are also resource templates with completion.
+
 ## Example Conversations
 
 > "Find me all tokenized properties in Texas"

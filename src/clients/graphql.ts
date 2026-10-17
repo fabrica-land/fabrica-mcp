@@ -253,6 +253,32 @@ export async function getToken(
   return data.token;
 }
 
+// --- Operating agreement (trust instrument) for one token ---
+
+const GET_OPERATING_AGREEMENT_QUERY = gql`
+  query GetOperatingAgreement($tokenId: String, $network: String) {
+    token(tokenId: $tokenId, network: $network) {
+      tokenId
+      operatingAgreementName
+      operatingAgreementUrl
+      operatingAgreement
+    }
+  }
+`;
+
+export interface OperatingAgreementModel {
+  tokenId: string;
+  operatingAgreementName: string | null;
+  operatingAgreementUrl: string | null;
+  operatingAgreement: string | null;
+}
+
+/** The trust instrument attached to one token, as text. Single-token only: the API refuses it on lists. */
+export async function getOperatingAgreement(tokenId: string): Promise<OperatingAgreementModel | null> {
+  const data = await request<{ token: OperatingAgreementModel | null }>(GET_OPERATING_AGREEMENT_QUERY, { tokenId, network: NETWORK });
+  return data.token;
+}
+
 // --- Wallet query ---
 
 const WALLET_FIELDS = gql`
@@ -458,6 +484,7 @@ export async function getCountyBounds(fips: string): Promise<CountyBoundsModel |
 export const API_DOCUMENTS: ReadonlyArray<{ name: string; document: string }> = [
   { name: "GetTokens", document: GET_TOKENS_QUERY },
   { name: "GetToken", document: GET_TOKEN_QUERY },
+  { name: "GetOperatingAgreement", document: GET_OPERATING_AGREEMENT_QUERY },
   { name: "GetWallet", document: GET_WALLET_QUERY },
   { name: "GetLoans", document: GET_LOANS_QUERY },
   { name: "GetLoanStartedEvents", document: GET_LOAN_STARTED_EVENTS_QUERY },
