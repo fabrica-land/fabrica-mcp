@@ -8,12 +8,15 @@ import { getPortfolio } from "./tools/portfolio.js";
 import { getProtocolStats } from "./tools/protocol.js";
 import { explainConfidenceScore } from "./tools/scoring.js";
 import { getBorrowQuote } from "./tools/borrowing.js";
+import { getValuation } from "./tools/valuation.js";
 import { getActivity } from "./tools/activity.js";
+import { getOrderBook } from "./tools/marketplace.js";
 import { getPropertyImage, getPortfolioImage } from "./tools/images.js";
 import { getTrustDocuments } from "./tools/documents.js";
 import { askFabrica, ASK_FABRICA_SOURCES } from "./tools/knowledge.js";
 import { NETWORK_LABEL, IS_MAINNET, MAINNET_LEGAL_NOTICE } from "./config.js";
 import { PROPERTY_CARD_URI, registerPropertyCard } from "./ui/property-card.js";
+import { registerKnowledgeResources } from "./resources/knowledge.js";
 
 const NETWORK_NOTICE = IS_MAINNET
   ? `\n\n${MAINNET_LEGAL_NOTICE}`
@@ -65,9 +68,11 @@ export function createServer(): McpServer {
     "search_properties",
     {
       title: "Search properties",
-      description: `Search tokenized real properties on the Fabrica protocol (${NETWORK_LABEL}). Returns a list of properties matching the given filters.${IS_MAINNET ? " Each result is a real parcel of land in the US, held in a trust whose beneficial interest is an ERC-1155 token." : " These are test properties on Sepolia with no real-world effect."}`,
+      description: `Search tokenized real properties on the Fabrica protocol (${NETWORK_LABEL}). Returns a list of properties matching the given filters, or counts per state or county with groupBy. When a state or county is given, the response includes the link to that location's page on fabrica.land.${IS_MAINNET ? " Each result is a real parcel of land in the US, held in a trust whose beneficial interest is an ERC-1155 token." : " These are test properties on Sepolia with no real-world effect."}`,
       inputSchema: {
         region: z.string().optional().describe("US state code (e.g. 'TX', 'CA', 'NV')"),
+        county: z.string().optional().describe("County name, case-insensitive, the 'County' suffix optional (e.g. 'Costilla' or 'Mohave County'). Combine with region when the name exists in more than one state."),
+        groupBy: z.enum(["state", "county"]).optional().describe("Return one row per state or county (property count, count for sale, total acres, location page link) instead of property rows. limit and offset page through the groups."),
         minAcres: z.number().min(0).optional().describe("Minimum parcel size in acres"),
         maxAcres: z.number().min(0).optional().describe("Maximum parcel size in acres"),
         minScore: z.number().int().min(0).optional().describe("Minimum Property checks number: the 5-digit numeric encoding of Property checks, an integer. Defaults to 72032, the marketplace threshold, except when ownedBy is set (then every property in that wallet is listed). Any minimum also requires a verified deed. Max: 75342."),
@@ -84,7 +89,7 @@ export function createServer(): McpServer {
 
   const getPropertyConfig = {
     title: "Get property details",
-    description: `Get comprehensive details about a specific tokenized property on Fabrica (${NETWORK_LABEL}), including legal description, valuation, Property checks (with their 5-digit numeric encoding), current ownership and holders, active loans, marketplace listings and offers, recent activity, photos and a parcel map image link. Boundary geometry is returned by get_property_map.${IS_MAINNET ? " The response includes the URL of the operating agreement (the trust instrument) that governs the token; get_trust_documents returns the full legal record." : ""}`,
+    description: `Get comprehensive details about a specific tokenized property on Fabrica (${NETWORK_LABEL}), including legal description, valuation, Property checks (with their 5-digit numeric encoding), current ownership and holders, active loans, marketplace listings and offers, recent activity, photos and a parcel map image link. Also its lifecycle stage (premint, minted, removal in progress), fees assessed on the token with approval and payment state, and flags for a duplicate parcel claim or the marketplace screen. An old premint ID that was replaced by a minted token returns the successor. Boundary geometry is returned by get_property_map.${IS_MAINNET ? " The response includes the URL of the operating agreement (the trust instrument) that governs the token; get_trust_documents returns the full legal record." : ""}`,
     inputSchema: {
       tokenId: z.string().optional().describe("The token ID of the property"),
       slug: z.string().optional().describe("Property slug from the URL (e.g. 'us/nevada/elko-county/elko/apn-063025003')"),
@@ -149,11 +154,11 @@ export function createServer(): McpServer {
     "get_property_map",
     {
       title: "Get property boundary (GeoJSON)",
-      description: "Get GeoJSON boundary data for a tokenized property and its county, for mapping, spatial analysis, and visualization.",
+      description: "Get GeoJSON boundary data for a tokenized property, for mapping, spatial analysis, and visualization. The county boundary is added only with includeCountyBounds: true.",
       inputSchema: {
         tokenId: z.string().optional().describe("The token ID of the property"),
         slug: z.string().optional().describe("Property slug from the URL"),
-        includeCountyBounds: z.boolean().optional().describe("Also return the county boundary polygon (default: true)"),
+        includeCountyBounds: z.boolean().optional().describe("Also return the county boundary polygon, a large decorative layer (default: false)"),
       },
       annotations: readOnly("Get property boundary (GeoJSON)"),
     },
@@ -193,7 +198,7 @@ export function createServer(): McpServer {
     "get_borrow_quote",
     {
       title: "Get borrow quote",
-      description: "Get borrowing options for a specific tokenized property: DeFi lending pool liquidity (max loan amount, durations) and existing loan status. Answers questions such as 'How much can I borrow against this property?'. The amount is an estimate; the rate is set by a live quote when borrowing.",
+      description: "Get borrowing options for a specific tokenized property: DeFi lending pool liquidity (max loan amount, durations), existing loan status, and the reasons when the pool shows no capacity (tax status, price oracle checks). Answers questions such as 'How much can I borrow against this property?'. The amount is an estimate; the rate is set by a live quote when borrowing.",
       inputSchema: {
         tokenId: z.string().optional().describe("The token ID of the property"),
         slug: z.string().optional().describe("Property slug from the URL"),
@@ -201,6 +206,20 @@ export function createServer(): McpServer {
       annotations: readOnly("Get borrow quote"),
     },
     async (args) => jsonResult(await getBorrowQuote(args)),
+  );
+
+  server.registerTool(
+    "get_valuation",
+    {
+      title: "Get valuation sources",
+      description: "Get every value the Fabrica API holds for a property, each with its source, date and confidence: the estimate and the sources it comes from, the Fabrica AVM, Prycd and county assessor figures, the signed valuations the DeFi lending pool reads, the pool's oracle state (feed freshness, onchain price, usable price) with the reason when a price is missing, and the valuation report link. Presents data with its provenance; it suggests no price.",
+      inputSchema: {
+        tokenId: z.string().optional().describe("The token ID of the property"),
+        slug: z.string().optional().describe("Property slug from the URL"),
+      },
+      annotations: readOnly("Get valuation sources"),
+    },
+    async (args) => jsonResult(await getValuation(args)),
   );
 
   server.registerTool(
@@ -218,6 +237,22 @@ export function createServer(): McpServer {
       annotations: readOnly("Get activity history"),
     },
     async (args) => jsonResult(await getActivity(args)),
+  );
+
+  server.registerTool(
+    "get_order_book",
+    {
+      title: "Get order book",
+      description: "Get the marketplace order book for one property: the lowest active listing, all listings, and offers sorted from highest to lowest, each with price in USD and in its currency, seller or buyer, expiry (ISO 8601 and relative), any buyer restriction and disclosure documents. Shows whether the property is a premint and whether it is collateral for an active loan, with what that means for a sale. Expired, canceled and filled orders are left out unless status is 'all'. Links to the property page, where offers are made.",
+      inputSchema: {
+        tokenId: z.string().optional().describe("The token ID of the property"),
+        slug: z.string().optional().describe("Property slug from the URL"),
+        status: z.enum(["active", "all"]).optional().describe("'active' (default): live orders only. 'all': also expired, canceled and filled orders."),
+        minOfferUsd: z.number().min(0).optional().describe("Only return offers at or above this USD amount"),
+      },
+      annotations: readOnly("Get order book"),
+    },
+    async (args) => jsonResult(await getOrderBook(args)),
   );
 
   server.registerTool(
@@ -285,5 +320,6 @@ export function createServer(): McpServer {
     },
     async (args) => jsonResult(await askFabrica(args)),
   );
+  registerKnowledgeResources(server);
   return server;
 }

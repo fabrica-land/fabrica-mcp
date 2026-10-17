@@ -21,7 +21,13 @@ export interface TokenModel {
   supplyInDefault: string;
   isPremint: boolean;
   isClaimedPremint: boolean;
+  claimState?: "CLAIMED" | "UNCLAIMED" | null;
+  supersededByTokenId?: string | null;
+  offRampStatus?: string | null;
   isBurned: boolean;
+  fishy?: boolean;
+  duplicateParcelCount?: number | null;
+  fees?: TokenFees;
   lastOwner: WalletModel | null;
   majorityOwner: UserModel | null;
   majorityOwnerAddress: string | null;
@@ -62,6 +68,22 @@ export interface TokenModel {
   neighborhood: string | null;
   street: string | null;
   address: string | null;
+}
+
+export interface TokenFee {
+  type: string;
+  createdAt: string;
+  currency: string;
+  amount: string;
+  approved: boolean;
+  approvedAt: string | null;
+  paid: boolean;
+  paidAt: string | null;
+}
+
+export interface TokenFees {
+  totalAmount: string;
+  fees: TokenFee[];
 }
 
 export interface WalletModel {
@@ -201,6 +223,10 @@ export interface PoolLendingLiquidityModel {
   maxPrincipalUsdc: string;
   durations: number[];
   activeLoan: PoolLendingLoanModel | null;
+  /** Selected on single-token queries only. */
+  appraisalBlockReason?: AppraisalBlockReason | null;
+  /** Selected on single-token queries only. */
+  pools?: PoolLendingPoolValuation[];
 }
 
 export interface PoolLendingLoanModel {
@@ -319,6 +345,81 @@ export interface CountyBoundsModel {
   geoJson: Record<string, unknown>;
 }
 
+// Valuation and pool oracle types (get_valuation, get_borrow_quote)
+
+export type AppraisalBlockReason = "TAX_DELINQUENT" | "TAX_STATUS_UNKNOWN" | "OTHER";
+
+export interface PoolLendingQuote {
+  price: string;
+  currency: string;
+  timestamp: number;
+  duration: number;
+}
+
+export interface PoolLendingPoolValuation {
+  address: string;
+  pricing: "SignedQuote" | "OnchainOracle";
+  oracleValuation: { quote: PoolLendingQuote; signature: string | null } | null;
+  onchainPrice: {
+    priceUsdc6: string | null;
+    confidenceScore: number | null;
+    cycle: string | null;
+    valuedAt: string | null;
+    sourceId: number | null;
+  } | null;
+  oracleFeed: {
+    lastHeartbeat: string | null;
+    maxSilence: string;
+    isStale: boolean;
+    currentCycle: string | null;
+    minValidCycle: string | null;
+    indexerUnavailableReason: string | null;
+  } | null;
+  onchainValuation: {
+    usablePriceUsdc6: string | null;
+    capacityBlockReason: string | null;
+    failedCheck: string | null;
+  } | null;
+}
+
+export interface ValuationPricing {
+  source: string;
+  scope: string;
+  currency: string;
+  value: string | null;
+  confidence: string | null;
+  timestamp: string;
+  modelVersion: string;
+}
+
+export interface TokenValuationModel {
+  tokenId: string;
+  name: string | null;
+  vanityName: string | null;
+  isPremint: boolean;
+  estimatedValue: string;
+  cardDisplayValuation: string;
+  valuationReportUrl: string | null;
+  pricing: ValuationPricing[];
+  poolLendingLiquidity: PoolLendingLiquidityModel | null;
+}
+
+/** One entry of the REST `/valuation/v1` panel: a signed valuation the lending pool can use. */
+export interface SignedValuation {
+  source: string;
+  version: string;
+  signer: string;
+  signature: string | null;
+  quote: { price: string; currency: string; timestamp: number; duration: number } | null;
+  reason?: string;
+}
+
+export interface SignedValuationPanel {
+  networkName: string;
+  asOf: string;
+  valuations: SignedValuation[];
+}
+
 // Goldsky MetaStreet Pool subgraph types
 
 export interface SubgraphPool {
@@ -337,6 +438,43 @@ export interface SubgraphPool {
   loansRepaid: string;
   loansLiquidated: string;
   adminFeeRate: string;
+}
+
+// Order book (get_order_book): the marketplace fields of one token, nothing else
+
+export interface OrderBookOrder {
+  marketplaceId: string;
+  side: "buy" | "sell";
+  status: "active" | "canceled" | "encumbered" | "expired" | "filled" | "pending";
+  price: string;
+  usdPrice: string | null;
+  symbol: string;
+  decimals: number;
+  feeBps: string;
+  supply: string;
+  startTime: string;
+  endTime: string | null;
+  makerAddress: string;
+  maker: { user: { displayName: string | null } | null } | null;
+  restrictedToAddresses: string[] | null;
+  disclosurePackage: { name: string; url: string }[] | null;
+  encumbrance: { buyable: boolean; blockReason: "AWAITING_ALLOWANCE" | "LEGACY_POOL" | "UNDERWATER" | null; loanId: string } | null;
+}
+
+export interface OrderBookToken {
+  tokenId: string;
+  name: string | null;
+  vanityName: string | null;
+  propertyLink: string;
+  isPremint: boolean;
+  claimState: "CLAIMED" | "UNCLAIMED" | null;
+  supersededByTokenId: string | null;
+  offRampStatus: string | null;
+  isBurned: boolean;
+  supply: string;
+  supplyUnderLoan: string;
+  marketplaceListings: OrderBookOrder[] | null;
+  marketplaceBids: OrderBookOrder[] | null;
 }
 
 /** The legal record of one token, as selected by GetTrustDocuments (single-token query only). */

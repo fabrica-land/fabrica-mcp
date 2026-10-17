@@ -78,15 +78,17 @@ Replace `/absolute/path/to/fabrica-mcp` with the actual path where you cloned th
 
 | Tool | Description |
 |---|---|
-| `search_properties` | Search tokenized properties by location, size, Property checks, listing status |
-| `get_property` | Full property details: legal, valuation, ownership, loans, media |
+| `search_properties` | Search tokenized properties by state, county, size, Property checks, listing status, each row with its lifecycle stage; or counts per state or county, with links to the fabrica.land location pages |
+| `get_property` | Full property details: legal, valuation, ownership, loans, media, lifecycle stage, assessed fees, duplicate-parcel flags |
 | `get_lending_market` | Lending overview: loan counts, loans, DeFi lending pool stats, average APR, events |
 | `get_portfolio` | Wallet holdings, credit history, loan positions |
 | `get_protocol_stats` | Protocol-wide metrics: properties, estimated value, loan volume and counts, lending pool TVL |
 | `get_property_map` | GeoJSON boundary data for mapping and spatial analysis |
 | `get_trust_documents` | The legal record: trust, trust agreement (name, version, link, text on request), legal description, parcel IDs, deed reference, uploaded documents |
-| `get_borrow_quote` | Borrowing options for a property: DeFi lending pool liquidity, durations, current loans |
+| `get_borrow_quote` | Borrowing options for a property: DeFi lending pool liquidity, durations, current loans, and why capacity is zero when it is |
+| `get_valuation` | Every value the API holds for a property with its source, date and confidence: estimate, AVM, Prycd, county assessor, signed valuations, pool oracle state |
 | `get_activity` | Activity feed for a property or wallet: transfers, loans, sales, mints |
+| `get_order_book` | Listings and offers on a property: prices, sellers and buyers, expiry, whether a loan blocks each listing, premint state |
 | `explain_confidence_score` | Decode the numeric encoding of Property checks (5 digits, formerly called the confidence score) into verification groups |
 | `get_property_image` | Static map image of a property's parcel boundary (inline, dark/light themes) |
 | `get_portfolio_image` | Map image showing all properties owned by a wallet (inline, dark/light themes) |
@@ -106,6 +108,22 @@ npm run knowledge:check                         # exit 1 when a source moved pas
 
 Source pins (docs commit, help center sitemap fingerprint, trust agreement commit) are recorded in `knowledge/sources.json`. The build takes about 30 seconds and the index is under 1 MB.
 
+A scheduled workflow (`.github/workflows/refresh-knowledge.yml`, daily and on demand) rebuilds the index, runs the tests and opens a pull request titled "Knowledge index: <source> <short sha>" whose body lists the pages added, removed and changed (`scripts/knowledge-diff.mjs`). Merging it deploys both servers. The workflow needs one repository secret, `KNOWLEDGE_DOCS_TOKEN`, a fine-grained GitHub token with read access to the contents of the private `fabrica-land/docs` repository; a failed source fetch fails the run, so a partial index is never proposed.
+
+### Resources
+
+The same documents are registered as MCP resources, so a person can attach one to a conversation from the client's resource picker (Claude's "add from connector", Cursor's `@`) without the agent searching for it. All are `text/markdown`, and every read starts with the source URL and the content's updated date.
+
+| URI | What it is |
+|---|---|
+| `fabrica://docs/<slug>` | Every docs.fabrica.land page (the ten most useful are listed first: obligations, fees, add and remove a property, Property checks, pool lending, the trust, the regulatory framework, the glossary, AI agents) |
+| `fabrica://help/<id>` | Every help center article, by its article id and slug |
+| `fabrica://legal/us-trust-agreement` | The US trust agreement text |
+| `fabrica://property/{tokenId}/trust-agreement` | The operating agreement attached to one token, as the API serves it (versions differ by mint date) |
+| `fabrica://network` | This deployment's network, contract addresses and legal notice |
+
+`fabrica://docs/{slug}` and `fabrica://help/{id}` are also resource templates with completion.
+
 ## Example Conversations
 
 > "Find me all tokenized properties in Texas"
@@ -121,6 +139,8 @@ Source pins (docs commit, help center sitemap fingerprint, trust agreement commi
 > "How much can I borrow against property token 12743610130101631987?"
 
 > "Show me all recent activity for wallet 0x23bc...fce4"
+
+> "What is property 3484741603659410548 listed for, and what offers are waiting on it?"
 
 > "Explain the Property checks number 73242. What does each digit mean?"
 

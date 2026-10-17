@@ -21,6 +21,7 @@ src/
   server.ts           # createServer(): registers every tool
   index.ts            # stdio entrypoint (local installs)
   http.ts             # stateless Streamable HTTP handler (hosted)
+  usage-log.ts        # one structured log line per request, no arguments or IPs (docs/usage/)
   vercel.ts           # Vercel function entry, bundled by scripts/build-vercel.mjs
   ui/property-card.ts # registers the property card MCP App resource (ui://fabrica/property-card)
   ui/generated/       # gitignored: HTML built from /ui by scripts/build-ui.mjs
@@ -34,7 +35,9 @@ ui/
     protocol.ts       # get_protocol_stats
     scoring.ts        # explain_confidence_score
     borrowing.ts      # get_borrow_quote
+    valuation.ts      # get_valuation (GraphQL GetValuation + REST /valuation/v1)
     activity.ts       # get_activity
+    marketplace.ts    # get_order_book
     images.ts         # get_property_image, get_portfolio_image
     documents.ts      # get_trust_documents
     knowledge.ts      # ask_fabrica
@@ -42,9 +45,16 @@ ui/
     index.ts          # typed, validated loader for generated/index.json (committed)
     search.ts         # BM25 retrieval with Fabrica synonyms and compound-term normalization
     facts.ts          # wording red lines the tests check the top passages against
+    documents.ts      # whole documents reassembled from the index, for resources
+  resources/
+    knowledge.ts      # fabrica://docs, fabrica://help, fabrica://legal, fabrica://property/{tokenId}/trust-agreement, fabrica://network
+  # scripts/build-knowledge.mjs builds the index; scripts/knowledge-diff.mjs and
+  # .github/workflows/refresh-knowledge.yml open the daily refresh pull request
   clients/
     graphql.ts        # Fabrica GraphQL API client (primary data source)
     subgraph.ts       # Lending pool subgraph client (dynamic pool discovery)
+  lifecycle.ts        # propertyStage(): premint, minted, off-ramp, burned (get_property, search rows)
+  fees.ts             # fees assessed on a token, by currency address
   types/
     index.ts          # Shared TypeScript interfaces
   __tests__/          # vitest test suite
@@ -74,11 +84,14 @@ The Apollo API routes subgraph data internally, so all onchain and offchain prop
 **Key API behaviors:**
 
 - **`tokens` query has NO `first`/`skip` pagination.** Returns all matching tokens. Pagination is client-side.
+- **Marketplace orders:** unfiltered `token.marketplaceListings` / `marketplaceBids` return every status (active, encumbered, pending, expired, canceled, filled), and `marketplaceBidCount` counts expired offers too. `get_order_book` filters client-side and treats a live order past its `endTime` as expired. `price` is the raw onchain amount (scale by `decimals`); `usdPrice` is dollars. `encumbrance` is set per listing when the property is collateral for a loan; `buyable` and `blockReason` say whether that listing can be bought now (a `LEGACY_POOL` loan cannot be paid off by a third party).
 - **Nested fields `loans`, `marketplaceListings`, `marketplaceBids` are NOT available on list queries** (tokens list, wallet.tokens). Use scalar fields (`supplyUnderLoan`, `marketplacePrice`) instead. Nested fields only work on single `token()` queries.
 - **`loans` query requires `network` or `networkIn`** — errors without one.
 - **`loanStartedEvents`, `loanRepaidEvents`, `loanLiquidatedEvents` require `first!` and `skip!`** (non-nullable).
 - **Score is a raw integer** (e.g. 73242). Kept as-is. The `minScore` filter expects this integer scale.
 - **`estimatedValue` is a string decimal** (e.g. "396647.43"). `acres` is also a string.
+
+- **Lifecycle fields are anonymous-safe:** `claimState` (premints only), `supersededByTokenId`, `offRampStatus` (`in-progress` / `complete`, null for premints), `duplicateParcelCount` (null for premints), `fishy` (never true for premints), `fees` (currency is a contract address; amount in its raw units; timestamps mix ISO and epoch ms). `token.onRamp` is null without auth. A premint replaced by a minted token no longer loads (`No token or premint found`); `premintSuccessor` returns the live token.
 
 **Field naming (differs from what you might guess):**
 - WalletModel: `address` (not `walletAddress`), `creditHistory` (not `walletCreditHistory`), `displayName` on nested `user`

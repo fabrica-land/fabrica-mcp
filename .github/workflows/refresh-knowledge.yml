@@ -1,0 +1,88 @@
+# Rebuilds the ask_fabrica knowledge index daily and opens a pull request when any source
+# moved (docs.fabrica.land, the help center, the US trust agreement). Merging the pull
+# request to main deploys both servers through Vercel.
+#
+# Needs one repository secret: KNOWLEDGE_DOCS_TOKEN, a fine-grained token with read access
+# to the contents of fabrica-land/docs (the docs repository is private). Without it the
+# docs step fails and no partial index is ever proposed.
+name: Refresh knowledge index
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: refresh-knowledge
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check out the docs repository
+        uses: actions/checkout@v4
+        with:
+          repository: fabrica-land/docs
+          ref: v3.0
+          token: ${{ secrets.KNOWLEDGE_DOCS_TOKEN }}
+          path: .knowledge-sources/docs
+          # Full history: page dates come from the last commit touching each file.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Keep the current index for the diff
+        run: cp src/knowledge/generated/index.json /tmp/index-before.json
+
+      - name: Rebuild the index
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/build-knowledge.mjs --docs-dir .knowledge-sources/docs
+
+      - name: Detect changes
+        id: changes
+        run: |
+          if git diff --quiet -- knowledge/sources.json src/knowledge/generated/index.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run the tests against the new index
+        if: steps.changes.outputs.changed == 'true'
+        run: npm test
+
+      - name: Describe the change
+        if: steps.changes.outputs.changed == 'true'
+        run: node scripts/knowledge-diff.mjs /tmp/index-before.json src/knowledge/generated/index.json --out /tmp/knowledge-refresh
+
+      - name: Read the title
+        if: steps.changes.outputs.changed == 'true'
+        id: title
+        run: echo "title=$(cat /tmp/knowledge-refresh/title.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update the pull request
+        if: steps.changes.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: knowledge/refresh
+          delete-branch: true
+          add-paths: |
+            knowledge/sources.json
+            src/knowledge/generated/index.json
+          commit-message: ${{ steps.title.outputs.title }}
+          title: ${{ steps.title.outputs.title }}
+          body-path: /tmp/knowledge-refresh/body.md
+          labels: knowledge

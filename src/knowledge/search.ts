@@ -177,5 +177,16 @@ export function searchPassages(passages: Passage[], question: string, options: S
     if (score > 0) hits.push({ passage: entry.passage, score });
   }
   hits.sort((left, right) => right.score - left.score);
-  return hits.slice(0, options.limit);
+  // One hit per page section: a long section split into several passages should not crowd
+  // out distinct evidence from other pages.
+  const seen = new Set<string>();
+  const distinct: SearchHit[] = [];
+  for (const hit of hits) {
+    const key = `${hit.passage.url}#${hit.passage.sectionTitle}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    distinct.push(hit);
+    if (distinct.length === options.limit) break;
+  }
+  return distinct;
 }
