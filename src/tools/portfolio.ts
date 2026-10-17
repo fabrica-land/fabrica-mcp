@@ -1,21 +1,20 @@
 import { getWallet } from "../clients/graphql.js";
 import { formatLoanProvider } from "../labels.js";
-import { estimateFields, formatTokenAmount, sortLoans } from "../format.js";
+import { capList, estimateFields, formatTokenAmount, sortLoans, formatUsd, shortenAddress } from "../format.js";
 
-function formatUsd(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const num = parseFloat(value);
-  if (isNaN(num)) return null;
-  return `$${num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
+const DEFAULT_PROPERTY_LIMIT = 50;
+const MAX_PROPERTY_LIMIT = 200;
+/** Active loans listed per side; the counts are always complete. */
+const MAX_LOANS_LISTED = 50;
 
-function shortenAddress(addr: string | null | undefined): string | null {
-  if (!addr) return null;
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+function activeLoansOf<T extends { loanStatus: string; startTime: string | null }>(loans: ReadonlyArray<T>): T[] {
+  return sortLoans(loans.filter(l => l.loanStatus === "Active"));
 }
 
 export async function getPortfolio(args: Record<string, unknown>) {
-  const address = args.address as string;
+  const address = typeof args.address === "string" ? args.address : "";
+  const limit = Math.min(Math.max(Math.trunc(typeof args.limit === "number" ? args.limit : DEFAULT_PROPERTY_LIMIT), 1), MAX_PROPERTY_LIMIT);
+  const offset = Math.max(Math.trunc(typeof args.offset === "number" ? args.offset : 0), 0);
   if (!address) {
     return { error: "address is required (Ethereum wallet address)" };
   }
@@ -31,7 +30,8 @@ export async function getPortfolio(args: Record<string, unknown>) {
         message: "No Fabrica activity found for this address.",
       };
     }
-    const properties = wallet.tokens?.map(t => ({
+    const allTokens = wallet.tokens ?? [];
+    const properties = allTokens.slice(offset, offset + limit).map(t => ({
       tokenId: t.tokenId,
       name: t.name ?? t.vanityName,
       location: { state: t.regionCode, county: t.district },
@@ -41,11 +41,9 @@ export async function getPortfolio(args: Record<string, unknown>) {
       hasActiveLoan: parseInt(t.supplyUnderLoan || "0") > 0,
       hasActiveListing: t.marketplacePrice !== null,
       listingPrice: t.marketplacePrice ? formatUsd(t.marketplacePrice) : null,
-    })) ?? [];
-    const borrowedLoans = wallet.loansTaken ?? [];
-    const lentLoans = wallet.loansMade ?? [];
-    const activeBorrowed = sortLoans(borrowedLoans.filter(l => l.loanStatus === "Active"));
-    const activelyLent = sortLoans(lentLoans.filter(l => l.loanStatus === "Active"));
+    }));
+    const borrowedShown = capList(activeLoansOf(wallet.loansTaken ?? []), MAX_LOANS_LISTED);
+    const lentShown = capList(activeLoansOf(wallet.loansMade ?? []), MAX_LOANS_LISTED);
     const ch = wallet.creditHistory;
     return {
       address: wallet.address,
@@ -54,13 +52,21 @@ export async function getPortfolio(args: Record<string, unknown>) {
       totalAcres: wallet.totalAcres ? parseFloat(wallet.totalAcres) : 0,
       propertyCount: parseInt(wallet.tokenCount || "0"),
       properties,
+      propertiesPage: {
+        offset,
+        limit,
+        returned: properties.length,
+        total: allTokens.length,
+        ...(offset + properties.length < allTokens.length ? { nextOffset: offset + properties.length } : {}),
+      },
       lending: {
         asBorrower: {
-          activeLoans: activeBorrowed.length,
+          activeLoans: borrowedShown.total,
           totalBorrowed: formatUsd(ch?.totalLoans?.totalPrincipalValue),
           totalRepaid: formatUsd(ch?.repaidLoans?.totalPaidValue),
           outstandingLoans: formatUsd(wallet.totalOutstandingLoansUSDC),
-          loans: activeBorrowed.map(l => ({
+          ...(borrowedShown.truncated ? { loansNote: `The ${MAX_LOANS_LISTED} most recent of ${borrowedShown.total} active loans.` } : {}),
+          loans: borrowedShown.items.map(l => ({
             loanId: l.loanId,
             provider: formatLoanProvider(l.loanProvider),
             principal: formatTokenAmount(l.principalScaled, l.currencySymbol),
@@ -72,8 +78,9 @@ export async function getPortfolio(args: Record<string, unknown>) {
           })),
         },
         asLender: {
-          activeLoans: activelyLent.length,
-          loans: activelyLent.map(l => ({
+          activeLoans: lentShown.total,
+          ...(lentShown.truncated ? { loansNote: `The ${MAX_LOANS_LISTED} most recent of ${lentShown.total} active loans.` } : {}),
+          loans: lentShown.items.map(l => ({
             loanId: l.loanId,
             provider: formatLoanProvider(l.loanProvider),
             principal: formatTokenAmount(l.principalScaled, l.currencySymbol),

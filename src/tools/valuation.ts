@@ -12,6 +12,7 @@ import {
   unixToIso,
 } from "../labels.js";
 import type { PoolLendingLiquidityModel, PoolLendingPoolValuation, SignedValuationPanel, ValuationPricing } from "../types/index.js";
+import { formatUsd, shortenAddress } from "../format.js";
 
 const ASSESSOR_SOURCE = "regrid-county-assessor";
 /** Sources the API's `estimatedValue` is taken from: the lower of their land values when both exist. */
@@ -20,16 +21,6 @@ const ESTIMATE_SOURCES = new Set(["fabrica-avm", "prycd"]);
 function parseAmount(value: string | null | undefined): number | null {
   const num = Number.parseFloat(value ?? "");
   return Number.isFinite(num) ? num : null;
-}
-
-function formatUsd(value: string | null | undefined): string | null {
-  const num = parseAmount(value);
-  if (num === null) return null;
-  return `$${num.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-}
-
-function shortenAddress(addr: string): string {
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
 /**

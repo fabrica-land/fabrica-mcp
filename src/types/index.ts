@@ -21,7 +21,13 @@ export interface TokenModel {
   supplyInDefault: string;
   isPremint: boolean;
   isClaimedPremint: boolean;
+  claimState?: "CLAIMED" | "UNCLAIMED" | null;
+  supersededByTokenId?: string | null;
+  offRampStatus?: string | null;
   isBurned: boolean;
+  fishy?: boolean;
+  duplicateParcelCount?: number | null;
+  fees?: TokenFees;
   lastOwner: WalletModel | null;
   majorityOwner: UserModel | null;
   majorityOwnerAddress: string | null;
@@ -41,7 +47,7 @@ export interface TokenModel {
   poolLendingLiquidity: PoolLendingLiquidityModel | null;
   configuration: ConfigurationModel | null;
   definition: DefinitionModel | null;
-  operatingAgreement: string | null;
+  operatingAgreementName: string | null;
   operatingAgreementUrl: string | null;
   imageUrlDark: string | null;
   imageUrlLight: string | null;
@@ -62,6 +68,22 @@ export interface TokenModel {
   neighborhood: string | null;
   street: string | null;
   address: string | null;
+}
+
+export interface TokenFee {
+  type: string;
+  createdAt: string;
+  currency: string;
+  amount: string;
+  approved: boolean;
+  approvedAt: string | null;
+  paid: boolean;
+  paidAt: string | null;
+}
+
+export interface TokenFees {
+  totalAmount: string;
+  fees: TokenFee[];
 }
 
 export interface WalletModel {
@@ -126,7 +148,7 @@ export interface MarketplaceOrderModel {
   contractAddress: string;
   network: string;
   side: "buy" | "sell";
-  status: "active" | "canceled" | "expired" | "filled" | "pending";
+  status: "active" | "canceled" | "encumbered" | "expired" | "filled" | "pending";
   price: string;
   usdPrice: string | null;
   symbol: string;
@@ -160,6 +182,13 @@ export interface ConfigurationModel {
   proofOfTitle: ProofOfTitle | null;
   propertyNickName: string | null;
   userDescription: string | null;
+}
+
+export interface ConfigurationDocument {
+  type: string;
+  source: string;
+  description: string | null;
+  order: string | null;
 }
 
 export interface ConfigurationMedia {
@@ -240,18 +269,21 @@ export interface TransferModel {
 }
 
 export interface TraitBoolean {
-  trait_type: string;
-  value: boolean;
+  key: string;
+  displayName: string;
+  value: boolean | null;
 }
 
 export interface TraitDecimal {
-  trait_type: string;
-  value: number;
+  key: string;
+  displayName: string;
+  value: number | null;
 }
 
 export interface TraitString {
-  trait_type: string;
-  value: string;
+  key: string;
+  displayName: string;
+  value: string | null;
 }
 
 export interface WalletCreditHistory {
@@ -440,9 +472,59 @@ export interface OrderBookToken {
   isPremint: boolean;
   claimState: "CLAIMED" | "UNCLAIMED" | null;
   supersededByTokenId: string | null;
+  offRampStatus: string | null;
   isBurned: boolean;
   supply: string;
   supplyUnderLoan: string;
   marketplaceListings: OrderBookOrder[] | null;
   marketplaceBids: OrderBookOrder[] | null;
+}
+
+/** The legal record of one token, as selected by GetTrustDocuments (single-token query only). */
+export interface TrustDocumentsToken {
+  tokenId: string;
+  network: string;
+  contractAddress: string;
+  name: string | null;
+  vanityName: string | null;
+  propertyLink: string;
+  isPremint: boolean;
+  district: string | null;
+  regionCode: string | null;
+  validator: string | null;
+  metadataUri: string | null;
+  operatingAgreementName: string | null;
+  operatingAgreementUrl: string | null;
+  operatingAgreement?: string | null;
+  definition: {
+    claim: string;
+    holdingEntity: string;
+    offchainRegistrar: { admin: string; adminId: string; country: string; propertyId: string };
+  } | null;
+  configuration: {
+    holdingEntityDate: string | null;
+    proofOfTitle: { document: string | null; documentId: string | null; documentName: string | null; grantor: string | null; source: string | null } | null;
+    documents: ConfigurationDocument[] | null;
+    media: { type: string | null }[] | null;
+  } | null;
+}
+
+/** What GetTaxStatus selects for one token. */
+export interface TaxStatusToken {
+  tokenId: string;
+  network: string;
+  contractAddress: string;
+  name: string | null;
+  vanityName: string | null;
+  isPremint: boolean;
+  district: string | null;
+  regionCode: string | null;
+  poolLendingLiquidity: { appraisalBlockReason: AppraisalBlockReason | null } | null;
+}
+
+/** The REST score record (GET /:network/:contract/:tokenId/score). Check values are 1, 0, true, false or null. */
+export interface ScoreRecord {
+  checks: Record<string, number | boolean | null>;
+  updatedAt: string | null;
+  expiresAt: string | null;
 }

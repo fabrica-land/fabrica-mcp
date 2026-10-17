@@ -78,12 +78,14 @@ Replace `/absolute/path/to/fabrica-mcp` with the actual path where you cloned th
 
 | Tool | Description |
 |---|---|
-| `search_properties` | Search tokenized properties by location, size, Property checks, listing status |
-| `get_property` | Full property details: legal, valuation, ownership, loans, media |
+| `search_properties` | Search tokenized properties by state, county, size, Property checks, listing status, each row with its lifecycle stage; or counts per state or county, with links to the fabrica.land location pages |
+| `get_property` | Full property details: legal, valuation, ownership, loans, media, lifecycle stage, assessed fees, duplicate-parcel flags |
 | `get_lending_market` | Lending overview: loan counts, loans, DeFi lending pool stats, average APR, events |
 | `get_portfolio` | Wallet holdings, credit history, loan positions |
 | `get_protocol_stats` | Protocol-wide metrics: properties, estimated value, loan volume and counts, lending pool TVL |
 | `get_property_map` | GeoJSON boundary data for mapping and spatial analysis |
+| `get_tax_status` | Property tax status from Property checks (current, past due, unknown), its basis, check dates and whether it limits borrowing |
+| `get_trust_documents` | The legal record: trust, trust agreement (name, version, link, text on request), legal description, parcel IDs, deed reference, uploaded documents |
 | `get_borrow_quote` | Borrowing options for a property: DeFi lending pool liquidity, durations, current loans, and why capacity is zero when it is |
 | `get_valuation` | Every value the API holds for a property with its source, date and confidence: estimate, AVM, Prycd, county assessor, signed valuations, pool oracle state |
 | `get_activity` | Activity feed for a property or wallet: transfers, loans, sales, mints |

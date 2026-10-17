@@ -12,6 +12,8 @@ import { getValuation } from "./tools/valuation.js";
 import { getActivity } from "./tools/activity.js";
 import { getOrderBook } from "./tools/marketplace.js";
 import { getPropertyImage, getPortfolioImage } from "./tools/images.js";
+import { getTrustDocuments } from "./tools/documents.js";
+import { getTaxStatus } from "./tools/tax.js";
 import { askFabrica, ASK_FABRICA_SOURCES } from "./tools/knowledge.js";
 import { findParcel } from "./tools/parcels.js";
 import { NETWORK_LABEL, IS_MAINNET, MAINNET_LEGAL_NOTICE } from "./config.js";
@@ -22,7 +24,7 @@ const NETWORK_NOTICE = IS_MAINNET
   ? `\n\n${MAINNET_LEGAL_NOTICE}`
   : " Properties on this network are test tokens with no real-world legal or financial effect.";
 
-export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to tokenized US land on the Fabrica protocol, including property records, US parcel lookup by address or parcel number, Property checks, parcel boundaries and maps, the lending market, borrow quotes, wallet portfolios and activity. Network: ${NETWORK_LABEL}. Company overview: https://about.fabrica.land. For questions about how Fabrica works (the trust, fees, Property checks, lending, taxes, the onramp, the legal framework) call ask_fabrica and cite the URL of the passage you relied on. When ask_fabrica returns no matching passage, say so and point to https://help.fabrica.land or questions@fabrica.land instead of guessing.${NETWORK_NOTICE}`;
+export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to tokenized US land on the Fabrica protocol, including property records, trust documents, US parcel lookup by address or parcel number, Property checks, parcel boundaries and maps, the lending market, borrow quotes, wallet portfolios and activity. Network: ${NETWORK_LABEL}. Company overview: https://about.fabrica.land. For questions about how Fabrica works (the trust, fees, Property checks, lending, taxes, the onramp, the legal framework) call ask_fabrica and cite the URL of the passage you relied on. When ask_fabrica returns no matching passage, say so and point to https://help.fabrica.land or questions@fabrica.land instead of guessing.${NETWORK_NOTICE}`;
 
 /**
  * MCP Apps (the property card) ship testnet-first: on by default on Sepolia, and on mainnet
@@ -68,9 +70,11 @@ export function createServer(): McpServer {
     "search_properties",
     {
       title: "Search properties",
-      description: `Search tokenized real properties on the Fabrica protocol (${NETWORK_LABEL}). Returns a list of properties matching the given filters.${IS_MAINNET ? " Each result is a real parcel of land in the US, held in a trust whose beneficial interest is an ERC-1155 token." : " These are test properties on Sepolia with no real-world effect."}`,
+      description: `Search tokenized real properties on the Fabrica protocol (${NETWORK_LABEL}). Returns a list of properties matching the given filters, or counts per state or county with groupBy. When a state or county is given, the response includes the link to that location's page on fabrica.land.${IS_MAINNET ? " Each result is a real parcel of land in the US, held in a trust whose beneficial interest is an ERC-1155 token." : " These are test properties on Sepolia with no real-world effect."}`,
       inputSchema: {
         region: z.string().optional().describe("US state code (e.g. 'TX', 'CA', 'NV')"),
+        county: z.string().optional().describe("County name, case-insensitive, the 'County' suffix optional (e.g. 'Costilla' or 'Mohave County'). Combine with region when the name exists in more than one state."),
+        groupBy: z.enum(["state", "county"]).optional().describe("Return one row per state or county (property count, count for sale, total acres, location page link) instead of property rows. limit and offset page through the groups."),
         minAcres: z.number().min(0).optional().describe("Minimum parcel size in acres"),
         maxAcres: z.number().min(0).optional().describe("Maximum parcel size in acres"),
         minScore: z.number().int().min(0).optional().describe("Minimum Property checks number: the 5-digit numeric encoding of Property checks, an integer. Defaults to 72032, the marketplace threshold, except when ownedBy is set (then every property in that wallet is listed). Any minimum also requires a verified deed. Max: 75342."),
@@ -87,7 +91,7 @@ export function createServer(): McpServer {
 
   const getPropertyConfig = {
     title: "Get property details",
-    description: `Get comprehensive details about a specific tokenized property on Fabrica (${NETWORK_LABEL}), including legal description, valuation, Property checks (with their 5-digit numeric encoding), current ownership and holders, active loans, marketplace listings and offers, recent activity, photos and a parcel map image link. Boundary geometry is returned by get_property_map.${IS_MAINNET ? " The response includes the URL of the operating agreement (the trust instrument) that governs the token." : ""}`,
+    description: `Get comprehensive details about a specific tokenized property on Fabrica (${NETWORK_LABEL}), including legal description, valuation, property tax status, Property checks (with their 5-digit numeric encoding), current ownership and holders, active loans, marketplace listings and offers, recent activity, photos and a parcel map image link. Also its lifecycle stage (premint, minted, removal in progress), fees assessed on the token with approval and payment state, and flags for a duplicate parcel claim or the marketplace screen. An old premint ID that was replaced by a minted token returns the successor. Boundary geometry is returned by get_property_map.${IS_MAINNET ? " The response includes the URL of the operating agreement (the trust instrument) that governs the token; get_trust_documents returns the full legal record." : ""}`,
     inputSchema: {
       tokenId: z.string().optional().describe("The token ID of the property"),
       slug: z.string().optional().describe("Property slug from the URL (e.g. 'us/nevada/elko-county/elko/apn-063025003')"),
@@ -128,9 +132,11 @@ export function createServer(): McpServer {
     "get_portfolio",
     {
       title: "Get wallet portfolio",
-      description: "Get a wallet's complete Fabrica portfolio: properties owned, active loans (as borrower or lender), marketplace orders, credit history, and total portfolio value.",
+      description: "Get a wallet's Fabrica portfolio: properties owned (paged), active loans (as borrower or lender), marketplace orders, credit history, and total portfolio value. Counts and totals always cover the whole wallet.",
       inputSchema: {
         address: z.string().describe("Ethereum wallet address (0x...)"),
+        limit: z.number().int().min(1).max(200).optional().describe("Max properties to list (default 50, max 200)"),
+        offset: z.number().int().min(0).optional().describe("Properties to skip, for paging (propertiesPage.nextOffset)"),
       },
       annotations: readOnly("Get wallet portfolio"),
     },
@@ -164,12 +170,41 @@ export function createServer(): McpServer {
   );
 
   server.registerTool(
+    "get_trust_documents",
+    {
+      title: "Get trust documents",
+      description: `Get the legal record of a tokenized property: the trust that holds it (holding entity, formation date), the trust agreement that governs the token (name, version, link), the legal description, the parcel identifiers (FIPS, APN, county, state), the recorded deed reference and grantor, and documents the owner uploaded. The agreement text is included only when includeAgreementText is true (it is long). Property checks are not a title search or title insurance.${IS_MAINNET ? " The token represents the beneficial interest in the trust; the trustee is designated by the token holder and is, by default, the holder." : ""}`,
+      inputSchema: {
+        tokenId: z.string().optional().describe("The token ID of the property"),
+        slug: z.string().optional().describe("Property slug from the URL"),
+        includeAgreementText: z.boolean().optional().describe("Also return the full text of the trust agreement, about 150 KB (default: false; the link is always returned)"),
+      },
+      annotations: readOnly("Get trust documents"),
+    },
+    async (args) => jsonResult(await getTrustDocuments(args)),
+  );
+
+  server.registerTool(
+    "get_tax_status",
+    {
+      title: "Get property tax status",
+      description: "Get whether a tokenized property's taxes are current, past due or unknown, according to Fabrica's Property checks: the status, which signal it comes from (the Property Taxes Current check, the DeFi lending pool's block reason, both, or a note that they disagree), when it was checked and when the checks expire, and whether it limits borrowing. It is a data lookup, not the county's own statement; the amount due and the due date are not available.",
+      inputSchema: {
+        tokenId: z.string().optional().describe("The token ID of the property"),
+        slug: z.string().optional().describe("Property slug from the URL"),
+      },
+      annotations: readOnly("Get property tax status"),
+    },
+    async (args) => jsonResult(await getTaxStatus(args)),
+  );
+
+  server.registerTool(
     "explain_confidence_score",
     {
       title: "Explain Property checks",
-      description: "Explain a Fabrica property's Property checks from their numeric encoding (formerly called the confidence score; the tool name keeps it). The encoding is a 5-digit positional number where each digit represents a different verification group: recovery status (ten-thousands), past title (thousands), ownership (hundreds), onchain history (tens), basic validation (ones). Max score: 75342.",
+      description: "Explain a Fabrica property's Property checks from their numeric encoding (formerly called the confidence score; the tool name keeps it). The encoding is a 5-digit positional number where each digit represents a different verification group: recovery status (ten-thousands), past title (thousands), ownership (hundreds), onchain history (tens), basic validation (ones). Each digit is a category value, not a count; with a tokenId the response also counts the individual checks that pass. Max: 75342. Property checks are a starting point for your own research, not a title search or title insurance.",
       inputSchema: {
-        tokenId: z.string().optional().describe("Look up and explain the score for this property"),
+        tokenId: z.string().optional().describe("Look up and explain the Property checks of this property"),
         score: z.number().int().min(0).optional().describe("The 5-digit Property checks number to explain, as an integer (e.g. 73242)"),
       },
       annotations: readOnly("Explain Property checks"),

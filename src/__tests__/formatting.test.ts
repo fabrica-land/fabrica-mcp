@@ -5,6 +5,7 @@ vi.mock("../clients/graphql.js", () => ({
   getToken: vi.fn(),
   getTokens: vi.fn().mockResolvedValue([]),
   getCountyBounds: vi.fn(),
+  getScoreRecord: vi.fn().mockResolvedValue({ checks: { propertyTaxesCurrent: 1 }, updatedAt: "2026-10-17T00:32:12.498Z", expiresAt: "2999-01-01T00:00:00.000Z" }),
   DEFAULT_MIN_SCORE: 72032,
   filterSpamTokens: vi.fn((tokens: unknown[]) => tokens),
 }));
@@ -55,7 +56,7 @@ function makeDetailToken(overrides: Partial<TokenModel> = {}): TokenModel {
     imageUrlDark: null,
     imageUrlLight: null,
     mintedAt: "2024-01-15T00:00:00Z",
-    operatingAgreement: null,
+    operatingAgreementName: "Fabrica US Trust v4.4",
     operatingAgreementUrl: "https://fabrica.land/agreement/test",
     majorityOwnerAddress: "0xabcdef1234567890abcdef1234567890abcdef12",
     majorityOwner: { displayName: "TestUser", profilePath: "/u/testuser" },
@@ -95,7 +96,7 @@ describe("getProperty formatting", () => {
     expect(valuation.estimatedValue).toBe("$396,647");
   });
 
-  it("preserves confidence score as raw integer", async () => {
+  it("preserves the numeric encoding of Property checks as a raw integer", async () => {
     vi.mocked(getToken).mockResolvedValueOnce(makeDetailToken());
     const result = await getProperty({ tokenId: "12345" }) as Record<string, unknown>;
     const valuation = result.valuation as Record<string, unknown>;
@@ -106,6 +107,31 @@ describe("getProperty formatting", () => {
     vi.mocked(getToken).mockResolvedValueOnce(makeDetailToken());
     const result = await getProperty({ tokenId: "12345" }) as Record<string, unknown>;
     expect(result.acres).toBe(40.5);
+  });
+
+  it("returns Property checks at the top level with pass counts", async () => {
+    vi.mocked(getToken).mockResolvedValueOnce(makeDetailToken());
+    const result = await getProperty({ tokenId: "12345" }) as Record<string, unknown>;
+    const checks = result.propertyChecks as Record<string, unknown>;
+    expect(checks.encoding).toBe(73242);
+    expect(checks.passed).toBe(1);
+    expect(checks.total).toBe(1);
+    expect(checks.about).toContain("not a title search or title insurance");
+    expect(result.recoveryStatus).toEqual({ value: 7, label: "Normal" });
+  });
+
+  it("warns with the API's recovery label when the status is not Normal", async () => {
+    vi.mocked(getToken).mockResolvedValueOnce(makeDetailToken({ score: 43242 }));
+    const result = await getProperty({ tokenId: "12345" }) as Record<string, unknown>;
+    expect((result.warnings as string[])[0]).toContain("Tax sale or foreclosure");
+  });
+
+  it("shows a one-line taxes summary", async () => {
+    vi.mocked(getToken).mockResolvedValueOnce(makeDetailToken());
+    const result = await getProperty({ tokenId: "12345" }) as Record<string, unknown>;
+    const taxes = result.taxes as Record<string, unknown>;
+    expect(taxes.status).toBe("current");
+    expect(taxes.summary).toBe("Fabrica's checks found the property taxes current as of 2026-10-17.");
   });
 
   it("includes operating agreement URL for legal review", async () => {

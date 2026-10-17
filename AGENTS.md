@@ -39,6 +39,8 @@ ui/
     activity.ts       # get_activity
     marketplace.ts    # get_order_book
     images.ts         # get_property_image, get_portfolio_image
+    documents.ts      # get_trust_documents
+    tax.ts            # get_tax_status (also the taxes line on get_property)
     knowledge.ts      # ask_fabrica
     parcels.ts        # find_parcel (Regrid type-ahead via the API, /go on-ramp link, per-client limit)
   knowledge/
@@ -53,8 +55,12 @@ ui/
   clients/
     graphql.ts        # Fabrica GraphQL API client (primary data source)
     subgraph.ts       # Lending pool subgraph client (dynamic pool discovery)
+    cache.ts          # Short-TTL read cache with in-flight de-duplication (TtlCache)
+    budgets.ts        # Read budgets (loan page budget, MAX_LOANS)
   data/
     us-counties.ts    # Regrid county paths to FIPS and name (copied from soil-app's /go table)
+  lifecycle.ts        # propertyStage(): premint, minted, off-ramp, burned (get_property, search rows)
+  fees.ts             # fees assessed on a token, by currency address
   types/
     index.ts          # Shared TypeScript interfaces
   __tests__/          # vitest test suite
@@ -90,6 +96,8 @@ The Apollo API routes subgraph data internally, so all onchain and offchain prop
 - **`loanStartedEvents`, `loanRepaidEvents`, `loanLiquidatedEvents` require `first!` and `skip!`** (non-nullable).
 - **Score is a raw integer** (e.g. 73242). Kept as-is. The `minScore` filter expects this integer scale.
 - **`estimatedValue` is a string decimal** (e.g. "396647.43"). `acres` is also a string.
+
+- **Lifecycle fields are anonymous-safe:** `claimState` (premints only), `supersededByTokenId`, `offRampStatus` (`in-progress` / `complete`, null for premints), `duplicateParcelCount` (null for premints), `fishy` (never true for premints), `fees` (currency is a contract address; amount in its raw units; timestamps mix ISO and epoch ms). `token.onRamp` is null without auth. A premint replaced by a minted token no longer loads (`No token or premint found`); `premintSuccessor` returns the live token.
 
 **Field naming (differs from what you might guess):**
 - WalletModel: `address` (not `walletAddress`), `creditHistory` (not `walletCreditHistory`), `displayName` on nested `user`
@@ -168,7 +176,11 @@ The feature is called **Property checks** in every description and output. The A
 | Tens | Onchain history | 4 | ×10 |
 | Ones | Basic validation | 2 | ×1 |
 
-**Max score: 75342.** Recovery digit: 7=normal, 6=under review, 5=recovery, 1=voided.
+**Max: 75342.** Recovery digit (as the API defines it): 7=Normal, 6=Recovery pending, 5=Reported stolen, 4=Tax sale or foreclosure (Distressed), 1=Void.
+
+Each digit is a category value set by its group's rules, not a count of passing checks: never label a digit "x/y checks pass". Pass counts come from the individual results (`scoringCheckResults`), which `get_property` returns as `propertyChecks { passed, total, encoding, results }` and the property card shows as "9 of 12 pass", like fabrica.land. `valuation.confidenceScore` and `valuation.scoreBreakdown` are deprecated aliases kept for one release.
+
+Naming rule: "Property checks" is the name; the number is "the numeric encoding of Property checks". Never call it a score, rating or percentage in user-facing text. Where checks are introduced, say they are a starting point for your own research, not a title search or title insurance.
 
 ---
 
@@ -197,6 +209,7 @@ The feature is called **Property checks** in every description and output. The A
   - `FABRICA_METASTREET_SUBGRAPH_URL` (default: auto-selected per network)
   - `FABRICA_MEDIA_URL` (default: `https://media.fabrica.land`)
   - `FABRICA_WEB_URL` (default: `https://fabrica.land`, `https://testnets.fabrica.land` on Sepolia): on-ramp links and the APN parcel lookup in `find_parcel`
+  - `FABRICA_CACHE_TTL_MS` (default: `30000`; `0` disables): how long API and subgraph reads are cached in the process. Every hosted user shares one per-IP API rate limit, so repeated and concurrent identical reads are served once. Tests run with `0` (`vitest.config.ts`)
   - `FABRICA_MCP_APPS` (default: on for Sepolia, off for mainnet): the property card MCP App
 
 ---
