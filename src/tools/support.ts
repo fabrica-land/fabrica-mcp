@@ -27,17 +27,35 @@ const TOPIC_PAGES: Record<SupportTopic, { label: string; url: string }> = {
   other: { label: "Help center", url: `${HELP_CENTER}/` },
 };
 
+/** Common English words that are not BIP-39 words: one of them inside a run means prose, not a seed phrase. */
+const NOT_SEED_WORDS = new Set("the and for with but not was are from our your his her its were been has had did does would could should than them their here some each most too why how who which while after please".split(" "));
+/** Words just before a 64-hex value that mark it as a transaction hash, which support may need. */
+const TX_CONTEXT = /(\/tx\/|\btxn?\b|transaction|\bhash\b)[^\n]{0,20}$/i;
+
 /**
- * Key material never goes into a support message: a bare 64-hex-character string (a private
- * key as wallets export it; transaction hashes carry 0x and pass), or a line that is only
- * 12 to 24 lowercase words (a seed phrase). Talking about a lost key is fine.
+ * Key material never goes into a support message: a 64-hex-character value with or without
+ * 0x (a private key) unless the words just before it call it a transaction or hash, or a run
+ * of 12 or more seed-phrase-shaped words anywhere in the text (lowercase, 3 to 8 letters, no
+ * common non-BIP-39 word, mostly distinct), even after a lead-in such as "my seed phrase is:".
+ * Talking about a lost key is fine.
  */
 export function containsSecret(text: string): boolean {
-  if (/(?<![0-9a-fA-Fx])[0-9a-fA-F]{64}(?![0-9a-fA-F])/.test(text)) return true;
-  return text.split(/\r?\n/).some((line) => {
-    const words = line.trim().split(/\s+/);
-    return words.length >= 12 && words.length <= 24 && words.length % 3 === 0 && words.every((word) => /^[a-z]{3,8}$/.test(word));
-  });
+  for (const match of text.matchAll(/(?<![0-9a-zA-Z])(?:0x)?[0-9a-fA-F]{64}(?![0-9a-fA-F])/g)) {
+    if (!TX_CONTEXT.test(text.slice(Math.max(0, match.index - 40), match.index))) return true;
+  }
+  let run: string[] = [];
+  const isSeedRun = () => run.length >= 12 && new Set(run).size >= 10;
+  for (const raw of text.split(/\s+/)) {
+    if (/^\d+[.)]?$/.test(raw)) continue;
+    const word = raw.replace(/^[("'\[]+|[.,;:!?)"'\]]+$/g, "");
+    if (/^[a-z]{3,8}$/.test(word) && !NOT_SEED_WORDS.has(word)) {
+      run.push(word);
+    } else {
+      if (isSeedRun()) return true;
+      run = [];
+    }
+  }
+  return isSeedRun();
 }
 
 export interface ContactSupportArgs {

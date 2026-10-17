@@ -31,6 +31,11 @@ describe("contact_support (links and email)", () => {
     expect(containsSecret("abandon ability able about above absent absorb abstract absurd abuse access accident")).toBe(true);
     expect(containsSecret("I lost my private key and my seed phrase, what can I do?")).toBe(false);
     expect(containsSecret(`The transaction 0x${"ab".repeat(32)} failed.`)).toBe(false);
+    expect(containsSecret(`key 0x${"ab".repeat(32)}`)).toBe(true);
+    expect(containsSecret(`https://etherscan.io/tx/0x${"ab".repeat(32)}`)).toBe(false);
+    expect(containsSecret("My seed phrase is: abandon ability able about above absent absorb abstract absurd abuse access accident. Help!")).toBe(true);
+    expect(containsSecret("1. abandon 2. ability 3. able 4. about 5. above 6. absent 7. absorb 8. abstract 9. absurd 10. abuse 11. access 12. accident")).toBe(true);
+    expect(containsSecret("I tried to add my parcel in Texas but the upload of the deed keeps failing after the identity check, and support said to email you with the token number.")).toBe(false);
     expect(contactSupport({ summary: `please help, key: ${"cd".repeat(32)}` })).toMatchObject({ error: expect.stringContaining("private key") });
   });
 
