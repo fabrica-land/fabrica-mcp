@@ -188,7 +188,7 @@ describe("get_order_book", () => {
     }));
     const text = JSON.stringify(await getOrderBook({ tokenId: "1" }));
     expect(text).not.toContain("A sale pays the loan off");
-    expect(text).toContain("has to refinance or repay the loan before the property can be bought");
+    expect(text).toContain("has to refinance or repay before this listing can be bought");
   });
 
   it("explains a listing on a property under a loan", async () => {
@@ -201,7 +201,7 @@ describe("get_order_book", () => {
       underActiveLoan: true,
       listing: { status: "encumbered", encumbrance: { loanId: "42", buyable: false, reason: "The loan payoff is larger than the seller's proceeds at this price." } },
     });
-    expect(JSON.stringify(result)).toContain("A sale pays the loan off");
+    expect(JSON.stringify(result)).toContain("Each listing's encumbrance says whether it can be bought now");
   });
 
   it("stays neutral about payoff when no live listing shows the loan type", async () => {
@@ -212,7 +212,22 @@ describe("get_order_book", () => {
     const text = JSON.stringify(await getOrderBook({ tokenId: "1" }));
     expect(text).not.toContain("A sale pays the loan off");
     expect(text).not.toContain("cannot be paid off by a third party");
-    expect(text).toContain("depends on the loan; a live listing shows it");
+    expect(text).toContain("collateral for an active loan");
+  });
+
+  it("does not let one blocked listing speak for a buyable one", async () => {
+    vi.mocked(fetchOrderBook).mockResolvedValue(token({
+      supply: "10",
+      supplyUnderLoan: "5",
+      marketplaceListings: [
+        order({ side: "sell", usdPrice: "100.00", marketplaceId: "0xfree" }),
+        order({ side: "sell", usdPrice: "200.00", status: "encumbered", marketplaceId: "0xblocked", encumbrance: { buyable: false, blockReason: "LEGACY_POOL", loanId: "7" } }),
+      ],
+    }));
+    const result = await getOrderBook({ tokenId: "1" });
+    if ("error" in result) throw new Error(result.error);
+    expect(result.listing?.orderId).toBe("0xfree");
+    expect(result.notes?.join(" ")).not.toContain("refinance");
   });
 
   it("reports an unknown token as not found", async () => {

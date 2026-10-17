@@ -77,7 +77,7 @@ The Apollo API routes subgraph data internally, so all onchain and offchain prop
 **Key API behaviors:**
 
 - **`tokens` query has NO `first`/`skip` pagination.** Returns all matching tokens. Pagination is client-side.
-- **Marketplace orders:** unfiltered `token.marketplaceListings` / `marketplaceBids` return every status (active, encumbered, pending, expired, canceled, filled), and `marketplaceBidCount` counts expired offers too. `get_order_book` filters client-side and treats a live order past its `endTime` as expired. `price` is the raw onchain amount (scale by `decimals`); `usdPrice` is dollars. `encumbrance` is set when the property is collateral for a loan the sale must pay off.
+- **Marketplace orders:** unfiltered `token.marketplaceListings` / `marketplaceBids` return every status (active, encumbered, pending, expired, canceled, filled), and `marketplaceBidCount` counts expired offers too. `get_order_book` filters client-side and treats a live order past its `endTime` as expired. `price` is the raw onchain amount (scale by `decimals`); `usdPrice` is dollars. `encumbrance` is set per listing when the property is collateral for a loan; `buyable` and `blockReason` say whether that listing can be bought now (a `LEGACY_POOL` loan cannot be paid off by a third party).
 - **Nested fields `loans`, `marketplaceListings`, `marketplaceBids` are NOT available on list queries** (tokens list, wallet.tokens). Use scalar fields (`supplyUnderLoan`, `marketplacePrice`) instead. Nested fields only work on single `token()` queries.
 - **`loans` query requires `network` or `networkIn`** — errors without one.
 - **`loanStartedEvents`, `loanRepaidEvents`, `loanLiquidatedEvents` require `first!` and `skip!`** (non-nullable).

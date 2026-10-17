@@ -86,7 +86,7 @@ Replace `/absolute/path/to/fabrica-mcp` with the actual path where you cloned th
 | `get_property_map` | GeoJSON boundary data for mapping and spatial analysis |
 | `get_borrow_quote` | Borrowing options for a property: DeFi lending pool liquidity, durations, current loans |
 | `get_activity` | Activity feed for a property or wallet: transfers, loans, sales, mints |
-| `get_order_book` | Listings and offers on a property: prices, sellers and buyers, expiry, loan payoff on sale, premint state |
+| `get_order_book` | Listings and offers on a property: prices, sellers and buyers, expiry, whether a loan blocks each listing, premint state |
 | `explain_confidence_score` | Decode the numeric encoding of Property checks (5 digits, formerly called the confidence score) into verification groups |
 | `get_property_image` | Static map image of a property's parcel boundary (inline, dark/light themes) |
 | `get_portfolio_image` | Map image showing all properties owned by a wallet (inline, dark/light themes) |
