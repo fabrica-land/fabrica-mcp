@@ -35,27 +35,22 @@ const TX_CONTEXT = /(\/tx\/|\b(?:tx|txn|transaction)[ _-]?(?:hash|id)\b\s*(?:is\
 /**
  * Key material never goes into a support message: a 64-hex-character value with or without
  * 0x (a private key) unless it directly follows a transaction-hash label or an /tx/ URL, or a run
- * of 12 or more BIP-39 words anywhere in the text (any case, numbering and punctuation ignored,
- * repeats allowed), even after a lead-in such as "my seed phrase is:".
+ * of 12 or more BIP-39 words anywhere in the text (any case, with numbering,
+ * bullets and punctuation between them ignored, repeats allowed), even after a lead-in such as "my seed phrase is:".
  * Talking about a lost key is fine.
  */
 export function containsSecret(text: string): boolean {
   for (const match of text.matchAll(/(?<![0-9a-zA-Z])(?:0[xX])?[0-9a-fA-F]{64}(?![0-9a-fA-F])/g)) {
     if (!TX_CONTEXT.test(text.slice(Math.max(0, match.index - 40), match.index))) return true;
   }
-  let run: string[] = [];
-  const isSeedRun = () => run.length >= 12;
-  for (const raw of text.split(/\s+/)) {
-    if (/^\d+[.)]?$/.test(raw)) continue;
-    const word = raw.replace(/^[("'\[]+|[.,;:!?)"'\]]+$/g, "").toLowerCase();
-    if (BIP39_ENGLISH.has(word)) {
-      run.push(word);
-    } else {
-      if (isSeedRun()) return true;
-      run = [];
-    }
+  // Only letters count: numbering, bullets, commas and other separators between words are skipped.
+  let run = 0;
+  for (const word of text.toLowerCase().split(/[^a-z]+/)) {
+    if (word === "") continue;
+    run = BIP39_ENGLISH.has(word) ? run + 1 : 0;
+    if (run >= 12) return true;
   }
-  return isSeedRun();
+  return false;
 }
 
 export interface ContactSupportArgs {

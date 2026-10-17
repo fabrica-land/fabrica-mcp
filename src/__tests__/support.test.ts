@@ -54,6 +54,8 @@ describe("contact_support (links and email)", () => {
     expect(containsSecret(`key 0X${"AB".repeat(32)}`)).toBe(true);
     expect(containsSecret(`${"abandon ".repeat(11)}about`)).toBe(true);
     expect(containsSecret("wrong habit note fury wink plate film account shed wood eight please")).toBe(true);
+    expect(containsSecret(`- ${"abandon\n- ".repeat(11)}about`)).toBe(true);
+    expect(containsSecret(`${"abandon, ".repeat(11)}about`)).toBe(true);
     expect(containsSecret("Cannot upload deed because identity check failed during final review step again.")).toBe(false);
     const result = contactSupport({ summary: "A question about my parcel \ud800 listing." });
     expect("mailto" in result).toBe(true);
