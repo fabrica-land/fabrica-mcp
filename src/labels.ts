@@ -84,3 +84,88 @@ export function formatActivityAmount(a: Pick<ActivityModel, "currencyAmount" | "
   if (Number.isFinite(usd)) return `$${usd.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
   return a.currencyAmount ? `${a.currencyAmount} ${symbol ?? ""}`.trim() : null;
 }
+
+/** Public names for the API's `pricing[].source` values. */
+const VALUATION_SOURCE_NAMES: Record<string, string> = {
+  "fabrica-avm": "Fabrica AVM (automated valuation model)",
+  prycd: "Prycd",
+  "regrid-county-assessor": "County assessor (via Regrid)",
+  "data-tree": "DataTree",
+};
+
+export function formatValuationSource(source: string): string {
+  return VALUATION_SOURCE_NAMES[source] ?? source;
+}
+
+/**
+ * Why the pool's appraisal for a token is set to zero (`poolLendingLiquidity.appraisalBlockReason`).
+ * The API only discloses the tax reasons; null does not by itself mean borrowing is available.
+ */
+export function describeAppraisalBlock(reason: string | null | undefined): string | null {
+  switch (reason) {
+    case null:
+    case undefined:
+      return null;
+    case "TAX_DELINQUENT":
+      return "The last property tax verification found taxes past due, so the lending pool's appraisal for this property is zero.";
+    case "TAX_STATUS_UNKNOWN":
+      return "The property tax status has not been verified, or the last verification expired, so the lending pool's appraisal for this property is zero.";
+    default:
+      return "The lending pool's appraisal for this property is zero.";
+  }
+}
+
+/** The first eligibility gate the price oracle failed for a token (`onchainValuation.failedCheck`). */
+const FAILED_CHECKS: Record<string, string> = {
+  heartbeat: "The price feed's keeper heartbeat is not fresh.",
+  registry: "This token is not registered with the price oracle.",
+  recovery: "The token's recovery status is not Normal, so the oracle does not price it.",
+  currency: "The oracle's price is not in the pool's currency.",
+  max_silence: "The price feed has been silent longer than its allowed maximum.",
+  min_sources: "Fewer price sources have published a price for this parcel than the oracle requires.",
+  dispersion: "The published prices for this parcel differ from each other by more than the oracle allows.",
+  land_use: "The parcel's land use is not one the oracle prices.",
+  eligibility_unattested: "The eligibility publisher has not attested this token.",
+  eligibility: "A required eligibility check is not passing for this token.",
+  eligibility_region_unattested: "The parcel's region eligibility is missing, locked or stale.",
+  eligibility_region: "The parcel's country or region is not eligible for this pool.",
+  eligibility_vacant_land: "The parcel is not attested as vacant land.",
+  price_unavailable: "The API could not read a price for this parcel from the oracle.",
+  eligibility_unavailable: "The API could not read the oracle's eligibility report for this parcel.",
+  oracle_state_unavailable: "The API could not read the oracle's state.",
+};
+
+export function describeFailedCheck(check: string | null | undefined): string | null {
+  if (!check) return null;
+  return FAILED_CHECKS[check] ?? `The price oracle reports the check "${check}" as not passing.`;
+}
+
+/** Why an onchain-oracle pool contributes no borrowing capacity (`onchainValuation.capacityBlockReason`). */
+export function describeCapacityBlock(reason: string | null | undefined): string | null {
+  if (!reason) return null;
+  if (reason === "oracle_read_not_pool_oracle") {
+    return "This pool lends against a different oracle than the one read, so it contributes no borrowing capacity.";
+  }
+  return `This pool contributes no borrowing capacity (${reason}).`;
+}
+
+/** Why a source in the signed valuation panel returned no quote (`valuations[].reason`). */
+export function describeSignedValuationReason(reason: string | null | undefined): string | null {
+  if (!reason) return null;
+  if (reason === "valuation_unavailable") return "This source could not produce a valuation.";
+  return `This source returned no valuation (${reason}).`;
+}
+
+/** "$1,524.97" from a USDC amount in 6-decimal base units ("1524966393"). */
+export function formatUsdc6(amount: string | null | undefined): string | null {
+  const raw = Number.parseFloat(amount ?? "");
+  if (!Number.isFinite(raw)) return null;
+  return `$${(raw / 1e6).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+/** ISO date-time from Unix seconds (a number or a numeric string). */
+export function unixToIso(seconds: number | string | null | undefined): string | null {
+  const value = typeof seconds === "string" ? Number.parseInt(seconds, 10) : seconds;
+  if (value === null || value === undefined || !Number.isFinite(value) || value <= 0) return null;
+  return new Date(value * 1000).toISOString();
+}
