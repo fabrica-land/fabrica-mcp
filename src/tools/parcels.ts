@@ -217,12 +217,16 @@ function toCandidate(hit: TypeAheadHit, token: ParcelIndexToken | null): ParcelC
 
 /** The county named by `county` (and `state`), when exactly one county fits. */
 export function resolveCounty(county: string, state: string | undefined): { key: string; county: County } | null {
-  const wanted = slugify(county).replace(/-(county|parish|borough)$/, "");
   const prefix = state ? `${state.toLowerCase()}/` : "";
-  const fits = [...COUNTIES.entries()].filter(([key, entry]) => key.startsWith(prefix)
-    && (key.split("/")[1] === wanted || slugify(entry.name).replace(/-(county|parish|borough)$/, "") === wanted));
-  const [only] = fits;
-  return fits.length === 1 && only ? { key: only[0], county: only[1] } : null;
+  const inPrefix = [...COUNTIES.entries()].filter(([key]) => key.startsWith(prefix));
+  const pick = (normalize: (slug: string) => string): { key: string; county: County } | null => {
+    const wanted = normalize(slugify(county));
+    const fits = inPrefix.filter(([key, entry]) => normalize(key.split("/")[1] ?? "") === wanted || normalize(slugify(entry.name)) === wanted);
+    const [only] = fits;
+    return fits.length === 1 && only ? { key: only[0], county: only[1] } : null;
+  };
+  // An exact name first, so "St. Louis County" is not confused with the city of St. Louis; then without the suffix.
+  return pick((slug) => slug) ?? pick((slug) => slug.replace(/-(county|parish|borough)$/, ""));
 }
 
 function inState(hit: TypeAheadHit, state: string | undefined): boolean {

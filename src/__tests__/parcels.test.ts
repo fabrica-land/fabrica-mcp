@@ -81,6 +81,9 @@ describe("find_parcel helpers", () => {
     expect(resolveCounty("Navajo", "AZ")?.county.fips).toBe("04017");
     expect(resolveCounty("Kern County", "CA")?.county.fips).toBe("06029");
     expect(resolveCounty("Washington", undefined)).toBeNull();
+    expect(resolveCounty("St. Louis County", "MO")?.county.fips).toBe("29189");
+    expect(resolveCounty("St. Louis City", "MO")?.county.fips).toBe("29510");
+    expect(resolveCounty("Baltimore County", "MD")?.county.fips).toBe("24005");
   });
 
   it("limits find_parcel calls per client per minute", () => {

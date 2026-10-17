@@ -76,7 +76,7 @@ async function request<T>(
 }
 
 /** Filter out tokens with spam/error names that indicate bad metadata */
-export function filterSpamTokens(tokens: TokenModel[]): TokenModel[] {
+export function filterSpamTokens<T extends { name?: string | null; vanityName?: string | null }>(tokens: T[]): T[] {
   return tokens.filter(t => {
     const name = t.name ?? t.vanityName ?? "";
     return !SPAM_NAME_PATTERNS.some(pattern => name.includes(pattern));
@@ -675,7 +675,7 @@ export async function getParcelIndex(): Promise<ParcelIndexToken[]> {
     testnets: !IS_MAINNET,
     contractAddress: CONTRACTS.fabricaToken,
   });
-  return data.tokens;
+  return filterSpamTokens(data.tokens);
 }
 
 /**

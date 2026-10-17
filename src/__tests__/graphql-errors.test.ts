@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { FabricaApiError, getToken } from "../clients/graphql.js";
+import { FabricaApiError, getParcelIndex, getToken } from "../clients/graphql.js";
 import { getProperty, getPropertyMap } from "../tools/properties.js";
 
 /** Answer the next fetch with a GraphQL response body under the given HTTP status. */
@@ -76,5 +76,15 @@ describe("getPropertyMap degrades on a county-outline failure instead of swallow
     expect(result.warnings).toEqual([
       'County outline for FIPS 06037 unavailable: Fabrica API rejected the query: Cannot query field "geoJson" on type "CountyBoundsModel".',
     ]);
+  });
+});
+
+describe("getParcelIndex", () => {
+  it("leaves out spam and errored tokens, so find_parcel never matches one", async () => {
+    stubApi({ data: { tokens: [
+      { tokenId: "1", name: "SyntaxError: Unexpected token", regionCode: "TX", definition: { offchainRegistrar: { admin: "48231", propertyId: "123" } } },
+      { tokenId: "2", name: "Hunt County 5 acres", regionCode: "TX", definition: { offchainRegistrar: { admin: "48231", propertyId: "123" } } },
+    ] } });
+    expect((await getParcelIndex()).map((token) => token.tokenId)).toEqual(["2"]);
   });
 });
