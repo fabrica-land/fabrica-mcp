@@ -25,7 +25,7 @@ ${OWNERSHIP_RULE}
 
 const NETWORK_LINE = IS_MAINNET
   ? `Network: ${NETWORK_LABEL}. These are real US properties.\n\n${MAINNET_LEGAL_NOTICE}`
-  : `Network: ${NETWORK_LABEL}. Test properties only, with no real-world legal or financial effect.`;
+  : `Network: ${NETWORK_LABEL}. Test properties only, with no real-world legal or financial effect. Every result on this network (Property checks, tax status, valuations, loans, activity) is test data: label it as test data in the answer and draw no conclusion about real land, taxes or money from it.`;
 
 function prompt(task: string): GetPromptResult {
   return {

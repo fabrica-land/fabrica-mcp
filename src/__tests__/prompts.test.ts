@@ -72,6 +72,7 @@ describe("MCP prompts", () => {
       expect(text).not.toContain("Owning a Fabrica token means owning");
       const addLand = promptText(testnet.howToAddLandPrompt("1 Main St"));
       expect(addLand).toContain("No trust is created");
+      expect(promptText(testnet.dueDiligencePrompt("1"))).toContain("label it as test data");
       expect(addLand).not.toContain("the deed is recorded at the county");
     } finally {
       vi.unstubAllEnvs();
