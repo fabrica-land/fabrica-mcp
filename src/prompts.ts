@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { GetPromptResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { IS_MAINNET, MAINNET_LEGAL_NOTICE, NETWORK_LABEL } from "./config.js";
+import { IS_MAINNET, MAINNET_LEGAL_NOTICE, NETWORK_LABEL, WEB_BASE } from "./config.js";
 
 /**
  * MCP prompts: the standard loops (due diligence, a parcel list, a wallet review, adding
@@ -10,7 +10,7 @@ import { IS_MAINNET, MAINNET_LEGAL_NOTICE, NETWORK_LABEL } from "./config.js";
  * connect to this server. Steps that name a tool this server may not list yet say so.
  */
 
-const WEB = IS_MAINNET ? "https://fabrica.land" : "https://testnets.fabrica.land";
+const WEB = WEB_BASE;
 
 const OWNERSHIP_RULE = IS_MAINNET
   ? "- Owning a Fabrica token means owning the beneficial interest in the trust that holds the property. The trustee is designated by the token holder and is, by default, the holder. Fabrica is not a party to the trust and never holds title, custodies property or manages anyone's trust, property or loan."

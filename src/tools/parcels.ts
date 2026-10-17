@@ -1,5 +1,5 @@
 import { getParcelIndex, type ParcelIndexToken } from "../clients/graphql.js";
-import { IS_MAINNET, MAINNET_WARNING, NETWORK_LABEL } from "../config.js";
+import { MAINNET_WARNING, NETWORK_LABEL, WEB_BASE } from "../config.js";
 import { US_COUNTY_ROWS } from "../data/us-counties.js";
 
 /**
@@ -19,7 +19,6 @@ const CLEAR_LEAD = 10;
 export const COVERAGE_NOTE = "Fabrica operates in all 50 states; the on-ramp page shows what this county requires.";
 
 const API_BASE = new URL(process.env.FABRICA_API_URL ?? DEFAULT_API_URL).origin;
-const WEB_BASE = (process.env.FABRICA_WEB_URL ?? (IS_MAINNET ? "https://fabrica.land" : "https://testnets.fabrica.land")).replace(/\/+$/, "");
 
 interface County {
   fips: string;
