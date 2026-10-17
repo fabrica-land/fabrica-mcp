@@ -22,7 +22,7 @@ vi.mock("../clients/graphql.js", () => ({
 }));
 
 const { getParcelIndex } = await import("../clients/graphql.js");
-const { allowFindParcel, findParcel, matchByApn, parseParcelPoint, parseTypeAhead, pointInPolygons, polygonsOf, resolveCounty, stateRetryText, FIND_PARCEL_LIMIT_PER_MINUTE } = await import("../tools/parcels.js");
+const { allowFindParcel, findParcel, interiorPoint, matchByApn, parseParcelPoint, parseTypeAhead, pointInPolygons, polygonsOf, resolveCounty, stateRetryText, FIND_PARCEL_LIMIT_PER_MINUTE } = await import("../tools/parcels.js");
 
 const SF_HIT = { category: "parcel", context: "San Francisco, CA", headline: "1707 Jones St", owner: "SOMEONE PRIVATE", parcelnumb: "0151010", path: "/us/ca/san-francisco/downtown/12801", score: 85, type: "Parcel" };
 const HUNT_HIT = { category: "parcel", context: "Greenville, TX", headline: "1707 Jones St", owner: "ANOTHER OWNER", parcelnumb: "71359", path: "/us/tx/hunt/greenville/20283", score: 80, type: "Parcel" };
@@ -119,6 +119,20 @@ describe("find_parcel helpers", () => {
     expect(pointInPolygons(1, 1, polygons)).toBe(true);
     expect(pointInPolygons(5, 5, polygons)).toBe(false);
     expect(pointInPolygons(20, 20, polygons)).toBe(false);
+  });
+
+  it("picks a point inside concave parcels and around holes when Regrid gives none", () => {
+    // A U shape: the vertex average (5, ~3.6) sits in the notch, outside the parcel.
+    const u = polygonsOf({ type: "Polygon", coordinates: [[[0, 0], [10, 0], [10, 10], [7, 10], [7, 2], [3, 2], [3, 10], [0, 10], [0, 0]]] });
+    const ring = { type: "Polygon", coordinates: [[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]], [[2, 2], [8, 2], [8, 8], [2, 8], [2, 2]]] };
+    for (const polygons of [u, polygonsOf(ring)]) {
+      const [first] = polygons;
+      const point = first ? interiorPoint(first) : null;
+      expect(point).not.toBeNull();
+      if (point) expect(pointInPolygons(point.lat, point.lon, polygons)).toBe(true);
+    }
+    const parsed = parseParcelPoint({ parcels: { features: [{ geometry: ring, properties: { path: "/p", fields: {} } }] } }, "/p");
+    expect(parsed && pointInPolygons(parsed.lat, parsed.lon, polygonsOf(ring))).toBe(true);
   });
 
   it("resolves a county only when exactly one fits", () => {

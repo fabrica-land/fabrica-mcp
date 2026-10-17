@@ -188,7 +188,7 @@ export interface ParcelPoint {
   polygons: Ring[][];
 }
 
-/** The parcel's point (Regrid's own interior point, else the outer ring's average) and outline. Reads no other field. */
+/** The parcel's point (Regrid's own interior point, else one computed from the outline) and outline. Reads no other field. */
 export function parseParcelPoint(body: unknown, path: string): ParcelPoint | null {
   const parcels = isRecord(body) && isRecord(body.parcels) && Array.isArray(body.parcels.features) ? body.parcels.features : [];
   const features = parcels.filter(isRecord);
@@ -201,10 +201,37 @@ export function parseParcelPoint(body: unknown, path: string): ParcelPoint | nul
   const lon = Number(fields.lon);
   const regridId = text(fields.ll_uuid);
   if (Number.isFinite(lat) && Number.isFinite(lon) && (lat !== 0 || lon !== 0)) return { lat, lon, regridId, polygons };
-  const outer = polygons[0]?.[0];
-  if (!outer || outer.length === 0) return null;
-  const sum = outer.reduce((acc, [x = 0, y = 0]) => ({ lon: acc.lon + x, lat: acc.lat + y }), { lon: 0, lat: 0 });
-  return { lat: sum.lat / outer.length, lon: sum.lon / outer.length, regridId, polygons };
+  const [first] = polygons;
+  const inside = first ? interiorPoint(first) : null;
+  return inside ? { ...inside, regridId, polygons } : null;
+}
+
+/**
+ * A point guaranteed to lie inside the polygon (holes included): the middle of the widest span where a
+ * horizontal line through the middle of its bounding box crosses it. A vertex average can fall outside
+ * a concave parcel or inside a hole.
+ */
+export function interiorPoint(polygon: Ring[]): { lat: number; lon: number } | null {
+  const lats = polygon.flatMap((ring) => ring.map(([, y = 0]) => y));
+  if (lats.length === 0) return null;
+  const lat = (Math.min(...lats) + Math.max(...lats)) / 2;
+  const crossings = polygon.flatMap((ring) => ring.flatMap((a, i) => {
+    const b = ring[(i + 1) % ring.length];
+    if (!b) return [];
+    const [x1 = 0, y1 = 0] = a;
+    const [x2 = 0, y2 = 0] = b;
+    return (y1 > lat) !== (y2 > lat) ? [x1 + ((lat - y1) * (x2 - x1)) / (y2 - y1)] : [];
+  })).sort((p, q) => p - q);
+  let best: { lat: number; lon: number } | null = null;
+  let widest = 0;
+  for (let i = 0; i + 1 < crossings.length; i += 2) {
+    const [west = 0, east = 0] = [crossings[i], crossings[i + 1]];
+    if (east - west > widest) {
+      widest = east - west;
+      best = { lat, lon: (west + east) / 2 };
+    }
+  }
+  return best;
 }
 
 export function onRampLink(point: { lat: number; lon: number; regridId: string | null }, hit: TypeAheadHit): string {
