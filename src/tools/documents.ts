@@ -1,4 +1,4 @@
-import { getTrustDocuments as fetchTrustDocuments } from "../clients/graphql.js";
+import { getTrustDocuments as fetchTrustDocuments, propertyLookupError } from "../clients/graphql.js";
 import type { ConfigurationDocument } from "../types/index.js";
 import { IS_MAINNET, MAINNET_WARNING } from "../config.js";
 import { toGatewayUrl } from "./media.js";
@@ -91,6 +91,6 @@ export async function getTrustDocuments(args: Record<string, unknown>) {
       notIncluded: NOT_INCLUDED,
     };
   } catch (e) {
-    return { error: `Failed to get trust documents: ${e instanceof Error ? e.message : String(e)}` };
+    return { error: propertyLookupError(e, { tokenId, slug }, "get trust documents") };
   }
 }

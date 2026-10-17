@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from "vitest";
 // Mock the graphql client before importing the module
 vi.mock("../clients/graphql.js", () => ({
   getToken: vi.fn(),
+  propertyLookupError: (e: unknown, _lookup: unknown, action: string) => `Failed to ${action}: ${e instanceof Error ? e.message : String(e)}`,
 }));
 
 import { getToken } from "../clients/graphql.js";

@@ -17,6 +17,7 @@ import { getTaxStatus } from "./tools/tax.js";
 import { askFabrica, ASK_FABRICA_SOURCES } from "./tools/knowledge.js";
 import { findParcel } from "./tools/parcels.js";
 import { registerPrompts } from "./prompts.js";
+import { normalizeSlug } from "./links.js";
 import { contactSupport, SUPPORT_TOPICS } from "./tools/support.js";
 import { NETWORK_LABEL, IS_MAINNET, MAINNET_LEGAL_NOTICE } from "./config.js";
 import { PROPERTY_CARD_URI, registerPropertyCard } from "./ui/property-card.js";
@@ -96,7 +97,7 @@ export function createServer(): McpServer {
     description: `Get comprehensive details about a specific tokenized property on Fabrica (${NETWORK_LABEL}), including legal description, valuation, property tax status, Property checks (with their 5-digit numeric encoding), current ownership and holders, active loans, marketplace listings and offers, recent activity, photos and a parcel map image link. Also its lifecycle stage (premint, minted, removal in progress), fees assessed on the token with approval and payment state, and flags for a duplicate parcel claim or the marketplace screen. An old premint ID that was replaced by a minted token returns the successor. Boundary geometry is returned by get_property_map.${IS_MAINNET ? " The response includes the URL of the operating agreement (the trust instrument) that governs the token; get_trust_documents returns the full legal record." : ""}`,
     inputSchema: {
       tokenId: z.string().optional().describe("The token ID of the property"),
-      slug: z.string().optional().describe("Property slug from the URL (e.g. 'us/nevada/elko-county/elko/apn-063025003')"),
+      slug: z.string().optional().transform(normalizeSlug).describe("Property slug from the URL (e.g. 'us/nevada/elko-county/elko/apn-063025003')"),
     },
     annotations: readOnly("Get property details"),
   };
@@ -163,7 +164,7 @@ export function createServer(): McpServer {
       description: "Get GeoJSON boundary data for a tokenized property, for mapping, spatial analysis, and visualization. The county boundary is added only with includeCountyBounds: true.",
       inputSchema: {
         tokenId: z.string().optional().describe("The token ID of the property"),
-        slug: z.string().optional().describe("Property slug from the URL"),
+        slug: z.string().optional().transform(normalizeSlug).describe("Property slug from the URL"),
         includeCountyBounds: z.boolean().optional().describe("Also return the county boundary polygon, a large decorative layer (default: false)"),
       },
       annotations: readOnly("Get property boundary (GeoJSON)"),
@@ -178,7 +179,7 @@ export function createServer(): McpServer {
       description: `Get the legal record of a tokenized property: the trust that holds it (holding entity, formation date), the trust agreement that governs the token (name, version, link), the legal description, the parcel identifiers (FIPS, APN, county, state), the recorded deed reference and grantor, and documents the owner uploaded. The agreement text is included only when includeAgreementText is true (it is long). Property checks are not a title search or title insurance.${IS_MAINNET ? " The token represents the beneficial interest in the trust; the trustee is designated by the token holder and is, by default, the holder." : ""}`,
       inputSchema: {
         tokenId: z.string().optional().describe("The token ID of the property"),
-        slug: z.string().optional().describe("Property slug from the URL"),
+        slug: z.string().optional().transform(normalizeSlug).describe("Property slug from the URL"),
         includeAgreementText: z.boolean().optional().describe("Also return the full text of the trust agreement, about 150 KB (default: false; the link is always returned)"),
       },
       annotations: readOnly("Get trust documents"),
@@ -193,7 +194,7 @@ export function createServer(): McpServer {
       description: "Get whether a tokenized property's taxes are current, past due or unknown, according to Fabrica's Property checks: the status, which signal it comes from (the Property Taxes Current check, the DeFi lending pool's block reason, both, or a note that they disagree), when it was checked and when the checks expire, and whether it limits borrowing. It is a data lookup, not the county's own statement; the amount due and the due date are not available.",
       inputSchema: {
         tokenId: z.string().optional().describe("The token ID of the property"),
-        slug: z.string().optional().describe("Property slug from the URL"),
+        slug: z.string().optional().transform(normalizeSlug).describe("Property slug from the URL"),
       },
       annotations: readOnly("Get property tax status"),
     },
@@ -221,7 +222,7 @@ export function createServer(): McpServer {
       description: "Get borrowing options for a specific tokenized property: DeFi lending pool liquidity (max loan amount, durations), existing loan status, and the reasons when the pool shows no capacity (tax status, price oracle checks). Answers questions such as 'How much can I borrow against this property?'. The amount is an estimate; the rate is set by a live quote when borrowing.",
       inputSchema: {
         tokenId: z.string().optional().describe("The token ID of the property"),
-        slug: z.string().optional().describe("Property slug from the URL"),
+        slug: z.string().optional().transform(normalizeSlug).describe("Property slug from the URL"),
       },
       annotations: readOnly("Get borrow quote"),
     },
@@ -235,7 +236,7 @@ export function createServer(): McpServer {
       description: "Get every value the Fabrica API holds for a property, each with its source, date and confidence: the estimate and the sources it comes from, the Fabrica AVM, Prycd and county assessor figures, the signed valuations the DeFi lending pool reads, the pool's oracle state (feed freshness, onchain price, usable price) with the reason when a price is missing, and the valuation report link. Presents data with its provenance; it suggests no price.",
       inputSchema: {
         tokenId: z.string().optional().describe("The token ID of the property"),
-        slug: z.string().optional().describe("Property slug from the URL"),
+        slug: z.string().optional().transform(normalizeSlug).describe("Property slug from the URL"),
       },
       annotations: readOnly("Get valuation sources"),
     },
@@ -249,7 +250,7 @@ export function createServer(): McpServer {
       description: "Get the activity feed for a property or wallet: mints, transfers, sales, loans started/repaid/liquidated, configuration changes, and more. Covers transaction history and event timelines.",
       inputSchema: {
         tokenId: z.string().optional().describe("Property token ID (for property activity)"),
-        slug: z.string().optional().describe("Property slug (for property activity)"),
+        slug: z.string().optional().transform(normalizeSlug).describe("Property slug (for property activity)"),
         address: z.string().optional().describe("Wallet address (for wallet activity)"),
         type: z.string().optional().describe("Filter by activity type (e.g. 'loan', 'transfer', 'sale', 'mint')"),
         limit: z.number().int().min(1).max(100).optional().describe("Max results (default 20, max 100)"),
@@ -266,7 +267,7 @@ export function createServer(): McpServer {
       description: "Get the marketplace order book for one property: the lowest active listing, all listings, and offers sorted from highest to lowest, each with price in USD and in its currency, seller or buyer, expiry (ISO 8601 and relative), any buyer restriction and disclosure documents. Shows whether the property is a premint and whether it is collateral for an active loan, with what that means for a sale. Expired, canceled and filled orders are left out unless status is 'all'. Links to the property page, where offers are made.",
       inputSchema: {
         tokenId: z.string().optional().describe("The token ID of the property"),
-        slug: z.string().optional().describe("Property slug from the URL"),
+        slug: z.string().optional().transform(normalizeSlug).describe("Property slug from the URL"),
         status: z.enum(["active", "all"]).optional().describe("'active' (default): live orders only. 'all': also expired, canceled and filled orders."),
         minOfferUsd: z.number().min(0).optional().describe("Only return offers at or above this USD amount"),
       },
@@ -282,7 +283,7 @@ export function createServer(): McpServer {
       description: "Get a static map image of a tokenized property showing its parcel boundary (or a pin marker if no boundary is available). Returns an inline image. Supports dark/light themes and custom dimensions.",
       inputSchema: {
         tokenId: z.string().optional().describe("The token ID of the property"),
-        slug: z.string().optional().describe("Property slug from the URL"),
+        slug: z.string().optional().transform(normalizeSlug).describe("Property slug from the URL"),
         theme: z.enum(["dark", "light"]).optional().describe("Map theme (default: 'dark')"),
         width: z.number().int().min(100).max(1280).optional().describe("Image width in pixels (100-1280, default 640)"),
         height: z.number().int().min(100).max(1280).optional().describe("Image height in pixels (100-1280, default 640)"),

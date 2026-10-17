@@ -25,6 +25,26 @@ const STATE_NAMES: Record<string, string> = {
   VT: "Vermont", VA: "Virginia", WA: "Washington", WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming",
 };
 
+/** "Colorado", "colorado" or "co" → "CO"; null when neither a US state code nor a state name. */
+export function stateCode(nameOrCode: string | null | undefined): string | null {
+  const text = (nameOrCode ?? "").trim();
+  if (!text) return null;
+  if (STATE_NAMES[text.toUpperCase()]) return text.toUpperCase();
+  const wanted = text.toLowerCase().replace(/[^a-z]+/g, " ").trim();
+  const code = Object.keys(STATE_NAMES).find(key => STATE_NAMES[key].toLowerCase() === wanted);
+  return code ?? null;
+}
+
+/**
+ * The API's property slug ("us/nevada/elko-county/elko/apn-00633b008") from however an agent
+ * passes it: the full fabrica.land URL, a leading or trailing slash, or the slug itself.
+ */
+export function normalizeSlug(slug: string | undefined): string | undefined {
+  if (slug === undefined) return undefined;
+  const path = slug.trim().replace(/^https?:\/\/[^/]*fabrica\.land\//i, "").replace(/^\/+|\/+$/g, "");
+  return path.length > 0 ? path : undefined;
+}
+
 /** "co" → "Colorado"; null for an unknown code. */
 export function stateName(code: string | null | undefined): string | null {
   return STATE_NAMES[(code ?? "").trim().toUpperCase()] ?? null;

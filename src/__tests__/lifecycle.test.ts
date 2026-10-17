@@ -17,6 +17,10 @@ vi.mock("../clients/graphql.js", async () => {
     filterSpamTokens: vi.fn((tokens: unknown[]) => tokens),
     FabricaApiError,
     isTokenNotFound: (e: unknown) => e instanceof FabricaApiError && e.graphQLErrors.some(m => m.includes("No token or premint found")),
+    propertyLookupError: (e: unknown, lookup: { tokenId?: string; slug?: string }, action: string) =>
+      e instanceof FabricaApiError && e.graphQLErrors.some(m => m.includes("No token or premint found"))
+        ? `No property found with ${lookup.tokenId ? `token ID ${lookup.tokenId}` : `slug ${lookup.slug ?? ""}`}`
+        : `Failed to ${action}: ${e instanceof Error ? e.message : String(e)}`,
   };
 });
 
@@ -165,7 +169,7 @@ describe("get_property lifecycle, fees and flags", () => {
     vi.mocked(getToken).mockRejectedValueOnce(new FabricaApiError(["No token or premint found for token with ID 111 on any network"]));
     vi.mocked(getPremintSuccessor).mockResolvedValueOnce(null);
     const result = await getProperty({ tokenId: "111" });
-    expect(result).toMatchObject({ error: expect.stringContaining("No token or premint found") });
+    expect(result).toEqual({ error: "No property found with token ID 111" });
   });
 });
 

@@ -1,4 +1,4 @@
-import { getSignedValuations, getTokenValuation } from "../clients/graphql.js";
+import { getSignedValuations, getTokenValuation, propertyLookupError } from "../clients/graphql.js";
 import { MAINNET_WARNING } from "../config.js";
 import {
   LENDING_POOL_NAME,
@@ -199,6 +199,6 @@ export async function getValuation(args: Record<string, unknown>) {
       note: "Each value is shown with its source and date as the API holds it. None is an offer or a price suggestion.",
     };
   } catch (e) {
-    return { error: `Failed to get valuation: ${e instanceof Error ? e.message : String(e)}` };
+    return { error: propertyLookupError(e, { tokenId, slug }, "get valuation") };
   }
 }
