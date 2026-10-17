@@ -547,10 +547,12 @@ const GET_TAX_STATUS_QUERY = gql`
   }
 `;
 
+const taxStatusCache = new TtlCache<{ token: TaxStatusToken | null }>();
+
 export async function getTaxStatusToken(
   params: { tokenId?: string; slug?: string },
 ): Promise<TaxStatusToken | null> {
-  const data = await request<{ token: TaxStatusToken | null }>(GET_TAX_STATUS_QUERY, {
+  const data = await cachedRequest(taxStatusCache, GET_TAX_STATUS_QUERY, {
     tokenId: params.tokenId,
     slug: params.slug,
     network: NETWORK,
@@ -558,8 +560,6 @@ export async function getTaxStatusToken(
   return data.token;
 }
 
-/** The REST API sits next to the GraphQL endpoint (https://api.fabrica.land/graphql -> https://api.fabrica.land). */
-const REST_BASE_URL = (process.env.FABRICA_API_URL ?? DEFAULT_API_URL).replace(/\/graphql\/?$/, "");
 
 function isScoreRecord(value: unknown): value is ScoreRecord {
   return typeof value === "object" && value !== null && "checks" in value && typeof value.checks === "object" && value.checks !== null;
@@ -570,8 +570,16 @@ function isScoreRecord(value: unknown): value is ScoreRecord {
  * GraphQL list reports an unverified check as false) and when the checks expire. Call it
  * only for a token the GraphQL API returned. Null when the API has no record.
  */
-export async function getScoreRecord(contractAddress: string, tokenId: string): Promise<ScoreRecord | null> {
-  const url = `${REST_BASE_URL}/${encodeURIComponent(NETWORK)}/${encodeURIComponent(contractAddress)}/${encodeURIComponent(tokenId)}/score`;
+const scoreRecordCache = new TtlCache<ScoreRecord | null>();
+
+export function getScoreRecord(contractAddress: string, tokenId: string): Promise<ScoreRecord | null> {
+  return scoreRecordCache.get(`${contractAddress}:${tokenId}`, () => fetchScoreRecord(contractAddress, tokenId));
+}
+
+/** Throws on an HTTP failure, so a failure is not cached. */
+async function fetchScoreRecord(contractAddress: string, tokenId: string): Promise<ScoreRecord | null> {
+  const base = API_URL.replace(/\/graphql\/?$/, "");
+  const url = `${base}/${encodeURIComponent(NETWORK)}/${encodeURIComponent(contractAddress)}/${encodeURIComponent(tokenId)}/score`;
   const response = await fetch(url, { signal: AbortSignal.timeout(API_TIMEOUT_MS) });
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`Fabrica score API request failed (HTTP ${response.status})`);

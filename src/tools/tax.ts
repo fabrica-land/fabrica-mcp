@@ -1,4 +1,5 @@
-import { getTaxStatusToken, getScoreRecord } from "../clients/graphql.js";
+import { getTaxStatusToken, getScoreRecord, isTokenNotFound } from "../clients/graphql.js";
+import { MAINNET_WARNING } from "../config.js";
 import type { AppraisalBlockReason, ScoreRecord, ScoringCheckResult } from "../types/index.js";
 import { LENDING_POOL_NAME } from "../labels.js";
 
@@ -70,9 +71,11 @@ export async function loadTaxSignals(token: {
       warnings.push(`Score record unavailable, so the check dates are missing: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
-  const check = record ? checkFromRecord(record) : checkFromList(token.scoringCheckResults);
+  // A check past its expiry no longer says anything about the taxes today.
+  const checkExpired = record?.expiresAt ? Date.parse(record.expiresAt) < Date.now() : false;
+  const check = checkExpired ? null : record ? checkFromRecord(record) : checkFromList(token.scoringCheckResults);
   const blockReason = token.poolLendingLiquidity?.appraisalBlockReason ?? null;
-  return { ...resolveTaxStatus(check, blockReason), blockReason, checkedAt: record?.updatedAt ?? null, nextCheckBy: record?.expiresAt ?? null, warnings };
+  return { ...resolveTaxStatus(check, blockReason), blockReason, checkExpired, checkedAt: record?.updatedAt ?? null, nextCheckBy: record?.expiresAt ?? null, warnings };
 }
 
 export async function getTaxStatus(args: Record<string, unknown>) {
@@ -89,6 +92,7 @@ export async function getTaxStatus(args: Record<string, unknown>) {
     const signals = await loadTaxSignals(token);
     const affectsLending = signals.blockReason === "TAX_DELINQUENT" || signals.blockReason === "TAX_STATUS_UNKNOWN";
     return {
+      ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
       tokenId: token.tokenId,
       name: token.name ?? token.vanityName,
       county: token.district,
@@ -98,6 +102,7 @@ export async function getTaxStatus(args: Record<string, unknown>) {
       summary: taxSummary(signals.status, signals.checkedAt, token.isPremint),
       checkedAt: signals.checkedAt,
       nextCheckBy: signals.nextCheckBy,
+      ...(signals.checkExpired ? { checkExpired: true } : {}),
       affectsLending,
       ...(affectsLending ? { lending: `The ${LENDING_POOL_NAME} shows no borrowing capacity for this property because of its tax status.` } : {}),
       nextSteps: nextSteps(signals.status),
@@ -106,6 +111,9 @@ export async function getTaxStatus(args: Record<string, unknown>) {
       ...(signals.warnings.length > 0 ? { warnings: signals.warnings } : {}),
     };
   } catch (e) {
+    if (isTokenNotFound(e)) {
+      return { error: `No property found with ${tokenId ? `token ID ${tokenId}` : `slug ${slug}`}` };
+    }
     return { error: `Failed to get tax status: ${e instanceof Error ? e.message : String(e)}` };
   }
 }

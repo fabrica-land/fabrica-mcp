@@ -1,14 +1,16 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("../clients/graphql.js", () => ({
   getTaxStatusToken: vi.fn(),
   getScoreRecord: vi.fn(),
+  isTokenNotFound: (e: unknown) => e instanceof Error && e.message.includes("No token or premint found"),
 }));
 
 import { getTaxStatusToken, getScoreRecord } from "../clients/graphql.js";
 import { getTaxStatus, resolveTaxStatus } from "../tools/tax.js";
 import type { AppraisalBlockReason, TaxStatusToken } from "../types/index.js";
 import { LENDING_POOL_NAME } from "../labels.js";
+import { MAINNET_WARNING } from "../config.js";
 
 function makeToken(blockReason: AppraisalBlockReason | null = null, overrides: Partial<TaxStatusToken> = {}): TaxStatusToken {
   return {
@@ -32,6 +34,12 @@ function record(value: number | boolean | null) {
 
 beforeEach(() => {
   vi.mocked(getScoreRecord).mockReset();
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-17T12:00:00Z"));
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("resolveTaxStatus", () => {
@@ -59,6 +67,28 @@ describe("get_tax_status", () => {
     const result = await getTaxStatus({ tokenId: "1" }) as Record<string, unknown>;
     expect(result.error).toBe("No property found with token ID 1");
     expect(getScoreRecord).not.toHaveBeenCalled();
+  });
+
+  it("maps the API's not-found error to the not-found response", async () => {
+    vi.mocked(getTaxStatusToken).mockRejectedValueOnce(new Error("Fabrica API rejected the query: No token or premint found"));
+    const result = await getTaxStatus({ tokenId: "1" }) as Record<string, unknown>;
+    expect(result.error).toBe("No property found with token ID 1");
+  });
+
+  it("treats a check past its expiry as unknown", async () => {
+    vi.mocked(getTaxStatusToken).mockResolvedValueOnce(makeToken());
+    vi.mocked(getScoreRecord).mockResolvedValueOnce({ ...record(1), expiresAt: "2026-10-01T00:00:00.000Z" });
+    const result = await getTaxStatus({ tokenId: "1" }) as Record<string, unknown>;
+    expect(result.status).toBe("unknown");
+    expect(result.checkExpired).toBe(true);
+    expect(result.summary).toContain("the last verification expired");
+  });
+
+  it("carries the network's legal notice", async () => {
+    vi.mocked(getTaxStatusToken).mockResolvedValueOnce(makeToken());
+    vi.mocked(getScoreRecord).mockResolvedValueOnce(record(1));
+    const result = await getTaxStatus({ tokenId: "1" }) as Record<string, unknown>;
+    expect(result.legalNotice).toBe(MAINNET_WARNING ?? undefined);
   });
 
   it("renders current taxes with the check dates", async () => {
