@@ -46,16 +46,8 @@ export const RED_LINES: RedLine[] = [
 ];
 
 /** Phrases that never belong in any text the server emits about Fabrica. */
-// Clause-level patterns the tests also apply: "open source" and "contract" or "code" in one clause.
-export const FORBIDDEN_PATTERNS: RegExp[] = [
-  /open[- ]sourced?\b[^.,;:\n]{0,60}\b(contracts?|code|codebase)\b/i,
-  /\b(contracts?|code|codebase)\b[^.,;:\n]{0,60}\bopen[- ]sourced?\b/i,
-];
 export const FORBIDDEN_EVERYWHERE: string[] = [
   "open source platform",
-  "contracts are open source",
-  "contract is open source",
-  "code is open source",
   "guaranteed return",
   "always equal $1",
   "always worth $1",

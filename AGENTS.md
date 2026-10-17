@@ -45,6 +45,7 @@ ui/
     documents.ts      # get_trust_documents
     tax.ts            # get_tax_status (also the taxes line on get_property)
     knowledge.ts      # ask_fabrica
+    parcels.ts        # find_parcel (Regrid type-ahead via the API, /go on-ramp link, per-client limit)
   knowledge/
     index.ts          # typed, validated loader for generated/index.json (committed)
     search.ts         # BM25 retrieval with Fabrica synonyms and compound-term normalization
@@ -59,6 +60,8 @@ ui/
     subgraph.ts       # Lending pool subgraph client (dynamic pool discovery)
     cache.ts          # Short-TTL read cache with in-flight de-duplication (TtlCache)
     budgets.ts        # Read budgets (loan page budget, MAX_LOANS)
+  data/
+    us-counties.ts    # Regrid county paths to FIPS and name (copied from soil-app's /go table)
   lifecycle.ts        # propertyStage(): premint, minted, off-ramp, burned (get_property, search rows)
   fees.ts             # fees assessed on a token, by currency address
   types/
@@ -208,6 +211,7 @@ Naming rule: "Property checks" is the name; the number is "the numeric encoding 
   - `FABRICA_API_URL` (default: `https://api.fabrica.land/graphql`)
   - `FABRICA_METASTREET_SUBGRAPH_URL` (default: auto-selected per network)
   - `FABRICA_MEDIA_URL` (default: `https://media.fabrica.land`)
+  - `FABRICA_WEB_URL` (default: `https://fabrica.land`, `https://testnets.fabrica.land` on Sepolia): on-ramp links and the APN parcel lookup in `find_parcel`
   - `FABRICA_CACHE_TTL_MS` (default: `30000`; `0` disables): how long API and subgraph reads are cached in the process. Every hosted user shares one per-IP API rate limit, so repeated and concurrent identical reads are served once. Tests run with `0` (`vitest.config.ts`)
   - `FABRICA_MCP_APPS` (default: on for Sepolia, off for mainnet): the property card MCP App
 
@@ -240,7 +244,7 @@ Then configure your MCP client with `node /path/to/fabrica-mcp/dist/index.js`.
 |---|---|
 | https://docs.fabrica.land | User-facing concepts, trust structure, lending mechanics |
 | https://api.fabrica.land/graphql | The public GraphQL API (introspection enabled). `schema/api-schema.graphql` is a checked-in snapshot; refresh with `npm run schema:refresh` |
-| `fabrica-land/fabrica-contracts` | Solidity smart contracts (ERC-1155): onchain data structures, view functions, events |
+| `fabrica-land/fabrica-v3-contracts` | The public Solidity smart contracts (ERC-1155): onchain data structures, view functions, events |
 | `fabrica-land/fabrica-connectors` | The trust agreement: trust structure, beneficiary rights |
 
 ---
@@ -252,7 +256,6 @@ Tool descriptions and outputs are read by agents and repeated to people, so they
 - The in-app pool is the **DeFi lending pool** (pool-based lending; "Fabrica lending pool" is retired). Do not present MetaStreet as a live venue in descriptions or output text; code identifiers may keep the name.
 - NFTfi is a **retired** peer-to-peer integration. Mention it only as historical and labeled (see `src/labels.ts`).
 - Never output a platform-wide or aggregate repayment rate. Loan counts are fine. A single wallet's own repayment percentage shown next to its counts (`get_portfolio`) is fine.
-- Never call Fabrica's code "open source".
 - The per-property verification feature is **Property checks**. Not "confidence score", "Provenance Score" or "token score" as a name (the `explain_confidence_score` tool and the `score` / `confidenceScore` fields keep their identifiers). The valuation "confidence level" is a different signal and keeps its name.
 - Fabrica is not a party to the trust, never holds title and never custodies property. Never write that Fabrica manages, administers, operates, controls, oversees, handles or holds someone's trust, property or loan.
 - No fixed time unit and no "instantly" for money moving (sale proceeds, loans, payoffs, withdrawals).

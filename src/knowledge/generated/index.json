@@ -269,13 +269,22 @@
    "id": "docs:90f3346a2cb5",
    "source": "docs",
    "title": "Build on Fabrica",
+   "sectionTitle": "Smart Contracts",
+   "url": "https://docs.fabrica.land/docs/build-on-fabrica",
+   "text": "The Fabrica token contracts are open source and available for review:\n\n- **Repository**: github.com/fabrica-land/fabrica-v3-contracts (https://github.com/fabrica-land/fabrica-v3-contracts)\n- **Standards**: ERC-1155, ERC-7496 (Dynamic Traits), ERC-7572 (Contract Metadata)\n- **License**: MIT (LICENSE (https://github.com/fabrica-land/fabrica-v3-contracts/blob/main/LICENSE))",
+   "updatedAt": "2026-10-05"
+  },
+  {
+   "id": "docs:06f911304c71",
+   "source": "docs",
+   "title": "Build on Fabrica",
    "sectionTitle": "Fabrica Trust (Legal Framework)",
    "url": "https://docs.fabrica.land/docs/build-on-fabrica",
    "text": "The Fabrica Trust operating agreement is fully open source under CC0-1.0 (public domain):\n\n- **Repository**: github.com/fabrica-land/fabrica-connectors (https://github.com/fabrica-land/fabrica-connectors)\n- **Contents**: Legal templates, operating agreements, trust documentation\n- **Usage**: Free to use, modify, and redistribute without attribution\n\nThe trust has evolved through multiple versions, with the current production agreement at v4.4. Changes are documented in the repository's changelog. Key improvements have included:\n\n- Self-custody model refinements\n- UCC Article 12 alignment (controllable electronic record framework), replacing an earlier UCC Article 8 opt-in\n- Cross-chain and layer-2 support abstractions\n- Clarified custody vs. beneficial ownership language\n- Token recovery mechanism for lost wallet access (no Fabrica involvement, no court process)\n- Lender protections under functional-contract custody\n- Estate succession path for deceased token holders\n- Involuntary loss of title: automatic dissolution when record title leaves the trust by external operation of law (tax sale, foreclosure, eminent domain, etc.), with bearer-token wind-up authority and judicial reinstatement on operative-instrument reversal\n- Beneficial interest declared personal property in the land-trust tradition, with a full UCC Article 9/12 build-out, financed-purchase designations, succession following lawful wallet control, and an unsolicited-transfer disclaimer (v4.4)",
    "updatedAt": "2026-10-05"
   },
   {
-   "id": "docs:06f911304c71",
+   "id": "docs:05ff35e3602a",
    "source": "docs",
    "title": "Build on Fabrica",
    "sectionTitle": "Fabrica MCP Server (AI Agents)",
@@ -284,7 +293,7 @@
    "updatedAt": "2026-10-05"
   },
   {
-   "id": "docs:05ff35e3602a",
+   "id": "docs:d808a91665f2",
    "source": "docs",
    "title": "Build on Fabrica",
    "sectionTitle": "Marketplace Development",
@@ -293,7 +302,7 @@
    "updatedAt": "2026-10-05"
   },
   {
-   "id": "docs:d808a91665f2",
+   "id": "docs:03dea78bdd9c",
    "source": "docs",
    "title": "Build on Fabrica",
    "sectionTitle": "Validator Services",
@@ -302,7 +311,16 @@
    "updatedAt": "2026-10-05"
   },
   {
-   "id": "docs:03dea78bdd9c",
+   "id": "docs:98ba88c3897f",
+   "source": "docs",
+   "title": "Build on Fabrica",
+   "sectionTitle": "DeFi Applications",
+   "url": "https://docs.fabrica.land/docs/build-on-fabrica",
+   "text": "Fabrica is built to be composable with DeFi. The combination of standard ERC-1155 property tokens, a public legal trust, and a public signed price oracle provides the primitives that DeFi protocols need to build against tokenized real estate.\n\n**Public price oracle.** The Fabrica Price Oracle publishes EIP-712 signed price quotes for every Fabrica property token via a public HTTP endpoint. The endpoint returns a valuation panel: one entry per configured valuation source for the token, each carrying its own signed quote, with failures isolated per entry, so a source that cannot produce a quote returns a null entry with a reason rather than breaking the panel. Any pool, vault, or contract that implements the standard `IPriceOracle` interface can consume the quotes to value Fabrica-tokenized collateral. The oracle is free to consumers; it is intended to be funded on the property side by a planned yearly fee to token holders, which is not charged today. Anyone can also publish a competing oracle that signs comparable quotes for the same tokens; pool deployers choose which oracle to trust.\n\n**Permissionless lending pools.** The canonical Fabrica-deployed lending pool is a renounced fork of the original, audited MetaStreet v2 contracts. The contracts are open source (MIT-licensed), with no admin keys, no upgrade path, and no governance lever, so no one (including Fabrica) can alter the pool's terms or seize deposits. Pool deployment is permissionless: anyone can deploy a pool that references the public oracle, without Fabrica's involvement.\n\n**Things you can build:**",
+   "updatedAt": "2026-10-05"
+  },
+  {
+   "id": "docs:8937d42bc4e1",
    "source": "docs",
    "title": "Build on Fabrica",
    "sectionTitle": "DeFi Applications",
@@ -311,7 +329,7 @@
    "updatedAt": "2026-10-05"
   },
   {
-   "id": "docs:98ba88c3897f",
+   "id": "docs:5647def9c90d",
    "source": "docs",
    "title": "Build on Fabrica",
    "sectionTitle": "Operating Property at Scale",
@@ -320,7 +338,7 @@
    "updatedAt": "2026-10-05"
   },
   {
-   "id": "docs:8937d42bc4e1",
+   "id": "docs:13aabcb13c2a",
    "source": "docs",
    "title": "Build on Fabrica",
    "sectionTitle": "Operating Property at Scale",
@@ -329,7 +347,7 @@
    "updatedAt": "2026-10-05"
   },
   {
-   "id": "docs:5647def9c90d",
+   "id": "docs:bd0d52daa8ef",
    "source": "docs",
    "title": "Build on Fabrica",
    "sectionTitle": "Agent Applications",
@@ -338,7 +356,7 @@
    "updatedAt": "2026-10-05"
   },
   {
-   "id": "docs:13aabcb13c2a",
+   "id": "docs:4789b5e6b786",
    "source": "docs",
    "title": "Build on Fabrica",
    "sectionTitle": "Data Services",
@@ -347,7 +365,7 @@
    "updatedAt": "2026-10-05"
   },
   {
-   "id": "docs:bd0d52daa8ef",
+   "id": "docs:37f3a9cc7c98",
    "source": "docs",
    "title": "Build on Fabrica",
    "sectionTitle": "Technical Resources",
@@ -356,7 +374,7 @@
    "updatedAt": "2026-10-05"
   },
   {
-   "id": "docs:4789b5e6b786",
+   "id": "docs:a359c72cc1dc",
    "source": "docs",
    "title": "Build on Fabrica",
    "sectionTitle": "Get in Touch",
@@ -827,13 +845,22 @@
    "id": "docs:3614a266774e",
    "source": "docs",
    "title": "Price Oracle",
+   "sectionTitle": "Data licensing",
+   "url": "https://docs.fabrica.land/docs/price-oracle",
+   "text": "The oracle's price is derived from a mix of public and licensed third-party data sources. Consumers receive only the derived signed price; redistribution of underlying raw inputs is not granted by consuming this endpoint. Fabrica's own AVM glue code is targeted for open-source release, allowing third parties to build a comparable model from open inputs.\n\nFabrica makes no warranty of accuracy on derived values. The oracle is a published reference price, not investment advice, not a binding appraisal, not a fairness opinion.",
+   "updatedAt": "2026-10-09"
+  },
+  {
+   "id": "docs:e66a79f8e276",
+   "source": "docs",
+   "title": "Price Oracle",
    "sectionTitle": "What can go wrong",
    "url": "https://docs.fabrica.land/docs/price-oracle",
    "text": "- **Stale quotes**: a quote outside its validity window will revert onchain (`InvalidTimestamp`). Refetch.\n- **Wrong domain**: if the consuming pool's oracle uses a different EIP-712 domain than the publisher signed against, signature recovery returns the wrong address and onchain verification reverts (`InvalidSigner`). Make sure your pool's `priceOracle` registration matches the network's canonical Fabrica oracle deployment.\n- **Zero price**: rule-failure tokens return a signed `price = 0` quote. Onchain consumers reject with `InvalidQuote`. Offchain consumers should treat zero as \"not currently priced.\"\n- **Unminted tokens**: the panel entry returns `signature: null`. The quote is a forecast and cannot be used onchain.\n\n***",
    "updatedAt": "2026-10-09"
   },
   {
-   "id": "docs:e66a79f8e276",
+   "id": "docs:4a159eca9cd2",
    "source": "docs",
    "title": "Price Oracle",
    "sectionTitle": "Pricing for token holders",
@@ -842,7 +869,7 @@
    "updatedAt": "2026-10-09"
   },
   {
-   "id": "docs:4a159eca9cd2",
+   "id": "docs:b2e4d4df9600",
    "source": "docs",
    "title": "Price Oracle",
    "sectionTitle": "Illustrative pre-launch pricing (not currently billed; subject to change)",
@@ -851,7 +878,7 @@
    "updatedAt": "2026-10-09"
   },
   {
-   "id": "docs:b2e4d4df9600",
+   "id": "docs:b2ade3e559b9",
    "source": "docs",
    "title": "Price Oracle",
    "sectionTitle": "Property checks",
@@ -860,7 +887,16 @@
    "updatedAt": "2026-10-09"
   },
   {
-   "id": "docs:b2ade3e559b9",
+   "id": "docs:54cb38f53367",
+   "source": "docs",
+   "title": "Price Oracle",
+   "sectionTitle": "Roadmap",
+   "url": "https://docs.fabrica.land/docs/price-oracle",
+   "text": "The current oracle is a single-publisher single-signer architecture. The strategic goal is progressive decentralization of this surface:\n\n1. **Server-side MIN across two AVM signals (live)**: The publisher's safe-appraisal logic takes the minimum across two independent AVM signals (each weighted by confidence) before signing. The signed quote already reflects two-source agreement.\n2. **Multi-publisher quote aggregation (planned)**: The onchain `SimpleSignedPriceOracle` already supports rotating the signer per collateral token via `setSigner(...)`. The architectural goal is a variant oracle contract that requires N signatures from N independent publishers and takes MIN (or median, configurable) onchain. Any pool deployer can then consume any combination of publishers without trusting a single party.\n3. **Open-source AVM recipe (planned)**: The Fabrica AVM glue code is targeted for open-source release. Once published, any party can stand up a competing oracle that signs comparable prices for the same tokens, and pool deployers can wire whichever oracle they prefer.\n4. **Property checks as a standalone oracle (planned)**: Lift the per-check results into a separately signed payload with its own endpoint and EIP-712 typehash, so consumers can read price and Property checks independently.\n\nThese are forward-looking commitments. Timelines depend on the broader product roadmap and are not contractual.\n\n***",
+   "updatedAt": "2026-10-09"
+  },
+  {
+   "id": "docs:86fe3d1b23cb",
    "source": "docs",
    "title": "Price Oracle",
    "sectionTitle": "License and terms",
@@ -869,7 +905,7 @@
    "updatedAt": "2026-10-09"
   },
   {
-   "id": "docs:54cb38f53367",
+   "id": "docs:3df0a2343b84",
    "source": "docs",
    "title": "Price Oracle",
    "sectionTitle": "Source files",
@@ -878,7 +914,7 @@
    "updatedAt": "2026-10-09"
   },
   {
-   "id": "docs:86fe3d1b23cb",
+   "id": "docs:684c461ac292",
    "source": "docs",
    "title": "Price Oracle",
    "sectionTitle": "Related documentation",
@@ -887,7 +923,7 @@
    "updatedAt": "2026-10-09"
   },
   {
-   "id": "docs:3df0a2343b84",
+   "id": "docs:0c6a6852f28f",
    "source": "docs",
    "title": "Price Oracle",
    "sectionTitle": "Contact",
@@ -2501,13 +2537,22 @@
    "id": "docs:35c9a6d55c68",
    "source": "docs",
    "title": "Pool-Based Lending",
+   "sectionTitle": "Pool-Based Lending",
+   "url": "https://docs.fabrica.land/docs/lending-pool",
+   "text": "Get near-instant loans against your property from an automated lending pool.\n\nThe DeFi lending pool (formerly called the Fabrica lending pool) enables near-instant, pool-based lending against property tokens, subject to available pool liquidity. It is the primary live lending integration: property owners can access capital through automated loans, while capital providers earn interest through diversified exposure to real estate collateral, at variable rates that are not guaranteed, with deposited capital at risk.\n\nThe pool is a renounced fork of audited, open-source lending-pool contracts (see Build on Fabrica): open source (MIT-licensed), with no admin keys, no upgrade path, and no governance lever, so no one (including Fabrica) can alter its terms or seize deposits. Pool deployment is permissionless, and anyone can deploy a pool that references the public oracle. See Build on Fabrica for the trustless-pool design.\n\nPricing is driven by a public, signed valuation feed (see Price Oracle), so a quote is available for any eligible token at any time without waiting for a counterparty. This is what makes the path instant and programmatic. Funding itself depends on available pool liquidity.",
+   "updatedAt": "2026-10-16"
+  },
+  {
+   "id": "docs:e37e40bea75b",
+   "source": "docs",
+   "title": "Pool-Based Lending",
    "sectionTitle": "For Borrowers",
    "url": "https://docs.fabrica.land/docs/lending-pool",
    "text": "1. **Request a Loan**: Select your property and request a loan on Fabrica\n2. **Automatic Valuation**: The pool uses automated valuation to determine loan terms\n3. **Funding**: Accept the terms and receive funds promptly\n4. **Repay Anytime**: Pay back principal plus interest to reclaim your token\n\nNo waiting for lender offers, the pool provides liquidity based on your property's estimated value.",
    "updatedAt": "2026-10-16"
   },
   {
-   "id": "docs:e37e40bea75b",
+   "id": "docs:fcb2c86e9b71",
    "source": "docs",
    "title": "Pool-Based Lending",
    "sectionTitle": "For Capital Providers",
@@ -2516,7 +2561,7 @@
    "updatedAt": "2026-10-16"
   },
   {
-   "id": "docs:fcb2c86e9b71",
+   "id": "docs:a4ef477c46dd",
    "source": "docs",
    "title": "Pool-Based Lending",
    "sectionTitle": "Pool Mechanics",
@@ -2525,7 +2570,7 @@
    "updatedAt": "2026-10-16"
   },
   {
-   "id": "docs:a4ef477c46dd",
+   "id": "docs:e20f04a0d82c",
    "source": "docs",
    "title": "Pool-Based Lending",
    "sectionTitle": "How Loan Amounts Are Determined",
@@ -2534,7 +2579,7 @@
    "updatedAt": "2026-10-16"
   },
   {
-   "id": "docs:e20f04a0d82c",
+   "id": "docs:ebf493c08c8a",
    "source": "docs",
    "title": "Pool-Based Lending",
    "sectionTitle": "For Borrowers",
@@ -2543,7 +2588,7 @@
    "updatedAt": "2026-10-16"
   },
   {
-   "id": "docs:ebf493c08c8a",
+   "id": "docs:b9239f1b3144",
    "source": "docs",
    "title": "Pool-Based Lending",
    "sectionTitle": "For Capital Providers",
@@ -2552,7 +2597,7 @@
    "updatedAt": "2026-10-16"
   },
   {
-   "id": "docs:b9239f1b3144",
+   "id": "docs:61c4283371e2",
    "source": "docs",
    "title": "Pool-Based Lending",
    "sectionTitle": "What Happens on Default",
@@ -2561,7 +2606,7 @@
    "updatedAt": "2026-10-16"
   },
   {
-   "id": "docs:61c4283371e2",
+   "id": "docs:3daf4745f08d",
    "source": "docs",
    "title": "Pool-Based Lending",
    "sectionTitle": "Getting Started",

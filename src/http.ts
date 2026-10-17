@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createServer } from "./server.js";
 import { describeRequest, trackUsage } from "./usage-log.js";
+import { allowFindParcel, FIND_PARCEL_LIMIT_PER_MINUTE } from "./tools/parcels.js";
 
 /**
  * Origin policy: this public server serves only public, read-only data and holds no
@@ -64,6 +65,22 @@ export async function readJsonBody(req: McpHttpRequest): Promise<unknown> {
   return raw ? JSON.parse(raw) : undefined;
 }
 
+/** The calling client for per-client limits: the first forwarded address, else the socket's. Never logged. */
+export function clientKey(req: IncomingMessage): string {
+  const forwarded = req.headers["x-forwarded-for"];
+  const first = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(",")[0]?.trim();
+  return first || req.socket.remoteAddress || "unknown";
+}
+
+/** How many find_parcel calls a JSON-RPC message or batch carries. */
+export function countFindParcelCalls(body: unknown): number {
+  const messages: unknown[] = Array.isArray(body) ? body : [body];
+  return messages.filter((message) => typeof message === "object" && message !== null
+    && "method" in message && message.method === "tools/call"
+    && "params" in message && typeof message.params === "object" && message.params !== null
+    && "name" in message.params && message.params.name === "find_parcel").length;
+}
+
 export async function handleMcpHttpRequest(req: McpHttpRequest, res: ServerResponse): Promise<void> {
   for (const [name, value] of Object.entries(CORS_HEADERS)) res.setHeader(name, value);
   if (req.method === "OPTIONS") {
@@ -88,6 +105,10 @@ export async function handleMcpHttpRequest(req: McpHttpRequest, res: ServerRespo
     return;
   }
   recordCalls(describeRequest(body));
+  if (!allowFindParcel(clientKey(req), countFindParcelCalls(body))) {
+    sendJsonRpcError(res, 429, -32000, `find_parcel is limited to ${FIND_PARCEL_LIMIT_PER_MINUTE} lookups per minute per client. Wait a minute and retry.`);
+    return;
+  }
   const server = createServer();
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
   res.on("close", () => {
