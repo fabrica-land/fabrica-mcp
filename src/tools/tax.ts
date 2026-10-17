@@ -30,7 +30,7 @@ export function resolveTaxStatus(
   checkRead = check !== null,
 ): { status: TaxStatus; basis: TaxBasis } {
   // The two signals are read separately and can briefly disagree; when they do, claim neither.
-  if (blockReason === "TAX_DELINQUENT" && check === true) return { status: "unknown", basis: "conflicting" };
+  if (blockReason === "TAX_DELINQUENT" && checkRead && check !== false) return { status: "unknown", basis: "conflicting" };
   if (blockReason === "TAX_STATUS_UNKNOWN" && check !== null) return { status: "unknown", basis: "conflicting" };
   if (blockReason === "TAX_DELINQUENT") return { status: "delinquent", basis: check === false ? "both" : "lendingBlockReason" };
   if (blockReason === "TAX_STATUS_UNKNOWN") return { status: "unknown", basis: checkRead ? "both" : "lendingBlockReason" };

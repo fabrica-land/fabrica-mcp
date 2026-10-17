@@ -53,6 +53,7 @@ describe("resolveTaxStatus", () => {
     expect(resolveTaxStatus(null, "TAX_DELINQUENT")).toEqual({ status: "delinquent", basis: "lendingBlockReason" });
     expect(resolveTaxStatus(null, "TAX_STATUS_UNKNOWN")).toEqual({ status: "unknown", basis: "lendingBlockReason" });
     expect(resolveTaxStatus(null, "TAX_STATUS_UNKNOWN", true)).toEqual({ status: "unknown", basis: "both" });
+    expect(resolveTaxStatus(null, "TAX_DELINQUENT", true)).toEqual({ status: "unknown", basis: "conflicting" });
     expect(resolveTaxStatus(true, "OTHER")).toEqual({ status: "current", basis: "check" });
     expect(resolveTaxStatus(true, "TAX_DELINQUENT")).toEqual({ status: "unknown", basis: "conflicting" });
     expect(resolveTaxStatus(true, "TAX_STATUS_UNKNOWN")).toEqual({ status: "unknown", basis: "conflicting" });
