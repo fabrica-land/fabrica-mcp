@@ -140,7 +140,7 @@ describe("get_tax_status", () => {
     expect(result.status).toBe("unknown");
     expect(result.checkedAt).toBeNull();
     expect((result.warnings as string[])[0]).toContain("HTTP 502");
-    expect((result.warnings as string[])[0]).toContain("tax status is unknown");
+    expect((result.warnings as string[])[0]).toContain("tax check and its dates could not be read");
   });
 
   it("skips the score API for a premint and says why the status is unknown", async () => {

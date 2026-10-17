@@ -59,7 +59,7 @@ export async function loadTaxSignals(token: {
     try {
       record = await getScoreRecord(token.contractAddress, token.tokenId);
     } catch (e) {
-      warnings.push(`Score record unavailable, so the tax status is unknown: ${e instanceof Error ? e.message : String(e)}`);
+      warnings.push(`Score record unavailable, so the tax check and its dates could not be read: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
   // Only the score record says whether the check is still in force: a check past its expiry,
