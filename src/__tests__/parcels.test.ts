@@ -37,6 +37,19 @@ const HUNT_PARCEL = {
   },
 };
 
+function sfParcel(coordinates: number[][][]) {
+  return {
+    parcels: {
+      type: "FeatureCollection",
+      features: [{
+        type: "Feature",
+        geometry: { type: "Polygon", coordinates },
+        properties: { path: SF_HIT.path, fields: { ll_uuid: "sf-uuid", geoid: "06075", lat: String(coordinates[0]?.[0]?.[1]), lon: String(coordinates[0]?.[0]?.[0]) } },
+      }],
+    },
+  };
+}
+
 function respond(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
@@ -138,13 +151,26 @@ describe("findParcel", () => {
     vi.unstubAllGlobals();
   });
 
-  it("returns the token for a parcel on Fabrica, with no second lookup", async () => {
-    fetchMock.mockResolvedValueOnce(respond([SF_HIT]));
+  it("returns the token for a parcel on Fabrica when the outline cannot be loaded", async () => {
+    fetchMock.mockResolvedValueOnce(respond([SF_HIT])).mockRejectedValueOnce(new Error("outline down"));
     const result = await findParcel({ query: "1707 Jones St, San Francisco" });
     expect(result).toMatchObject({ match: "single", parcel: { apn: "0151010", county: "San Francisco", onFabrica: { tokenId: "4737315677965897536" } } });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(result).toHaveProperty("network");
     expect(JSON.stringify(result)).not.toContain("PRIVATE");
+  });
+
+  it("keeps a parcel-number match whose token sits inside the parcel's outline", async () => {
+    fetchMock.mockResolvedValueOnce(respond([SF_HIT])).mockResolvedValueOnce(respond(sfParcel([[[-122.42, 37.79], [-122.41, 37.79], [-122.41, 37.80], [-122.42, 37.80], [-122.42, 37.79]]])));
+    const result = await findParcel({ query: "1707 Jones St, San Francisco" });
+    expect(result).toMatchObject({ match: "single", parcel: { onFabrica: { tokenId: "4737315677965897536" } } });
+  });
+
+  it("drops a parcel-number match when the token lies outside the parcel's outline (a repeated number)", async () => {
+    fetchMock.mockResolvedValueOnce(respond([SF_HIT])).mockResolvedValueOnce(respond(sfParcel([[[-122.50, 37.70], [-122.49, 37.70], [-122.49, 37.71], [-122.50, 37.71], [-122.50, 37.70]]])));
+    const result = await findParcel({ query: "1707 Jones St, San Francisco" });
+    expect(result).toMatchObject({ match: "single", parcel: { onFabrica: null } });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("returns the on-ramp link with coordinates and APN for a parcel not on Fabrica", async () => {

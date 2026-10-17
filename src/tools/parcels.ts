@@ -328,13 +328,28 @@ async function searchParcel(args: FindParcelArgs) {
       note: `Several parcels match. Calling find_parcel again with state (and county) narrows it to one.${indexNote ? ` ${indexNote}` : ""}`,
     };
   }
+  const lookUpPoint = async (): Promise<ParcelPoint | null> => {
+    try {
+      return await lookUpParcelPoint(top.hit);
+    } catch {
+      return null;
+    }
+  };
+  let point: ParcelPoint | null = null;
   if (top.token) {
-    return {
-      query,
-      match: "single",
-      parcel: toCandidate(top.hit, top.token),
-      note: "This parcel is on Fabrica. get_property with the tokenId returns its record.",
-    };
+    // A parcel number can repeat within a county, so the outline, when it loads, has to agree with the number match.
+    point = await lookUpPoint();
+    const coordinates = top.token.coordinates;
+    const contradicted = point !== null && point.polygons.length > 0 && coordinates
+      && !pointInPolygons(coordinates.lat, coordinates.lon, point.polygons);
+    if (!contradicted) {
+      return {
+        query,
+        match: "single",
+        parcel: toCandidate(top.hit, top.token),
+        note: "This parcel is on Fabrica. get_property with the tokenId returns its record.",
+      };
+    }
   }
   if (indexNote) {
     // Without the token check the parcel may already be on Fabrica, so no on-ramp link.
@@ -345,12 +360,7 @@ async function searchParcel(args: FindParcelArgs) {
       note: `${indexNote} The add-to-Fabrica link is withheld until that check succeeds; calling find_parcel again shortly retries it.`,
     };
   }
-  let point: ParcelPoint | null = null;
-  try {
-    point = await lookUpParcelPoint(top.hit);
-  } catch {
-    point = null;
-  }
+  if (!top.token) point = await lookUpPoint();
   const byOutline = point && point.polygons.length > 0
     ? tokens.find((token) => token.coordinates && token.regionCode?.toUpperCase() === locate(top.hit.path).state && pointInPolygons(token.coordinates.lat, token.coordinates.lon, point.polygons))
     : undefined;
