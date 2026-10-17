@@ -16,8 +16,10 @@ export interface HostContextLike {
 
 /** Below this container width the card uses one column whatever the platform. */
 export const COMPACT_MAX_WIDTH = 480;
-/** On a mobile host the compact layout holds up to this width (a phone in landscape). */
+/** On a mobile host the compact layout holds up to this width. */
 export const MOBILE_COMPACT_MAX_WIDTH = 700;
+/** A screen whose short side is under this is a phone, so it stays compact in landscape too. */
+export const PHONE_MAX_SHORT_SIDE = 600;
 
 /**
  * The width the card lays out against: the host's fixed or maximum container width when it
@@ -29,11 +31,16 @@ export function layoutWidth(context: HostContextLike | undefined, viewportWidth:
   return typeof hostWidth === "number" && hostWidth > 0 ? Math.min(hostWidth, viewportWidth || hostWidth) : viewportWidth;
 }
 
-export function chooseLayout(context: HostContextLike | undefined, viewportWidth: number): Layout {
+/**
+ * `screenShortSide` is the device screen's shorter side: a mobile host on a phone stays compact
+ * in landscape, while a tablet in portrait (820 px and up) gets the regular layout.
+ */
+export function chooseLayout(context: HostContextLike | undefined, viewportWidth: number, screenShortSide = 0): Layout {
   const width = layoutWidth(context, viewportWidth);
   if (width > 0 && width < COMPACT_MAX_WIDTH) return "compact";
-  if (context?.platform === "mobile" && width < MOBILE_COMPACT_MAX_WIDTH) return "compact";
-  return "regular";
+  if (context?.platform !== "mobile") return "regular";
+  if (width < MOBILE_COMPACT_MAX_WIDTH) return "compact";
+  return screenShortSide > 0 && screenShortSide < PHONE_MAX_SHORT_SIDE ? "compact" : "regular";
 }
 
 /**
@@ -69,7 +76,9 @@ interface PricingEntry {
 export function estimateSourceLine(estimate: string | null, pricing: PricingEntry[]): string | null {
   if (!estimate) return null;
   const parts: string[] = [];
-  const match = pricing.find((p) => p.value === estimate && typeof p.source === "string" && p.source !== "regrid-county-assessor");
+  // Prefer a valuation source; the county assessor is named only when it is the one the estimate equals.
+  const match = pricing.find((p) => p.value === estimate && typeof p.source === "string" && p.source !== "regrid-county-assessor")
+    ?? pricing.find((p) => p.value === estimate && p.source === "regrid-county-assessor");
   if (match && typeof match.source === "string") parts.push(SOURCE_LABELS[match.source] ?? match.source);
   const assessor = pricing.find((p) => p.source === "regrid-county-assessor" && typeof p.value === "string");
   if (assessor && typeof assessor.value === "string" && assessor.value !== estimate) parts.push(`assessor ${assessor.value}`);
@@ -83,7 +92,7 @@ interface CheckResult {
 
 /** Names of the Property checks that did not pass, in the API's order. */
 export function failedChecks(results: CheckResult[]): string[] {
-  return results.filter((r) => r.passed === false && typeof r.check === "string").map((r) => r.check as string);
+  return results.flatMap((r) => (r.passed === false && typeof r.check === "string" ? [r.check] : []));
 }
 
 /** "2 not passed" under the pass count, or "All pass"; nothing without a count. */
@@ -116,8 +125,8 @@ export function canExpand(context: HostContextLike | undefined): boolean {
   return !isFullscreen(context) && (context?.availableDisplayModes ?? []).includes("fullscreen");
 }
 
-export const TABS = ["Overview", "Value", "Lending", "Documents", "Activity"] as const;
-export type Tab = (typeof TABS)[number];
+export type Tab = "Overview" | "Value" | "Lending" | "Documents" | "Activity";
+export const TABS: readonly Tab[] = ["Overview", "Value", "Lending", "Documents", "Activity"];
 
 /** Pricing sources that returned a value, labelled, without repeats. */
 export function pricingRows(pricing: PricingEntry[]): { label: string; value: string }[] {

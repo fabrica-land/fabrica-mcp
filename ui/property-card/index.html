@@ -33,6 +33,10 @@
 
   .gallery { display: flex; gap: 6px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
   .gallery::-webkit-scrollbar { display: none; }
+  /* Pointer layouts keep a thin scrollbar so mouse users can reach the later photos. */
+  :root[data-layout="regular"] .gallery { scrollbar-width: thin; padding-bottom: 6px; }
+  :root[data-layout="regular"] .gallery::-webkit-scrollbar { display: block; height: 6px; }
+  :root[data-layout="regular"] .gallery::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
   .slide { position: relative; flex: 0 0 34%; aspect-ratio: 3 / 4; scroll-snap-align: start; border-radius: 14px;
     overflow: hidden; background: var(--tile); border: 0; padding: 0; cursor: pointer; }
   .slide:first-child { flex-basis: 64%; aspect-ratio: auto; }

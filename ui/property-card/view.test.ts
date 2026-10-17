@@ -13,6 +13,9 @@ describe("chooseLayout", () => {
   it("is compact on a mobile host up to landscape phone width", () => {
     expect(chooseLayout({ platform: "mobile" }, 640)).toBe("compact");
     expect(chooseLayout({ platform: "mobile" }, 820)).toBe("regular");
+    expect(chooseLayout({ platform: "mobile" }, 844, 390)).toBe("compact");
+    expect(chooseLayout({ platform: "mobile" }, 820, 820)).toBe("regular");
+    expect(chooseLayout({ platform: "desktop" }, 844, 390)).toBe("regular");
   });
 
   it("is regular in a desktop or web chat column", () => {
@@ -49,7 +52,7 @@ describe("fact lines", () => {
 
   it("names the source the estimate equals and the assessor figure", () => {
     expect(estimateSourceLine("$771,075", pricing)).toBe("Prycd · assessor $357,000");
-    expect(estimateSourceLine("$357,000", pricing)).toBeNull();
+    expect(estimateSourceLine("$357,000", pricing)).toBe("County assessor");
     expect(estimateSourceLine(null, pricing)).toBeNull();
   });
 

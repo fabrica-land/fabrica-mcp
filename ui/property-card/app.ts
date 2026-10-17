@@ -202,9 +202,13 @@ function gallery(slides: HTMLButtonElement[], layout: Layout): HTMLElement[] {
   return [strip, dots];
 }
 
+function screenShortSide(): number {
+  return Math.min(window.screen?.width ?? 0, window.screen?.height ?? 0);
+}
+
 function applyHostContext(): Layout {
-  const context = app.getHostContext() as HostContextLike | undefined;
-  const layout = chooseLayout(context, window.innerWidth);
+  const context = app.getHostContext();
+  const layout = chooseLayout(context, window.innerWidth, screenShortSide());
   const html = document.documentElement;
   html.dataset.theme = theme;
   html.dataset.layout = layout;
@@ -253,7 +257,7 @@ function render(): void {
   const acres = num(data.acres);
   const sub = [place, acres !== null ? `${acres.toLocaleString("en-US", { maximumFractionDigits: 2 })} acres` : null].filter(Boolean).join(" · ");
   titles.append(el("h2", undefined, str(data.name) ?? `Token ${str(data.tokenId) ?? ""}`), el("div", "sub", sub));
-  const context = app.getHostContext() as HostContextLike | undefined;
+  const context = app.getHostContext();
   const full = isFullscreen(context);
   const headEnd = el("div", "head-end");
   headEnd.append(el("span", "pill", isTestnet ? "Sepolia testnet" : "Ethereum mainnet"));
@@ -467,8 +471,8 @@ app.onhostcontextchanged = (context) => {
 // The frame itself can change width (a resized chat column) without a host notification.
 // Re-render only when that changes the layout: autoResize changes the frame height too.
 window.addEventListener("resize", () => {
-  const context = app.getHostContext() as HostContextLike | undefined;
-  if (chooseLayout(context, window.innerWidth) !== document.documentElement.dataset.layout) render();
+  const context = app.getHostContext();
+  if (chooseLayout(context, window.innerWidth, screenShortSide()) !== document.documentElement.dataset.layout) render();
 });
 
 await app.connect();
