@@ -67,6 +67,11 @@ const SYNONYMS: Record<string, string[]> = {
   agent: ["agent", "agents", "mcp", "ai"],
   validator: ["validator", "validators", "validation", "checks"],
   mint: ["mint", "minting", "issue", "issuance"],
+  code: ["code", "source", "repository", "github", "contracts"],
+  source: ["source", "code", "repository", "github"],
+  repository: ["repository", "repo", "github", "source", "code"],
+  repo: ["repo", "repository", "github", "source", "code"],
+  github: ["github", "repository", "source", "code"],
   recovery: ["recovery", "stolen", "lost", "recover"],
   stolen: ["stolen", "recovery", "theft"],
 };

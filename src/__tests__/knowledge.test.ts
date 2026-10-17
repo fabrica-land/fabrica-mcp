@@ -68,6 +68,8 @@ describe("retrieval", () => {
     { question: "How do I make an offer on a property?", urlIncludes: ["offer"] },
     { question: "What happens when the owner dies?", urlIncludes: ["death"] },
     { question: "What is a beneficial interest?", urlIncludes: ["glossary", "fabrica-trust", "us-trust-agreement"] },
+    { question: "Where is the contract code?", urlIncludes: ["build-on-fabrica"] },
+    { question: "Are the smart contracts open source?", urlIncludes: ["build-on-fabrica"] },
   ];
 
   for (const expectation of expectations) {
