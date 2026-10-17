@@ -123,6 +123,11 @@ describe("grouped search review fixes", () => {
     expect(groupTokens([noState] as never, "county")).toEqual([]);
   });
 
+  it("links the state page from the state code when the state name is blank", () => {
+    const noName = { ...tokens[0], region: null };
+    expect(groupTokens([noName] as never, "county")[0].locationLink).toBe(`${PLATFORM_URL}/us/colorado/costilla-county`);
+  });
+
   it("ignores a non-string county and an unknown groupBy", async () => {
     const result = await searchProperties({ region: "CO", county: 42, groupBy: "city" }) as Record<string, unknown>;
     expect(result.total).toBe(3);

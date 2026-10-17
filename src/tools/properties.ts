@@ -105,7 +105,7 @@ export function groupTokens(tokens: ReadonlyArray<TokenModel>, groupBy: GroupBy)
     groups.set(key, [...(groups.get(key) ?? []), t]);
   }
   return [...groups.values()].map(members => {
-    const stateName = mostCommon(members.map(t => t.region));
+    const fullState = mostCommon(members.map(t => t.region)) ?? stateName(members[0].regionCode);
     const county = groupBy === "county" ? mostCommon(members.map(t => t.district)) : null;
     const acres = members.reduce((sum, t) => sum + (Number.parseFloat(t.acres ?? "") || 0), 0);
     return {
@@ -114,7 +114,7 @@ export function groupTokens(tokens: ReadonlyArray<TokenModel>, groupBy: GroupBy)
       properties: members.length,
       forSale: members.filter(t => t.marketplacePrice !== null).length,
       totalAcres: Math.round(acres * 100) / 100,
-      locationLink: locationLink({ state: stateName, county }),
+      locationLink: locationLink({ state: fullState, county }),
     };
   }).sort((a, b) => b.properties - a.properties || String(a.county ?? a.state).localeCompare(String(b.county ?? b.state)));
 }
