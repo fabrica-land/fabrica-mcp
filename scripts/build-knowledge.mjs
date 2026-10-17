@@ -195,27 +195,8 @@ function passageId(source, url, index) {
   return `${source}:${sha256(`${url}#${index}`).slice(0, 12)}`;
 }
 
-/**
- * Passages the server must not emit even though a source page carries them. Fabrica's
- * public wording never calls its code open source (AGENTS.md, Public Wording Rules); the
- * trust agreement, a legal instrument under CC0, is a different matter and stays.
- */
-// A clause that puts "open source" and "contract" or "code" together, in either order, whatever
-// the grammar ("the contracts are open source", "open-source lending-pool contracts"). A comma
-// ends the clause, so "the trust agreement is open source, and the contracts live on Ethereum" stays.
-const EXCLUDED_PASSAGE_PATTERNS = [
-  /open[- ]sourced?\b[^.,;:\n]{0,60}\b(contracts?|code|codebase)\b/i,
-  /\b(contracts?|code|codebase)\b[^.,;:\n]{0,60}\bopen[- ]sourced?\b/i,
-];
-
 function toPassages(source, title, url, updatedAt, text) {
-  return splitIntoPassages(text, title)
-    .filter((passage) => {
-      const excluded = EXCLUDED_PASSAGE_PATTERNS.some((pattern) => pattern.test(passage.text));
-      if (excluded) console.warn(`knowledge: excluded a passage of ${url} (${passage.sectionTitle}) by wording rule`);
-      return !excluded;
-    })
-    .map((passage, index) => ({
+  return splitIntoPassages(text, title).map((passage, index) => ({
     id: passageId(source, url, index),
     source,
     title,
