@@ -1,6 +1,7 @@
 import { getToken } from "../clients/graphql.js";
-import { LENDING_POOL_NAME, formatLoanProvider, formatUsdcCeiling } from "../labels.js";
+import { LENDING_POOL_NAME, describeAppraisalBlock, formatLoanProvider, formatUsdcCeiling } from "../labels.js";
 import { estimateFields, formatDurationDays, formatRawTokenAmount, formatTokenAmount, formatUnixTime } from "../format.js";
+import { describePoolOracle, zeroCapacityReasons } from "./valuation.js";
 
 /** Pool loan amounts are raw USDC units (6 decimals). */
 const POOL_CURRENCY_DECIMALS = 6;
@@ -17,7 +18,7 @@ export async function getBorrowQuote(args: Record<string, unknown>) {
     return { error: "Either tokenId or slug is required" };
   }
   try {
-    const token = await getToken({ tokenId, slug });
+    const token = await getToken({ tokenId, slug }, { poolOracle: true });
     if (!token) {
       return { error: `No property found with ${tokenId ? `token ID ${tokenId}` : `slug ${slug}`}` };
     }
@@ -72,14 +73,19 @@ export async function getBorrowQuote(args: Record<string, unknown>) {
         },
       };
     } else {
+      const reasons = zeroCapacityReasons(pool);
       result.lendingPool = {
         name: LENDING_POOL_NAME,
         available: false,
         reason: pool
           ? `The ${LENDING_POOL_NAME} currently shows no borrowing capacity for this property`
           : `No ${LENDING_POOL_NAME} liquidity available for this property`,
+        ...(pool ? { reasons: reasons.length > 0 ? reasons : ["The API reports no borrowing capacity and states no specific reason."] } : {}),
       };
     }
+    const appraisalBlock = describeAppraisalBlock(pool?.appraisalBlockReason);
+    if (appraisalBlock) result.appraisalBlock = appraisalBlock;
+    if (pool?.pools && pool.pools.length > 0) result.oracle = pool.pools.map(describePoolOracle);
     result.summary = hasActiveLoan
       ? "This property already has an active loan. Additional borrowing may be limited."
       : pool && hasCapacity

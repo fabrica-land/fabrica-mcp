@@ -84,11 +84,43 @@ Replace `/absolute/path/to/fabrica-mcp` with the actual path where you cloned th
 | `get_portfolio` | Wallet holdings, credit history, loan positions |
 | `get_protocol_stats` | Protocol-wide metrics: properties, estimated value, loan volume and counts, lending pool TVL |
 | `get_property_map` | GeoJSON boundary data for mapping and spatial analysis |
-| `get_borrow_quote` | Borrowing options for a property: DeFi lending pool liquidity, durations, current loans |
+| `get_borrow_quote` | Borrowing options for a property: DeFi lending pool liquidity, durations, current loans, and why capacity is zero when it is |
+| `get_valuation` | Every value the API holds for a property with its source, date and confidence: estimate, AVM, Prycd, county assessor, signed valuations, pool oracle state |
 | `get_activity` | Activity feed for a property or wallet: transfers, loans, sales, mints |
 | `explain_confidence_score` | Decode the numeric encoding of Property checks (5 digits, formerly called the confidence score) into verification groups |
 | `get_property_image` | Static map image of a property's parcel boundary (inline, dark/light themes) |
 | `get_portfolio_image` | Map image showing all properties owned by a wallet (inline, dark/light themes) |
+| `ask_fabrica` | Cited passages from Fabrica's docs, help center and the US trust agreement that answer a question about how Fabrica works |
+
+### Knowledge layer
+
+`ask_fabrica` answers questions about Fabrica (the trust, fees, Property checks, lending, taxes, the onramp, the legal framework) from Fabrica's own text and returns the passages with their URLs, so an agent cites the page instead of paraphrasing from memory. Three sources feed it: [docs.fabrica.land](https://docs.fabrica.land), the [help center](https://help.fabrica.land) and the [US trust agreement](https://github.com/fabrica-land/fabrica-connectors/blob/main/connectors/us/us-trust-agreement.md).
+
+The index lives at `src/knowledge/generated/index.json` and is committed, so deploys and tests never fetch the sources at runtime. Retrieval is BM25 over passage text with titles weighted in and a small synonym list for Fabrica's vocabulary; there is no model call and no external service. To rebuild after the sources change:
+
+```bash
+npm run knowledge:build -- --docs-dir ../docs   # docs from a local checkout of fabrica-land/docs
+GITHUB_TOKEN=... npm run knowledge:build        # or read the docs repo through the GitHub API
+npm run knowledge:check                         # exit 1 when a source moved past its pin
+```
+
+Source pins (docs commit, help center sitemap fingerprint, trust agreement commit) are recorded in `knowledge/sources.json`. The build takes about 30 seconds and the index is under 1 MB.
+
+A scheduled workflow (`.github/workflows/refresh-knowledge.yml`, daily and on demand) rebuilds the index, runs the tests and opens a pull request titled "Knowledge index: <source> <short sha>" whose body lists the pages added, removed and changed (`scripts/knowledge-diff.mjs`). Merging it deploys both servers. The workflow needs one repository secret, `KNOWLEDGE_DOCS_TOKEN`, a fine-grained GitHub token with read access to the contents of the private `fabrica-land/docs` repository; a failed source fetch fails the run, so a partial index is never proposed.
+
+### Resources
+
+The same documents are registered as MCP resources, so a person can attach one to a conversation from the client's resource picker (Claude's "add from connector", Cursor's `@`) without the agent searching for it. All are `text/markdown`, and every read starts with the source URL and the content's updated date.
+
+| URI | What it is |
+|---|---|
+| `fabrica://docs/<slug>` | Every docs.fabrica.land page (the ten most useful are listed first: obligations, fees, add and remove a property, Property checks, pool lending, the trust, the regulatory framework, the glossary, AI agents) |
+| `fabrica://help/<id>` | Every help center article, by its article id and slug |
+| `fabrica://legal/us-trust-agreement` | The US trust agreement text |
+| `fabrica://property/{tokenId}/trust-agreement` | The operating agreement attached to one token, as the API serves it (versions differ by mint date) |
+| `fabrica://network` | This deployment's network, contract addresses and legal notice |
+
+`fabrica://docs/{slug}` and `fabrica://help/{id}` are also resource templates with completion.
 
 ## Example Conversations
 
