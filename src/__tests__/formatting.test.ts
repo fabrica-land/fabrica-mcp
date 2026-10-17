@@ -89,7 +89,7 @@ function makeDetailToken(overrides: Partial<TokenModel> = {}): TokenModel {
 }
 
 describe("getProperty formatting", () => {
-  it("counts live and encumbered orders, drops ended ones, and marks a blocked listing unbuyable", async () => {
+  it("counts live and encumbered orders, drops ended ones, and lists a blocked listing after the buyable ones", async () => {
     const order = (o: Record<string, unknown>) => ({
       marketplaceId: "m", side: "sell", price: "100", usdPrice: "100", symbol: "USDC", supply: "1",
       makerAddress: "0x1234567890abcdef1234567890abcdef12345678", startTime: "2026-01-01T00:00:00Z", endTime: null, ...o,
@@ -106,7 +106,7 @@ describe("getProperty formatting", () => {
     const marketplace = result.marketplace as { listingCount: number; offerCount: number; listings: { buyable: boolean }[] };
     expect(marketplace.listingCount).toBe(2);
     expect(marketplace.offerCount).toBe(1);
-    expect(marketplace.listings.map(l => l.buyable)).toEqual([false, true]);
+    expect(marketplace.listings.map(l => l.buyable)).toEqual([true, false]);
   });
 
   it("formats estimated value as USD", async () => {

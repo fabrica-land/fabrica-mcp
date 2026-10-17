@@ -264,7 +264,9 @@ export async function getProperty(args: Record<string, unknown>) {
     }
     // Live as get_order_book counts it: active, encumbered or pending, and not past its end time.
     const now = Date.now();
-    const activeListings = token.marketplaceListings?.filter(l => isLiveOrder(l, now)) ?? [];
+    // Buyable listings first (stable otherwise), so the cap never hides the one a buyer can act on.
+    const activeListings = (token.marketplaceListings?.filter(l => isLiveOrder(l, now)) ?? [])
+      .sort((a, b) => Number(a.encumbrance?.buyable === false) - Number(b.encumbrance?.buyable === false));
     const activeBids = token.marketplaceBids?.filter(b => isLiveOrder(b, now)) ?? [];
     const activeLoans = token.loans?.filter(l => l.loanStatus === "Active") ?? [];
     const holders = capList(token.balances ?? [], MAX_HOLDERS);
