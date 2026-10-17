@@ -8,7 +8,10 @@ import { NETWORK } from "./config.js";
  */
 
 const MAX_FIELD_CHARS = 120;
-const MAX_SNIFF_BYTES = 64 * 1024;
+// Enough of the previous chunk to catch a marker split across two writes.
+const CARRY_CHARS = 32;
+const RPC_ERROR_MARKER = /"error"\s*:\s*\{/;
+const TOOL_ERROR_MARKER = /"isError"\s*:\s*true/;
 
 export interface UsageCall {
   method: string;
@@ -68,8 +71,8 @@ export function describeRequest(body: unknown): UsageCall[] {
 /** Classifies the response from its status and the start of its JSON body. */
 export function classifyOutcome(status: number, responseStart: string): UsageOutcome {
   if (status >= 400) return "http_error";
-  if (/"error"\s*:\s*\{/.test(responseStart)) return "rpc_error";
-  if (/"isError"\s*:\s*true/.test(responseStart)) return "tool_error";
+  if (RPC_ERROR_MARKER.test(responseStart)) return "rpc_error";
+  if (TOOL_ERROR_MARKER.test(responseStart)) return "tool_error";
   return "ok";
 }
 
@@ -84,14 +87,20 @@ function chunkToString(chunk: unknown): string {
 }
 
 /**
- * Records the start of the response body as it is written and logs one line when
- * the response finishes. Call before anything is written to `res`.
+ * Scans the response body for error markers as it is written and logs one line
+ * when the response finishes. Call before anything is written to `res`.
  */
 export function trackUsage(res: ServerResponse, userAgent: string | undefined, started: number = Date.now()): (calls: UsageCall[]) => void {
-  let sniffed = "";
+  // Only the markers found are kept, so a large result early in a batch cannot hide a later error.
+  let carry = "";
+  let rpcError = false;
+  let toolError = false;
   let calls: UsageCall[] = [];
   const capture = (chunk: unknown): void => {
-    if (sniffed.length < MAX_SNIFF_BYTES) sniffed += chunkToString(chunk).slice(0, MAX_SNIFF_BYTES - sniffed.length);
+    const text = carry + chunkToString(chunk);
+    rpcError ||= RPC_ERROR_MARKER.test(text);
+    toolError ||= TOOL_ERROR_MARKER.test(text);
+    carry = text.slice(-CARRY_CHARS);
   };
   const originalWrite = res.write.bind(res);
   const originalEnd = res.end.bind(res);
@@ -117,7 +126,7 @@ export function trackUsage(res: ServerResponse, userAgent: string | undefined, s
       calls,
       ...(ua ? { userAgent: ua } : {}),
       status: res.statusCode,
-      outcome: res.writableFinished ? classifyOutcome(res.statusCode, sniffed) : "aborted",
+      outcome: res.writableFinished ? classifyOutcome(res.statusCode, `${rpcError ? '"error":{' : ""}${toolError ? '"isError":true' : ""}`) : "aborted",
       durationMs: Date.now() - started,
     }));
   };

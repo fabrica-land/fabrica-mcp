@@ -81,6 +81,25 @@ describe("trackUsage", () => {
     expect(lines[0]?.outcome).toBe("aborted");
     expect(lines[0]?.calls[0]?.tool).toBe("get_property");
   });
+
+  it("finds an error after a large result, even when the marker is split across writes", async () => {
+    const spy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const server = createHttpServer((_req, res) => {
+      trackUsage(res, "test-agent")([{ method: "tools/call", tool: "get_property_image" }, { method: "tools/call", tool: "get_property" }]);
+      res.write(`[{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"image","data":"${"A".repeat(200_000)}"}]}},`);
+      res.write('{"jsonrpc":"2.0","id":2,"result":{"content":[],"isEr');
+      res.end('ror":true}}]');
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    if (address === null || typeof address === "string") throw new Error("HTTP test server has no port");
+    await (await fetch(`http://127.0.0.1:${address.port}/`)).text();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await vi.waitFor(() => expect(usageLines(spy)).toHaveLength(1));
+    const lines = usageLines(spy);
+    spy.mockRestore();
+    expect(lines[0]?.outcome).toBe("tool_error");
+  });
 });
 
 describe("usage log line over HTTP", () => {
