@@ -39,6 +39,7 @@ Claude Code, mainnet: `claude mcp add --transport http fabrica https://mcp.fabri
 | `get_protocol_stats` | Protocol-wide counts and totals |
 | `ask_fabrica` | Cited passages from Fabrica's docs, help center and trust agreement for how Fabrica works |
 | `find_parcel` | Any US address or parcel number: the parcel, whether it is on Fabrica, and the on-ramp link if not |
+| `check_coverage` | Whether a county (or state) can be added through the on-ramp, and what it asks for: deed and forms, notarization and witnesses, questions, steps. From a table of the on-ramp rules with an as-of date |
 | `contact_support` | When the docs do not answer or a person is needed: the help center section, the support email and a prefilled email draft. Sends nothing; the person sends it |
 
 ## Loops
@@ -49,7 +50,7 @@ Claude Code, mainnet: `claude mcp add --transport http fabrica https://mcp.fabri
 
 **Review a wallet.** `get_portfolio` (loans as borrower and as lender, each with principal, APR, maturity and collateral token), then `get_property` for each holding (Property checks from `propertyChecks`, passed of total) and, where it matters, for the collateral of loans the wallet made, then `get_activity`. Summarize holdings, then loans where the wallet borrows (what it owes and when) separately from loans where it lends (what it is owed and when), and what needs attention soon.
 
-**Add land.** `find_parcel` for the parcel; if it is not on Fabrica, the on-ramp link `find_parcel` returns in `links.addToFabrica` (it already points at the active network, with the parcel filled in). The owner submits the property and how title is held, Fabrica reviews title, the owner verifies identity, a trust is created, the owner signs the deed and trust documents (normally with a remote online notary), the deed is recorded, and the token is issued. The setup fee is authorized up front and charged once, at the first sale, loan or use in another app. Steps: https://docs.fabrica.land/docs/on-ramp. Fees: https://docs.fabrica.land/docs/fees. Obligations: https://docs.fabrica.land/docs/property-obligations. Fabrica operates in all 50 states; the on-ramp page shows what each county requires.
+**Add land.** `find_parcel` for the parcel; if it is not on Fabrica, the on-ramp link `find_parcel` returns in `links.addToFabrica` (it already points at the active network, with the parcel filled in). The owner submits the property and how title is held, Fabrica reviews title, the owner verifies identity, a trust is created, the owner signs the deed and trust documents (normally with a remote online notary), the deed is recorded, and the token is issued. The setup fee is authorized up front and charged once, at the first sale, loan or use in another app. Steps: https://docs.fabrica.land/docs/on-ramp. Fees: https://docs.fabrica.land/docs/fees. Obligations: https://docs.fabrica.land/docs/property-obligations. `check_coverage` with the county says whether the on-ramp is set up there and lists the documents and questions; it answers from a dated table, so the on-ramp page is the live answer.
 
 ## Legal red lines
 

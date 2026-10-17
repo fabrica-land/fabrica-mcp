@@ -15,6 +15,7 @@ import { getTrustDocuments, getTrustDocumentsInput } from "./tools/documents.js"
 import { getTaxStatus, getTaxStatusInput } from "./tools/tax.js";
 import { askFabrica, askFabricaInput } from "./tools/knowledge.js";
 import { findParcel, findParcelInput } from "./tools/parcels.js";
+import { checkCoverage, checkCoverageInput, COVERAGE_AS_OF } from "./tools/coverage.js";
 import { registerPrompts } from "./prompts.js";
 import { contactSupport, contactSupportInput } from "./tools/support.js";
 import { NETWORK_LABEL, IS_MAINNET, MAINNET_LEGAL_NOTICE } from "./config.js";
@@ -277,6 +278,16 @@ export function createServer(): McpServer {
       annotations: readOnly("Find a US parcel"),
     },
     async (args) => jsonResult(await findParcel(args)),
+  );
+  server.registerTool(
+    "check_coverage",
+    {
+      title: "Check on-ramp coverage for a county",
+      description: `Whether a US county (or a whole state) can be added to Fabrica through the on-ramp: supported, notConfigured or unsupported, and for a supported county the deed and forms the owner signs (and which are notarized), witness requirements, the questions the owner is asked, and the on-ramp steps. Answers from a table of Fabrica's on-ramp rules as of ${COVERAGE_AS_OF}, refreshed by hand, so each answer carries that date; the on-ramp page is the live answer. Give a 5-digit county FIPS, or a two-letter state with or without a county. No fee amounts (ask_fabrica has them) and no owner data.`,
+      inputSchema: checkCoverageInput,
+      annotations: { ...readOnly("Check on-ramp coverage for a county"), openWorldHint: false },
+    },
+    async (args) => jsonResult(checkCoverage(args)),
   );
   server.registerTool(
     "contact_support",

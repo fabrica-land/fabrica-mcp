@@ -71,8 +71,8 @@ Summarize what the wallet holds; as borrower, what it owes and when (principal, 
 
 const ONRAMP_STEPS = IS_MAINNET
   ? `Explain the on-ramp, from https://docs.fabrica.land/docs/on-ramp: the owner submits the property and how title is held, Fabrica (as validator) reviews title, the owner verifies identity, a trust is created to hold title, the owner signs the deed and trust documents (normally with a remote online notary), the deed is recorded at the county, and the token is issued. About 10 minutes online for the owner; the property page is live from the start, and the owner can choose to list it for sale from then.
-4. Fees, from https://docs.fabrica.land/docs/fees: the setup fee is authorized when the property is added and charged once, at the first sale, loan or use in another app; it is waived if the property is removed unused. Current amounts: https://help.fabrica.land/en/articles/3305355-what-does-fabrica-cost.
-5. Obligations that stay with the owner (taxes, maintenance, liability): https://docs.fabrica.land/docs/property-obligations.`
+5. Fees, from https://docs.fabrica.land/docs/fees: the setup fee is authorized when the property is added and charged once, at the first sale, loan or use in another app; it is waived if the property is removed unused. Current amounts: https://help.fabrica.land/en/articles/3305355-what-does-fabrica-cost.
+6. Obligations that stay with the owner (taxes, maintenance, liability): https://docs.fabrica.land/docs/property-obligations.`
   : "This is the Sepolia test network: properties here are test tokens for trying the flow. No trust is created, no deed is signed or recorded, and nothing changes who owns the land. For the real on-ramp (title review, identity, trust, deed recording at the county), point to https://docs.fabrica.land/docs/on-ramp and Ethereum Mainnet.";
 
 export function howToAddLandPrompt(address: string): GetPromptResult {
@@ -80,8 +80,8 @@ export function howToAddLandPrompt(address: string): GetPromptResult {
 
 1. Call find_parcel for it. If it is already on Fabrica, say so and link the property instead.
 2. Otherwise, give the on-ramp link from find_parcel (links.addToFabrica), or ${WEB}/go if it could not resolve the parcel.
-3. ${ONRAMP_STEPS}
-Fabrica operates in all 50 states; the on-ramp page shows what this county requires.`);
+3. Call check_coverage for the parcel's county: say whether the on-ramp is set up there, and list the documents, witnesses and questions it returns, with its as-of date.
+4. ${ONRAMP_STEPS}`);
 }
 
 export function registerPrompts(server: McpServer): void {
