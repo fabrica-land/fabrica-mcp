@@ -118,13 +118,13 @@ function describe(rules: CoverageLayer) {
 }
 
 /** Counties in a state whose own rules differ from the state's, with their status when it is not the state's. */
-function countiesWithOwnRules(state: string, stateStatus: CoverageStatus) {
+function countiesWithOwnRules(state: string, stateStatus: CoverageStatus, ownerType: OwnerType) {
   const prefix = `${state}/`;
   const places = new Set(Object.values(TABLE.layers).flatMap((byPlace) => Object.keys(byPlace).filter((place) => place.startsWith(prefix))));
   return [...places].sort().map((place) => {
     const row = US_COUNTY_ROWS.find((r) => r.startsWith(`${place}|`));
     const [, fips = null, name = place] = row?.split("|") ?? [];
-    const status = coverageStatus(place);
+    const status = resolveRules(place, ownerType).workflowSupport ?? "unsupported";
     return { county: name, fips, ...(status !== stateStatus ? { status } : {}) };
   });
 }
@@ -177,7 +177,7 @@ export function checkCoverage(args: CheckCoverageArgs) {
   const rules = resolveRules(place, ownerType);
   const status = inRules(place) ? rules.workflowSupport ?? "unsupported" : "unsupported";
   const stateOnly = !place.includes("/");
-  const counties = stateOnly ? countiesWithOwnRules(place, status) : [];
+  const counties = stateOnly ? countiesWithOwnRules(place, status, ownerType) : [];
   const details = status === "supported" ? describe(rules) : undefined;
   // On a test network the on-ramp signs and records nothing, so the requirements are labelled as Mainnet's.
   const shown: Partial<ReturnType<typeof describe>> & { mainnetRequirements?: ReturnType<typeof describe> } =

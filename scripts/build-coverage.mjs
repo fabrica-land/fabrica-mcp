@@ -138,13 +138,13 @@ function assertNoArrayOverlap(layers) {
   }
 }
 
-// The table is stamped with the checkout's commit, so the files read must be exactly that commit.
+// The table is stamped with the last commit under dist/rules, so the files read must be exactly that commit.
 const { stdout: dirty } = await run("git", ["-C", rulesDir, "status", "--porcelain", "--", "dist/rules"]);
 if (dirty.trim()) throw new Error(`${rulesDir} has uncommitted changes under dist/rules; build from a clean checkout so the table's version matches its rules`);
 const layers = await collect();
 if (!layers.common?.[""]?.workflowSupport) throw new Error("dist/rules/us/onramp.common.json has no workflowSupport; is this a rules checkout?");
 assertNoArrayOverlap(layers);
-const { stdout } = await run("git", ["-C", rulesDir, "log", "-1", "--format=%H %cI"]);
+const { stdout } = await run("git", ["-C", rulesDir, "log", "-1", "--format=%H %cI", "--", "dist/rules"]);
 const [commit = "", committedAt = ""] = stdout.trim().split(" ");
 const table = {
   source: { commit, committedAt, builtAt: new Date().toISOString().slice(0, 10) },
