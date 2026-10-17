@@ -281,9 +281,9 @@ function inState(hit: TypeAheadHit, state: string | undefined): boolean {
 }
 
 /**
- * The type-ahead scopes only by county. When a state given without a county finds nothing in that state,
- * the search is retried once with the state in the text, where Regrid weighs it. Returns null when there
- * is nothing to retry (no state, a county scope, or the query already names the state).
+ * The type-ahead scopes only by county. A state given without a county is searched a second time with the
+ * state in the text, where Regrid weighs it. Returns null when there is nothing to retry (no state, a county
+ * scope, or the query already names the state).
  */
 export function stateRetryText(query: string, state: string | undefined, countyScoped: boolean): string | null {
   if (!state || countyScoped) return null;
@@ -317,17 +317,21 @@ async function searchParcel(args: FindParcelArgs) {
     if (scope) params.set("adminId", scope.county.fips);
     return parseTypeAhead(await fetchJson(`${API_BASE}/regrid/type-ahead?${params.toString()}`));
   };
+  const isExactApn = (hit: TypeAheadHit): boolean => hit.apn !== null && normalizeApn(hit.apn) === normalizeApn(query);
   let inScope: TypeAheadHit[];
   try {
-    inScope = (await typeAhead(query)).filter((hit) => inState(hit, args.state));
-    // Parcel numbers go in as typed (extra words stop them matching); only an empty in-state result pays for a second search.
-    const retry = inScope.length === 0 ? stateRetryText(query, args.state, scope !== null) : null;
-    if (retry !== null) inScope = (await typeAhead(retry)).filter((hit) => inState(hit, args.state));
+    // Parcel numbers go in as typed (extra words stop them matching). Unless the first search already found the
+    // parcel number, a state given without a county is searched again with the state in the text, where Regrid
+    // weighs it; that state-ranked result wins when it has anything in the state.
+    const first = (await typeAhead(query)).filter((hit) => inState(hit, args.state));
+    const retry = first.some(isExactApn) ? null : stateRetryText(query, args.state, scope !== null);
+    const second = retry !== null ? (await typeAhead(retry)).filter((hit) => inState(hit, args.state)) : [];
+    inScope = second.length > 0 ? second : first;
   } catch (error) {
     return { error: `The parcel search did not answer (${error instanceof Error ? error.message : "unknown error"}). Try again shortly.` };
   }
   // A query that is a parcel number matching exactly one parcel in scope is that parcel.
-  const exactApn = inScope.filter((hit) => hit.apn !== null && normalizeApn(hit.apn) === normalizeApn(query));
+  const exactApn = inScope.filter(isExactApn);
   // Several parcels sharing that exact number stay ambiguous: a score lead says nothing about which one is meant.
   const scoped = (exactApn.length > 0 ? exactApn : inScope).slice(0, MAX_CANDIDATES);
   if (scoped.length === 0) {
@@ -342,9 +346,26 @@ async function searchParcel(args: FindParcelArgs) {
   }
   const byApn = scoped.map((hit) => ({ hit, token: matchByApn(hit, tokens) }));
   // Two parcels sharing a county and parcel number cannot both be the token's parcel, and the index has no Regrid
-  // path to tell them apart, so neither gets it by number (a single match still gets the outline check below).
+  // path to tell them apart, so neither gets it by number.
   const shared = new Set(byApn.flatMap(({ token }, i) => token && byApn.some((other, j) => j !== i && other.token === token) ? [token.tokenId] : []));
-  const matched = byApn.map(({ hit, token }) => ({ hit, token: token && !shared.has(token.tokenId) ? token : null }));
+  const lookUpPoint = async (hit: TypeAheadHit): Promise<ParcelPoint | null> => {
+    try {
+      return await lookUpParcelPoint(hit);
+    } catch {
+      return null;
+    }
+  };
+  // A parcel number can repeat within a county and its twin may not be in these hits, so a number match is kept
+  // only when the parcel's outline, if it loads, contains the token. Only number-matched hits pay for the lookup.
+  const matched = await Promise.all(byApn.map(async ({ hit, token }) => {
+    const candidate = token && !shared.has(token.tokenId) ? token : null;
+    if (!candidate) return { hit, token: null, point: undefined };
+    const point = await lookUpPoint(hit);
+    const coordinates = candidate.coordinates;
+    const contradicted = point !== null && point.polygons.length > 0 && coordinates
+      && !pointInPolygons(coordinates.lat, coordinates.lon, point.polygons);
+    return { hit, token: contradicted ? null : candidate, point };
+  }));
   const [top, second] = matched;
   const single = top !== undefined && (second === undefined || (exactApn.length === 0 && top.hit.score - second.hit.score >= CLEAR_LEAD));
   if (!top || !single) {
@@ -355,28 +376,13 @@ async function searchParcel(args: FindParcelArgs) {
       note: `Several parcels match. Calling find_parcel again with state (and county) narrows it to one.${indexNote ? ` ${indexNote}` : ""}`,
     };
   }
-  const lookUpPoint = async (): Promise<ParcelPoint | null> => {
-    try {
-      return await lookUpParcelPoint(top.hit);
-    } catch {
-      return null;
-    }
-  };
-  let point: ParcelPoint | null = null;
   if (top.token) {
-    // A parcel number can repeat within a county, so the outline, when it loads, has to agree with the number match.
-    point = await lookUpPoint();
-    const coordinates = top.token.coordinates;
-    const contradicted = point !== null && point.polygons.length > 0 && coordinates
-      && !pointInPolygons(coordinates.lat, coordinates.lon, point.polygons);
-    if (!contradicted) {
-      return {
-        query,
-        match: "single",
-        parcel: toCandidate(top.hit, top.token),
-        note: "This parcel is on Fabrica. get_property with the tokenId returns its record.",
-      };
-    }
+    return {
+      query,
+      match: "single",
+      parcel: toCandidate(top.hit, top.token),
+      note: "This parcel is on Fabrica. get_property with the tokenId returns its record.",
+    };
   }
   if (indexNote) {
     // Without the token check the parcel may already be on Fabrica, so no on-ramp link.
@@ -387,7 +393,7 @@ async function searchParcel(args: FindParcelArgs) {
       note: `${indexNote} The add-to-Fabrica link is withheld until that check succeeds; calling find_parcel again shortly retries it.`,
     };
   }
-  if (!top.token) point = await lookUpPoint();
+  const point = top.point !== undefined ? top.point : await lookUpPoint(top.hit);
   const byOutline = point && point.polygons.length > 0
     ? tokens.find((token) => token.coordinates && token.regionCode?.toUpperCase() === locate(top.hit.path).state && pointInPolygons(token.coordinates.lat, token.coordinates.lon, point.polygons))
     : undefined;

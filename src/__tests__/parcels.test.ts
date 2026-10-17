@@ -229,8 +229,25 @@ describe("findParcel", () => {
     expect(result).toMatchObject({ match: "ambiguous" });
     expect("candidates" in result ? result.candidates : []).toHaveLength(2);
     expect("links" in result).toBe(false);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // The San Francisco hit matches a token by number, so its outline is checked; Hunt's is not.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(JSON.stringify(result)).not.toContain("OWNER");
+  });
+
+  it("drops a number-matched token from an ambiguous candidate whose outline does not contain it", async () => {
+    fetchMock.mockResolvedValueOnce(respond([SF_HIT, HUNT_HIT])).mockResolvedValueOnce(respond(sfParcel([[[-122.50, 37.70], [-122.49, 37.70], [-122.49, 37.71], [-122.50, 37.71], [-122.50, 37.70]]])));
+    const result = await findParcel({ query: "1707 Jones St" });
+    expect(result).toMatchObject({ match: "ambiguous" });
+    expect("candidates" in result ? result.candidates?.map((c) => c.onFabrica) : undefined).toEqual([null, null]);
+  });
+
+  it("prefers the state-ranked search over a stray in-state hit from the nationwide one", async () => {
+    const stray = { ...HUNT_HIT, headline: "Main St", parcelnumb: "1", path: "/us/tx/hunt/greenville/1", score: 40 };
+    const intended = { ...HUNT_HIT, headline: "100 Main St", parcelnumb: "2", path: "/us/tx/hunt/greenville/2", score: 90 };
+    fetchMock.mockResolvedValueOnce(respond([SF_HIT, stray])).mockResolvedValueOnce(respond([intended]));
+    const result = await findParcel({ query: "100 Main St", state: "TX" });
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain(encodeURIComponent("100 Main St, TX").replace(/%20/g, "+"));
+    expect(result).toMatchObject({ match: "single", parcel: { apn: "2" } });
   });
 
   it("keeps several exact parcel-number hits ambiguous, whatever their scores", async () => {
@@ -244,7 +261,7 @@ describe("findParcel", () => {
     expect("links" in result).toBe(false);
   });
 
-  it("sends the query as typed first and retries with the state only when nothing in that state came back", async () => {
+  it("sends the query as typed first, then retries with the state in the text", async () => {
     fetchMock.mockResolvedValueOnce(respond([SF_HIT])).mockResolvedValueOnce(respond([HUNT_HIT])).mockResolvedValueOnce(respond(HUNT_PARCEL));
     const result = await findParcel({ query: "1707 Jones St", state: "TX" });
     expect(new URL(String(fetchMock.mock.calls[0]?.[0])).searchParams.get("query")).toBe("1707 Jones St");
