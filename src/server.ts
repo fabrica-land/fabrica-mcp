@@ -80,7 +80,7 @@ export function createServer(): McpServer {
 
   const getPropertyConfig = {
     title: "Get property details",
-    description: `Get comprehensive details about a specific tokenized property on Fabrica (${NETWORK_LABEL}), including legal description, valuation, property tax status, Property checks (with their 5-digit numeric encoding), current ownership and holders, active loans, marketplace listings and offers, recent activity, photos and a parcel map image link. Also its lifecycle stage (premint, minted, removal in progress), fees assessed on the token with approval and payment state, and flags for a duplicate parcel claim or the marketplace screen. An old premint ID that was replaced by a minted token returns the successor. Boundary geometry is returned by get_property_map.${IS_MAINNET ? " The response includes the URL of the operating agreement (the trust instrument) that governs the token; get_trust_documents returns the full legal record." : ""}`,
+    description: `Get comprehensive details about a specific tokenized property on Fabrica (${NETWORK_LABEL}), including legal description, valuation, property tax status, Property checks (with their 5-digit numeric encoding), current ownership and holders, active loans, marketplace listings and offers, recent activity, photos and a parcel map image link. Also its lifecycle stage (premint, minted, removal in progress), fees assessed on the token with approval and payment state (fees is null when none are assessed), and flags for a duplicate parcel claim or the marketplace screen (an empty list when none apply). An old premint ID that was replaced by a minted token returns the successor. Boundary geometry is returned by get_property_map.${IS_MAINNET ? " The response includes the URL of the operating agreement (the trust instrument) that governs the token; get_trust_documents returns the full legal record." : ""}`,
     inputSchema: getPropertyInput,
     annotations: readOnly("Get property details"),
   };
@@ -200,7 +200,7 @@ export function createServer(): McpServer {
     "get_activity",
     {
       title: "Get activity history",
-      description: "Get the activity feed for a property or wallet: mints, transfers, sales, loans started/repaid/liquidated, configuration changes, and more. Covers transaction history and event timelines.",
+      description: "Get the activity feed for a property or wallet, or, with no tokenId, slug or address, the most recent activity across every property on the network: mints, transfers, sales, listings, loans started/repaid/liquidated, configuration changes, and more. Covers transaction history and event timelines.",
       inputSchema: getActivityInput,
       annotations: readOnly("Get activity history"),
     },
@@ -272,7 +272,7 @@ export function createServer(): McpServer {
     "find_parcel",
     {
       title: "Find a US parcel",
-      description: "Resolve any US street address or parcel number (APN) to a parcel: address, place, APN, state and county, and whether it is already on Fabrica (token ID and property link). For a parcel not on Fabrica, links.addToFabrica is the fabrica.land on-ramp link for that parcel; it starts an on-ramp only when a person opens it and decides there. The tool itself creates nothing. An ambiguous query returns up to 5 candidates, whose Fabrica status is matched by parcel number only; state and county narrow it to one, which gets the full check. Owner names are never returned. Limited to 30 lookups per minute per client.",
+      description: "Resolve any US street address or parcel number (APN) to a parcel: address, place, APN, state and county, and whether it is already on Fabrica (token ID and property link). For a parcel not on Fabrica, links.addToFabrica is the fabrica.land on-ramp link for that parcel; it starts an on-ramp only when a person opens it and decides there. The tool itself creates nothing. An ambiguous query returns up to 5 candidates, whose Fabrica status is matched by parcel number only; state and county narrow it to one, which gets the full check. When the US parcel search is not answering, a parcel already on Fabrica still resolves from Fabrica's own records (matchSource: fabrica-index). Owner names are never returned. Limited to 30 lookups per minute per client.",
       inputSchema: findParcelInput,
       annotations: readOnly("Find a US parcel"),
     },

@@ -54,7 +54,7 @@ export interface ParcelCandidate {
   apn: string | null;
   state: string | null;
   county: string | null;
-  regridPath: string;
+  regridPath: string | null;
   onFabrica: ParcelOnFabrica | null;
 }
 
@@ -294,6 +294,96 @@ export function stateRetryText(query: string, state: string | undefined, countyS
   return `${query}, ${code}`;
 }
 
+/**
+ * The type-ahead's upstream search answers 503 to any query with a comma (ENG-5024), so
+ * commas become spaces before the call. The words and their order are unchanged.
+ */
+export function typeAheadText(query: string): string {
+  return query.replace(/,/g, " ").replace(/\s+/g, " ").trim();
+}
+
+const STREET_SUFFIXES: Record<string, string> = {
+  road: "rd", street: "st", avenue: "ave", drive: "dr", lane: "ln", court: "ct", boulevard: "blvd",
+  place: "pl", highway: "hwy", parkway: "pkwy", circle: "cir", terrace: "ter", trail: "trl", way: "way",
+};
+const DIRECTIONS: Record<string, string> = { north: "n", south: "s", east: "e", west: "w" };
+
+/** "37497 Palo Colorado Road, Carmel, CA" to its house number and street words, abbreviated the usual way. */
+export function streetKey(address: string): { number: string; street: string[] } | null {
+  const [line = ""] = address.split(",");
+  const words = line.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").split(/\s+/).filter(Boolean);
+  const [number, ...rest] = words;
+  if (!number || !/^\d+[a-z]?$/.test(number) || rest.length === 0) return null;
+  const street = rest.map((word) => STREET_SUFFIXES[word] ?? DIRECTIONS[word] ?? word).filter((word) => !Object.values(DIRECTIONS).includes(word));
+  return street.length > 0 ? { number, street } : null;
+}
+
+/**
+ * Fabrica properties whose name has the same house number and street as the query, or whose
+ * registrar parcel number is the query, within the state when one is given. Used only when the
+ * parcel search is down, so a parcel already on Fabrica still resolves from Fabrica's own records.
+ */
+export function matchIndexByQuery(query: string, state: string | undefined, tokens: readonly ParcelIndexToken[]): ParcelIndexToken[] {
+  const wanted = streetKey(query);
+  const apn = normalizeApn(query);
+  return tokens.filter((token) => {
+    if (state && token.regionCode?.toUpperCase() !== state.toUpperCase()) return false;
+    const propertyId = token.definition?.offchainRegistrar?.propertyId;
+    if (apn.length >= 4 && /\d/.test(apn) && propertyId && registrarApns(propertyId, null).includes(apn)) return true;
+    const own = streetKey(token.name ?? token.vanityName ?? "");
+    if (!wanted || !own || own.number !== wanted.number) return false;
+    // Street words must agree as far as both go, so "Palo Colorado Rd" matches "Palo Colorado Road" but not "Palo Alto Rd".
+    const shared = Math.min(own.street.length, wanted.street.length);
+    return own.street.slice(0, shared).every((word, i) => word === wanted.street[i]);
+  });
+}
+
+function indexCandidate(token: ParcelIndexToken): ParcelCandidate {
+  const registrar = token.definition?.offchainRegistrar ?? null;
+  const name = token.name ?? token.vanityName ?? "";
+  return {
+    address: name.split(",")[0]?.trim() || name,
+    place: [token.place, token.regionCode].filter(Boolean).join(", "),
+    apn: registrar?.propertyId ?? null,
+    state: token.regionCode?.toUpperCase() ?? null,
+    county: token.district ?? registrar?.admin ?? null,
+    regridPath: null,
+    onFabrica: toOnFabrica(token),
+  };
+}
+
+const SEARCH_DOWN = "The US parcel search is not answering right now";
+
+/** When the type-ahead fails: the properties already on Fabrica that the query names, from Fabrica's own records. */
+async function indexFallback(query: string, args: FindParcelArgs, failure: string) {
+  let matches: ParcelIndexToken[];
+  try {
+    matches = matchIndexByQuery(query, args.state, await getParcelIndex());
+  } catch {
+    return { error: `${SEARCH_DOWN} (${failure}), and Fabrica's property records could not be read either. Try again shortly.` };
+  }
+  if (matches.length === 0) {
+    return { error: `${SEARCH_DOWN} (${failure}). No property on Fabrica matches this address or parcel number, so it is probably not on Fabrica yet; try again shortly for the full search and the on-ramp link.` };
+  }
+  const source = "matched against Fabrica's own property records (the property name or its registrar parcel number), not the US parcel search; a name match is not a parcel-boundary check";
+  if (matches.length === 1 && matches[0]) {
+    return {
+      query,
+      match: "single",
+      matchSource: "fabrica-index",
+      parcel: indexCandidate(matches[0]),
+      note: `${SEARCH_DOWN} (${failure}), so this was ${source}. This parcel is on Fabrica; get_property with the tokenId returns its record.`,
+    };
+  }
+  return {
+    query,
+    match: "ambiguous",
+    matchSource: "fabrica-index",
+    candidates: matches.slice(0, MAX_CANDIDATES).map(indexCandidate),
+    note: `${SEARCH_DOWN} (${failure}), so these were ${source}. Adding the state narrows them.`,
+  };
+}
+
 export const findParcelInput = {
   query: z.string().min(3).max(200).describe("Street address (with city and state when known) or parcel number (APN)"),
   state: z.string().regex(/^[A-Za-z]{2}$/).optional().describe("Two-letter US state code, e.g. 'AZ'"),
@@ -316,7 +406,7 @@ async function searchParcel(args: FindParcelArgs) {
     return { error: `No single US county matches "${args.county}"${args.state ? ` in ${args.state.toUpperCase()}` : ""}. A two-letter state and the county name (for example state "AZ", county "Navajo") identify it.` };
   }
   const typeAhead = async (text: string): Promise<TypeAheadHit[]> => {
-    const params = new URLSearchParams({ query: text });
+    const params = new URLSearchParams({ query: typeAheadText(text) });
     if (scope) params.set("adminId", scope.county.fips);
     return parseTypeAhead(await fetchJson(`${API_BASE}/regrid/type-ahead?${params.toString()}`));
   };
@@ -331,7 +421,7 @@ async function searchParcel(args: FindParcelArgs) {
     const second = retry !== null ? (await typeAhead(retry)).filter((hit) => inState(hit, args.state)) : [];
     inScope = second.length > 0 ? second : first;
   } catch (error) {
-    return { error: `The parcel search did not answer (${error instanceof Error ? error.message : "unknown error"}). Try again shortly.` };
+    return indexFallback(query, args, error instanceof Error ? error.message : "unknown error");
   }
   // A query that is a parcel number matching exactly one parcel in scope is that parcel.
   const exactApn = inScope.filter(isExactApn);

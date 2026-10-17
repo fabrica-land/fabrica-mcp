@@ -308,8 +308,9 @@ export async function getProperty(args: GetPropertyArgs) {
       propertyLink: token.propertyLink,
       isPremint: token.isPremint,
       lifecycle: lifecycleOf(token, replacedPremintTokenId),
-      ...(fees ? { fees } : {}),
-      ...(flags.length > 0 ? { flags } : {}),
+      // Always present, so "no fees" and "no flags" read as answers rather than missing data.
+      fees,
+      flags,
       recoveryStatus: recovery ? { value: recovery.value, label: recovery.label } : null,
       ...(warnings.length > 0 ? { warnings } : {}),
       location: {

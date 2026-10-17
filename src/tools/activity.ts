@@ -1,5 +1,5 @@
-import { getToken, getWallet, propertyLookupError } from "../clients/graphql.js";
-import { NETWORK } from "../config.js";
+import { getNetworkActivity, getToken, getWallet, propertyLookupError } from "../clients/graphql.js";
+import { NETWORK, NETWORK_LABEL } from "../config.js";
 import type { ActivityModel } from "../types/index.js";
 import { formatActivityAmount, formatActivitySource } from "../labels.js";
 import { z } from "zod";
@@ -16,8 +16,11 @@ function formatActivity(a: ActivityModel) {
   };
 }
 
+/** Property checks recalculations: most of the feed by count, so the network-wide view leaves them out unless asked. */
+const SCORE_CHANGED = "ScoreChanged";
+
 export const getActivityInput = {
-  tokenId: z.string().optional().describe("Property token ID (for property activity)"),
+  tokenId: z.string().optional().describe("Property token ID (for property activity). Leave tokenId, slug and address out for the recent activity across every property on the network."),
   slug: propertyRefInputs.slug.describe("Property slug (for property activity)"),
   address: z.string().optional().describe("Wallet address (for wallet activity)"),
   type: z.string().optional().describe("Filter by activity type (e.g. 'loan', 'transfer', 'sale', 'mint')"),
@@ -29,7 +32,7 @@ export async function getActivity(args: GetActivityArgs) {
   const { tokenId, slug, address, type: activityType } = args;
   const limit = Math.min(Math.max(Math.trunc(args.limit ?? 20), 1), 100);
   if (!tokenId && !slug && !address) {
-    return { error: "Provide tokenId, slug (for a property), or address (for a wallet)" };
+    return getNetworkWideActivity(activityType, limit);
   }
   try {
     let activities: ActivityModel[] = [];
@@ -69,5 +72,33 @@ export async function getActivity(args: GetActivityArgs) {
     };
   } catch (e) {
     return { error: propertyLookupError(e, { tokenId, slug }, "get activity") };
+  }
+}
+
+/** The newest events across every minted property on this network, each with the property it belongs to. */
+async function getNetworkWideActivity(activityType: string | undefined, limit: number) {
+  try {
+    const tokens = await getNetworkActivity();
+    const lower = activityType?.toLowerCase();
+    const events = tokens.flatMap(token => (token.activity ?? [])
+      .filter(a => a.network === NETWORK)
+      .filter(a => lower ? a.activity.toLowerCase().includes(lower) : a.activity !== SCORE_CHANGED)
+      .map(a => ({ ...formatActivity(a), tokenId: token.tokenId, property: token.name ?? token.vanityName ?? null, timestamp: a.timestamp })))
+      .sort((a, b) => b.timestamp - a.timestamp);
+    const label = `every property on ${NETWORK_LABEL}`;
+    const scope = `Activity across ${tokens.length} minted properties on ${NETWORK_LABEL}, newest first.${lower ? "" : " Property checks recalculations (ScoreChanged) are left out; type \"ScoreChanged\" lists them."} tokenId, slug or address narrows it to one property or wallet.`;
+    if (events.length === 0) {
+      return { label, total: 0, events: [], scope, message: `No${activityType ? ` "${activityType}"` : ""} activity found across the network.` };
+    }
+    const page = events.slice(0, limit).map(({ timestamp: _timestamp, ...event }) => event);
+    return {
+      label,
+      total: events.length,
+      showing: page.length < events.length ? `${page.length} of ${events.length}` : `${events.length}`,
+      scope,
+      events: page,
+    };
+  } catch (e) {
+    return { error: `Failed to get network activity: ${e instanceof Error ? e.message : String(e)}` };
   }
 }
