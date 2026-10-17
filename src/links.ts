@@ -25,6 +25,42 @@ const STATE_NAMES: Record<string, string> = {
   VT: "Vermont", VA: "Virginia", WA: "Washington", WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming",
 };
 
+/** "Colorado", "colorado" or "co" → "CO"; null when neither a US state code nor a state name. */
+export function stateCode(nameOrCode: string | null | undefined): string | null {
+  const text = (nameOrCode ?? "").trim();
+  if (!text) return null;
+  if (STATE_NAMES[text.toUpperCase()]) return text.toUpperCase();
+  const wanted = text.toLowerCase().replace(/[^a-z]+/g, " ").trim();
+  const code = Object.keys(STATE_NAMES).find(key => STATE_NAMES[key].toLowerCase() === wanted);
+  return code ?? null;
+}
+
+/** fabrica.land and its subdomains (testnets.fabrica.land), and nothing that merely ends in those letters. */
+const FABRICA_HOST = /^(?:[a-z0-9-]+\.)*fabrica\.land$/i;
+
+/** The path of a URL on Fabrica's own host; null for anything else, a URL elsewhere included. */
+function fabricaPath(value: string): string | null {
+  if (!/^https?:\/\//i.test(value)) return null;
+  try {
+    const url = new URL(value);
+    return FABRICA_HOST.test(url.hostname) ? url.pathname : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The API's property slug ("us/nevada/elko-county/elko/apn-00633b008") from however an agent
+ * passes it: the full fabrica.land URL (query string and fragment dropped), a leading or
+ * trailing slash, or the slug itself. A URL on another host is passed through as given.
+ */
+export function normalizeSlug(slug: string | undefined): string | undefined {
+  if (slug === undefined) return undefined;
+  const trimmed = slug.trim();
+  const path = (fabricaPath(trimmed) ?? trimmed.replace(/[?#].*$/, "")).replace(/^\/+|\/+$/g, "");
+  return path.length > 0 ? path : undefined;
+}
+
 /** "co" → "Colorado"; null for an unknown code. */
 export function stateName(code: string | null | undefined): string | null {
   return STATE_NAMES[(code ?? "").trim().toUpperCase()] ?? null;

@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 
 vi.mock("../clients/graphql.js", () => ({
   getTrustDocuments: vi.fn(),
+  propertyLookupError: (e: unknown, _lookup: unknown, action: string) => `Failed to ${action}: ${e instanceof Error ? e.message : String(e)}`,
 }));
 
 import { getTrustDocuments as fetchTrustDocuments } from "../clients/graphql.js";

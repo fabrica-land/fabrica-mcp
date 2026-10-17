@@ -1,10 +1,10 @@
-import { getTokens, getToken, getCountyBounds, getPremintSuccessor, isTokenNotFound, DEFAULT_MIN_SCORE, filterSpamTokens } from "../clients/graphql.js";
+import { getTokens, getToken, getCountyBounds, getPremintSuccessor, isTokenNotFound, DEFAULT_MIN_SCORE, filterSpamTokens, propertyLookupError } from "../clients/graphql.js";
 import type { TokenModel } from "../types/index.js";
 import { NETWORK_LABEL, MAINNET_WARNING, IS_MAINNET, CONTRACTS } from "../config.js";
 import { LENDING_POOL_NAME, formatActivityAmount, formatActivitySource, formatLoanProvider, formatUsdcCeiling } from "../labels.js";
 import { propertyPhotos, propertyMapImage, toGatewayUrl } from "./media.js";
 import { estimateFields, formatTokenAmount, sortLoans, formatUsd, shortenAddress, capList } from "../format.js";
-import { locationLink, stateName } from "../links.js";
+import { locationLink, stateCode, stateName } from "../links.js";
 import { propertyStage, describeStage } from "../lifecycle.js";
 import { summarizeFees } from "../fees.js";
 import { loadTaxSignals, taxSummary } from "./tax.js";
@@ -135,8 +135,9 @@ export async function searchProperties(args: Record<string, unknown>) {
       contractAddress: IS_MAINNET ? undefined : CONTRACTS.fabricaToken,
     });
     tokens = filterSpamTokens(tokens);
+    const regionCode = region ? stateCode(region) : null;
     if (region) {
-      const upper = region.toUpperCase();
+      const upper = regionCode ?? region.toUpperCase();
       tokens = tokens.filter(t => t.regionCode?.toUpperCase() === upper);
     }
     if (county) {
@@ -158,11 +159,14 @@ export async function searchProperties(args: Record<string, unknown>) {
     // The page for the location asked about: names as the matches spell them, else from the filter.
     const states = new Set(locationTokens.map(t => t.regionCode?.toUpperCase()));
     const counties = new Set(locationTokens.map(t => normalizeCounty(t.district)));
-    const linkState = region ? stateName(region) ?? mostCommon(locationTokens.map(t => t.region)) : states.size === 1 ? mostCommon(locationTokens.map(t => t.region)) ?? stateName([...states][0]) : null;
+    const linkState = region ? stateName(regionCode ?? region) ?? mostCommon(locationTokens.map(t => t.region)) : states.size === 1 ? mostCommon(locationTokens.map(t => t.region)) ?? stateName([...states][0]) : null;
     const linkCounty = county ? mostCommon(locationTokens.map(t => t.district)) ?? `${county.trim().replace(/\s+county$/i, "")} County` : null;
     const link = (region || county) && linkState && (!county || counties.size <= 1)
       ? { locationLink: locationLink({ state: linkState, county: linkCounty }) }
       : {};
+    const unknownRegion = region && !regionCode
+      ? `No properties found: "${region}" is not a US state code or state name. Pass a two-letter code such as "NV" or a name such as "Nevada".`
+      : null;
     if (groupBy) {
       const groups = groupTokens(tokens, groupBy);
       const groupPage = groups.slice(offset, offset + limit);
@@ -174,7 +178,8 @@ export async function searchProperties(args: Record<string, unknown>) {
         ...link,
         groupBy,
         totalGroups: groups.length,
-        showing: groupPage.length > 0 ? `${offset + 1}-${offset + groupPage.length} of ${groups.length}` : `none: offset ${offset} is past the last of ${groups.length} groups`,
+        showing: groupPage.length > 0 ? `${offset + 1}-${offset + groupPage.length} of ${groups.length}` : unknownRegion ? "none" : `none: offset ${offset} is past the last of ${groups.length} groups`,
+        ...(unknownRegion ? { message: unknownRegion } : {}),
         groups: groupPage,
         ...(ungrouped > 0 ? { ungroupedCount: ungrouped, ungroupedNote: `${ungrouped} matching ${ungrouped === 1 ? "property has" : "properties have"} no ${groupBy === "county" ? "state or county" : "state"} in the record and ${ungrouped === 1 ? "is" : "are"} not in any group.` } : {}),
       };
@@ -189,7 +194,7 @@ export async function searchProperties(args: Record<string, unknown>) {
         properties: [],
         message: total > 0
           ? `No more results: ${total} properties match, and offset ${offset} is past the end.`
-          : "No properties found matching your filters.",
+          : unknownRegion ?? "No properties found matching your filters.",
       };
     }
     return {
@@ -414,7 +419,7 @@ export async function getProperty(args: Record<string, unknown>) {
       mintedAt: token.mintedAt,
     };
   } catch (e) {
-    return { error: `Failed to get property: ${e instanceof Error ? e.message : String(e)}` };
+    return { error: propertyLookupError(e, { tokenId, slug }, "get property") };
   }
 }
 
@@ -496,6 +501,6 @@ export async function getPropertyMap(args: Record<string, unknown>) {
       ...(warnings.length > 0 ? { warnings } : {}),
     };
   } catch (e) {
-    return { error: `Failed to get property map: ${e instanceof Error ? e.message : String(e)}` };
+    return { error: propertyLookupError(e, { tokenId, slug }, "get property map") };
   }
 }

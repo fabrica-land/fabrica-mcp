@@ -1,4 +1,4 @@
-import { getToken } from "../clients/graphql.js";
+import { getToken, propertyLookupError } from "../clients/graphql.js";
 
 const MAX_SCORE = 75342;
 
@@ -44,6 +44,20 @@ export function countChecks(checks: readonly CheckResult[]): { passed: number; t
  * so the label states the value against the group's highest; pass counts come from the
  * individual check results.
  */
+/** Why a number is not a Property checks encoding: one digit per group, each at most the group's maximum (75342 is the highest). */
+export function invalidScoreReason(score: number): string | null {
+  if (!Number.isInteger(score) || score < 0 || score > MAX_SCORE) {
+    return `${score} is not a Property checks encoding. The encoding is a whole number from 0 to ${MAX_SCORE}: one digit per group (recovery status, past title and load, ownership, onchain history, basic validation).`;
+  }
+  let remaining = score;
+  for (const group of GROUP_WEIGHTS) {
+    const value = Math.floor(remaining / group.weight);
+    remaining = remaining % group.weight;
+    if (value > group.max) return `${score} is not a Property checks encoding: its ${group.title} digit is ${value}, and the highest is ${group.max}.`;
+  }
+  return null;
+}
+
 function decomposeScore(score: number) {
   let remaining = score;
   const digits: { name: string; value: number; max: number; title: string; description: string; label: string }[] = [];
@@ -86,6 +100,8 @@ export async function explainConfidenceScore(args: Record<string, unknown>) {
     if (score === undefined || score === null) {
       return { error: "No Property checks available for this property" };
     }
+    const invalid = invalidScoreReason(score);
+    if (invalid) return { error: invalid };
     const breakdown = decomposeScore(score);
     const warnings: string[] = [];
     const recovery = breakdown.find(d => d.name === "recoveryStatus");
@@ -121,6 +137,6 @@ export async function explainConfidenceScore(args: Record<string, unknown>) {
     result.howToRead = "This is the numeric encoding of Property checks: a 5-digit positional number, not a percentage or a grade. Each digit position represents a verification group: recovery status (ten-thousands), past title (thousands), ownership (hundreds), onchain history (tens), basic validation (ones). Higher is better. Max: 75342. Digits are category values, not counts; checksPassed counts the individual checks, like the checklist in the Fabrica app. Property checks are a starting point for your own research, not a title search or title insurance.";
     return result;
   } catch (e) {
-    return { error: `Failed to explain Property checks: ${e instanceof Error ? e.message : String(e)}` };
+    return { error: propertyLookupError(e, { tokenId }, "explain Property checks") };
   }
 }

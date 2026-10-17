@@ -208,6 +208,10 @@ All optional; sensible defaults are built in:
 | `FABRICA_MEDIA_URL` | `https://media.fabrica.land` | Fabrica media service for map images |
 | `FABRICA_MCP_APPS` | on for Sepolia, off for mainnet | `enabled` or `disabled`: the property card MCP App on `get_property` |
 
+## Regression list
+
+`npm run regression` (mainnet) or `npm run regression -- sepolia` calls every tool on a hosted server with the ENG-2970 case list in `scripts/regression/cases.json`: happy paths, edge cases and the wording of a miss. One line per case, exit code 1 on a failure. Run it after each release and before a directory submission.
+
 ## Hosting
 
 The hosted servers run on Vercel from this repository: one Vercel project per network, both built with `npm run build:vercel` (see `vercel.json`), which emits a single stateless Streamable HTTP function at `/mcp` and a landing page at `/`. Set `FABRICA_NETWORK` in each project's environment (`ethereum` or `sepolia`). The same handler (`src/http.ts`) can run behind any Node HTTP server.

@@ -1,4 +1,4 @@
-import { getToken, getWallet } from "../clients/graphql.js";
+import { getToken, getWallet, propertyLookupError } from "../clients/graphql.js";
 import type { ActivityModel } from "../types/index.js";
 import { formatActivityAmount, formatActivitySource } from "../labels.js";
 
@@ -56,6 +56,6 @@ export async function getActivity(args: Record<string, unknown>) {
       events: page.map(formatActivity),
     };
   } catch (e) {
-    return { error: `Failed to get activity: ${e instanceof Error ? e.message : String(e)}` };
+    return { error: propertyLookupError(e, { tokenId, slug }, "get activity") };
   }
 }

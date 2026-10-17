@@ -13,6 +13,7 @@ vi.mock("../config.js", () => ({
 const mockGetToken = vi.fn();
 vi.mock("../clients/graphql.js", () => ({
   getToken: (...args: unknown[]) => mockGetToken(...args),
+  propertyLookupError: (e: unknown, _lookup: unknown, action: string) => `Failed to ${action}: ${e instanceof Error ? e.message : String(e)}`,
 }));
 
 // Mock global fetch

@@ -1,4 +1,4 @@
-import { getToken } from "../clients/graphql.js";
+import { getToken, propertyLookupError } from "../clients/graphql.js";
 import { NETWORK, CONTRACTS } from "../config.js";
 
 type ImageTheme = "dark" | "light";
@@ -74,7 +74,7 @@ export async function getPropertyImage(args: Record<string, unknown>) {
       image,
     };
   } catch (e) {
-    return { error: `Failed to get property image: ${e instanceof Error ? e.message : String(e)}` };
+    return { error: propertyLookupError(e, { tokenId, slug }, "get property image") };
   }
 }
 

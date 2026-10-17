@@ -485,6 +485,23 @@ export function isTokenNotFound(error: unknown): boolean {
   return error instanceof FabricaApiError && error.graphQLErrors.some(m => m.includes("No token or premint found"));
 }
 
+/**
+ * The agent-facing error for a token lookup that failed: "No property found with token ID X"
+ * when the API answered that the token does not exist, otherwise the API's own message.
+ */
+export function propertyLookupError(error: unknown, lookup: { tokenId?: string; slug?: string }, action: string): string {
+  if (isTokenNotFound(error)) {
+    return `No property found with ${lookup.tokenId ? `token ID ${lookup.tokenId}` : `slug ${lookup.slug ?? ""}`}`;
+  }
+  return `Failed to ${action}: ${error instanceof Error ? error.message : String(error)}`;
+}
+
+/** The API answers `wallet(...)` for an address it has never seen with this GraphQL error, not with null. */
+/** The API's answer for a wallet it has no record of, and nothing else: any other error alongside it propagates. */
+export function isWalletNotFound(error: unknown): boolean {
+  return error instanceof FabricaApiError && error.graphQLErrors.length > 0 && error.graphQLErrors.every(m => m.includes("No user found"));
+}
+
 // --- Trust documents query ---
 
 const GET_TRUST_DOCUMENTS_QUERY = gql`
@@ -660,13 +677,18 @@ const walletCache = new TtlCache<{ wallet: WalletModel | null }>();
 export async function getWallet(walletAddress: string): Promise<WalletModel | null> {
   // Scope the wallet (its tokens, loans and orders) to this deployment's network and
   // contract, so a Sepolia server never returns mainnet records and vice versa.
-  const data = await cachedRequest(walletCache, GET_WALLET_QUERY, {
-    walletAddress,
-    network: NETWORK,
-    testnets: !IS_MAINNET,
-    contractAddress: CONTRACTS.fabricaToken,
-  });
-  return data.wallet;
+  try {
+    const data = await cachedRequest(walletCache, GET_WALLET_QUERY, {
+      walletAddress,
+      network: NETWORK,
+      testnets: !IS_MAINNET,
+      contractAddress: CONTRACTS.fabricaToken,
+    });
+    return data.wallet;
+  } catch (error) {
+    if (isWalletNotFound(error)) return null;
+    throw error;
+  }
 }
 
 // --- Loan queries ---

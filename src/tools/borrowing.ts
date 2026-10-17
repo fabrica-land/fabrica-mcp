@@ -1,4 +1,4 @@
-import { getToken } from "../clients/graphql.js";
+import { getToken, propertyLookupError } from "../clients/graphql.js";
 import { LENDING_POOL_NAME, describeAppraisalBlock, formatLoanProvider, formatUsdcCeiling } from "../labels.js";
 import { estimateFields, formatDurationDays, formatRawTokenAmount, formatTokenAmount, formatUnixTime, shortenAddress } from "../format.js";
 import { describePoolOracle, zeroCapacityReasons } from "./valuation.js";
@@ -88,6 +88,6 @@ export async function getBorrowQuote(args: Record<string, unknown>) {
         : "No borrowing options currently available for this property.";
     return result;
   } catch (e) {
-    return { error: `Failed to get borrow quote: ${e instanceof Error ? e.message : String(e)}` };
+    return { error: propertyLookupError(e, { tokenId, slug }, "get borrow quote") };
   }
 }

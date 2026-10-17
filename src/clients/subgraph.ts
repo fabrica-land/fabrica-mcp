@@ -6,7 +6,7 @@ import { TtlCache } from "./cache.js";
 const METASTREET_MAINNET_URL =
   "https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-mainnet/3.13.2/gn";
 const METASTREET_SEPOLIA_URL =
-  "https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-sepolia/3.13.2/gn";
+  "https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-sepolia/3.13.1/gn";
 
 const METASTREET_POOL_URL =
   process.env.FABRICA_METASTREET_SUBGRAPH_URL ??
