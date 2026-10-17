@@ -43,10 +43,17 @@ function asOf(date: string | null): string {
   return date ? `as of ${date.slice(0, 10)}` : "in the latest check";
 }
 
-export function taxSummary(status: TaxStatus, checkedAt: string | null, isPremint = false): string {
+export function taxSummary(
+  status: TaxStatus,
+  checkedAt: string | null,
+  isPremint = false,
+  { basis, recordUnavailable = false }: { basis?: TaxBasis; recordUnavailable?: boolean } = {},
+): string {
   if (status === "current") return `Fabrica's checks found the property taxes current ${asOf(checkedAt)}.`;
   if (status === "delinquent") return `Fabrica's checks found the property taxes past due ${asOf(checkedAt)}.`;
   if (isPremint) return "Fabrica's checks have not verified the property taxes yet: this property is a premint, and the onramp collects tax evidence.";
+  if (basis === "conflicting") return `Fabrica's tax check and the ${LENDING_POOL_NAME} disagree on the property taxes right now, so there is no current tax status.`;
+  if (recordUnavailable) return "Fabrica's tax check could not be read right now, so there is no current tax status for this property.";
   return "Fabrica's checks have no current tax status for this property: it was never verified, or the last verification expired.";
 }
 
@@ -65,10 +72,12 @@ export async function loadTaxSignals(token: {
 }) {
   const warnings: string[] = [];
   let record: ScoreRecord | null = null;
+  let recordUnavailable = false;
   if (!token.isPremint) {
     try {
       record = await getScoreRecord(token.contractAddress, token.tokenId);
     } catch (e) {
+      recordUnavailable = true;
       warnings.push(`Score record unavailable, so the tax check and its dates could not be read: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
@@ -89,6 +98,7 @@ export async function loadTaxSignals(token: {
     ...resolved,
     blockReason,
     checkExpired,
+    recordUnavailable,
     checkedAt: dated?.updatedAt ?? null,
     nextCheckBy: dated?.expiresAt ?? null,
     warnings,
@@ -116,7 +126,7 @@ export async function getTaxStatus(args: Record<string, unknown>) {
       state: token.regionCode,
       status: signals.status,
       basis: signals.basis,
-      summary: taxSummary(signals.status, signals.checkedAt, token.isPremint),
+      summary: taxSummary(signals.status, signals.checkedAt, token.isPremint, signals),
       checkedAt: signals.checkedAt,
       nextCheckBy: signals.nextCheckBy,
       ...(signals.checkExpired ? { checkExpired: true } : {}),

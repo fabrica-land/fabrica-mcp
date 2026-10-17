@@ -159,6 +159,7 @@ describe("get_tax_status", () => {
     expect(result.checkedAt).toBeNull();
     expect((result.warnings as string[])[0]).toContain("HTTP 502");
     expect((result.warnings as string[])[0]).toContain("tax check and its dates could not be read");
+    expect(result.summary).toContain("could not be read right now");
   });
 
   it("does not claim two signals when the score record is unavailable", async () => {
@@ -178,6 +179,7 @@ describe("get_tax_status", () => {
     expect(result.checkedAt).toBeNull();
     expect(result.nextCheckBy).toBeNull();
     expect((result.warnings as string[]).join(" ")).toContain("disagree");
+    expect(result.summary).toContain("disagree");
   });
 
   it("skips the score API for a premint and says why the status is unknown", async () => {

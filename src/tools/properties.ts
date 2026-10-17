@@ -320,7 +320,7 @@ export async function getProperty(args: Record<string, unknown>) {
       acres: token.acres ? parseFloat(token.acres) : null,
       taxes: {
         status: tax.status,
-        summary: taxSummary(tax.status, tax.checkedAt, token.isPremint),
+        summary: taxSummary(tax.status, tax.checkedAt, token.isPremint, tax),
         checkedAt: tax.checkedAt,
         details: "get_tax_status",
       },
