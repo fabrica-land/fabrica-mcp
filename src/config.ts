@@ -11,6 +11,8 @@ function resolveNetwork(): FabricaNetwork {
 export const NETWORK: FabricaNetwork = resolveNetwork();
 
 export const IS_MAINNET = NETWORK === "ethereum";
+/** Fabrica web app origin for on-ramp and property links; FABRICA_WEB_URL overrides it. */
+export const WEB_BASE = (process.env.FABRICA_WEB_URL ?? (IS_MAINNET ? "https://fabrica.land" : "https://testnets.fabrica.land")).replace(/\/+$/, "");
 
 export const NETWORK_LABEL = IS_MAINNET ? "Ethereum Mainnet" : "Sepolia Testnet";
 
