@@ -78,3 +78,38 @@ describe("describeAppraisalDerivation", () => {
     expect(describeAppraisalDerivation(0, pricing)).toBeNull();
   });
 });
+
+describe("pools that cannot lend and fixed-dollar limits", () => {
+  const base = { hasActiveLoan: false, taxBlocked: false, oracleReasons: [] as string[] };
+  const quote = (price: string) => ({ quote: { price, currency: "0x", timestamp: 1, duration: 1 } });
+
+  it("leaves out an unsigned quote even when its ticks would lend the most", () => {
+    const unsigned = oraclePool({ address: "0xunsigned", oracleValuation: { signature: null, ...quote("2000000000") }, ticks: [tick(5000, 1, 5000)] });
+    const signed = oraclePool({ address: "0xsigned", oracleValuation: { signature: "0x", ...quote("2000000000") }, ticks: [tick(1000, 1, 500), tick(2000, 1, 500)] });
+    expect(bindingConstraint({ ...base, maxBorrowUsd: 400, pools: [unsigned, signed] })).toMatchObject({ limitedBy: "ltv", maxLtv: "20%" });
+  });
+
+  it("says a fixed dollar ceiling binds, not the loan-to-value", () => {
+    const pool = oraclePool({ oracleValuation: { signature: "0x", ...quote("100000000000") }, ticks: [{ raw: ((300n * 10n ** 18n) << 8n).toString(), available: (1000n * 10n ** 18n).toString() }] });
+    const result = bindingConstraint({ ...base, maxBorrowUsd: 300, pools: [pool] });
+    expect(result).toMatchObject({ limitedBy: "pool_limit", maxLtv: null, ltvLimitedAmount: null, tickLimitAmount: "$300" });
+  });
+});
+
+describe("describeAppraisalDerivation follows the rule", () => {
+  it("does not credit the higher model value or the assessment beside a Prycd value", () => {
+    const pricing = [
+      { source: "prycd", scope: "land", value: "100000", confidence: "50" },
+      { source: "fabrica-avm", scope: "land", value: "200000", confidence: "50" },
+      { source: "regrid-county-assessor", scope: "parcel", value: "100000", confidence: null },
+    ];
+    expect(describeAppraisalDerivation(100000, pricing)).toMatchObject({ derivation: null });
+    expect(describeAppraisalDerivation(30000, pricing)).toMatchObject({ derivation: null });
+    expect(describeAppraisalDerivation(50000, pricing)).toMatchObject({ derivation: expect.stringContaining("Prycd") });
+  });
+
+  it("credits the assessment only when there is no Prycd value", () => {
+    const pricing = [{ source: "regrid-county-assessor", scope: "parcel", value: "100000", confidence: null }];
+    expect(describeAppraisalDerivation(30000, pricing)).toMatchObject({ derivation: expect.stringContaining("county assessment") });
+  });
+});

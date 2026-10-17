@@ -47,6 +47,10 @@ export interface PoolCapacity {
   maxLtv: number | null;
   /** What the tick limits allow at this price if every tick were fully funded. */
   limitAmountUsd: number;
+  /** What the ratio ticks alone allow at this price; null when the pool has no ratio tick. */
+  ltvLimitUsd: number | null;
+  /** Which kind of tick limit stopped the capacity short of the free liquidity; null when liquidity ran out first. */
+  boundBy: LimitType | null;
   /** What the ticks can lend now: each tick adds its free liquidity up to its own limit. */
   capacityUsd: number;
 }
@@ -66,22 +70,37 @@ export function poolCapacity(pool: PoolLendingPoolValuation, priceUsd: number): 
     return [{ ...decoded, limitUsd, availableUsd: tickUsd(t.available) }];
   }).filter(t => t.availableUsd >= DUST_USD).sort((a, b) => a.limitUsd - b.limitUsd);
   let capacity = 0;
+  let boundBy: LimitType | null = null;
   for (const tick of ticks) {
     if (tick.limitUsd <= capacity) continue;
-    capacity = Math.min(capacity + tick.availableUsd, tick.limitUsd);
+    const filled = capacity + tick.availableUsd;
+    boundBy = filled > tick.limitUsd ? tick.limitType : null;
+    capacity = Math.min(filled, tick.limitUsd);
   }
-  const ratios = ticks.filter(t => t.limitType === "ratio").map(t => Number(t.limit) / BPS);
+  const ratioTicks = ticks.filter(t => t.limitType === "ratio");
+  const ratios = ratioTicks.map(t => Number(t.limit) / BPS);
   return {
     pool: pool.address,
     priceUsd,
     freeLiquidityUsd: ticks.reduce((sum, t) => sum + t.availableUsd, 0),
     maxLtv: ratios.length > 0 ? Math.max(...ratios) : null,
     limitAmountUsd: ticks.reduce((max, t) => Math.max(max, t.limitUsd), 0),
+    ltvLimitUsd: ratioTicks.length > 0 ? Math.max(...ratioTicks.map(t => t.limitUsd)) : null,
+    boundBy,
     capacityUsd: capacity,
   };
 }
 
-export type LimitedBy = "pool_liquidity" | "ltv" | "tax_status" | "oracle" | "existing_loan" | "unknown";
+export type LimitedBy = "pool_liquidity" | "ltv" | "pool_limit" | "tax_status" | "oracle" | "existing_loan" | "unknown";
+
+/**
+ * Whether a pool can add to the API's amount at all: a signed quote needs its signature, and an
+ * onchain price with a capacity block reason contributes nothing even when a price is set.
+ */
+function canLend(pool: PoolLendingPoolValuation): boolean {
+  if (pool.pricing === "SignedQuote") return Boolean(pool.oracleValuation?.signature);
+  return !pool.onchainValuation?.capacityBlockReason;
+}
 
 function usd(value: number): string {
   return `$${Math.floor(value).toLocaleString("en-US")}`;
@@ -104,14 +123,15 @@ export function bindingConstraint(input: {
 }) {
   const priced = input.pools.flatMap(pool => {
     const price = collateralPriceUsd(pool);
-    return price !== null && price > 0 ? [poolCapacity(pool, price)] : [];
+    return price !== null && price > 0 && canLend(pool) ? [poolCapacity(pool, price)] : [];
   });
   const best = priced.reduce<PoolCapacity | null>((top, p) => (top === null || p.capacityUsd > top.capacityUsd ? p : top), null);
   const details = best ? {
     collateralPrice: usd(best.priceUsd),
     poolFreeLiquidity: usd(best.freeLiquidityUsd),
     maxLtv: best.maxLtv !== null ? percent(best.maxLtv) : null,
-    ltvLimitedAmount: usd(best.limitAmountUsd),
+    ltvLimitedAmount: best.ltvLimitUsd !== null ? usd(best.ltvLimitUsd) : null,
+    tickLimitAmount: usd(best.limitAmountUsd),
   } : {};
   if (input.maxBorrowUsd <= 0) {
     if (input.taxBlocked) return { limitedBy: "tax_status" as LimitedBy, explanation: "The property's taxes are not known to be current, so the pool's price for it is set to zero.", ...details };
@@ -128,7 +148,14 @@ export function bindingConstraint(input: {
   if (best.capacityUsd >= best.freeLiquidityUsd - DUST_USD) {
     return {
       limitedBy: "pool_liquidity" as LimitedBy,
-      explanation: `The amount is all the free liquidity in the pool (${usd(best.freeLiquidityUsd)}). It says nothing about the property's value: at the pool's highest loan-to-value${best.maxLtv !== null ? ` (${percent(best.maxLtv)})` : ""} the ${usd(best.priceUsd)} collateral price would support up to ${usd(best.limitAmountUsd)} once the pool holds the deposits.`,
+      explanation: `The amount is all the free liquidity in the pool (${usd(best.freeLiquidityUsd)}). It says nothing about the property's value: at the pool's highest loan-to-value${best.maxLtv !== null ? ` (${percent(best.maxLtv)})` : ""} the ${usd(best.priceUsd)} collateral price would support up to ${usd(best.limitAmountUsd)} under the pool's tick limits once the pool holds the deposits.`,
+      ...details,
+    };
+  }
+  if (best.boundBy === "absolute") {
+    return {
+      limitedBy: "pool_limit" as LimitedBy,
+      explanation: `A fixed dollar ceiling on the pool's ticks caps the amount, not the property's value; the pool holds ${usd(best.freeLiquidityUsd)} free.`,
       ...details,
     };
   }
@@ -144,7 +171,11 @@ function amount(value: string | null | undefined): number | null {
   return Number.isFinite(num) ? num : null;
 }
 
-/** The rows the API's appraisal reads: confidence-adjusted Prycd and Fabrica AVM land values, then the assessor fallback. */
+/**
+ * The values the API's appraisal can produce from these rows. With a Prycd value: Prycd itself
+ * (the Prycd-only rule) or the lower of Prycd and the Fabrica AVM (the safe rule). Without one:
+ * 30% of the county assessment. The AVM alone, or the assessment beside a Prycd value, never is.
+ */
 function appraisalCandidates(pricing: readonly PricingRow[]) {
   const adjusted = (source: string, label: string) => {
     const row = pricing.find(p => p.source === source && p.scope === "land");
@@ -154,11 +185,9 @@ function appraisalCandidates(pricing: readonly PricingRow[]) {
     return [{ value: value * (confidence / 100), text: `${label} land value ${usd(value)} x its confidence ${confidence}% = ${usd(value * (confidence / 100))}` }];
   };
   const assessor = amount(pricing.find(p => p.source === "regrid-county-assessor" && p.scope === "parcel")?.value);
-  return [
-    ...adjusted("prycd", "Prycd"),
-    ...adjusted("fabrica-avm", "Fabrica AVM"),
-    ...(assessor !== null && assessor > 0 ? [{ value: assessor * 0.3, text: `county assessment ${usd(assessor)} x 0.3 = ${usd(assessor * 0.3)}` }] : []),
-  ];
+  const prycd = adjusted("prycd", "Prycd");
+  if (prycd.length > 0) return [...prycd, ...adjusted("fabrica-avm", "Fabrica AVM").filter(avm => avm.value < prycd[0].value)];
+  return assessor !== null && assessor > 0 ? [{ value: assessor * 0.3, text: `county assessment ${usd(assessor)} x 0.3 = ${usd(assessor * 0.3)}` }] : [];
 }
 
 export const APPRAISAL_RULE = "The pool's price is the API's appraisal: the lower of the Prycd and Fabrica AVM land values, each multiplied by its own confidence; with no Prycd value, 30% of the county assessment. It is a haircut of the estimate, not a separate valuation.";

@@ -179,7 +179,7 @@ export function createServer(): McpServer {
     "get_borrow_quote",
     {
       title: "Get borrow quote",
-      description: "Get borrowing options for a specific tokenized property: DeFi lending pool liquidity (max loan amount, durations), existing loan status, the reasons when the pool shows no capacity (tax status, price oracle checks), and in limits what binds the amount (limitedBy: pool_liquidity, ltv, tax_status, oracle, existing_loan or unknown) with the collateral price, the pool's free liquidity and the highest loan-to-value. The oracle block shows how the collateral price is derived from the valuation sources. Answers questions such as 'How much can I borrow against this property?'. The amount is an estimate; the rate is set by a live quote when borrowing.",
+      description: "Get borrowing options for a specific tokenized property: DeFi lending pool liquidity (max loan amount, durations), existing loan status, the reasons when the pool shows no capacity (tax status, price oracle checks), and in limits what binds the amount (limitedBy: pool_liquidity, ltv, pool_limit, tax_status, oracle, existing_loan or unknown) with the collateral price, the pool's free liquidity and the highest loan-to-value. The oracle block shows how the collateral price is derived from the valuation sources. Answers questions such as 'How much can I borrow against this property?'. The amount is an estimate; the rate is set by a live quote when borrowing.",
       inputSchema: getBorrowQuoteInput,
       annotations: readOnly("Get borrow quote"),
     },
