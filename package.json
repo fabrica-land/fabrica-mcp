@@ -28,6 +28,8 @@
     "pretest:watch": "npm run build:ui",
     "test:watch": "vitest",
     "schema:refresh": "node scripts/refresh-api-schema.mjs",
+    "codegen": "graphql-codegen --config codegen.ts",
+    "codegen:check": "graphql-codegen --config codegen.ts && git diff --exit-code -- src/clients/generated",
     "knowledge:build": "node scripts/build-knowledge.mjs",
     "regression": "node scripts/regression/run.mjs",
     "knowledge:check": "node scripts/build-knowledge.mjs --check",
@@ -64,6 +66,9 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@graphql-codegen/cli": "^7.4.6",
+    "@graphql-codegen/typescript": "^6.1.2",
+    "@graphql-codegen/typescript-operations": "^6.1.10",
     "@types/node": "^25.5.0",
     "esbuild": "^0.27.7",
     "tsup": "^8.5.1",

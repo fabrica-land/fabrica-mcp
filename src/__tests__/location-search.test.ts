@@ -24,7 +24,8 @@ vi.mock("../clients/subgraph.js", () => ({
 }));
 
 import { getTokens } from "../clients/graphql.js";
-import { searchProperties, normalizeCounty, groupTokens } from "../tools/properties.js";
+import { z } from "zod";
+import { searchProperties, searchPropertiesInput, normalizeCounty, groupTokens } from "../tools/properties.js";
 import { getProtocolStats } from "../tools/protocol.js";
 import { locationLink, slugifyPlaceName, PLATFORM_URL } from "../links.js";
 
@@ -141,9 +142,10 @@ describe("grouped search review fixes", () => {
     expect(result.locationLink).toBe(`${PLATFORM_URL}/us/colorado/costilla-county`);
   });
 
-  it("ignores a non-string county and an unknown groupBy", async () => {
-    const result = await searchProperties({ region: "CO", county: 42, groupBy: "city" }) as Record<string, unknown>;
-    expect(result.total).toBe(3);
-    expect(result).not.toHaveProperty("groups");
+  it("rejects a non-string county and an unknown groupBy at the schema, before the tool runs", () => {
+    const schema = z.object(searchPropertiesInput);
+    expect(schema.safeParse({ region: "CO", county: 42 }).success).toBe(false);
+    expect(schema.safeParse({ region: "CO", groupBy: "city" }).success).toBe(false);
+    expect(schema.safeParse({ region: "CO", groupBy: "county" }).success).toBe(true);
   });
 });

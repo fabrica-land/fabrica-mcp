@@ -1,5 +1,7 @@
 import { getToken, propertyLookupError } from "../clients/graphql.js";
 import { NETWORK, CONTRACTS } from "../config.js";
+import { z } from "zod";
+import { type ArgsOf, imageInputs, propertyRefInputs } from "./inputs.js";
 
 type ImageTheme = "dark" | "light";
 
@@ -52,12 +54,14 @@ async function fetchImageAsBase64(url: string): Promise<{ data: string; mimeType
   return { data: base64, mimeType: contentType.split(";")[0] };
 }
 
-export async function getPropertyImage(args: Record<string, unknown>) {
-  const tokenId = args.tokenId as string | undefined;
-  const slug = args.slug as string | undefined;
-  const theme = (args.theme as ImageTheme | undefined) ?? "dark";
-  const width = Math.min(Math.max((args.width as number | undefined) ?? 640, 100), 1280);
-  const height = Math.min(Math.max((args.height as number | undefined) ?? 640, 100), 1280);
+export const getPropertyImageInput = { ...propertyRefInputs, ...imageInputs };
+export type GetPropertyImageArgs = ArgsOf<typeof getPropertyImageInput>;
+
+export async function getPropertyImage(args: GetPropertyImageArgs) {
+  const { tokenId, slug } = args;
+  const theme = args.theme ?? "dark";
+  const width = Math.min(Math.max(args.width ?? 640, 100), 1280);
+  const height = Math.min(Math.max(args.height ?? 640, 100), 1280);
   if (!tokenId && !slug) {
     return { error: "Either tokenId or slug is required" };
   }
@@ -78,11 +82,17 @@ export async function getPropertyImage(args: Record<string, unknown>) {
   }
 }
 
-export async function getPortfolioImage(args: Record<string, unknown>) {
-  const address = args.address as string | undefined;
-  const theme = (args.theme as ImageTheme | undefined) ?? "dark";
-  const width = Math.min(Math.max((args.width as number | undefined) ?? 640, 100), 1280);
-  const height = Math.min(Math.max((args.height as number | undefined) ?? 640, 100), 1280);
+export const getPortfolioImageInput = {
+  address: z.string().describe("Ethereum wallet address (0x...)"),
+  ...imageInputs,
+};
+export type GetPortfolioImageArgs = ArgsOf<typeof getPortfolioImageInput>;
+
+export async function getPortfolioImage(args: GetPortfolioImageArgs) {
+  const address = args.address;
+  const theme = args.theme ?? "dark";
+  const width = Math.min(Math.max(args.width ?? 640, 100), 1280);
+  const height = Math.min(Math.max(args.height ?? 640, 100), 1280);
   if (!address) {
     return { error: "Wallet address is required" };
   }

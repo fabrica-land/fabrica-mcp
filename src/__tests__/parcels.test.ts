@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ParcelIndexToken } from "../types/index.js";
 
 vi.mock("../clients/graphql.js", () => ({
   getParcelIndex: vi.fn(async () => [
@@ -22,6 +23,15 @@ vi.mock("../clients/graphql.js", () => ({
 }));
 
 const { getParcelIndex } = await import("../clients/graphql.js");
+
+/** A parcel index row with every selected field present, so a fixture needs no cast. */
+function parcelToken(overrides: Partial<ParcelIndexToken> & Pick<ParcelIndexToken, "tokenId">): ParcelIndexToken {
+  return {
+    name: null, vanityName: null, slug: `token-${overrides.tokenId}`, propertyLink: `https://fabrica.land/token-${overrides.tokenId}`,
+    regionCode: null, coordinates: { lat: 0, lon: 0 }, definition: null,
+    ...overrides,
+  };
+}
 const { allowFindParcel, findParcel, interiorPoint, matchByApn, parseParcelPoint, parseTypeAhead, pointInPolygons, polygonsOf, resolveCounty, stateRetryText, FIND_PARCEL_LIMIT_PER_MINUTE } = await import("../tools/parcels.js");
 
 const SF_HIT = { category: "parcel", context: "San Francisco, CA", headline: "1707 Jones St", owner: "SOMEONE PRIVATE", parcelnumb: "0151010", path: "/us/ca/san-francisco/downtown/12801", score: 85, type: "Parcel" };
@@ -64,7 +74,7 @@ describe("find_parcel helpers", () => {
   it("matches a token by state, county and APN, ignoring punctuation", () => {
     const [hit] = parseTypeAhead([SF_HIT]);
     if (!hit) throw new Error("no hit");
-    const token = { tokenId: "1", regionCode: "CA", definition: { offchainRegistrar: { admin: "San Francisco", propertyId: "015-1010" } } };
+    const token = parcelToken({ tokenId: "1", regionCode: "CA", definition: { offchainRegistrar: { admin: "San Francisco", propertyId: "015-1010" } } });
     expect(matchByApn(hit, [token])?.tokenId).toBe("1");
     expect(matchByApn(hit, [{ ...token, regionCode: "NV" }])).toBeNull();
     expect(matchByApn(hit, [{ ...token, definition: { offchainRegistrar: { admin: "Kern", propertyId: "0151010" } } }])).toBeNull();
@@ -73,7 +83,7 @@ describe("find_parcel helpers", () => {
   it("matches a FIPS-prefixed registrar parcel number, and never confuses a county with a same-named city", () => {
     const stLouisCity = { headline: "1 Main St", context: "St. Louis, MO", apn: "12-345", path: "/us/mo/st-louis/downtown/1", score: 90 };
     const stLouisCounty = { ...stLouisCity, path: "/us/mo/st-louis-county/clayton/1" };
-    const countyToken = { tokenId: "7", regionCode: "MO", definition: { offchainRegistrar: { admin: "St. Louis", propertyId: "29189-12-345" } } };
+    const countyToken = parcelToken({ tokenId: "7", regionCode: "MO", definition: { offchainRegistrar: { admin: "St. Louis", propertyId: "29189-12-345" } } });
     expect(matchByApn(stLouisCounty, [countyToken])?.tokenId).toBe("7");
     expect(matchByApn(stLouisCity, [countyToken])).toBeNull();
     expect(matchByApn(stLouisCity, [{ ...countyToken, definition: { offchainRegistrar: { admin: "St. Louis City", propertyId: "12-345" } } }])?.tokenId).toBe("7");
@@ -81,7 +91,7 @@ describe("find_parcel helpers", () => {
 
   it("strips a five-digit prefix only when it is the parcel's county FIPS", () => {
     const hit = { headline: "1 Main St", context: "Clayton, MO", apn: "678", path: "/us/mo/st-louis-county/clayton/1", score: 90 };
-    const bare = { tokenId: "8", regionCode: "MO", definition: { offchainRegistrar: { admin: "St. Louis", propertyId: "12345-678" } } };
+    const bare = parcelToken({ tokenId: "8", regionCode: "MO", definition: { offchainRegistrar: { admin: "St. Louis", propertyId: "12345-678" } } });
     expect(matchByApn(hit, [bare])).toBeNull();
   });
 

@@ -2,6 +2,7 @@ import { getTaxStatusToken, getScoreRecord, isTokenNotFound } from "../clients/g
 import { MAINNET_WARNING } from "../config.js";
 import type { AppraisalBlockReason, ScoreRecord } from "../types/index.js";
 import { LENDING_POOL_NAME } from "../labels.js";
+import { type ArgsOf, propertyRefInputs } from "./inputs.js";
 
 const TAX_CHECK = "propertyTaxesCurrent";
 
@@ -105,9 +106,11 @@ export async function loadTaxSignals(token: {
   };
 }
 
-export async function getTaxStatus(args: Record<string, unknown>) {
-  const tokenId = args.tokenId as string | undefined;
-  const slug = args.slug as string | undefined;
+export const getTaxStatusInput = propertyRefInputs;
+export type GetTaxStatusArgs = ArgsOf<typeof getTaxStatusInput>;
+
+export async function getTaxStatus(args: GetTaxStatusArgs) {
+  const { tokenId, slug } = args;
   if (!tokenId && !slug) {
     return { error: "Either tokenId or slug is required" };
   }

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { z } from "zod";
 
 // Mock config
 vi.mock("../config.js", () => ({
@@ -21,7 +22,7 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 // Import after mocks
-const { getPropertyImage, getPortfolioImage } = await import("../tools/images.js");
+const { getPropertyImage, getPortfolioImage, getPortfolioImageInput } = await import("../tools/images.js");
 
 describe("getPropertyImage", () => {
   beforeEach(() => {
@@ -148,9 +149,9 @@ describe("getPortfolioImage", () => {
     vi.clearAllMocks();
   });
 
-  it("returns error when address not provided", async () => {
-    const result = await getPortfolioImage({});
-    expect(result).toEqual({ error: "Wallet address is required" });
+  it("requires the address at the schema, before the tool runs", () => {
+    expect(z.object(getPortfolioImageInput).safeParse({}).success).toBe(false);
+    expect(z.object(getPortfolioImageInput).safeParse({ address: "0xabc" }).success).toBe(true);
   });
 
   it("returns image data on success", async () => {

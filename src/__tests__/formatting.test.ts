@@ -91,7 +91,7 @@ function makeDetailToken(overrides: Partial<TokenModel> = {}): TokenModel {
 const emptyLoans = { loanCount: "0", totalPrincipalValue: "0", totalPaidValue: "0", averageDurationDays: "0" };
 const maker: WalletModel = {
   address: "0x1234567890abcdef1234567890abcdef12345678",
-  user: { displayName: "Seller", profilePath: null, profileUrl: null, avatarUrl: null },
+  user: { displayName: "Seller", profilePath: null, avatarUrl: null },
   tokens: [], tokenCount: "0", totalValue: "0", totalAcres: "0", totalCollateralValue: "0",
   totalOutstandingLoansUSDC: null, propertyCountUnderLoan: "0",
   activity: [], loansTaken: [], loansMade: [], marketplaceOffersMade: [],
@@ -103,9 +103,8 @@ const maker: WalletModel = {
 
 function makeOrder(overrides: Partial<MarketplaceOrderModel>): MarketplaceOrderModel {
   return {
-    marketplaceId: "m", tokenId: "12345", contractAddress: "0x5cbeb7A0df7Ed85D82a472FD56d81ed550f3Ea95",
-    network: "ethereum", side: "sell", status: "active", price: "100", usdPrice: "100", symbol: "USDC",
-    supply: "1", maker, makerAddress: maker.address, startTime: "2026-01-01T00:00:00Z", endTime: null,
+    marketplaceId: "m", side: "sell", status: "active", price: "100", usdPrice: "100", symbol: "USDC",
+    supply: "1", makerAddress: maker.address, startTime: "2026-01-01T00:00:00Z", endTime: null, encumbrance: null,
     ...overrides,
   };
 }

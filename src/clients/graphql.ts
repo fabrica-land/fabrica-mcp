@@ -1,18 +1,40 @@
 import { ClientError, GraphQLClient, gql } from "graphql-request";
 import type {
-  TokenModel,
-  WalletModel,
-  LoanModel,
-  LoanStartedEvent,
-  LoanRepaidEvent,
-  LoanLiquidatedEvent,
+  GetCountyBoundsQuery,
+  GetLoanLiquidatedEventsQuery,
+  GetLoanRepaidEventsQuery,
+  GetLoanStartedEventsQuery,
+  GetLoansQuery,
+  GetOperatingAgreementQuery,
+  GetOrderBookQuery,
+  GetParcelIndexQuery,
+  GetPremintSuccessorQuery,
+  GetTaxStatusQuery,
+  GetTokenQuery,
+  GetTokenWithPoolOracleQuery,
+  GetTokensQuery,
+  GetTrustDocumentsQuery,
+  GetValuationQuery,
+  GetWalletQuery,
+} from "./generated/operations.js";
+import type {
   CountyBoundsModel,
+  LoanLiquidatedEvent,
+  LoanModel,
+  LoanRepaidEvent,
+  LoanStartedEvent,
+  OperatingAgreementModel,
   OrderBookToken,
-  TrustDocumentsToken,
-  SignedValuationPanel,
-  TokenValuationModel,
-  TaxStatusToken,
+  ParcelIndexToken,
   ScoreRecord,
+  SignedValuationPanel,
+  TaxStatusToken,
+  TokenDetail,
+  TokenDetailWithPoolOracle,
+  TokenListItem,
+  TokenValuationModel,
+  TrustDocumentsToken,
+  WalletModel,
 } from "../types/index.js";
 import { CONTRACTS, IS_MAINNET, NETWORK } from "../config.js";
 import { TtlCache } from "./cache.js";
@@ -174,9 +196,9 @@ const GET_TOKENS_QUERY = gql`
   }
 `;
 
-const tokensCache = new TtlCache<{ tokens: TokenModel[] }>();
+const tokensCache = new TtlCache<GetTokensQuery>();
 
-export async function getTokens(filters: TokenFilters): Promise<TokenModel[]> {
+export async function getTokens(filters: TokenFilters): Promise<TokenListItem[]> {
   const variables: Record<string, unknown> = {};
   if (filters.minScore !== undefined) variables.minScore = filters.minScore;
   if (filters.hasListings) variables.minListings = 1;
@@ -300,18 +322,25 @@ const GET_TOKEN_WITH_POOL_ORACLE_QUERY = gql`
   }
 `;
 
-const tokenCache = new TtlCache<{ token: TokenModel | null }>();
+const tokenCache = new TtlCache<GetTokenQuery>();
+const tokenWithPoolOracleCache = new TtlCache<GetTokenWithPoolOracleQuery>();
 
 export async function getToken(
   params: { tokenId?: string; slug?: string; network?: string },
+  options: { poolOracle: true },
+): Promise<TokenDetailWithPoolOracle | null>;
+export async function getToken(
+  params: { tokenId?: string; slug?: string; network?: string },
+  options?: { poolOracle?: false },
+): Promise<TokenDetail | null>;
+export async function getToken(
+  params: { tokenId?: string; slug?: string; network?: string },
   options: { poolOracle?: boolean } = {},
-): Promise<TokenModel | null> {
-  const document = options.poolOracle ? GET_TOKEN_WITH_POOL_ORACLE_QUERY : GET_TOKEN_QUERY;
-  const data = await cachedRequest(tokenCache, document, {
-    tokenId: params.tokenId,
-    slug: params.slug,
-    network: params.network ?? NETWORK,
-  });
+): Promise<TokenDetail | TokenDetailWithPoolOracle | null> {
+  const variables = { tokenId: params.tokenId, slug: params.slug, network: params.network ?? NETWORK };
+  const data = options.poolOracle
+    ? await cachedRequest(tokenWithPoolOracleCache, GET_TOKEN_WITH_POOL_ORACLE_QUERY, variables)
+    : await cachedRequest(tokenCache, GET_TOKEN_QUERY, variables);
   return data.token;
 }
 
@@ -347,7 +376,7 @@ const GET_OPERATING_AGREEMENT_QUERY = gql`
   }
 `;
 
-const valuationCache = new TtlCache<{ token: TokenValuationModel | null }>();
+const valuationCache = new TtlCache<GetValuationQuery>();
 
 export async function getTokenValuation(
   params: { tokenId?: string; slug?: string },
@@ -411,14 +440,7 @@ function isSignedValuationPanel(body: unknown): body is SignedValuationPanel {
     && Array.isArray(body.valuations) && body.valuations.every(isSignedValuation);
 }
 
-export interface OperatingAgreementModel {
-  tokenId: string;
-  operatingAgreementName: string | null;
-  operatingAgreementUrl: string | null;
-  operatingAgreement: string | null;
-}
-
-const agreementCache = new TtlCache<{ token: OperatingAgreementModel | null }>();
+const agreementCache = new TtlCache<GetOperatingAgreementQuery>();
 
 /** The trust instrument attached to one token, as text. Single-token only: the API refuses it on lists. */
 export async function getOperatingAgreement(tokenId: string): Promise<OperatingAgreementModel | null> {
@@ -455,7 +477,7 @@ const GET_ORDER_BOOK_QUERY = gql`
 export async function getOrderBook(
   params: { tokenId?: string; slug?: string },
 ): Promise<OrderBookToken | null> {
-  const data = await request<{ token: OrderBookToken | null }>(GET_ORDER_BOOK_QUERY, {
+  const data = await request<GetOrderBookQuery>(GET_ORDER_BOOK_QUERY, {
     tokenId: params.tokenId,
     slug: params.slug,
     network: NETWORK,
@@ -473,7 +495,7 @@ const GET_PREMINT_SUCCESSOR_QUERY = gql`
 
 /** The live token that replaced a premint, for an old premint ID that no longer loads. */
 export async function getPremintSuccessor(tokenId: string): Promise<string | null> {
-  const data = await request<{ premintSuccessor: { tokenId: string } | null }>(GET_PREMINT_SUCCESSOR_QUERY, {
+  const data = await request<GetPremintSuccessorQuery>(GET_PREMINT_SUCCESSOR_QUERY, {
     network: NETWORK,
     tokenId,
   });
@@ -536,7 +558,7 @@ const GET_TRUST_DOCUMENTS_QUERY = gql`
 export async function getTrustDocuments(
   params: { tokenId?: string; slug?: string; withText: boolean },
 ): Promise<TrustDocumentsToken | null> {
-  const data = await request<{ token: TrustDocumentsToken | null }>(GET_TRUST_DOCUMENTS_QUERY, {
+  const data = await request<GetTrustDocumentsQuery>(GET_TRUST_DOCUMENTS_QUERY, {
     tokenId: params.tokenId,
     slug: params.slug,
     network: NETWORK,
@@ -563,7 +585,7 @@ const GET_TAX_STATUS_QUERY = gql`
   }
 `;
 
-const taxStatusCache = new TtlCache<{ token: TaxStatusToken | null }>();
+const taxStatusCache = new TtlCache<GetTaxStatusQuery>();
 
 export async function getTaxStatusToken(
   params: { tokenId?: string; slug?: string },
@@ -672,7 +694,7 @@ const GET_WALLET_QUERY = gql`
   }
 `;
 
-const walletCache = new TtlCache<{ wallet: WalletModel | null }>();
+const walletCache = new TtlCache<GetWalletQuery>();
 
 export async function getWallet(walletAddress: string): Promise<WalletModel | null> {
   // Scope the wallet (its tokens, loans and orders) to this deployment's network and
@@ -718,7 +740,7 @@ const GET_LOANS_QUERY = gql`
   }
 `;
 
-const loansCache = new TtlCache<{ loans: LoanModel[] }>();
+const loansCache = new TtlCache<GetLoansQuery>();
 
 export async function getLoans(
   filters: { network?: string; first?: number; skip?: number } = {},
@@ -758,7 +780,7 @@ export async function getLoanStartedEvents(
   first = 10,
   skip = 0,
 ): Promise<LoanStartedEvent[]> {
-  const data = await request<{ loanStartedEvents: LoanStartedEvent[] }>(GET_LOAN_STARTED_EVENTS_QUERY, {
+  const data = await request<GetLoanStartedEventsQuery>(GET_LOAN_STARTED_EVENTS_QUERY, {
     first,
     skip,
     networkIn: [NETWORK],
@@ -779,7 +801,7 @@ export async function getLoanRepaidEvents(
   first = 10,
   skip = 0,
 ): Promise<LoanRepaidEvent[]> {
-  const data = await request<{ loanRepaidEvents: LoanRepaidEvent[] }>(GET_LOAN_REPAID_EVENTS_QUERY, {
+  const data = await request<GetLoanRepaidEventsQuery>(GET_LOAN_REPAID_EVENTS_QUERY, {
     first,
     skip,
     networkIn: [NETWORK],
@@ -800,7 +822,7 @@ export async function getLoanLiquidatedEvents(
   first = 10,
   skip = 0,
 ): Promise<LoanLiquidatedEvent[]> {
-  const data = await request<{ loanLiquidatedEvents: LoanLiquidatedEvent[] }>(GET_LOAN_LIQUIDATED_EVENTS_QUERY, {
+  const data = await request<GetLoanLiquidatedEventsQuery>(GET_LOAN_LIQUIDATED_EVENTS_QUERY, {
     first,
     skip,
     networkIn: [NETWORK],
@@ -818,7 +840,7 @@ const GET_COUNTY_BOUNDS_QUERY = gql`
   }
 `;
 
-const countyBoundsCache = new TtlCache<{ countyBounds: CountyBoundsModel | null }>();
+const countyBoundsCache = new TtlCache<GetCountyBoundsQuery>();
 
 export async function getCountyBounds(fips: string): Promise<CountyBoundsModel | null> {
   const data = await cachedRequest(countyBoundsCache, GET_COUNTY_BOUNDS_QUERY, { fips });
@@ -842,20 +864,9 @@ const GET_PARCEL_INDEX_QUERY = gql`
   }
 `;
 
-export interface ParcelIndexToken {
-  tokenId: string;
-  name?: string | null;
-  vanityName?: string | null;
-  slug?: string | null;
-  propertyLink?: string | null;
-  regionCode?: string | null;
-  coordinates?: { lat: number; lon: number } | null;
-  definition?: { offchainRegistrar?: { admin?: string | null; propertyId?: string | null } | null } | null;
-}
-
 /** Every minted, unburned token with its state, APN and coordinates: what find_parcel matches against. */
 export async function getParcelIndex(): Promise<ParcelIndexToken[]> {
-  const data = await request<{ tokens: ParcelIndexToken[] }>(GET_PARCEL_INDEX_QUERY, {
+  const data = await request<GetParcelIndexQuery>(GET_PARCEL_INDEX_QUERY, {
     testnets: !IS_MAINNET,
     contractAddress: CONTRACTS.fabricaToken,
   });
