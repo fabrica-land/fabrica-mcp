@@ -147,7 +147,7 @@ export function createServer(): McpServer {
     "get_property_map",
     {
       title: "Get property boundary (GeoJSON)",
-      description: "Get GeoJSON boundary data for a tokenized property and its county, for mapping, spatial analysis, and visualization.",
+      description: "Get GeoJSON boundary data for a tokenized property, for mapping, spatial analysis, and visualization. The county boundary is added only with includeCountyBounds: true.",
       inputSchema: {
         tokenId: z.string().optional().describe("The token ID of the property"),
         slug: z.string().optional().describe("Property slug from the URL"),
