@@ -48,6 +48,7 @@ ui/
     tax.ts            # get_tax_status (also the taxes line on get_property)
     knowledge.ts      # ask_fabrica
     parcels.ts        # find_parcel (Regrid type-ahead via the API, /go on-ramp link, per-client limit)
+    support.ts        # contact_support (help center link, support email, prefilled mailto; nothing sent)
   knowledge/
     index.ts          # typed, validated loader for generated/index.json (committed)
     search.ts         # BM25 retrieval with Fabrica synonyms and compound-term normalization

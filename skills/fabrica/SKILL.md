@@ -39,6 +39,7 @@ Claude Code, mainnet: `claude mcp add --transport http fabrica https://mcp.fabri
 | `get_protocol_stats` | Protocol-wide counts and totals |
 | `ask_fabrica` | Cited passages from Fabrica's docs, help center and trust agreement for how Fabrica works |
 | `find_parcel` | Any US address or parcel number: the parcel, whether it is on Fabrica, and the on-ramp link if not |
+| `contact_support` | When the docs do not answer or a person is needed: the help center section, the support email and a prefilled email draft. Sends nothing; the person sends it |
 
 ## Loops
 

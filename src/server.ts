@@ -17,6 +17,7 @@ import { getTaxStatus } from "./tools/tax.js";
 import { askFabrica, ASK_FABRICA_SOURCES } from "./tools/knowledge.js";
 import { findParcel } from "./tools/parcels.js";
 import { registerPrompts } from "./prompts.js";
+import { contactSupport, SUPPORT_TOPICS } from "./tools/support.js";
 import { NETWORK_LABEL, IS_MAINNET, MAINNET_LEGAL_NOTICE } from "./config.js";
 import { PROPERTY_CARD_URI, registerPropertyCard } from "./ui/property-card.js";
 import { registerKnowledgeResources } from "./resources/knowledge.js";
@@ -25,7 +26,7 @@ const NETWORK_NOTICE = IS_MAINNET
   ? `\n\n${MAINNET_LEGAL_NOTICE}`
   : " Properties on this network are test tokens with no real-world legal or financial effect.";
 
-export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to tokenized US land on the Fabrica protocol, including property records, trust documents, US parcel lookup by address or parcel number, Property checks, parcel boundaries and maps, the lending market, borrow quotes, wallet portfolios and activity. Network: ${NETWORK_LABEL}. Company overview: https://about.fabrica.land. For questions about how Fabrica works (the trust, fees, Property checks, lending, taxes, the onramp, the legal framework) call ask_fabrica and cite the URL of the passage you relied on. When ask_fabrica returns no matching passage, say so and point to https://help.fabrica.land or questions@fabrica.land instead of guessing.${NETWORK_NOTICE}`;
+export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to tokenized US land on the Fabrica protocol, including property records, trust documents, US parcel lookup by address or parcel number, Property checks, parcel boundaries and maps, the lending market, borrow quotes, wallet portfolios and activity. Network: ${NETWORK_LABEL}. Company overview: https://about.fabrica.land. For questions about how Fabrica works (the trust, fees, Property checks, lending, taxes, the onramp, the legal framework) call ask_fabrica and cite the URL of the passage you relied on. When ask_fabrica returns no matching passage, say so and call contact_support (or point to https://help.fabrica.land or questions@fabrica.land) instead of guessing; contact_support sends nothing, so tell the person the email is theirs to send.${NETWORK_NOTICE}`;
 
 /**
  * MCP Apps (the property card) ship testnet-first: on by default on Sepolia, and on mainnet
@@ -352,6 +353,20 @@ export function createServer(): McpServer {
       annotations: readOnly("Find a US parcel"),
     },
     async (args) => jsonResult(await findParcel(args)),
+  );
+  server.registerTool(
+    "contact_support",
+    {
+      title: "Contact Fabrica support",
+      description: "Hand a question to Fabrica's support team when the documents (ask_fabrica) do not answer it or a person is needed: a stuck onramp, a document question, a dispute. Returns the help center section for the topic, the support email address, and a mailto link that drafts an email with the summary and the property link. Nothing is sent by this tool; the person sends the email and replies come back by email. Summaries containing a private key or seed phrase are refused.",
+      inputSchema: {
+        summary: z.string().min(10).max(2000).describe("What the person is trying to do, what happened, and what was already checked"),
+        topic: z.enum(SUPPORT_TOPICS).optional().describe("Help center section: getting_started, adding_property, buying_selling, borrowing_lending, trust_legal, troubleshooting, other (default)"),
+        tokenId: z.string().regex(/^[0-9]{1,80}$/).optional().describe("Token ID of the property the question is about (digits only)"),
+      },
+      annotations: readOnly("Contact Fabrica support"),
+    },
+    async (args) => jsonResult(contactSupport(args)),
   );
   registerKnowledgeResources(server);
   registerPrompts(server);
