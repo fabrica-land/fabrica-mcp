@@ -17,7 +17,7 @@ const OWNERSHIP_RULE = IS_MAINNET
   : "- These are test tokens: holding one is not ownership of any real property or of a beneficial interest in a trust. Never present a test token as legal ownership.";
 
 export const WORDING_RULES = `Wording for the answer:
-- The per-property verification is called Property checks. It is a starting point for diligence, not a title search, and the number is never a percentage, grade or rating.
+- The per-property verification is called Property checks. It is a starting point for your own research, not a title search or title insurance, and the number is never a percentage, grade or rating.
 - The in-app pool is the DeFi lending pool. NFTfi is a retired peer-to-peer integration and appears only as history.
 ${OWNERSHIP_RULE}
 - No fixed time and no "instantly" for money moving. Stablecoins are digital dollars.

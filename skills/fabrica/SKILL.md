@@ -1,6 +1,6 @@
 ---
 name: fabrica
-description: Look up, diligence and add US land on Fabrica, where each property is held in a trust and an ERC-1155 token on Ethereum is the beneficial interest in that trust. Use for questions about a Fabrica property, a parcel's Fabrica status, a wallet's land and loans, or how to put land on Fabrica.
+description: Look up, diligence and add US land on Fabrica. On Ethereum mainnet each property is held in a trust and an ERC-1155 token is the beneficial interest in that trust; on the Sepolia testnet tokens are test tokens with no ownership. Use for questions about a Fabrica property, a parcel's Fabrica status, a wallet's land and loans, or how to put land on Fabrica.
 ---
 
 # Fabrica
@@ -55,7 +55,7 @@ Claude Code, mainnet: `claude mcp add --transport http fabrica https://mcp.fabri
 - The token is the beneficial interest in the trust that holds the property. The trustee is designated by the token holder and is, by default, the holder.
 - Fabrica is not a party to the trust, never holds title, never custodies property, and never manages anyone's trust, property or loan.
 - Owners carry the land's obligations: property taxes, maintenance, liability. Transfers are legally binding and can be taxable.
-- Property checks are a starting point for diligence, not a title search. The number is never a percentage, grade or rating.
+- Property checks are a starting point for your own research, not a title search or title insurance. The number is never a percentage, grade or rating.
 - The operating agreement attached to each token sets out the owner's rights and obligations.
 - Facts, not advice: no buy, sell or borrow recommendation.
 
