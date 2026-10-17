@@ -14,6 +14,7 @@ import { getPropertyImage, getPortfolioImage } from "./tools/images.js";
 import { askFabrica, ASK_FABRICA_SOURCES } from "./tools/knowledge.js";
 import { NETWORK_LABEL, IS_MAINNET, MAINNET_LEGAL_NOTICE } from "./config.js";
 import { PROPERTY_CARD_URI, registerPropertyCard } from "./ui/property-card.js";
+import { registerKnowledgeResources } from "./resources/knowledge.js";
 
 const NETWORK_NOTICE = IS_MAINNET
   ? `\n\n${MAINNET_LEGAL_NOTICE}`
@@ -284,5 +285,6 @@ export function createServer(): McpServer {
     },
     async (args) => jsonResult(await askFabrica(args)),
   );
+  registerKnowledgeResources(server);
   return server;
 }

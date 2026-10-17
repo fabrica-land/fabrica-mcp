@@ -303,6 +303,19 @@ const GET_VALUATION_QUERY = gql`
   }
 `;
 
+// --- Operating agreement (trust instrument) for one token ---
+
+const GET_OPERATING_AGREEMENT_QUERY = gql`
+  query GetOperatingAgreement($tokenId: String, $network: String) {
+    token(tokenId: $tokenId, network: $network) {
+      tokenId
+      operatingAgreementName
+      operatingAgreementUrl
+      operatingAgreement
+    }
+  }
+`;
+
 export async function getTokenValuation(
   params: { tokenId?: string; slug?: string },
 ): Promise<TokenValuationModel | null> {
@@ -355,6 +368,19 @@ function isSignedValuation(value: unknown): boolean {
 function isSignedValuationPanel(body: unknown): body is SignedValuationPanel {
   return isRecord(body) && typeof body.asOf === "string"
     && Array.isArray(body.valuations) && body.valuations.every(isSignedValuation);
+}
+
+export interface OperatingAgreementModel {
+  tokenId: string;
+  operatingAgreementName: string | null;
+  operatingAgreementUrl: string | null;
+  operatingAgreement: string | null;
+}
+
+/** The trust instrument attached to one token, as text. Single-token only: the API refuses it on lists. */
+export async function getOperatingAgreement(tokenId: string): Promise<OperatingAgreementModel | null> {
+  const data = await request<{ token: OperatingAgreementModel | null }>(GET_OPERATING_AGREEMENT_QUERY, { tokenId, network: NETWORK });
+  return data.token;
 }
 
 // --- Wallet query ---
@@ -564,6 +590,7 @@ export const API_DOCUMENTS: ReadonlyArray<{ name: string; document: string }> = 
   { name: "GetToken", document: GET_TOKEN_QUERY },
   { name: "GetTokenWithPoolOracle", document: GET_TOKEN_WITH_POOL_ORACLE_QUERY },
   { name: "GetValuation", document: GET_VALUATION_QUERY },
+  { name: "GetOperatingAgreement", document: GET_OPERATING_AGREEMENT_QUERY },
   { name: "GetWallet", document: GET_WALLET_QUERY },
   { name: "GetLoans", document: GET_LOANS_QUERY },
   { name: "GetLoanStartedEvents", document: GET_LOAN_STARTED_EVENTS_QUERY },

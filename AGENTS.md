@@ -42,6 +42,9 @@ ui/
     index.ts          # typed, validated loader for generated/index.json (committed)
     search.ts         # BM25 retrieval with Fabrica synonyms and compound-term normalization
     facts.ts          # wording red lines the tests check the top passages against
+    documents.ts      # whole documents reassembled from the index, for resources
+  resources/
+    knowledge.ts      # fabrica://docs, fabrica://help, fabrica://legal, fabrica://property/{tokenId}/trust-agreement, fabrica://network
   clients/
     graphql.ts        # Fabrica GraphQL API client (primary data source)
     subgraph.ts       # Lending pool subgraph client (dynamic pool discovery)
