@@ -62,8 +62,8 @@ End with one table: input, matched address, county and state, APN, on Fabrica (t
 
 export function walletReviewPrompt(wallet: string): GetPromptResult {
   return prompt(`Review Fabrica wallet ${wallet}:
-1. get_portfolio: holdings, credit history, loan positions.
-2. get_property for each property held (the ones with active loans first; for a large wallet, the first 10 and say how many were left out): its Property checks from propertyChecks (passed of total) and, for each active loan, principal, APR, maturity date and the property it is against. List maturities in date order.
+1. get_portfolio: holdings, credit history, and active loans as borrower (lending.asBorrower) and as lender (lending.asLender), each with principal, APR, maturity date and collateral token.
+2. get_property for each property held (the ones with active loans first; for a large wallet, the first 10 and say how many were left out): its Property checks from propertyChecks (passed of total). For loans the wallet made, get_property on the collateralTokenId when the property behind the loan matters. List maturities in date order, borrowed and lent separately.
 3. get_activity for the wallet: recent transfers, sales and loans; offers made, if the activity shows them.
 4. get_portfolio_image for a map of the holdings, if the client shows images.
 Summarize what the wallet holds; as borrower, what it owes and when (principal, APR, maturity); as lender, what it is owed and when, kept separate from what it owes; and anything that needs attention soon (a loan near maturity, a property whose propertyChecks show fewer passed than total). Judge Property checks only from propertyChecks, never from the digits of the numeric encoding.`);
