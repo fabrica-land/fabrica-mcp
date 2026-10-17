@@ -40,11 +40,11 @@ Claude Code: `claude mcp add --transport http fabrica https://mcp.fabrica.land/m
 
 ## Loops
 
-**Due diligence on a property.** `get_property`, then `explain_confidence_score` with its score, then `get_tax_status`, `get_valuation` with its source, `get_order_book` and `get_trust_documents`, then `get_borrow_quote` and `get_activity`. Report each fact with its source. End with what to verify independently: the county record of the deed into the trust, a title search or title insurance, taxes paid to date. Never a buy recommendation.
+**Due diligence on a property.** `get_property` (its `propertyChecks` give how many Property checks pass), then `explain_confidence_score` with the numeric encoding of Property checks, then `get_tax_status`, `get_valuation` with its source, `get_order_book` and `get_trust_documents`, then `get_borrow_quote` and `get_activity`. Report each fact with its source. End with what to verify independently: the county record of the deed into the trust, a title search or title insurance, taxes paid to date. Never a buy recommendation.
 
 **Work a parcel list.** `find_parcel` once per address or parcel number (with state and county when known); re-run ambiguous ones with state and county. On Fabrica: token ID and property link. Not on Fabrica: the on-ramp link. One table at the end. `find_parcel` is limited to 30 calls per minute per client, so long lists go in batches.
 
-**Review a wallet.** `get_portfolio`, then each active loan's principal, APR and maturity with its property, then `get_activity`. Summarize holdings, what is owed and when, and what needs attention soon.
+**Review a wallet.** `get_portfolio`, then `get_property` for each holding (Property checks from `propertyChecks`, passed of total), each active loan's principal, APR and maturity with its property, then `get_activity`. Summarize holdings, what is owed and when, and what needs attention soon.
 
 **Add land.** `find_parcel` for the parcel; if it is not on Fabrica, the on-ramp link (`https://fabrica.land/go`, with the parcel filled in). The owner submits the property and how title is held, Fabrica reviews title, the owner verifies identity, a trust is created, the owner signs the deed and trust documents (normally with a remote online notary), the deed is recorded, and the token is issued. The setup fee is authorized up front and charged once, at the first sale, loan or use in another app. Steps: https://docs.fabrica.land/docs/on-ramp. Fees: https://docs.fabrica.land/docs/fees. Obligations: https://docs.fabrica.land/docs/property-obligations. Fabrica operates in all 50 states; the on-ramp page shows what each county requires.
 

@@ -32,7 +32,7 @@ function prompt(task: string): GetPromptResult {
 export function dueDiligencePrompt(tokenId: string): GetPromptResult {
   return prompt(`Run due diligence on Fabrica property ${tokenId} with the Fabrica tools, in this order:
 1. get_property: the record (location, acreage, owner wallet, trust and operating agreement link, listing, loans).
-2. explain_confidence_score with the property's score: which Property checks pass and which do not.
+2. Property checks: how many pass, from get_property's propertyChecks (passed of total), then explain_confidence_score with the numeric encoding of Property checks for what each group means. Never call the number a score, rating or percentage.
 3. get_tax_status: whether taxes are current, past due or unknown according to Property checks, and whether that limits borrowing.
 4. get_valuation: the value with its source and confidence level.
 5. get_order_book: the listing and the offers.
@@ -55,10 +55,10 @@ End with one table: input, matched address, county and state, APN, on Fabrica (t
 export function walletReviewPrompt(wallet: string): GetPromptResult {
   return prompt(`Review Fabrica wallet ${wallet}:
 1. get_portfolio: holdings, credit history, loan positions.
-2. For each active loan: principal, APR, maturity date, and the property it is against (get_property). List maturities in date order.
+2. get_property for each property held (the ones with active loans first; for a large wallet, the first 10 and say how many were left out): its Property checks from propertyChecks (passed of total) and, for each active loan, principal, APR, maturity date and the property it is against. List maturities in date order.
 3. get_activity for the wallet: recent transfers, sales and loans; offers made, if the activity shows them.
 4. get_portfolio_image for a map of the holdings, if the client shows images.
-Summarize what the wallet holds, what it owes and when, and anything that needs attention soon (a loan near maturity, a property whose Property checks are not all passing).`);
+Summarize what the wallet holds, what it owes and when, and anything that needs attention soon (a loan near maturity, a property whose propertyChecks show fewer passed than total). Judge Property checks only from propertyChecks, never from the digits of the numeric encoding.`);
 }
 
 export function howToAddLandPrompt(address: string): GetPromptResult {
