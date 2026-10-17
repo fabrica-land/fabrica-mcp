@@ -147,7 +147,8 @@ export async function getOrderBook({ tokenId, slug, status, minOfferUsd }: Order
       .map(order => ({ order, status: effectiveStatus(order, now) }))
       .filter(({ status }) => includeAll || LIVE_STATUSES.has(status));
     const listings = select(token.marketplaceListings).sort(byUsd(1));
-    const offers = select(token.marketplaceBids)
+    const selectedOffers = select(token.marketplaceBids);
+    const offers = selectedOffers
       .filter(({ order }) => minOfferUsd === undefined || (usdValue(order) ?? -1) >= minOfferUsd)
       .sort(byUsd(-1));
     const liveListings = listings.filter(({ status }) => LIVE_STATUSES.has(status));
@@ -157,13 +158,18 @@ export async function getOrderBook({ tokenId, slug, status, minOfferUsd }: Order
     if (replacedPremintTokenId) {
       notes.push(`Token ${replacedPremintTokenId} was a premint that has been replaced by minted token ${token.tokenId}; this is the minted token's order book.`);
     }
+    const legacyPool = liveListings.some(({ order }) => order.encumbrance?.blockReason === "LEGACY_POOL");
     if (underLoan) {
-      notes.push("The property is collateral for an active loan. A sale pays the loan off from the sale proceeds before the seller is paid.");
+      notes.push(legacyPool
+        ? "The property is collateral for an active loan in a lending pool that cannot be paid off by a third party, so the seller has to refinance or repay the loan before the property can be bought."
+        : "The property is collateral for an active loan. A sale pays the loan off from the sale proceeds before the seller is paid.");
     }
     if (token.isPremint) {
       notes.push("This property is a premint: its token has not been minted yet.");
     }
-    if (listings.length === 0 && offers.length === 0) {
+    if (listings.length === 0 && offers.length === 0 && selectedOffers.length > 0) {
+      notes.push(`No listings, and no offers at or above $${minOfferUsd ?? 0}; ${selectedOffers.length} lower or unpriced offer${selectedOffers.length === 1 ? " was" : "s were"} left out by minOfferUsd.`);
+    } else if (listings.length === 0 && offers.length === 0) {
       notes.push(includeAll ? "No listings or offers have been made on this property." : "No active listings or offers on this property.");
     }
     return {

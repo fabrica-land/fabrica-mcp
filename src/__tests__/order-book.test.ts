@@ -175,6 +175,22 @@ describe("get_order_book", () => {
     expect(result.offers.map(o => o.orderId)).toEqual(["0xbig"]);
   });
 
+  it("says offers were filtered out rather than that none exist", async () => {
+    vi.mocked(fetchOrderBook).mockResolvedValue(token({ marketplaceBids: [order({ usdPrice: "500.00" })] }));
+    const result = await getOrderBook({ tokenId: "1", minOfferUsd: 1000 });
+    expect(result).toMatchObject({ offers: [], notes: ["No listings, and no offers at or above $1000; 1 lower or unpriced offer was left out by minOfferUsd."] });
+  });
+
+  it("does not promise a payoff when the loan is in a pool that cannot be paid off by a third party", async () => {
+    vi.mocked(fetchOrderBook).mockResolvedValue(token({
+      supplyUnderLoan: "1",
+      marketplaceListings: [order({ side: "sell", status: "encumbered", encumbrance: { buyable: false, blockReason: "LEGACY_POOL", loanId: "7" } })],
+    }));
+    const text = JSON.stringify(await getOrderBook({ tokenId: "1" }));
+    expect(text).not.toContain("A sale pays the loan off");
+    expect(text).toContain("has to refinance or repay the loan before the property can be bought");
+  });
+
   it("explains a listing on a property under a loan", async () => {
     vi.mocked(fetchOrderBook).mockResolvedValue(token({
       supplyUnderLoan: "1",
