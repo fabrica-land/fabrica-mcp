@@ -3,6 +3,7 @@ import type { TokenModel } from "../types/index.js";
 import { NETWORK_LABEL, MAINNET_WARNING, IS_MAINNET, CONTRACTS } from "../config.js";
 import { LENDING_POOL_NAME, formatActivityAmount, formatActivitySource, formatLoanProvider, formatUsdcCeiling } from "../labels.js";
 import { propertyPhotos, propertyMapImage } from "./media.js";
+import { estimateFields, formatTokenAmount, sortLoans } from "../format.js";
 
 function formatUsd(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -41,7 +42,7 @@ function tokenToSummary(token: TokenModel) {
     },
     acres: token.acres ? parseFloat(token.acres) : null,
     confidenceScore: formatScore(token.score),
-    estimatedValue: formatUsd(token.estimatedValue),
+    ...estimateFields(token.estimatedValue),
     hasActiveListing: token.marketplacePrice !== null,
     listingPrice: token.marketplacePrice ? formatUsd(token.marketplacePrice) : null,
     hasActiveLoan: hasLoan,
@@ -178,8 +179,8 @@ export async function getProperty(args: Record<string, unknown>) {
         proofOfTitle: token.configuration?.proofOfTitle ?? null,
       },
       valuation: {
-        estimatedValue: formatUsd(token.estimatedValue),
-        displayValuation: token.cardDisplayValuation,
+        ...estimateFields(token.estimatedValue, token.pricing),
+        displayValuation: formatUsd(token.cardDisplayValuation),
         confidenceScore: formatScore(token.score),
         scoreBreakdown: token.scoringCheckResults.map(s => ({
           check: s.title,
@@ -205,10 +206,10 @@ export async function getProperty(args: Record<string, unknown>) {
         })) ?? [],
       },
       lending: {
-        activeLoans: activeLoans.map(l => ({
+        activeLoans: sortLoans(activeLoans).map(l => ({
           loanId: l.loanId,
           provider: formatLoanProvider(l.loanProvider),
-          principal: `${l.principalScaled} ${l.currencySymbol ?? ""}`.trim(),
+          principal: formatTokenAmount(l.principalScaled, l.currencySymbol),
           apr: l.aprPercent !== null ? `${l.aprPercent.toFixed(1)}%` : null,
           duration: l.durationFormatted,
           maturityDate: l.maturityDate,
@@ -258,7 +259,7 @@ export async function getProperty(args: Record<string, unknown>) {
 export async function getPropertyMap(args: Record<string, unknown>) {
   const tokenId = args.tokenId as string | undefined;
   const slug = args.slug as string | undefined;
-  const includeCountyBounds = (args.includeCountyBounds as boolean | undefined) ?? true;
+  const includeCountyBounds = (args.includeCountyBounds as boolean | undefined) ?? false;
   if (!tokenId && !slug) {
     return { error: "Either tokenId or slug is required" };
   }

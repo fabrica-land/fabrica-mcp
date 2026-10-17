@@ -151,7 +151,7 @@ export function createServer(): McpServer {
       inputSchema: {
         tokenId: z.string().optional().describe("The token ID of the property"),
         slug: z.string().optional().describe("Property slug from the URL"),
-        includeCountyBounds: z.boolean().optional().describe("Also return the county boundary polygon (default: true)"),
+        includeCountyBounds: z.boolean().optional().describe("Also return the county boundary polygon, a large decorative layer (default: false)"),
       },
       annotations: readOnly("Get property boundary (GeoJSON)"),
     },

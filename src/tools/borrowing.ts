@@ -1,12 +1,9 @@
 import { getToken } from "../clients/graphql.js";
 import { LENDING_POOL_NAME, formatLoanProvider, formatUsdcCeiling } from "../labels.js";
+import { estimateFields, formatDurationDays, formatRawTokenAmount, formatTokenAmount, formatUnixTime } from "../format.js";
 
-function formatUsd(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const num = parseFloat(value);
-  if (isNaN(num)) return null;
-  return `$${num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
+/** Pool loan amounts are raw USDC units (6 decimals). */
+const POOL_CURRENCY_DECIMALS = 6;
 
 function shortenAddress(addr: string | null | undefined): string | null {
   if (!addr) return null;
@@ -30,14 +27,14 @@ export async function getBorrowQuote(args: Record<string, unknown>) {
     const result: Record<string, unknown> = {
       tokenId: token.tokenId,
       name: token.name ?? token.vanityName,
-      estimatedValue: formatUsd(token.estimatedValue),
+      ...estimateFields(token.estimatedValue, token.pricing),
       hasActiveLoan,
     };
     if (hasActiveLoan) {
       result.currentLoans = activeLoans.map(l => ({
         loanId: l.loanId,
         provider: formatLoanProvider(l.loanProvider),
-        principal: `${l.principalScaled} ${l.currencySymbol ?? ""}`.trim(),
+        principal: formatTokenAmount(l.principalScaled, l.currencySymbol),
         apr: l.aprPercent !== null ? `${l.aprPercent.toFixed(1)}%` : null,
         maturityDate: l.maturityDate,
         borrower: shortenAddress(l.borrower?.address),
@@ -51,16 +48,28 @@ export async function getBorrowQuote(args: Record<string, unknown>) {
         available: true,
         // maxPrincipalScaled is whole USDC; maxPrincipalUsdc is raw 6-decimal units.
         maxBorrow: formatUsdcCeiling(pool.maxPrincipalScaled),
-        durations: pool.durations ?? [],
+        durations: (pool.durations ?? []).map(d => formatDurationDays(d)),
         hasExistingLoan: pool.activeLoan !== null,
         ...(pool.activeLoan ? {
           existingLoan: {
-            principal: pool.activeLoan.principal,
-            repayment: pool.activeLoan.repayment,
-            duration: pool.activeLoan.duration,
-            maturity: pool.activeLoan.maturity,
+            principal: formatRawTokenAmount(pool.activeLoan.principal, POOL_CURRENCY_DECIMALS, "USDC"),
+            repayment: formatRawTokenAmount(pool.activeLoan.repayment, POOL_CURRENCY_DECIMALS, "USDC"),
+            duration: formatDurationDays(pool.activeLoan.duration),
+            maturity: formatUnixTime(pool.activeLoan.maturity),
           },
         } : {}),
+        raw: {
+          maxPrincipalUsdc: pool.maxPrincipalUsdc,
+          durationsSeconds: pool.durations ?? [],
+          ...(pool.activeLoan ? {
+            existingLoan: {
+              principal: pool.activeLoan.principal,
+              repayment: pool.activeLoan.repayment,
+              durationSeconds: pool.activeLoan.duration,
+              maturityUnix: pool.activeLoan.maturity,
+            },
+          } : {}),
+        },
       };
     } else {
       result.lendingPool = {
