@@ -8,7 +8,8 @@ vi.mock("../clients/graphql.js", () => ({
 import { getToken } from "../clients/graphql.js";
 import { getActivity } from "../tools/activity.js";
 import { formatActivityAmount } from "../labels.js";
-import type { ActivityModel, TokenModel } from "../types/index.js";
+import type { ActivityModel } from "../types/index.js";
+import { tokenDetail } from "./fixtures.js";
 
 function makeActivity(overrides: Partial<ActivityModel>): ActivityModel {
   return {
@@ -64,7 +65,7 @@ describe("formatActivityAmount", () => {
 
 describe("get_activity amounts", () => {
   it("reports a Seaport MarketplaceSold at its USDC value", async () => {
-    const token = { tokenId: "2998852811793877500", name: "3705 Avondale Road", vanityName: null, activity: [SEAPORT_SALE] } as unknown as TokenModel;
+    const token = tokenDetail({ tokenId: "2998852811793877500", name: "3705 Avondale Road", vanityName: null, activity: [SEAPORT_SALE] });
     vi.mocked(getToken).mockResolvedValueOnce(token);
     const result = await getActivity({ tokenId: "2998852811793877500" });
     expect("events" in result ? result.events?.[0] : undefined).toMatchObject({ type: "MarketplaceSold", source: "Seaport", amount: "$4,950" });

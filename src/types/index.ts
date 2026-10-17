@@ -84,6 +84,8 @@ export type UserModel = WalletModel["user"];
 // --- Loans and loan events (GetLoans and the event queries) ---
 
 export type LoanModel = LoanFieldsFragment;
+/** The collateral summary a lending-market loan carries (`loan.token`). */
+export type LoanCollateralToken = NonNullable<LoanModel["token"]>;
 export type LoanStartedEvent = GetLoanStartedEventsQuery["loanStartedEvents"][number];
 export type LoanRepaidEvent = GetLoanRepaidEventsQuery["loanRepaidEvents"][number];
 export type LoanLiquidatedEvent = GetLoanLiquidatedEventsQuery["loanLiquidatedEvents"][number];

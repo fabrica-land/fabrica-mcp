@@ -1,12 +1,13 @@
 import { describe, it, expect, vi } from "vitest";
+import { tokenListItem } from "./fixtures.js";
 
 /** ENG-4995: search by county, groupBy, and links to the fabrica.land location pages. */
 
 const tokens = [
-  { tokenId: "1", name: "Lot 1", region: "Colorado", regionCode: "CO", district: "Costilla County", place: "San Luis", acres: "5", marketplacePrice: "10000", supplyUnderLoan: "0", score: 75342, estimatedValue: "9000", coordinates: null, majorityOwnerAddress: null, propertyLink: null },
-  { tokenId: "2", name: "Lot 2", region: "Colorado", regionCode: "CO", district: "Costilla County", place: "Fort Garland", acres: "35.5", marketplacePrice: null, supplyUnderLoan: "0", score: 75342, estimatedValue: "20000", coordinates: null, majorityOwnerAddress: null, propertyLink: null },
-  { tokenId: "3", name: "Lot 3", region: "Colorado", regionCode: "CO", district: "Huerfano County", place: null, acres: "40", marketplacePrice: "50000", supplyUnderLoan: "0", score: 75342, estimatedValue: "45000", coordinates: null, majorityOwnerAddress: null, propertyLink: null },
-  { tokenId: "4", name: "Lot 4", region: "Arizona", regionCode: "AZ", district: "Mohave County", place: "Kingman", acres: "1", marketplacePrice: null, supplyUnderLoan: "0", score: 75342, estimatedValue: "5000", coordinates: null, majorityOwnerAddress: null, propertyLink: null },
+  tokenListItem({ tokenId: "1", name: "Lot 1", region: "Colorado", regionCode: "CO", district: "Costilla County", place: "San Luis", acres: "5", marketplacePrice: "10000", supplyUnderLoan: "0", score: 75342, estimatedValue: "9000", majorityOwnerAddress: null }),
+  tokenListItem({ tokenId: "2", name: "Lot 2", region: "Colorado", regionCode: "CO", district: "Costilla County", place: "Fort Garland", acres: "35.5", marketplacePrice: null, supplyUnderLoan: "0", score: 75342, estimatedValue: "20000", majorityOwnerAddress: null }),
+  tokenListItem({ tokenId: "3", name: "Lot 3", region: "Colorado", regionCode: "CO", district: "Huerfano County", place: null, acres: "40", marketplacePrice: "50000", supplyUnderLoan: "0", score: 75342, estimatedValue: "45000", majorityOwnerAddress: null }),
+  tokenListItem({ tokenId: "4", name: "Lot 4", region: "Arizona", regionCode: "AZ", district: "Mohave County", place: "Kingman", acres: "1", marketplacePrice: null, supplyUnderLoan: "0", score: 75342, estimatedValue: "5000", majorityOwnerAddress: null }),
 ];
 
 vi.mock("../clients/graphql.js", () => ({
@@ -115,25 +116,25 @@ describe("grouped search review fixes", () => {
   });
 
   it("leaves tokens with no county out of county groups and counts them", async () => {
-    vi.mocked(getTokens).mockResolvedValueOnce([...tokens, noCounty] as never);
+    vi.mocked(getTokens).mockResolvedValueOnce([...tokens, noCounty]);
     const result = await searchProperties({ region: "CO", groupBy: "county" }) as { groups: Array<Record<string, unknown>>; ungroupedCount?: number };
     expect(result.groups.map(g => g.county)).toEqual(["Costilla County", "Huerfano County"]);
     expect(result.ungroupedCount).toBe(1);
-    expect(groupTokens([noCounty] as never, "county")).toEqual([]);
+    expect(groupTokens([noCounty], "county")).toEqual([]);
   });
 
   it("leaves tokens with no state out of state and county groups", async () => {
     const noState = { ...tokens[0], tokenId: "6", regionCode: null };
-    vi.mocked(getTokens).mockResolvedValueOnce([...tokens, noState] as never);
+    vi.mocked(getTokens).mockResolvedValueOnce([...tokens, noState]);
     const result = await searchProperties({ groupBy: "state" }) as { groups: Array<Record<string, unknown>>; ungroupedCount?: number };
     expect(result.groups.map(g => g.state)).toEqual(["CO", "AZ"]);
     expect(result.ungroupedCount).toBe(1);
-    expect(groupTokens([noState] as never, "county")).toEqual([]);
+    expect(groupTokens([noState], "county")).toEqual([]);
   });
 
   it("links the state page from the state code when the state name is blank", () => {
     const noName = { ...tokens[0], region: null };
-    expect(groupTokens([noName] as never, "county")[0].locationLink).toBe(`${PLATFORM_URL}/us/colorado/costilla-county`);
+    expect(groupTokens([noName], "county")[0].locationLink).toBe(`${PLATFORM_URL}/us/colorado/costilla-county`);
   });
 
   it("keeps the county page link when another filter removes every match", async () => {
