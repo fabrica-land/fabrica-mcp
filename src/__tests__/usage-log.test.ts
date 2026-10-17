@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { handleMcpHttpRequest } from "../http.js";
-import { classifyOutcome, describeRequest, scrub, trackUsage, type UsageLine } from "../usage-log.js";
+import { classifyOutcome, describeRequest, scrub, summarizeOnFabrica, trackUsage, type UsageLine } from "../usage-log.js";
 
 function isUsageLine(value: unknown): value is UsageLine {
   return typeof value === "object" && value !== null && "event" in value && value.event === "mcp_request";
@@ -68,11 +68,43 @@ describe("classifyOutcome", () => {
   });
 });
 
+describe("summarizeOnFabrica", () => {
+  it("says true, false or mixed, and nothing when no query settled", () => {
+    expect(summarizeOnFabrica(new Set())).toBeUndefined();
+    expect(summarizeOnFabrica(new Set([true]))).toBe(true);
+    expect(summarizeOnFabrica(new Set([false]))).toBe(false);
+    expect(summarizeOnFabrica(new Set([true, false]))).toBe("mixed");
+  });
+});
+
 describe("trackUsage", () => {
+  it("adds the on-Fabrica split to the line, and only the split", () => {
+    const spy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const res = new ServerResponse(new IncomingMessage(new Socket()));
+    const usage = trackUsage(res, "test-agent");
+    usage.recordCalls([{ method: "tools/call", tool: "find_parcel" }]);
+    usage.noteOnFabrica([true]);
+    usage.noteOnFabrica([false, false]);
+    res.emit("close");
+    const lines = usageLines(spy);
+    spy.mockRestore();
+    expect(lines[0]?.onFabrica).toBe("mixed");
+  });
+
+  it("leaves the split out when nothing was noted", () => {
+    const spy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const res = new ServerResponse(new IncomingMessage(new Socket()));
+    trackUsage(res, "test-agent").recordCalls([{ method: "tools/call", tool: "get_property" }]);
+    res.emit("close");
+    const lines = usageLines(spy);
+    spy.mockRestore();
+    expect(lines[0]).not.toHaveProperty("onFabrica");
+  });
+
   it("still logs one line, marked aborted, when the client disconnects before the response", () => {
     const spy = vi.spyOn(console, "log").mockImplementation(() => undefined);
     const res = new ServerResponse(new IncomingMessage(new Socket()));
-    trackUsage(res, "test-agent")([{ method: "tools/call", tool: "get_property" }]);
+    trackUsage(res, "test-agent").recordCalls([{ method: "tools/call", tool: "get_property" }]);
     res.emit("close");
     res.emit("close");
     const lines = usageLines(spy);
@@ -85,7 +117,7 @@ describe("trackUsage", () => {
   it("finds an error after a large result, even when the marker is split across writes", async () => {
     const spy = vi.spyOn(console, "log").mockImplementation(() => undefined);
     const server = createHttpServer((_req, res) => {
-      trackUsage(res, "test-agent")([{ method: "tools/call", tool: "get_property_image" }, { method: "tools/call", tool: "get_property" }]);
+      trackUsage(res, "test-agent").recordCalls([{ method: "tools/call", tool: "get_property_image" }, { method: "tools/call", tool: "get_property" }]);
       res.write(`[{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"image","data":"${"A".repeat(200_000)}"}]}},`);
       res.write('{"jsonrpc":"2.0","id":2,"result":{"content":[],"isEr');
       res.end('ror":true}}]');

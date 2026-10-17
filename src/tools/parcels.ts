@@ -411,10 +411,10 @@ function indexCandidate(token: ParcelIndexToken): ParcelCandidate {
 const SEARCH_DOWN = "The US parcel search is not answering right now";
 
 /** When the type-ahead fails: the properties already on Fabrica that the query names, from Fabrica's own records. */
-async function indexFallback(query: string, args: FindParcelArgs, failure: string) {
+async function indexFallback(query: string, args: FindParcelArgs, failure: string, loadIndex: IndexLoader) {
   let matches: ParcelIndexToken[];
   try {
-    matches = matchIndexByQuery(query, { state: args.state, county: args.county }, await getParcelIndex());
+    matches = matchIndexByQuery(query, { state: args.state, county: args.county }, await loadIndex());
   } catch {
     return { error: `${SEARCH_DOWN} (${failure}), and Fabrica's property records could not be read either. Try again shortly.` };
   }
@@ -425,28 +425,161 @@ async function indexFallback(query: string, args: FindParcelArgs, failure: strin
   // name), so a match here is a lead to confirm, never a parcel identity.
   return {
     query,
-    match: "unconfirmed",
+    match: "unconfirmed" as const,
     matchSource: "fabrica-index",
     candidates: matches.slice(0, MAX_CANDIDATES).map(indexCandidate),
     note: `${SEARCH_DOWN} (${failure}), so ${matches.length === 1 ? "this property was" : "these properties were"} matched against Fabrica's own records (the property name or its registrar parcel number), not the US parcel search. A name or parcel-number match is not a parcel-boundary check: say it is likely, not confirmed. get_property with the tokenId returns the record; try find_parcel again shortly to confirm.`,
   };
 }
 
+/** Queries one find_parcel call takes; each counts as one lookup against the per-client limit. */
+export const MAX_BATCH_QUERIES = 10;
+const BATCH_CONCURRENCY = 4;
+
+const queryText = z.string().min(3).max(200);
+
 export const findParcelInput = {
-  query: z.string().min(3).max(200).describe("Street address (with city and state when known) or parcel number (APN)"),
+  query: queryText.optional().describe("Street address (with city and state when known) or parcel number (APN). Give this or queries, not both"),
+  queries: z.array(queryText).min(1).max(MAX_BATCH_QUERIES, `find_parcel takes at most ${MAX_BATCH_QUERIES} queries per call; split the list into calls of ${MAX_BATCH_QUERIES}`).optional()
+    .describe(`Up to ${MAX_BATCH_QUERIES} addresses or parcel numbers sharing the same state and county scope; each counts as one lookup against the per-client limit. Returns one row per resolved query and an unresolved list with the reason`),
   state: z.string().regex(/^[A-Za-z]{2}$/).optional().describe("Two-letter US state code, e.g. 'AZ'"),
   county: z.string().max(80).optional().describe("County name, e.g. 'Navajo'"),
 };
 export type FindParcelArgs = ArgsOf<typeof findParcelInput>;
+type SingleArgs = Omit<FindParcelArgs, "queries"> & { query: string };
+type IndexLoader = () => Promise<ParcelIndexToken[]>;
+type SearchResult = Awaited<ReturnType<typeof searchParcel>>;
 
 /** find_parcel's answer. Every non-error result names the network and, on mainnet, carries the legal notice. */
 export async function findParcel(args: FindParcelArgs) {
-  const result = await searchParcel(args);
-  if ("error" in result) return result;
-  return { network: NETWORK_LABEL, ...result, ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}) };
+  return (await findParcelWithUsage(args)).result;
 }
 
-async function searchParcel(args: FindParcelArgs) {
+/**
+ * find_parcel's answer and, for the usage log, whether each settled query named a parcel on Fabrica.
+ * The flags carry no query text.
+ */
+export async function findParcelWithUsage(args: FindParcelArgs) {
+  const wrap = <T extends object>(result: T) => ({ network: NETWORK_LABEL, ...result, ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}) });
+  if (args.query !== undefined && args.queries !== undefined) {
+    return { result: { error: "Give query (one address or parcel number) or queries (a list of up to 10), not both." }, onFabrica: [] };
+  }
+  if (args.queries !== undefined) {
+    const batch = await searchBatch(args.queries, args);
+    return { result: wrap(batch.result), onFabrica: batch.onFabrica };
+  }
+  if (args.query === undefined) {
+    return { result: { error: "Give query: a street address (with city and state when known) or a parcel number (APN). For a list, give queries (up to 10)." }, onFabrica: [] };
+  }
+  const result = await searchParcel({ ...args, query: args.query }, getParcelIndex);
+  const flag = onFabricaFlag(result);
+  const answer = "error" in result ? result : { network: NETWORK_LABEL, ...result, ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}) };
+  return { result: answer, onFabrica: flag === null ? [] : [flag] };
+}
+
+/**
+ * Whether a query's answer named a parcel on Fabrica (true), settled on a parcel that is not (false), or
+ * settled nothing (null: an error, no match, an ambiguous list with no token, or a failed token check).
+ */
+export function onFabricaFlag(result: SearchResult): boolean | null {
+  if ("error" in result) return null;
+  if (result.match === "single") return result.parcel.onFabrica !== null ? true : "links" in result ? false : null;
+  return result.candidates.some((candidate) => candidate.onFabrica !== null) ? true : null;
+}
+
+export interface BatchRow {
+  query: string;
+  address: string;
+  place: string;
+  apn: string | null;
+  state: string | null;
+  county: string | null;
+  /** null: Fabrica's records could not be checked for this row. */
+  onFabrica: boolean | null;
+  tokenId?: string;
+  propertyLink?: string | null;
+  addToFabrica?: string;
+  coverage?: CoverageStatus;
+}
+
+export interface UnresolvedRow {
+  query: string;
+  reason: string;
+  candidates?: ParcelCandidate[];
+}
+
+function toRow(query: string, result: Extract<SearchResult, { match: "single" }>): BatchRow {
+  const { parcel } = result;
+  const row: BatchRow = {
+    query,
+    address: parcel.address,
+    place: parcel.place,
+    apn: parcel.apn,
+    state: parcel.state,
+    county: parcel.county,
+    onFabrica: onFabricaFlag(result),
+  };
+  if (parcel.onFabrica) Object.assign(row, { tokenId: parcel.onFabrica.tokenId, propertyLink: parcel.onFabrica.propertyLink });
+  if ("links" in result && result.links) row.addToFabrica = result.links.addToFabrica;
+  if ("coverage" in result && result.coverage) row.coverage = result.coverage.status;
+  return row;
+}
+
+function toUnresolved(query: string, result: SearchResult): UnresolvedRow {
+  if ("error" in result) return { query, reason: result.error ?? "The lookup failed." };
+  if (result.match === "ambiguous") return { query, reason: `${result.candidates.length} parcels match; the list's state and county (or a fuller address) narrow it to one.`, candidates: result.candidates };
+  if (result.match === "unconfirmed") return { query, reason: "The US parcel search is not answering; these Fabrica properties match by name or parcel number only, so they are likely, not confirmed.", candidates: result.candidates };
+  return { query, reason: result.note ?? "No US parcel matched." };
+}
+
+/** Runs `work` over `items`, at most `limit` at a time, keeping the input order. */
+async function mapLimited<T, R>(items: readonly T[], limit: number, work: (item: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = new Array(items.length);
+  // One iterator shared by every lane: each step hands the next item to whichever lane is free.
+  const queue = items.entries();
+  const lane = async (): Promise<void> => {
+    for (const [i, item] of queue) out[i] = await work(item);
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, lane));
+  return out;
+}
+
+/** A list of queries under one state and county scope: one row per resolved query, the rest unresolved with the reason. */
+async function searchBatch(queries: readonly string[], args: FindParcelArgs) {
+  // One read of Fabrica's records serves the whole list.
+  let index: Promise<ParcelIndexToken[]> | undefined;
+  const loadIndex: IndexLoader = () => (index ??= getParcelIndex());
+  const results = await mapLimited(queries, BATCH_CONCURRENCY, async (query) => ({
+    query,
+    result: await searchParcel({ state: args.state, county: args.county, query }, loadIndex),
+  }));
+  const rows: BatchRow[] = [];
+  const unresolved: UnresolvedRow[] = [];
+  const onFabrica: boolean[] = [];
+  for (const { query, result } of results) {
+    const flag = onFabricaFlag(result);
+    if (flag !== null) onFabrica.push(flag);
+    if (!("error" in result) && result.match === "single") rows.push(toRow(query, result));
+    else unresolved.push(toUnresolved(query, result));
+  }
+  const unchecked = rows.some((row) => row.onFabrica === null);
+  return {
+    result: {
+      queries: queries.length,
+      rows,
+      unresolved,
+      note: [
+        "One row per query that resolved to a single parcel: on Fabrica, tokenId and propertyLink (get_property returns the record); not on Fabrica, addToFabrica opens the on-ramp for that parcel, and nothing is created until a person opens it and decides there.",
+        unchecked ? "onFabrica null means Fabrica's records could not be checked for that row, so its on-ramp link is withheld; calling find_parcel again shortly retries it." : null,
+        unresolved.length > 0 ? "Unresolved queries: call find_parcel again with a fuller address, or with state and county." : null,
+        rows.some((row) => row.coverage !== undefined) ? `coverage is the county's on-ramp status as of ${COVERAGE_AS_OF}; check_coverage lists what it asks for.` : null,
+      ].filter(Boolean).join(" "),
+    },
+    onFabrica,
+  };
+}
+
+async function searchParcel(args: SingleArgs, loadIndex: IndexLoader) {
   const query = args.query.trim();
   if (query.length < 3) return { error: "The query needs at least 3 characters: a street address or a parcel number (APN)." };
   const scope = args.county ? resolveCounty(args.county, args.state) : null;
@@ -469,19 +602,19 @@ async function searchParcel(args: FindParcelArgs) {
     const second = retry !== null ? (await typeAhead(retry)).filter((hit) => inState(hit, args.state)) : [];
     inScope = second.length > 0 ? second : first;
   } catch (error) {
-    return indexFallback(query, args, error instanceof Error ? error.message : "unknown error");
+    return indexFallback(query, args, error instanceof Error ? error.message : "unknown error", loadIndex);
   }
   // A query that is a parcel number matching exactly one parcel in scope is that parcel.
   const exactApn = inScope.filter(isExactApn);
   // Several parcels sharing that exact number stay ambiguous: a score lead says nothing about which one is meant.
   const scoped = (exactApn.length > 0 ? exactApn : inScope).slice(0, MAX_CANDIDATES);
   if (scoped.length === 0) {
-    return { query, match: "none", candidates: [], note: `No US parcel matched${args.state && !scope ? ` in ${args.state.toUpperCase()}; adding the county scopes the search itself, not just its results` : ""}. A full street address with city and state, or a parcel number with state and county, narrows the search.` };
+    return { query, match: "none" as const, candidates: [], note: `No US parcel matched${args.state && !scope ? ` in ${args.state.toUpperCase()}; adding the county scopes the search itself, not just its results` : ""}. A full street address with city and state, or a parcel number with state and county, narrows the search.` };
   }
   let tokens: ParcelIndexToken[] = [];
   let indexNote: string | null = null;
   try {
-    tokens = await getParcelIndex();
+    tokens = await loadIndex();
   } catch {
     indexNote = "Could not check which of these parcels are already on Fabrica; onFabrica is null for all of them.";
   }
@@ -512,7 +645,7 @@ async function searchParcel(args: FindParcelArgs) {
   if (!top || !single) {
     return {
       query,
-      match: "ambiguous",
+      match: "ambiguous" as const,
       candidates: matched.map(({ hit, token }) => toCandidate(hit, token)),
       note: `Several parcels match. Calling find_parcel again with state (and county) narrows it to one.${indexNote ? ` ${indexNote}` : " onFabrica here comes from parcel numbers only; null means not confirmed on Fabrica, and the full check (including the parcel outline) runs once the search narrows to one parcel."}`,
     };
@@ -520,7 +653,7 @@ async function searchParcel(args: FindParcelArgs) {
   if (top.token) {
     return {
       query,
-      match: "single",
+      match: "single" as const,
       parcel: toCandidate(top.hit, top.token),
       note: "This parcel is on Fabrica. get_property with the tokenId returns its record.",
     };
@@ -529,7 +662,7 @@ async function searchParcel(args: FindParcelArgs) {
     // Without the token check the parcel may already be on Fabrica, so no on-ramp link.
     return {
       query,
-      match: "single",
+      match: "single" as const,
       parcel: toCandidate(top.hit, null),
       note: `${indexNote} The add-to-Fabrica link is withheld until that check succeeds; calling find_parcel again shortly retries it.`,
     };
@@ -541,7 +674,7 @@ async function searchParcel(args: FindParcelArgs) {
   if (byOutline) {
     return {
       query,
-      match: "single",
+      match: "single" as const,
       parcel: toCandidate(top.hit, byOutline),
       note: "A Fabrica property sits inside this parcel's boundary. get_property with the tokenId returns its record.",
     };
@@ -551,7 +684,7 @@ async function searchParcel(args: FindParcelArgs) {
   const coverage = countyKey ? { status: coverageStatus(countyKey), asOf: COVERAGE_AS_OF } : null;
   return {
     query,
-    match: "single",
+    match: "single" as const,
     parcel: toCandidate(top.hit, null),
     links: { addToFabrica },
     ...(coverage ? { coverage } : {}),

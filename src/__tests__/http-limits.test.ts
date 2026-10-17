@@ -47,6 +47,10 @@ describe("find_parcel per-client limit", () => {
     expect(countFindParcelCalls([call, { ...call, id: 2 }, { jsonrpc: "2.0", id: 3, method: "tools/list" }])).toBe(2);
     expect(countFindParcelCalls({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "get_property" } })).toBe(0);
     expect(countFindParcelCalls(undefined)).toBe(0);
+    // A list counts one lookup per query, capped at the most a call may carry.
+    expect(countFindParcelCalls({ ...call, params: { name: "find_parcel", arguments: { queries: ["a", "b", "c"] } } })).toBe(3);
+    expect(countFindParcelCalls({ ...call, params: { name: "find_parcel", arguments: { queries: Array.from({ length: 50 }, () => "a") } } })).toBe(10);
+    expect(countFindParcelCalls({ ...call, params: { name: "find_parcel", arguments: { queries: [] } } })).toBe(1);
   });
 
   it("answers 429 with a clear JSON-RPC error once the limit is spent", async () => {
