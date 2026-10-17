@@ -210,7 +210,7 @@ export function createServer(): McpServer {
     "get_order_book",
     {
       title: "Get order book",
-      description: "Get the marketplace order book for one property: the lowest active listing, all listings, and offers sorted from highest to lowest, each with price in USD and in its currency, seller or buyer, expiry (ISO 8601 and relative), any buyer restriction and disclosure documents. Shows whether the property is a premint and whether it is collateral for an active loan, which a sale pays off. Expired, canceled and filled orders are left out unless status is 'all'. Links to the property page, where offers are made.",
+      description: "Get the marketplace order book for one property: the lowest active listing, all listings, and offers sorted from highest to lowest, each with price in USD and in its currency, seller or buyer, expiry (ISO 8601 and relative), any buyer restriction and disclosure documents. Shows whether the property is a premint and whether it is collateral for an active loan, with what that means for a sale. Expired, canceled and filled orders are left out unless status is 'all'. Links to the property page, where offers are made.",
       inputSchema: {
         tokenId: z.string().optional().describe("The token ID of the property"),
         slug: z.string().optional().describe("Property slug from the URL"),
