@@ -20,11 +20,11 @@ search_properties, get_property (renders the property card), get_lending_market,
 
 **One-liner** (200 max):
 
-> Find vacant land and lots for sale in the US by state, county and acres. Look up any parcel by address or APN: property records, parcel maps, tax status, value, land loan quotes.
+> Find US land for sale, mostly vacant lots and acreage, by state, county and acres, with property records, parcel maps, tax status and borrowing estimates. Look up any US parcel by address or APN.
 
 **Description** (2,000 max):
 
-> Find vacant land, lots and acreage for sale across the US, and research any parcel by street address or APN (assessor parcel number). Fabrica gives Claude read-only access to its land marketplace and real estate data, with no account and no setup.
+> Find land for sale across the US, mostly vacant lots and acreage, and research each property's records, parcel map, taxes and value. Look up any US parcel by street address or APN (assessor parcel number) to see whether it is on Fabrica and whether its county is covered. Fabrica gives Claude read-only access to its land marketplace and real estate data, with no account and no setup.
 >
 > With it, Claude can:
 > - Search land for sale by state, county, acres, listing status and loan status
@@ -33,7 +33,7 @@ search_properties, get_property (renders the property card), get_lending_market,
 > - Explain a property's Property checks, check by check
 > - Return parcel boundaries as GeoJSON, and map images of a parcel or of every property a wallet holds
 > - Look up any US parcel by address or APN, and say whether its county can be brought onto Fabrica
-> - Estimate what a property could borrow with a land loan, and summarize the DeFi lending pool behind it
+> - Estimate what a property could borrow from the DeFi lending pool, and summarize that pool
 > - Show a wallet's portfolio and the onchain activity of a property, a wallet or the whole network
 > - Answer questions about how Fabrica works from its documentation and help center, with links to the source
 >
