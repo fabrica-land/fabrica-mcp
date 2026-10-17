@@ -8,6 +8,7 @@ import type {
   LoanLiquidatedEvent,
   CountyBoundsModel,
   OrderBookToken,
+  TrustDocumentsToken,
   SignedValuationPanel,
   TokenValuationModel,
 } from "../types/index.js";
@@ -248,7 +249,7 @@ const TOKEN_DETAIL_FIELDS = gql`
     imageUrlDark
     imageUrlLight
     mintedAt
-    operatingAgreement
+    operatingAgreementName
     operatingAgreementUrl
     majorityOwnerAddress
     majorityOwner { displayName profilePath }
@@ -482,6 +483,49 @@ export function isTokenNotFound(error: unknown): boolean {
   return error instanceof FabricaApiError && error.graphQLErrors.some(m => m.includes("No token or premint found"));
 }
 
+// --- Trust documents query ---
+
+const GET_TRUST_DOCUMENTS_QUERY = gql`
+  query GetTrustDocuments($tokenId: String, $slug: String, $network: String, $withText: Boolean!) {
+    token(tokenId: $tokenId, slug: $slug, network: $network) {
+      tokenId
+      network
+      contractAddress
+      name
+      vanityName
+      propertyLink
+      isPremint
+      district
+      regionCode
+      validator
+      metadataUri
+      operatingAgreementName
+      operatingAgreementUrl
+      operatingAgreement @include(if: $withText)
+      definition { claim holdingEntity offchainRegistrar { admin adminId country propertyId } }
+      configuration {
+        holdingEntityDate
+        proofOfTitle { document documentId documentName grantor source }
+        documents { type source description order }
+        media { type }
+      }
+    }
+  }
+`;
+
+/** The legal record of one token. The agreement text (about 150 KB) is fetched only when asked for. */
+export async function getTrustDocuments(
+  params: { tokenId?: string; slug?: string; withText: boolean },
+): Promise<TrustDocumentsToken | null> {
+  const data = await request<{ token: TrustDocumentsToken | null }>(GET_TRUST_DOCUMENTS_QUERY, {
+    tokenId: params.tokenId,
+    slug: params.slug,
+    network: NETWORK,
+    withText: params.withText,
+  });
+  return data.token;
+}
+
 // --- Wallet query ---
 
 const WALLET_FIELDS = gql`
@@ -693,6 +737,7 @@ export const API_DOCUMENTS: ReadonlyArray<{ name: string; document: string }> = 
   { name: "GetTokenWithPoolOracle", document: GET_TOKEN_WITH_POOL_ORACLE_QUERY },
   { name: "GetValuation", document: GET_VALUATION_QUERY },
   { name: "GetOperatingAgreement", document: GET_OPERATING_AGREEMENT_QUERY },
+  { name: "GetTrustDocuments", document: GET_TRUST_DOCUMENTS_QUERY },
   { name: "GetWallet", document: GET_WALLET_QUERY },
   { name: "GetLoans", document: GET_LOANS_QUERY },
   { name: "GetLoanStartedEvents", document: GET_LOAN_STARTED_EVENTS_QUERY },
