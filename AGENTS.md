@@ -21,6 +21,7 @@ src/
   server.ts           # createServer(): registers every tool
   index.ts            # stdio entrypoint (local installs)
   http.ts             # stateless Streamable HTTP handler (hosted)
+  usage-log.ts        # one structured log line per request, no arguments or IPs (docs/usage/)
   vercel.ts           # Vercel function entry, bundled by scripts/build-vercel.mjs
   ui/property-card.ts # registers the property card MCP App resource (ui://fabrica/property-card)
   ui/generated/       # gitignored: HTML built from /ui by scripts/build-ui.mjs
