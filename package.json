@@ -29,6 +29,7 @@
     "test:watch": "vitest",
     "schema:refresh": "node scripts/refresh-api-schema.mjs",
     "knowledge:build": "node scripts/build-knowledge.mjs",
+    "regression": "node scripts/regression/run.mjs",
     "knowledge:check": "node scripts/build-knowledge.mjs --check",
     "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
