@@ -70,6 +70,9 @@ describe("MCP prompts", () => {
       const text = promptText(testnet.walletReviewPrompt("0xabc"));
       expect(text).toContain("not ownership of any real property");
       expect(text).not.toContain("Owning a Fabrica token means owning");
+      const addLand = promptText(testnet.howToAddLandPrompt("1 Main St"));
+      expect(addLand).toContain("No trust is created");
+      expect(addLand).not.toContain("the deed is recorded at the county");
     } finally {
       vi.unstubAllEnvs();
       vi.resetModules();

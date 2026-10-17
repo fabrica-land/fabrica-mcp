@@ -33,6 +33,10 @@ function prompt(task: string): GetPromptResult {
   };
 }
 
+const VERIFY_ENDING = IS_MAINNET
+  ? 'End with "What to verify yourself": the county record of the deed into the trust, a title search or title insurance, taxes paid to date with the county, and anything a step could not answer.'
+  : 'End with "What to verify yourself": anything a step could not answer, and that on this test network the property is a test token, so county records, title and taxes do not apply.';
+
 export function dueDiligencePrompt(tokenId: string): GetPromptResult {
   return prompt(`Run due diligence on Fabrica property ${tokenId} with the Fabrica tools, in this order:
 1. get_property: the record (location, acreage, owner wallet, trust and operating agreement link, listing, loans).
@@ -43,7 +47,7 @@ export function dueDiligencePrompt(tokenId: string): GetPromptResult {
 6. get_trust_documents: the trust, the trust agreement, the legal description, the deed reference and the documents attached to the token.
 7. get_borrow_quote: the lending position and what the DeFi lending pool would lend.
 8. get_activity for the property: transfers, sales, loans.
-Write a short report with one section per step, each fact with the tool it came from. End with "What to verify yourself": the county record of the deed into the trust, a title search or title insurance, taxes paid to date with the county, and anything a step could not answer. No recommendation to buy.`);
+Write a short report with one section per step, each fact with the tool it came from. ${VERIFY_ENDING} No recommendation to buy.`);
 }
 
 export function workParcelListPrompt(parcels: string): GetPromptResult {
@@ -65,14 +69,18 @@ export function walletReviewPrompt(wallet: string): GetPromptResult {
 Summarize what the wallet holds, what it owes and when, and anything that needs attention soon (a loan near maturity, a property whose propertyChecks show fewer passed than total). Judge Property checks only from propertyChecks, never from the digits of the numeric encoding.`);
 }
 
+const ONRAMP_STEPS = IS_MAINNET
+  ? `Explain the on-ramp, from https://docs.fabrica.land/docs/on-ramp: the owner submits the property and how title is held, Fabrica (as validator) reviews title, the owner verifies identity, a trust is created to hold title, the owner signs the deed and trust documents (normally with a remote online notary), the deed is recorded at the county, and the token is issued. About 10 minutes online for the owner; the property page and listing are live from the start.
+4. Fees, from https://docs.fabrica.land/docs/fees: the setup fee is authorized when the property is added and charged once, at the first sale, loan or use in another app; it is waived if the property is removed unused. Current amounts: https://help.fabrica.land/en/articles/3305355-what-does-fabrica-cost.
+5. Obligations that stay with the owner (taxes, maintenance, liability): https://docs.fabrica.land/docs/property-obligations.`
+  : "This is the Sepolia test network: properties here are test tokens for trying the flow. No trust is created, no deed is signed or recorded, and nothing changes who owns the land. For the real on-ramp (title review, identity, trust, deed recording at the county), point to https://docs.fabrica.land/docs/on-ramp and Ethereum Mainnet.";
+
 export function howToAddLandPrompt(address: string): GetPromptResult {
   return prompt(`Explain how to add this land to Fabrica: ${address}
 
 1. Call find_parcel for it. If it is already on Fabrica, say so and link the property instead.
 2. Otherwise, give the on-ramp link from find_parcel (links.addToFabrica), or ${WEB}/go if it could not resolve the parcel.
-3. Explain the on-ramp, from https://docs.fabrica.land/docs/on-ramp: the owner submits the property and how title is held, Fabrica (as validator) reviews title, the owner verifies identity, a trust is created to hold title, the owner signs the deed and trust documents (normally with a remote online notary), the deed is recorded at the county, and the token is issued. About 10 minutes online for the owner; the property page and listing are live from the start.
-4. Fees, from https://docs.fabrica.land/docs/fees: the setup fee is authorized when the property is added and charged once, at the first sale, loan or use in another app; it is waived if the property is removed unused. Current amounts: https://help.fabrica.land/en/articles/3305355-what-does-fabrica-cost.
-5. Obligations that stay with the owner (taxes, maintenance, liability): https://docs.fabrica.land/docs/property-obligations.
+3. ${ONRAMP_STEPS}
 Fabrica operates in all 50 states; the on-ramp page shows what this county requires.`);
 }
 
