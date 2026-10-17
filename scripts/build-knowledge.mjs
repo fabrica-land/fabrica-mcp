@@ -176,15 +176,46 @@ function splitIntoPassages(text, pageTitle) {
     }
     if (chunk.trim()) passages.push({ sectionTitle: section.heading, text: chunk.trim() });
   }
-  return passages.filter((passage) => passage.text.replace(/\W/g, "").length >= 40);
+  // A fragment too short to retrieve on its own (a one-line clause, a signature block)
+  // is folded into its neighbour rather than dropped, so a document rebuilt from its
+  // passages is complete.
+  const merged = [];
+  for (const passage of passages) {
+    const previous = merged[merged.length - 1];
+    if (passage.text.replace(/\W/g, "").length < 40 && previous) {
+      previous.text = `${previous.text}\n\n${passage.sectionTitle !== previous.sectionTitle ? `## ${passage.sectionTitle}\n\n` : ""}${passage.text}`;
+      continue;
+    }
+    merged.push({ ...passage });
+  }
+  return merged;
 }
 
 function passageId(source, url, index) {
   return `${source}:${sha256(`${url}#${index}`).slice(0, 12)}`;
 }
 
+/**
+ * Passages the server must not emit even though a source page carries them. Fabrica's
+ * public wording never calls its code open source (AGENTS.md, Public Wording Rules); the
+ * trust agreement, a legal instrument under CC0, is a different matter and stays.
+ */
+// A clause that puts "open source" and "contract" or "code" together, in either order, whatever
+// the grammar ("the contracts are open source", "open-source lending-pool contracts"). A comma
+// ends the clause, so "the trust agreement is open source, and the contracts live on Ethereum" stays.
+const EXCLUDED_PASSAGE_PATTERNS = [
+  /open[- ]sourced?\b[^.,;:\n]{0,60}\b(contracts?|code|codebase)\b/i,
+  /\b(contracts?|code|codebase)\b[^.,;:\n]{0,60}\bopen[- ]sourced?\b/i,
+];
+
 function toPassages(source, title, url, updatedAt, text) {
-  return splitIntoPassages(text, title).map((passage, index) => ({
+  return splitIntoPassages(text, title)
+    .filter((passage) => {
+      const excluded = EXCLUDED_PASSAGE_PATTERNS.some((pattern) => pattern.test(passage.text));
+      if (excluded) console.warn(`knowledge: excluded a passage of ${url} (${passage.sectionTitle}) by wording rule`);
+      return !excluded;
+    })
+    .map((passage, index) => ({
     id: passageId(source, url, index),
     source,
     title,
@@ -215,10 +246,19 @@ async function readDocsFromDir(dir) {
   for (const file of files) {
     const markdown = await readFile(file, "utf8");
     const relative = path.relative(root, file);
-    const modified = (await stat(file)).mtime.toISOString().slice(0, 10);
-    pages.push({ relative, markdown, modified });
+    pages.push({ relative, markdown, modified: await lastCommitDate(dir, file) });
   }
   return pages;
+}
+
+/** The date of the commit that last touched a file in a checkout; empty when git cannot say. */
+async function lastCommitDate(dir, file) {
+  try {
+    const { stdout } = await run("git", ["-C", dir, "log", "-1", "--format=%cs", "--", path.relative(dir, file)]);
+    return stdout.trim();
+  } catch {
+    return "";
+  }
 }
 
 async function readDocsFromGitHub(repo, ref) {
@@ -228,7 +268,8 @@ async function readDocsFromGitHub(repo, ref) {
     if (entry.type !== "blob" || !entry.path.startsWith("docs/") || !entry.path.endsWith(".md")) continue;
     const blob = JSON.parse(await fetchText(`https://api.github.com/repos/${repo}/git/blobs/${entry.sha}`));
     const markdown = Buffer.from(blob.content, "base64").toString("utf8");
-    pages.push({ relative: entry.path.slice("docs/".length), markdown, modified: new Date().toISOString().slice(0, 10) });
+    // The blob API carries no history, so the page has no updated date on this path.
+    pages.push({ relative: entry.path.slice("docs/".length), markdown, modified: "" });
   }
   return pages;
 }
@@ -314,14 +355,14 @@ async function buildTrustAgreement() {
   const headSha = await resolveGitHubHead(config.repo, config.ref);
   const markdown = await fetchText(config.rawUrl.replace("{ref}", headSha ?? config.ref));
   const text = cleanDocsMarkdown(markdown.replace(/^#\s+.+\n/, ""));
-  // Pin by commit when the GitHub API answers, else by the content's own fingerprint, so
-  // `--check` still notices a changed agreement without a token.
-  const fingerprint = sha256(markdown);
+  // The pin is the content's own fingerprint, whether or not the GitHub API answered, so
+  // `--check` compares like with like across runs; the commit is recorded when known.
+  const fingerprint = `sha256:${sha256(markdown)}`;
   return {
     passages: toPassages("trust-agreement", config.title, config.url, headSha ? headSha.slice(0, 7) : "", text),
     documents: 1,
     commit: headSha,
-    pin: headSha ?? `sha256:${fingerprint}`,
+    pin: fingerprint,
   };
 }
 
@@ -351,7 +392,7 @@ const index = {
   sources: {
     docs: { url: "https://docs.fabrica.land", repo: sources.docs.repo, ref: sources.docs.ref, commit: docs.commit, documents: docs.documents },
     help: { url: "https://help.fabrica.land", documents: help.documents, fingerprint: help.fingerprint },
-    "trust-agreement": { url: sources["trust-agreement"].url, repo: sources["trust-agreement"].repo, commit: trust.commit, ...(trust.commit ? {} : { fingerprint: trust.pin }), documents: 1 },
+    "trust-agreement": { url: sources["trust-agreement"].url, repo: sources["trust-agreement"].repo, commit: trust.commit, fingerprint: trust.pin, documents: 1 },
   },
   passages,
 };

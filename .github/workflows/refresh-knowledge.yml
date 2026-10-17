@@ -33,6 +33,8 @@ jobs:
           ref: v3.0
           token: ${{ secrets.KNOWLEDGE_DOCS_TOKEN }}
           path: .knowledge-sources/docs
+          # Full history: page dates come from the last commit touching each file.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
