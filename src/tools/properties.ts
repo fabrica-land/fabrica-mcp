@@ -1,9 +1,12 @@
-import { getTokens, getToken, getCountyBounds, DEFAULT_MIN_SCORE, filterSpamTokens } from "../clients/graphql.js";
+import { getTokens, getToken, getCountyBounds, getPremintSuccessor, isTokenNotFound, DEFAULT_MIN_SCORE, filterSpamTokens } from "../clients/graphql.js";
 import type { TokenModel } from "../types/index.js";
 import { NETWORK_LABEL, MAINNET_WARNING, IS_MAINNET, CONTRACTS } from "../config.js";
 import { LENDING_POOL_NAME, formatActivityAmount, formatActivitySource, formatLoanProvider, formatUsdcCeiling } from "../labels.js";
 import { propertyPhotos, propertyMapImage } from "./media.js";
-import { estimateFields, formatTokenAmount, sortLoans, formatUsd, shortenAddress , capList } from "../format.js";
+import { estimateFields, formatTokenAmount, sortLoans, formatUsd, shortenAddress, capList } from "../format.js";
+import { locationLink, stateName } from "../links.js";
+import { propertyStage, describeStage } from "../lifecycle.js";
+import { summarizeFees } from "../fees.js";
 
 /** USD when the API supplies a USD price; otherwise the native amount and currency, never a guessed "$". */
 function formatOrderPrice(usdPrice: string | null, price: string | null, symbol: string | null): string | null {
@@ -29,13 +32,85 @@ function tokenToSummary(token: TokenModel) {
     hasActiveListing: token.marketplacePrice !== null,
     listingPrice: token.marketplacePrice ? formatUsd(token.marketplacePrice) : null,
     hasActiveLoan: hasLoan,
+    stage: propertyStage(token),
     owner: shortenAddress(token.majorityOwnerAddress),
     propertyLink: token.propertyLink,
   };
 }
 
+/** "Mohave County", "mohave county", "Mohave" → "mohave". */
+export function normalizeCounty(name: string | null | undefined): string {
+  return (name ?? "").trim().toLowerCase().replace(/\s+/g, " ").replace(/ county$/, "");
+}
+
+/** The name most tokens give for a field, ignoring blanks. */
+function mostCommon(values: ReadonlyArray<string | null | undefined>): string | null {
+  const counts = new Map<string, number>();
+  for (const v of values) {
+    const name = v?.trim();
+    if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  let best: string | null = null;
+  for (const [name, count] of counts) {
+    if (best === null || count > (counts.get(best) ?? 0)) best = name;
+  }
+  return best;
+}
+
+export type GroupBy = "state" | "county";
+
+/** The state or state|county a token groups under; null when the record lacks that location. */
+function groupKey(t: TokenModel, groupBy: GroupBy): string | null {
+  const state = t.regionCode?.trim().toUpperCase() ?? "";
+  if (!state) return null;
+  if (groupBy === "state") return state;
+  const county = normalizeCounty(t.district);
+  return county ? `${state}|${county}` : null;
+}
+
+/** Tokens a grouping leaves out because the API gives them no state (or no county, by county). */
+export function ungroupedCount(tokens: ReadonlyArray<TokenModel>, groupBy: GroupBy): number {
+  return tokens.filter(t => groupKey(t, groupBy) === null).length;
+}
+
+function optionalString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function optionalGroupBy(value: unknown): GroupBy | undefined {
+  return value === "state" || value === "county" ? value : undefined;
+}
+
+/** One row per state or county: counts, acres and the fabrica.land location page. */
+export function groupTokens(tokens: ReadonlyArray<TokenModel>, groupBy: GroupBy) {
+  const groups = new Map<string, TokenModel[]>();
+  for (const t of tokens) {
+    // A record with no state (or no county, by county) is not a location; ungroupedCount reports it.
+    const key = groupKey(t, groupBy);
+    if (key === null) continue;
+    const members = groups.get(key);
+    if (members) members.push(t);
+    else groups.set(key, [t]);
+  }
+  return [...groups.values()].map(members => {
+    const fullState = mostCommon(members.map(t => t.region)) ?? stateName(members[0].regionCode);
+    const county = groupBy === "county" ? mostCommon(members.map(t => t.district)) : null;
+    const acres = members.reduce((sum, t) => sum + (Number.parseFloat(t.acres ?? "") || 0), 0);
+    return {
+      state: members[0].regionCode,
+      ...(groupBy === "county" ? { county } : {}),
+      properties: members.length,
+      forSale: members.filter(t => t.marketplacePrice !== null).length,
+      totalAcres: Math.round(acres * 100) / 100,
+      locationLink: locationLink({ state: fullState, county }),
+    };
+  }).sort((a, b) => b.properties - a.properties || String(a.county ?? a.state).localeCompare(String(b.county ?? b.state)));
+}
+
 export async function searchProperties(args: Record<string, unknown>) {
   const region = args.region as string | undefined;
+  const county = optionalString(args.county);
+  const groupBy = optionalGroupBy(args.groupBy);
   const minAcres = args.minAcres as number | undefined;
   const maxAcres = args.maxAcres as number | undefined;
   const minScore = args.minScore as number | undefined;
@@ -61,6 +136,12 @@ export async function searchProperties(args: Record<string, unknown>) {
       const upper = region.toUpperCase();
       tokens = tokens.filter(t => t.regionCode?.toUpperCase() === upper);
     }
+    if (county) {
+      const wanted = normalizeCounty(county);
+      tokens = tokens.filter(t => normalizeCounty(t.district) === wanted);
+    }
+    // The location page is named from the region/county matches, before other filters can empty the list.
+    const locationTokens = tokens;
     if (minAcres !== undefined) {
       tokens = tokens.filter(t => t.acres !== null && parseFloat(t.acres) >= minAcres);
     }
@@ -71,12 +152,37 @@ export async function searchProperties(args: Record<string, unknown>) {
       tokens = tokens.filter(t => parseInt(t.supplyUnderLoan || "0") > 0);
     }
     const total = tokens.length;
+    // The page for the location asked about: names as the matches spell them, else from the filter.
+    const states = new Set(locationTokens.map(t => t.regionCode?.toUpperCase()));
+    const counties = new Set(locationTokens.map(t => normalizeCounty(t.district)));
+    const linkState = region ? stateName(region) ?? mostCommon(locationTokens.map(t => t.region)) : states.size === 1 ? mostCommon(locationTokens.map(t => t.region)) ?? stateName([...states][0]) : null;
+    const linkCounty = county ? mostCommon(locationTokens.map(t => t.district)) ?? `${county.trim().replace(/\s+county$/i, "")} County` : null;
+    const link = (region || county) && linkState && (!county || counties.size <= 1)
+      ? { locationLink: locationLink({ state: linkState, county: linkCounty }) }
+      : {};
+    if (groupBy) {
+      const groups = groupTokens(tokens, groupBy);
+      const groupPage = groups.slice(offset, offset + limit);
+      const ungrouped = ungroupedCount(tokens, groupBy);
+      return {
+        network: NETWORK_LABEL,
+        ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
+        total,
+        ...link,
+        groupBy,
+        totalGroups: groups.length,
+        showing: groupPage.length > 0 ? `${offset + 1}-${offset + groupPage.length} of ${groups.length}` : `none: offset ${offset} is past the last of ${groups.length} groups`,
+        groups: groupPage,
+        ...(ungrouped > 0 ? { ungroupedCount: ungrouped, ungroupedNote: `${ungrouped} matching ${ungrouped === 1 ? "property has" : "properties have"} no ${groupBy === "county" ? "state or county" : "state"} in the record and ${ungrouped === 1 ? "is" : "are"} not in any group.` } : {}),
+      };
+    }
     const page = tokens.slice(offset, offset + limit);
     if (page.length === 0) {
       return {
         network: NETWORK_LABEL,
         ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
         total,
+        ...link,
         properties: [],
         message: total > 0
           ? `No more results: ${total} properties match, and offset ${offset} is past the end.`
@@ -87,6 +193,7 @@ export async function searchProperties(args: Record<string, unknown>) {
       network: NETWORK_LABEL,
       ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
       total,
+      ...link,
       showing: `${offset + 1}-${offset + page.length} of ${total}`,
       properties: page.map(tokenToSummary),
     };
@@ -111,6 +218,48 @@ function getRecoveryStatus(score: number | null): { value: number; label: string
 const MAX_HOLDERS = 25;
 const MAX_ORDERS = 20;
 
+/**
+ * A premint that was replaced by a minted token no longer loads by its old ID; the API
+ * answers "No token or premint found". Follow it to the live successor, as the web app
+ * does for an old link.
+ */
+async function getTokenOrSuccessor(tokenId: string | undefined, slug: string | undefined): Promise<{ token: TokenModel | null; replacedPremintTokenId: string | null }> {
+  try {
+    return { token: await getToken({ tokenId, slug }), replacedPremintTokenId: null };
+  } catch (e) {
+    if (!tokenId || !isTokenNotFound(e)) throw e;
+    const successorId = await getPremintSuccessor(tokenId);
+    if (!successorId) throw e;
+    return { token: await getToken({ tokenId: successorId }), replacedPremintTokenId: tokenId };
+  }
+}
+
+function lifecycleOf(token: TokenModel, replacedPremintTokenId: string | null) {
+  const stage = propertyStage(token);
+  return {
+    stage,
+    description: describeStage(stage),
+    ...(token.claimState ? { claimState: token.claimState } : {}),
+    ...(token.supersededByTokenId ? { successorTokenId: token.supersededByTokenId } : {}),
+    ...(replacedPremintTokenId ? { replacesPremintTokenId: replacedPremintTokenId, note: `Token ${replacedPremintTokenId} was a premint that has been replaced by this minted token.` } : {}),
+    ...(token.offRampStatus ? { offRampStatus: token.offRampStatus } : {}),
+  };
+}
+
+function flagsOf(token: TokenModel): string[] {
+  const flags: string[] = [];
+  const duplicates = token.duplicateParcelCount ?? 0;
+  if (duplicates > 0) {
+    flags.push(duplicates === 1
+      ? "Another token on Fabrica claims the same parcel (same county APN and holding trust)."
+      : `${duplicates} other tokens on Fabrica claim the same parcel (same county APN and holding trust).`);
+  }
+  if (token.fishy) {
+    flags.push("The Fabrica marketplace does not sell this property: its Property checks are below the marketplace threshold, or its proof of title is not verified.");
+  }
+  return flags;
+}
+
 export async function getProperty(args: Record<string, unknown>) {
   const tokenId = args.tokenId as string | undefined;
   const slug = args.slug as string | undefined;
@@ -118,7 +267,7 @@ export async function getProperty(args: Record<string, unknown>) {
     return { error: "Either tokenId or slug is required" };
   }
   try {
-    const token = await getToken({ tokenId, slug });
+    const { token, replacedPremintTokenId } = await getTokenOrSuccessor(tokenId, slug);
     if (!token) {
       return { error: `No property found with ${tokenId ? `token ID ${tokenId}` : `slug ${slug}`}` };
     }
@@ -129,6 +278,8 @@ export async function getProperty(args: Record<string, unknown>) {
     const listings = capList(activeListings, MAX_ORDERS);
     const bids = capList(activeBids, MAX_ORDERS);
     const recovery = getRecoveryStatus(token.score);
+    const fees = summarizeFees(token.fees, token.propertyLink);
+    const flags = flagsOf(token);
     const warnings: string[] = [];
     if (recovery && recovery.value !== 7) {
       warnings.push(`Recovery status: ${recovery.label}; the property may be disputed or voided`);
@@ -147,6 +298,9 @@ export async function getProperty(args: Record<string, unknown>) {
       name: token.name ?? token.vanityName,
       propertyLink: token.propertyLink,
       isPremint: token.isPremint,
+      lifecycle: lifecycleOf(token, replacedPremintTokenId),
+      ...(fees ? { fees } : {}),
+      ...(flags.length > 0 ? { flags } : {}),
       recoveryStatus: recovery,
       ...(warnings.length > 0 ? { warnings } : {}),
       location: {

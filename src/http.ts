@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createServer } from "./server.js";
+import { describeRequest, trackUsage } from "./usage-log.js";
 
 /**
  * Origin policy: this public server serves only public, read-only data and holds no
@@ -74,6 +75,7 @@ export async function handleMcpHttpRequest(req: McpHttpRequest, res: ServerRespo
     sendJsonRpcError(res, 405, -32000, "Method not allowed. This server is stateless: send MCP JSON-RPC messages with POST.");
     return;
   }
+  const recordCalls = trackUsage(res, req.headers["user-agent"]);
   let body: unknown;
   try {
     body = await readJsonBody(req);
@@ -85,6 +87,7 @@ export async function handleMcpHttpRequest(req: McpHttpRequest, res: ServerRespo
     }
     return;
   }
+  recordCalls(describeRequest(body));
   const server = createServer();
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
   res.on("close", () => {

@@ -7,6 +7,7 @@ import type {
   LoanRepaidEvent,
   LoanLiquidatedEvent,
   CountyBoundsModel,
+  OrderBookToken,
   SignedValuationPanel,
   TokenValuationModel,
 } from "../types/index.js";
@@ -136,6 +137,9 @@ const TOKENS_LIST_FIELDS = gql`
     supplyUnderLoan
     isPremint
     isBurned
+    claimState
+    supersededByTokenId
+    offRampStatus
     majorityOwnerAddress
   }
 `;
@@ -227,7 +231,13 @@ const TOKEN_DETAIL_FIELDS = gql`
     supplyInDefault
     isPremint
     isClaimedPremint
+    claimState
+    supersededByTokenId
+    offRampStatus
     isBurned
+    fishy
+    duplicateParcelCount
+    fees { totalAmount fees { type createdAt currency amount approved approvedAt paid paidAt } }
     score
     scoringCheckResults { checkName group title value }
     validator
@@ -411,6 +421,65 @@ const agreementCache = new TtlCache<{ token: OperatingAgreementModel | null }>()
 export async function getOperatingAgreement(tokenId: string): Promise<OperatingAgreementModel | null> {
   const data = await cachedRequest(agreementCache, GET_OPERATING_AGREEMENT_QUERY, { tokenId, network: NETWORK });
   return data.token;
+}
+
+// --- Order book ---
+
+const ORDER_BOOK_ORDER_FIELDS = gql`
+  fragment OrderBookOrderFields on MarketplaceOrderModel {
+    marketplaceId side status price usdPrice symbol decimals feeBps supply
+    startTime endTime makerAddress maker { user { displayName } }
+    restrictedToAddresses
+    disclosurePackage { name url }
+    encumbrance { buyable blockReason loanId }
+  }
+`;
+
+const GET_ORDER_BOOK_QUERY = gql`
+  ${ORDER_BOOK_ORDER_FIELDS}
+  query GetOrderBook($tokenId: String, $slug: String, $network: String) {
+    token(tokenId: $tokenId, slug: $slug, network: $network) {
+      tokenId name vanityName propertyLink
+      isPremint claimState supersededByTokenId offRampStatus isBurned
+      supply supplyUnderLoan
+      marketplaceListings { ...OrderBookOrderFields }
+      marketplaceBids { ...OrderBookOrderFields }
+    }
+  }
+`;
+
+/** One token's listings and offers, every status: the tool filters, so `status: all` needs no second call. */
+export async function getOrderBook(
+  params: { tokenId?: string; slug?: string },
+): Promise<OrderBookToken | null> {
+  const data = await request<{ token: OrderBookToken | null }>(GET_ORDER_BOOK_QUERY, {
+    tokenId: params.tokenId,
+    slug: params.slug,
+    network: NETWORK,
+  });
+  return data.token;
+}
+
+const GET_PREMINT_SUCCESSOR_QUERY = gql`
+  query GetPremintSuccessor($network: String!, $tokenId: String!) {
+    premintSuccessor(network: $network, tokenId: $tokenId) {
+      tokenId
+    }
+  }
+`;
+
+/** The live token that replaced a premint, for an old premint ID that no longer loads. */
+export async function getPremintSuccessor(tokenId: string): Promise<string | null> {
+  const data = await request<{ premintSuccessor: { tokenId: string } | null }>(GET_PREMINT_SUCCESSOR_QUERY, {
+    network: NETWORK,
+    tokenId,
+  });
+  return data.premintSuccessor?.tokenId ?? null;
+}
+
+/** The API answers a non-null `token(...)` query for an unknown ID with this GraphQL error, not with null. */
+export function isTokenNotFound(error: unknown): boolean {
+  return error instanceof FabricaApiError && error.graphQLErrors.some(m => m.includes("No token or premint found"));
 }
 
 // --- Wallet query ---
@@ -630,4 +699,6 @@ export const API_DOCUMENTS: ReadonlyArray<{ name: string; document: string }> = 
   { name: "GetLoanRepaidEvents", document: GET_LOAN_REPAID_EVENTS_QUERY },
   { name: "GetLoanLiquidatedEvents", document: GET_LOAN_LIQUIDATED_EVENTS_QUERY },
   { name: "GetCountyBounds", document: GET_COUNTY_BOUNDS_QUERY },
+  { name: "GetOrderBook", document: GET_ORDER_BOOK_QUERY },
+  { name: "GetPremintSuccessor", document: GET_PREMINT_SUCCESSOR_QUERY },
 ];
