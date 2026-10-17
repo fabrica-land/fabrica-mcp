@@ -45,7 +45,7 @@ export function dueDiligencePrompt(tokenId: string): GetPromptResult {
 4. get_valuation: the value with its source and confidence level.
 5. get_order_book: the listing and the offers.
 6. get_trust_documents: the trust, the trust agreement, the legal description, the deed reference and the documents attached to the token.
-7. get_borrow_quote: the lending position and what the DeFi lending pool would lend.
+7. get_borrow_quote: the lending position, what the DeFi lending pool would lend, and from toRaise what would raise that amount (each lever with the step that moves it, stated as facts).
 8. get_activity for the property: transfers, sales, loans.
 Write a short report with one section per step, each fact with the tool it came from. ${VERIFY_ENDING} No recommendation to buy.`);
 }

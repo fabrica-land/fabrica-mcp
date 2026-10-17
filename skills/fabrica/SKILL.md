@@ -31,7 +31,7 @@ Claude Code, mainnet: `claude mcp add --transport http fabrica https://mcp.fabri
 | `get_property_map` | Parcel boundary as GeoJSON |
 | `get_property_image` | Map image of the parcel |
 | `explain_confidence_score` | What each verification group's value means, decoded from the numeric encoding of Property checks (pass counts come from `get_property`'s `propertyChecks`) |
-| `get_borrow_quote` | What the DeFi lending pool would lend against a property, and what limits it (`limits.limitedBy`): a small amount is often the pool's free liquidity, not a valuation |
+| `get_borrow_quote` | What the DeFi lending pool would lend against a property, and what limits it (`limits.limitedBy`): a small amount is often the pool's free liquidity, not a valuation. `toRaise` says what would raise it: each lever, what it would allow, and the step that moves it |
 | `get_lending_market` | Loans, pool liquidity, average APR |
 | `get_portfolio` | A wallet's holdings, credit history and loans |
 | `get_portfolio_image` | Map of a wallet's holdings |
@@ -44,7 +44,7 @@ Claude Code, mainnet: `claude mcp add --transport http fabrica https://mcp.fabri
 
 ## Loops
 
-**Due diligence on a property.** `get_property` (its `propertyChecks` give how many Property checks pass), then `explain_confidence_score` with the numeric encoding of Property checks, then `get_tax_status`, `get_valuation` with its source, `get_order_book` and `get_trust_documents`, then `get_borrow_quote` and `get_activity`. Report each fact with its source. End with what to verify independently: the county record of the deed into the trust, a title search or title insurance, taxes paid to date. Never a buy recommendation.
+**Due diligence on a property.** `get_property` (its `propertyChecks` give how many Property checks pass), then `explain_confidence_score` with the numeric encoding of Property checks, then `get_tax_status`, `get_valuation` with its source, `get_order_book` and `get_trust_documents`, then `get_borrow_quote` (when the amount is small or zero, its `toRaise` gives each lever and the step that clears it) and `get_activity`. Report each fact with its source. End with what to verify independently: the county record of the deed into the trust, a title search or title insurance, taxes paid to date. Never a buy recommendation.
 
 **Work a parcel list.** `find_parcel` once per address or parcel number (with state and county when known); re-run ambiguous ones with state and county. On Fabrica: token ID and property link. Not on Fabrica: the on-ramp link. One table at the end. `find_parcel` is limited to 30 calls per minute per client, so long lists go in batches.
 

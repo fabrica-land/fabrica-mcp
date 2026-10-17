@@ -2,17 +2,21 @@ import { getToken, propertyLookupError } from "../clients/graphql.js";
 import { LENDING_POOL_NAME, describeAppraisalBlock, formatLoanProvider, formatUsdcCeiling } from "../labels.js";
 import { estimateFields, formatDurationDays, formatRawTokenAmount, formatTokenAmount, formatUnixTime, shortenAddress } from "../format.js";
 import { describePoolOracle, zeroCapacityReasons } from "./valuation.js";
-import { bindingConstraint, collateralPriceUsd, describeAppraisalDerivation } from "./borrow-limits.js";
+import { bindingConstraint, collateralPriceUsd, describeAppraisalDerivation, raiseLevers } from "./borrow-limits.js";
+import { z } from "zod";
 import { type ArgsOf, propertyRefInputs } from "./inputs.js";
 
 /** Pool loan amounts are raw USDC units (6 decimals). */
 const POOL_CURRENCY_DECIMALS = 6;
 
-export const getBorrowQuoteInput = propertyRefInputs;
+export const getBorrowQuoteInput = {
+  ...propertyRefInputs,
+  amountUsd: z.number().positive().optional().describe("A loan amount in USD to test: toRaise then says what collateral price the pool's highest loan-to-value needs for it, and how much more pool liquidity it needs"),
+};
 export type GetBorrowQuoteArgs = ArgsOf<typeof getBorrowQuoteInput>;
 
 export async function getBorrowQuote(args: GetBorrowQuoteArgs) {
-  const { tokenId, slug } = args;
+  const { tokenId, slug, amountUsd } = args;
   if (!tokenId && !slug) {
     return { error: "Either tokenId or slug is required" };
   }
@@ -94,6 +98,17 @@ export async function getBorrowQuote(args: GetBorrowQuoteArgs) {
         pools: pool.pools ?? [],
       });
     }
+    const toRaise = raiseLevers({
+      maxBorrowUsd: hasCapacity ? capacity : 0,
+      hasActiveLoan: hasActiveLoan || (pool?.activeLoan ?? null) !== null,
+      isPremint: token.isPremint,
+      appraisalBlockReason: pool?.appraisalBlockReason,
+      checks: token.scoringCheckResults ?? [],
+      pricing: token.pricing,
+      pools: pool?.pools ?? [],
+      amountUsd,
+    });
+    if (toRaise.length > 0) result.toRaise = toRaise;
     if (pool?.pools && pool.pools.length > 0) {
       result.oracle = pool.pools.map(p => {
         // Only a signed quote is the API's appraisal; an onchain oracle price comes from the aggregator.
