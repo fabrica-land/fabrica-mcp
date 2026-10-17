@@ -228,7 +228,7 @@ Then configure your MCP client with `node /path/to/fabrica-mcp/dist/index.js`.
 |---|---|
 | https://docs.fabrica.land | User-facing concepts, trust structure, lending mechanics |
 | https://api.fabrica.land/graphql | The public GraphQL API (introspection enabled). `schema/api-schema.graphql` is a checked-in snapshot; refresh with `npm run schema:refresh` |
-| `fabrica-land/fabrica-contracts` | Solidity smart contracts (ERC-1155): onchain data structures, view functions, events |
+| `fabrica-land/fabrica-v3-contracts` | The public Solidity smart contracts (ERC-1155): onchain data structures, view functions, events |
 | `fabrica-land/fabrica-connectors` | The trust agreement: trust structure, beneficiary rights |
 
 ---
@@ -240,7 +240,6 @@ Tool descriptions and outputs are read by agents and repeated to people, so they
 - The in-app pool is the **DeFi lending pool** (pool-based lending; "Fabrica lending pool" is retired). Do not present MetaStreet as a live venue in descriptions or output text; code identifiers may keep the name.
 - NFTfi is a **retired** peer-to-peer integration. Mention it only as historical and labeled (see `src/labels.ts`).
 - Never output a platform-wide or aggregate repayment rate. Loan counts are fine. A single wallet's own repayment percentage shown next to its counts (`get_portfolio`) is fine.
-- Never call Fabrica's code "open source".
 - The per-property verification feature is **Property checks**. Not "confidence score", "Provenance Score" or "token score" as a name (the `explain_confidence_score` tool and the `score` / `confidenceScore` fields keep their identifiers). The valuation "confidence level" is a different signal and keeps its name.
 - Fabrica is not a party to the trust, never holds title and never custodies property. Never write that Fabrica manages, administers, operates, controls, oversees, handles or holds someone's trust, property or loan.
 - No fixed time unit and no "instantly" for money moving (sale proceeds, loans, payoffs, withdrawals).
