@@ -370,6 +370,8 @@ describe("type-ahead fallback helpers", () => {
     const tokens = [parcelToken({ tokenId: "la", name: "1 Elm St, Los Angeles, CA", regionCode: "CA", definition: { offchainRegistrar: { admin: "06037", propertyId: "06037-018-007" } } })];
     expect(matchIndexByQuery("018-007", {}, tokens).map((t) => t.tokenId)).toEqual(["la"]);
     expect(matchIndexByQuery("06037-018-007", {}, tokens).map((t) => t.tokenId)).toEqual(["la"]);
+    expect(matchIndexByQuery("018-007", { state: "CA", county: "Los Angeles" }, tokens).map((t) => t.tokenId)).toEqual(["la"]);
+    expect(matchIndexByQuery("018-007", { state: "CA", county: "Orange" }, tokens)).toEqual([]);
   });
 
   it("needs the whole street, with or without its suffix", () => {

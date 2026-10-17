@@ -353,11 +353,18 @@ export function matchIndexByQuery(query: string, scope: { state?: string; county
   const locality = queryLocality(query);
   const state = scope.state ?? locality.state;
   const city = locality.city ? slugify(locality.city) : null;
+  const countyFips = scope.county ? resolveCounty(scope.county, state ?? undefined)?.county.fips ?? null : null;
   return tokens.filter((token) => {
     if (state && token.regionCode?.toUpperCase() !== state.toUpperCase()) return false;
     if (city && token.place && slugify(token.place) !== city) return false;
-    const tokenCounty = token.district ?? token.definition?.offchainRegistrar?.admin ?? null;
-    if (county && tokenCounty && withoutSuffix(slugify(tokenCounty)) !== county) return false;
+    // A token without a district names its county by the registrar admin, a FIPS code: compare codes then.
+    const admin = token.definition?.offchainRegistrar?.admin ?? null;
+    if (county && !token.district && admin && /^\d{5}$/.test(admin)) {
+      if (countyFips && admin !== countyFips) return false;
+    } else {
+      const tokenCounty = token.district ?? admin;
+      if (county && tokenCounty && withoutSuffix(slugify(tokenCounty)) !== county) return false;
+    }
     const propertyId = token.definition?.offchainRegistrar?.propertyId;
     // The registrar admin is the county FIPS, so "06037-018-007" also answers to "018-007" in its own county.
     const fips = token.definition?.offchainRegistrar?.admin ?? null;
