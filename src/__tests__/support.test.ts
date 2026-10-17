@@ -30,7 +30,9 @@ describe("contact_support (links and email)", () => {
     expect(containsSecret(`my key is ${"ab".repeat(32)}`)).toBe(true);
     expect(containsSecret("abandon ability able about above absent absorb abstract absurd abuse access accident")).toBe(true);
     expect(containsSecret("I lost my private key and my seed phrase, what can I do?")).toBe(false);
-    expect(containsSecret(`The transaction 0x${"ab".repeat(32)} failed.`)).toBe(false);
+    expect(containsSecret(`Transaction hash: 0x${"ab".repeat(32)} failed.`)).toBe(false);
+    expect(containsSecret(`transaction signing key: 0x${"ab".repeat(32)}`)).toBe(true);
+    expect(containsSecret(`The transaction 0x${"ab".repeat(32)} failed.`)).toBe(true);
     expect(containsSecret(`key 0x${"ab".repeat(32)}`)).toBe(true);
     expect(containsSecret(`https://etherscan.io/tx/0x${"ab".repeat(32)}`)).toBe(false);
     expect(containsSecret("My seed phrase is: abandon ability able about above absent absorb abstract absurd abuse access accident. Help!")).toBe(true);

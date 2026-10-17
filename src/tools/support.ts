@@ -29,12 +29,12 @@ const TOPIC_PAGES: Record<SupportTopic, { label: string; url: string }> = {
 
 /** Common English words that are not BIP-39 words: one of them inside a run means prose, not a seed phrase. */
 const NOT_SEED_WORDS = new Set("the and for with but not was are from our your his her its were been has had did does would could should than them their here some each most too why how who which while after please".split(" "));
-/** Words just before a 64-hex value that mark it as a transaction hash, which support may need. */
-const TX_CONTEXT = /(\/tx\/|\btxn?\b|transaction|\bhash\b)[^\n]{0,20}$/i;
+/** A label right before a 64-hex value that marks it as a transaction hash, which support may need. */
+const TX_CONTEXT = /(\/tx\/|\b(?:tx|txn|transaction)[ _-]?(?:hash|id)\b\s*(?:is\s*|[:=]\s*)?)$/i;
 
 /**
  * Key material never goes into a support message: a 64-hex-character value with or without
- * 0x (a private key) unless the words just before it call it a transaction or hash, or a run
+ * 0x (a private key) unless it directly follows a transaction-hash label or an /tx/ URL, or a run
  * of 12 or more seed-phrase-shaped words anywhere in the text (lowercase, 3 to 8 letters, no
  * common non-BIP-39 word, mostly distinct), even after a lead-in such as "my seed phrase is:".
  * Talking about a lost key is fine.
@@ -79,7 +79,7 @@ export function contactSupport(args: ContactSupportArgs) {
   if (summary.length < 10) return { error: "The summary needs at least a sentence: what the person is trying to do and what went wrong." };
   if (summary.length > MAX_SUMMARY_CHARS) return { error: `The summary is limited to ${MAX_SUMMARY_CHARS} characters.` };
   if (containsSecret(summary)) {
-    return { error: "The summary looks like it contains a private key or seed phrase. Those are never needed by support and are left out of any message; remove them and call again." };
+    return { error: "The summary looks like it contains a private key or seed phrase. Those are never needed by support and are left out of any message; remove them and call again. A transaction hash is fine when labeled, as in transaction hash: 0x…, or an etherscan /tx/ link." };
   }
   const topic = TOPIC_PAGES[args.topic ?? "other"];
   const propertyLink = args.tokenId ? `${WEB}/property/${NETWORK}/${encodeURIComponent(args.tokenId)}` : null;
