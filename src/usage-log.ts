@@ -16,7 +16,7 @@ export interface UsageCall {
   client?: string;
 }
 
-export type UsageOutcome = "ok" | "tool_error" | "rpc_error" | "http_error";
+export type UsageOutcome = "ok" | "tool_error" | "rpc_error" | "http_error" | "aborted";
 
 export interface UsageLine {
   event: "mcp_request";
@@ -93,7 +93,10 @@ export function trackUsage(res: ServerResponse, userAgent: string | undefined, s
       return Reflect.apply(originalEnd, res, [chunk, ...rest]);
     },
   });
-  res.once("finish", () => {
+  let logged = false;
+  const finalize = (): void => {
+    if (logged) return;
+    logged = true;
     const ua = clip(userAgent);
     console.log(formatUsageLine({
       event: "mcp_request",
@@ -101,10 +104,13 @@ export function trackUsage(res: ServerResponse, userAgent: string | undefined, s
       calls,
       ...(ua ? { userAgent: ua } : {}),
       status: res.statusCode,
-      outcome: classifyOutcome(res.statusCode, sniffed),
+      outcome: res.writableFinished ? classifyOutcome(res.statusCode, sniffed) : "aborted",
       durationMs: Date.now() - started,
     }));
-  });
+  };
+  // A client that disconnects mid-call fires `close` without `finish`; that call is still counted.
+  res.once("finish", finalize);
+  res.once("close", finalize);
   return (parsed) => {
     calls = parsed;
   };

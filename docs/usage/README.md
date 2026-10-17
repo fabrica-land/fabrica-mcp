@@ -11,7 +11,7 @@ Who calls the hosted servers (`mcp.fabrica.land/mcp`, `mcp-testnet.fabrica.land/
 ```
 
 - `calls`: JSON-RPC `method`, the `tool` name on `tools/call`, and `client` (`name/version` from `clientInfo`) on `initialize`. At most 10 per batch.
-- `outcome`: `ok`, `tool_error` (the tool returned `isError`), `rpc_error` (JSON-RPC error, such as invalid arguments), `http_error` (status 400 and up).
+- `outcome`: `ok`, `tool_error` (the tool returned `isError`), `rpc_error` (JSON-RPC error, such as invalid arguments), `http_error` (status 400 and up), `aborted` (the client disconnected before the response finished).
 - Never in the line: tool arguments, wallet addresses, IPs.
 
 ## Taking a read

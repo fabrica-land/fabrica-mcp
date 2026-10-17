@@ -1,9 +1,10 @@
-import { createServer as createHttpServer, type Server } from "node:http";
+import { createServer as createHttpServer, IncomingMessage, ServerResponse, type Server } from "node:http";
+import { Socket } from "node:net";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { handleMcpHttpRequest } from "../http.js";
-import { classifyOutcome, describeRequest, type UsageLine } from "../usage-log.js";
+import { classifyOutcome, describeRequest, trackUsage, type UsageLine } from "../usage-log.js";
 
 function isUsageLine(value: unknown): value is UsageLine {
   return typeof value === "object" && value !== null && "event" in value && value.event === "mcp_request";
@@ -48,6 +49,21 @@ describe("classifyOutcome", () => {
     expect(classifyOutcome(200, '{"jsonrpc":"2.0","id":1,"error":{"code":-32602}}')).toBe("rpc_error");
     expect(classifyOutcome(200, '{"jsonrpc":"2.0","id":1,"result":{"content":[],"isError":true}}')).toBe("tool_error");
     expect(classifyOutcome(200, '{"jsonrpc":"2.0","id":1,"result":{"tools":[]}}')).toBe("ok");
+  });
+});
+
+describe("trackUsage", () => {
+  it("still logs one line, marked aborted, when the client disconnects before the response", () => {
+    const spy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const res = new ServerResponse(new IncomingMessage(new Socket()));
+    trackUsage(res, "test-agent")([{ method: "tools/call", tool: "get_property" }]);
+    res.emit("close");
+    res.emit("close");
+    const lines = usageLines(spy);
+    spy.mockRestore();
+    expect(lines).toHaveLength(1);
+    expect(lines[0]?.outcome).toBe("aborted");
+    expect(lines[0]?.calls[0]?.tool).toBe("get_property");
   });
 });
 
