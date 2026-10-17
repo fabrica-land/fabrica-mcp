@@ -285,7 +285,7 @@ export async function searchProperties(args: SearchPropertiesArgs) {
       ? `No properties found: "${region}" is not a US state code or state name. Pass a two-letter code such as "NV" or a name such as "Nevada".`
       : null;
     const sortDistanceWithoutNear = sortBy === "distance" && !near;
-    const ordering = sortBy && !groupBy && !sortDistanceWithoutNear
+    const ordering: { sortedBy?: SortKey; sortDir?: "asc" | "desc"; distanceFrom?: { lat: number; lon: number; radiusMiles?: number }; distanceNote?: string; sortNote?: string } = sortBy && !groupBy && !sortDistanceWithoutNear
       ? { sortedBy: sortBy, sortDir, ...(near ? { distanceFrom: { lat: near.lat, lon: near.lon, ...(near.radiusMiles !== undefined ? { radiusMiles: near.radiusMiles } : {}) }, distanceNote: "distanceMiles is the straight-line distance from the point, not driving distance." } : {}), ...(sortBy === "price" || sortBy === "pricePerAcre" ? { sortNote: "Sorted by the listing price; properties with no listing come last." } : {}) }
       : sortDistanceWithoutNear ? { sortNote: "sortBy: distance needs near; rows are in the API's order." } : {};
     if (groupBy) {
