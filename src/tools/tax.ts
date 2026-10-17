@@ -49,7 +49,7 @@ function nextSteps(status: TaxStatus): string {
   return "Check the county treasurer's records for the parcel. When a property is onboarded, the onramp collects tax evidence.";
 }
 
-/** The tax signals of one token: the check from the score record (falling back to the GraphQL list) and the block reason. */
+/** The tax signals of one token: the check from its score record and the lending block reason. */
 export async function loadTaxSignals(token: {
   tokenId: string;
   contractAddress: string;
@@ -65,8 +65,7 @@ export async function loadTaxSignals(token: {
       warnings.push(`Score record unavailable, so the tax check and its dates could not be read: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
-  // Only the score record says whether the check is still in force: a check past its expiry,
-  // or one whose expiry cannot be read (the GraphQL list has no dates), says nothing about today.
+  // A check past its expiry, or one whose expiry cannot be read, says nothing about today.
   const expiry = record?.expiresAt ? Date.parse(record.expiresAt) : Number.NaN;
   const checkExpired = Number.isFinite(expiry) && expiry <= Date.now();
   const check = record && Number.isFinite(expiry) && !checkExpired ? checkFromRecord(record) : null;
@@ -75,7 +74,17 @@ export async function loadTaxSignals(token: {
   if (resolved.basis === "conflicting") {
     warnings.push("Fabrica's tax check passed, but the lending pool still reports the taxes as past due; the two are updated separately. Try again shortly.");
   }
-  return { ...resolved, blockReason, checkExpired, checkedAt: record?.updatedAt ?? null, nextCheckBy: record?.expiresAt ?? null, warnings };
+  // The record's dates describe the result only when its check was accepted; a result resting on
+  // the block reason alone has no check date to cite.
+  const dated = check !== null ? record : null;
+  return {
+    ...resolved,
+    blockReason,
+    checkExpired,
+    checkedAt: dated?.updatedAt ?? null,
+    nextCheckBy: dated?.expiresAt ?? null,
+    warnings,
+  };
 }
 
 export async function getTaxStatus(args: Record<string, unknown>) {

@@ -82,6 +82,18 @@ describe("get_tax_status", () => {
     expect(result.status).toBe("unknown");
     expect(result.checkExpired).toBe(true);
     expect(result.summary).toContain("the last verification expired");
+    expect(result.checkedAt).toBeNull();
+  });
+
+  it("does not date a past-due result that rests on the block reason alone", async () => {
+    vi.mocked(getTaxStatusToken).mockResolvedValueOnce(makeToken("TAX_DELINQUENT"));
+    vi.mocked(getScoreRecord).mockResolvedValueOnce({ ...record(1), expiresAt: "2026-10-01T00:00:00.000Z" });
+    const result = await getTaxStatus({ tokenId: "1" }) as Record<string, unknown>;
+    expect(result.status).toBe("delinquent");
+    expect(result.basis).toBe("lendingBlockReason");
+    expect(result.checkedAt).toBeNull();
+    expect(result.nextCheckBy).toBeNull();
+    expect(result.summary).not.toContain("as of");
   });
 
   it("does not trust a check whose expiry is missing", async () => {
