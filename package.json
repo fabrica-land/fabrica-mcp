@@ -25,7 +25,9 @@
     "test": "vitest run",
     "pretest:watch": "npm run build:ui",
     "test:watch": "vitest",
-    "schema:refresh": "node scripts/refresh-api-schema.mjs"
+    "schema:refresh": "node scripts/refresh-api-schema.mjs",
+    "knowledge:build": "node scripts/build-knowledge.mjs",
+    "knowledge:check": "node scripts/build-knowledge.mjs --check"
   },
   "keywords": [
     "mcp",

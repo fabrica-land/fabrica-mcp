@@ -89,6 +89,21 @@ Replace `/absolute/path/to/fabrica-mcp` with the actual path where you cloned th
 | `explain_confidence_score` | Decode the numeric encoding of Property checks (5 digits, formerly called the confidence score) into verification groups |
 | `get_property_image` | Static map image of a property's parcel boundary (inline, dark/light themes) |
 | `get_portfolio_image` | Map image showing all properties owned by a wallet (inline, dark/light themes) |
+| `ask_fabrica` | Cited passages from Fabrica's docs, help center and the US trust agreement that answer a question about how Fabrica works |
+
+### Knowledge layer
+
+`ask_fabrica` answers questions about Fabrica (the trust, fees, Property checks, lending, taxes, the onramp, the legal framework) from Fabrica's own text and returns the passages with their URLs, so an agent cites the page instead of paraphrasing from memory. Three sources feed it: [docs.fabrica.land](https://docs.fabrica.land), the [help center](https://help.fabrica.land) and the [US trust agreement](https://github.com/fabrica-land/fabrica-connectors/blob/main/connectors/us/us-trust-agreement.md).
+
+The index lives at `src/knowledge/generated/index.json` and is committed, so deploys and tests never fetch the sources at runtime. Retrieval is BM25 over passage text with titles weighted in and a small synonym list for Fabrica's vocabulary; there is no model call and no external service. To rebuild after the sources change:
+
+```bash
+npm run knowledge:build -- --docs-dir ../docs   # docs from a local checkout of fabrica-land/docs
+GITHUB_TOKEN=... npm run knowledge:build        # or read the docs repo through the GitHub API
+npm run knowledge:check                         # exit 1 when a source moved past its pin
+```
+
+Source pins (docs commit, help center sitemap fingerprint, trust agreement commit) are recorded in `knowledge/sources.json`. The build takes about 30 seconds and the index is under 1 MB.
 
 ## Example Conversations
 
