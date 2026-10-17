@@ -72,7 +72,7 @@ export function createServer(): McpServer {
     "search_properties",
     {
       title: "Search properties",
-      description: `Search tokenized real properties on the Fabrica protocol (${NETWORK_LABEL}). Returns a list of properties matching the given filters, or counts per state or county with groupBy. When a state or county is given, the response includes the link to that location's page on fabrica.land.${IS_MAINNET ? " Each result is a real parcel of land in the US, held in a trust whose beneficial interest is an ERC-1155 token." : " These are test properties on Sepolia with no real-world effect."}`,
+      description: `Search tokenized real properties on the Fabrica protocol (${NETWORK_LABEL}). Returns a list of properties matching the given filters (location, size, Property checks, listing status, listing price and price per acre, distance from a point), sorted by price, price per acre, acres, estimated value, Property checks, mint date or distance; each row carries its price per acre (listing or estimate, labelled) and, with near, its straight-line distance. Or counts per state or county with groupBy. When a state or county is given, the response includes the link to that location's page on fabrica.land.${IS_MAINNET ? " Each result is a real parcel of land in the US, held in a trust whose beneficial interest is an ERC-1155 token." : " These are test properties on Sepolia with no real-world effect."}`,
       inputSchema: searchPropertiesInput,
       annotations: readOnly("Search properties"),
     },

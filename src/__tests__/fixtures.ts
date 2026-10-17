@@ -54,6 +54,7 @@ export function tokenListItem(overrides: Partial<TokenListItem> = {}): TokenList
     claimState: null,
     supersededByTokenId: null,
     offRampStatus: null,
+    mintedAt: "2025-01-01T00:00:00.000Z",
     majorityOwnerAddress: null,
     coordinates: { lat: 30.267, lon: -97.743 },
     ...overrides,

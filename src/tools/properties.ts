@@ -5,6 +5,7 @@ import { LENDING_POOL_NAME, formatLoanProvider, formatUsdcCeiling } from "../lab
 import { propertyPhotos, propertyMapImage, toGatewayUrl } from "./media.js";
 import { estimateFields, formatTokenAmount, sortLoans, formatUsd, shortenAddress, capList } from "../format.js";
 import { locationLink, stateCode, stateName } from "../links.js";
+import { haversineMiles } from "../geo.js";
 import { propertyStage, describeStage } from "../lifecycle.js";
 import { summarizeFees } from "../fees.js";
 import { loadTaxSignals, taxSummary } from "./tax.js";
@@ -22,8 +23,51 @@ function formatOrderPrice(usdPrice: string | null, price: string | null, symbol:
   return price ? `${price} ${symbol ?? ""}`.trim() : null;
 }
 
-function tokenToSummary(token: TokenListItem) {
+/** Listing price in dollars, or null when the property is not listed. */
+function listingPriceUsd(token: TokenListItem): number | null {
+  const value = Number.parseFloat(token.marketplacePrice ?? "");
+  return Number.isFinite(value) ? value : null;
+}
+
+function acresOf(token: TokenListItem): number | null {
+  const value = Number.parseFloat(token.acres ?? "");
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function estimatedValueUsd(token: TokenListItem): number | null {
+  const value = Number.parseFloat(token.estimatedValue ?? "");
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+/**
+ * Dollars per acre: the listing price over the acres when the property is listed, else
+ * the estimated value over the acres. `basis` says which, so the two are never compared
+ * as if they were the same number.
+ */
+export function pricePerAcre(token: TokenListItem): { pricePerAcre: number; basis: "listing" | "estimate" } | null {
+  const acres = acresOf(token);
+  if (acres === null) return null;
+  const listing = listingPriceUsd(token);
+  if (listing !== null) return { pricePerAcre: Math.round(listing / acres), basis: "listing" };
+  const estimate = estimatedValueUsd(token);
+  if (estimate !== null) return { pricePerAcre: Math.round(estimate / acres), basis: "estimate" };
+  return null;
+}
+
+/** Listing dollars per acre only; null for an unlisted property (the price filters never read the estimate). */
+function listingPricePerAcre(token: TokenListItem): number | null {
+  const acres = acresOf(token);
+  const listing = listingPriceUsd(token);
+  return acres !== null && listing !== null ? listing / acres : null;
+}
+
+function distanceMiles(token: TokenListItem, from: { lat: number; lon: number }): number | null {
+  return token.coordinates ? Math.round(haversineMiles(from, token.coordinates) * 10) / 10 : null;
+}
+
+function tokenToSummary(token: TokenListItem, near?: { lat: number; lon: number }) {
   const hasLoan = parseInt(token.supplyUnderLoan || "0") > 0;
+  const perAcre = pricePerAcre(token);
   return {
     tokenId: token.tokenId,
     name: token.name ?? token.vanityName,
@@ -38,6 +82,8 @@ function tokenToSummary(token: TokenListItem) {
     ...estimateFields(token.estimatedValue),
     hasActiveListing: token.marketplacePrice !== null,
     listingPrice: token.marketplacePrice ? formatUsd(token.marketplacePrice) : null,
+    ...(perAcre ? { pricePerAcre: formatUsd(String(perAcre.pricePerAcre)), pricePerAcreBasis: perAcre.basis } : {}),
+    ...(near ? { distanceMiles: distanceMiles(token, near) } : {}),
     hasActiveLoan: hasLoan,
     stage: propertyStage(token),
     owner: shortenAddress(token.majorityOwnerAddress),
@@ -116,16 +162,62 @@ export const searchPropertiesInput = {
   hasListings: z.boolean().optional().describe("Only show properties with active sale listings"),
   hasLoans: z.boolean().optional().describe("Only show properties with active loans"),
   ownedBy: z.string().optional().describe("Filter by owner wallet address"),
+  minPrice: z.number().min(0).optional().describe("Minimum listing price in USD. Only listed properties match any price filter."),
+  maxPrice: z.number().min(0).optional().describe("Maximum listing price in USD. Only listed properties match any price filter."),
+  minPricePerAcre: z.number().min(0).optional().describe("Minimum listing price per acre in USD (listing price over acres; unlisted properties never match)."),
+  maxPricePerAcre: z.number().min(0).optional().describe("Maximum listing price per acre in USD (listing price over acres; unlisted properties never match)."),
+  near: z.object({
+    lat: z.number().min(-90).max(90),
+    lon: z.number().min(-180).max(180),
+    radiusMiles: z.number().positive().max(3000).optional().describe("Keep only properties within this many miles of the point (default: no limit, every row gets its distance)."),
+  }).optional().describe("A point to measure distance from, in decimal degrees. Each row then carries distanceMiles (straight-line), and the default sort is by distance."),
+  sortBy: z.enum(["price", "pricePerAcre", "acres", "estimatedValue", "score", "newest", "distance"]).optional().describe("Order of the rows. price and pricePerAcre use the listing price and put unlisted properties last; newest is by mint date; distance needs near. Default: the API's order, or distance when near is set."),
+  sortDir: z.enum(["asc", "desc"]).optional().describe("asc (default) or desc. newest is always most recent first."),
   limit: z.number().int().min(1).max(100).optional().describe("Max results (default 20, max 100)"),
   offset: z.number().int().min(0).optional().describe("Pagination offset"),
 };
 export type SearchPropertiesArgs = ArgsOf<typeof searchPropertiesInput>;
 
+type SortKey = NonNullable<SearchPropertiesArgs["sortBy"]>;
+
+/** The number a sort key reads from a row; null rows go last whatever the direction. */
+function sortValue(token: TokenListItem, key: SortKey, near?: { lat: number; lon: number }): number | null {
+  switch (key) {
+    case "price": return listingPriceUsd(token);
+    case "pricePerAcre": return listingPricePerAcre(token);
+    case "acres": return acresOf(token);
+    case "estimatedValue": return estimatedValueUsd(token);
+    case "score": return token.score;
+    case "newest": {
+      const time = Date.parse(token.mintedAt ?? "");
+      return Number.isFinite(time) ? time : null;
+    }
+    case "distance": return near && token.coordinates ? haversineMiles(near, token.coordinates) : null;
+  }
+}
+
+/** Stable sort by one key; rows without a value for the key keep their order at the end. */
+export function sortTokens(tokens: TokenListItem[], key: SortKey, dir: "asc" | "desc", near?: { lat: number; lon: number }): TokenListItem[] {
+  const sign = dir === "desc" ? -1 : 1;
+  return tokens
+    .map((token, index) => ({ token, index, value: sortValue(token, key, near) }))
+    .sort((a, b) => {
+      if (a.value === null && b.value === null) return a.index - b.index;
+      if (a.value === null) return 1;
+      if (b.value === null) return -1;
+      return sign * (a.value - b.value) || a.index - b.index;
+    })
+    .map(row => row.token);
+}
+
 export async function searchProperties(args: SearchPropertiesArgs) {
   const region = args.region;
   const county = args.county?.trim() ? args.county : undefined;
   const groupBy = args.groupBy;
-  const { minAcres, maxAcres, minScore, hasListings, hasLoans, ownedBy } = args;
+  const { minAcres, maxAcres, minScore, hasListings, hasLoans, ownedBy, minPrice, maxPrice, minPricePerAcre, maxPricePerAcre, near } = args;
+  const priceFiltered = [minPrice, maxPrice, minPricePerAcre, maxPricePerAcre].some(v => v !== undefined);
+  const sortBy: SortKey | undefined = args.sortBy ?? (near ? "distance" : undefined);
+  const sortDir: "asc" | "desc" = sortBy === "newest" ? "desc" : args.sortDir ?? "asc";
   const limit = Math.min(Math.max(Math.trunc(args.limit ?? 20), 1), 100);
   const offset = Math.max(Math.trunc(args.offset ?? 0), 0);
   try {
@@ -161,6 +253,25 @@ export async function searchProperties(args: SearchPropertiesArgs) {
     if (hasLoans) {
       tokens = tokens.filter(t => parseInt(t.supplyUnderLoan || "0") > 0);
     }
+    if (priceFiltered) {
+      tokens = tokens.filter(t => {
+        const price = listingPriceUsd(t);
+        const perAcre = listingPricePerAcre(t);
+        if (price === null) return false;
+        if (minPrice !== undefined && price < minPrice) return false;
+        if (maxPrice !== undefined && price > maxPrice) return false;
+        if (minPricePerAcre !== undefined && (perAcre === null || perAcre < minPricePerAcre)) return false;
+        if (maxPricePerAcre !== undefined && (perAcre === null || perAcre > maxPricePerAcre)) return false;
+        return true;
+      });
+    }
+    if (near?.radiusMiles !== undefined) {
+      const radius = near.radiusMiles;
+      tokens = tokens.filter(t => t.coordinates !== null && haversineMiles(near, t.coordinates) <= radius);
+    }
+    if (sortBy && !groupBy) {
+      tokens = sortTokens(tokens, sortBy, sortDir, near);
+    }
     const total = tokens.length;
     // The page for the location asked about: names as the matches spell them, else from the filter.
     const states = new Set(locationTokens.map(t => t.regionCode?.toUpperCase()));
@@ -173,6 +284,10 @@ export async function searchProperties(args: SearchPropertiesArgs) {
     const unknownRegion = region && !regionCode
       ? `No properties found: "${region}" is not a US state code or state name. Pass a two-letter code such as "NV" or a name such as "Nevada".`
       : null;
+    const sortDistanceWithoutNear = sortBy === "distance" && !near;
+    const ordering: { sortedBy?: SortKey; sortDir?: "asc" | "desc"; distanceFrom?: { lat: number; lon: number; radiusMiles?: number }; distanceNote?: string; sortNote?: string } = sortBy && !groupBy && !sortDistanceWithoutNear
+      ? { sortedBy: sortBy, sortDir, ...(near ? { distanceFrom: { lat: near.lat, lon: near.lon, ...(near.radiusMiles !== undefined ? { radiusMiles: near.radiusMiles } : {}) }, distanceNote: "distanceMiles is the straight-line distance from the point, not driving distance." } : {}), ...(sortBy === "price" || sortBy === "pricePerAcre" ? { sortNote: "Sorted by the listing price; properties with no listing come last." } : {}) }
+      : sortDistanceWithoutNear ? { sortNote: "sortBy: distance needs near; rows are in the API's order." } : {};
     if (groupBy) {
       const groups = groupTokens(tokens, groupBy);
       const groupPage = groups.slice(offset, offset + limit);
@@ -197,10 +312,11 @@ export async function searchProperties(args: SearchPropertiesArgs) {
         ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
         total,
         ...link,
+        ...ordering,
         properties: [],
         message: total > 0
           ? `No more results: ${total} properties match, and offset ${offset} is past the end.`
-          : unknownRegion ?? "No properties found matching your filters.",
+          : unknownRegion ?? (priceFiltered ? "No properties found matching your filters. Price filters match listed properties only; drop them to see unlisted properties with their estimated value per acre." : "No properties found matching your filters."),
       };
     }
     return {
@@ -208,8 +324,9 @@ export async function searchProperties(args: SearchPropertiesArgs) {
       ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
       total,
       ...link,
+      ...ordering,
       showing: `${offset + 1}-${offset + page.length} of ${total}`,
-      properties: page.map(tokenToSummary),
+      properties: page.map(token => tokenToSummary(token, near)),
     };
   } catch (e) {
     return { error: `Failed to search properties: ${e instanceof Error ? e.message : String(e)}` };
