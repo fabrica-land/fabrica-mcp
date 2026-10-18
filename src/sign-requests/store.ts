@@ -9,6 +9,8 @@ import { z } from "zod";
 
 /** How long a sign request stays open. */
 export const SIGN_REQUEST_TTL_SECONDS = 15 * 60;
+/** How long the record is kept, so the sign page can tell an expired link (410) from an unknown one (404). */
+export const SIGN_REQUEST_RETENTION_SECONDS = 24 * 60 * 60;
 
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 const HASH = /^0x[0-9a-fA-F]{64}$/;
@@ -140,10 +142,10 @@ export class SignRequestStore {
 
   async create(input: SignRequest): Promise<void> {
     const record = signRequestSchema.parse(input);
-    await this.backend.set(this.key(record.id), JSON.stringify({ record, mac: this.mac(record) }), { seconds: SIGN_REQUEST_TTL_SECONDS });
+    await this.backend.set(this.key(record.id), JSON.stringify({ record, mac: this.mac(record) }), { seconds: SIGN_REQUEST_RETENTION_SECONDS });
   }
 
-  /** The record, or null when it is unknown, expired, or fails its integrity check. */
+  /** The record, expired or not (see isExpired), or null when it is unknown or fails its integrity check. */
   async get(id: string): Promise<SignRequest | null> {
     if (!isSignRequestId(id)) return null;
     const raw = await this.backend.get(this.key(id));
@@ -159,7 +161,6 @@ export class SignRequestStore {
     const expected = Buffer.from(this.mac(stored.data.record));
     const actual = Buffer.from(stored.data.mac);
     if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return null;
-    if (Date.parse(stored.data.record.expiresAt) <= Date.now()) return null;
     return stored.data.record;
   }
 
@@ -173,6 +174,11 @@ export class SignRequestStore {
     await this.backend.set(this.key(record.id), JSON.stringify({ record: updated, mac: this.mac(updated) }), "keep");
     return updated;
   }
+}
+
+/** Past its 15-minute window: the link no longer opens a prefilled dialog. */
+export function isExpired(record: SignRequest): boolean {
+  return Date.parse(record.expiresAt) <= Date.now();
 }
 
 let store: SignRequestStore | null | undefined;

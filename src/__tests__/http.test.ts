@@ -74,7 +74,8 @@ describe("hosted HTTP transport", () => {
   it("keeps the sign-request tools off on mainnet unless FABRICA_SIGN_REQUESTS=enabled, and marks them as prepare tools", async () => {
     const offClient = new Client({ name: "http-test", version: "0.0.0" });
     await offClient.connect(new StreamableHTTPClientTransport(new URL(url)));
-    expect((await offClient.listTools()).tools.map((tool) => tool.name)).not.toContain("make_offer");
+    const offTools = (await offClient.listTools()).tools;
+    expect(offTools.map((tool) => tool.name)).not.toContain("make_offer");
     await offClient.close();
     const previous = process.env.FABRICA_SIGN_REQUESTS;
     process.env.FABRICA_SIGN_REQUESTS = "enabled";
@@ -82,7 +83,7 @@ describe("hosted HTTP transport", () => {
       const client = new Client({ name: "http-test", version: "0.0.0" });
       await client.connect(new StreamableHTTPClientTransport(new URL(url)));
       const { tools } = await client.listTools();
-      expect(tools).toHaveLength(26);
+      expect(tools).toHaveLength(offTools.length + 7);
       const prepareTools = ["make_offer", "list_for_sale", "accept_offer", "buy", "cancel_order"];
       for (const tool of tools) {
         expect(tool.title, tool.name).toBeTruthy();

@@ -1,13 +1,14 @@
 import type { ServerResponse } from "node:http";
 import { type McpHttpRequest, PayloadTooLargeError, readJsonBody } from "../http.js";
-import { signResultSchema, verifyResult } from "../tools/sign-requests.js";
-import { getSignRequestStore, isSignRequestId } from "./store.js";
+import { signPageView, signResultSchema, verifyResult } from "../tools/sign-requests.js";
+import { getSignRequestStore, isExpired, isSignRequestId } from "./store.js";
 
 /**
  * The sign page's side of a sign request (contract on ENG-5073):
- *   GET  /sign-requests/{id}         the record, for the page to prefill and check the wallet
+ *   GET  /sign-requests/{id}         the request, for the page to prefill and check the wallet (410 once expired)
  *   POST /sign-requests/{id}/result  { orderHash } or { transactionHash }, checked before it is recorded
- * Public by design: ids are 128-bit random, records expire after 15 minutes and hold no secret.
+ * Public by design: ids are 128-bit random, links expire after 15 minutes (records are kept a day
+ * so an expired link answers 410) and hold no secret.
  * On Vercel the route rewrites to ?id=…&op=…; a plain Node server passes the path.
  */
 
@@ -62,8 +63,12 @@ export async function handleSignRequestHttp(req: McpHttpRequest, res: ServerResp
       send(res, 404, { error: "not_found" });
       return;
     }
+    if (record.status === "pending" && isExpired(record)) {
+      send(res, 410, { error: "expired", expiresAt: record.expiresAt });
+      return;
+    }
     if (target.op === "get") {
-      send(res, 200, record);
+      send(res, 200, signPageView(record));
       return;
     }
     let body: unknown;
@@ -79,7 +84,7 @@ export async function handleSignRequestHttp(req: McpHttpRequest, res: ServerResp
       return;
     }
     if (record.status === "completed") {
-      send(res, 200, record);
+      send(res, 200, signPageView(record));
       return;
     }
     const verdict = await verifyResult(record, result.data);
@@ -87,7 +92,7 @@ export async function handleSignRequestHttp(req: McpHttpRequest, res: ServerResp
       send(res, 409, { error: "does_not_match", message: verdict.reason });
       return;
     }
-    send(res, 200, await store.complete(record, result.data));
+    send(res, 200, signPageView(await store.complete(record, result.data)));
   } catch (error) {
     console.error("Sign request request failed:", error);
     send(res, 502, { error: "upstream_failed", message: "The sign request could not be checked right now. Retry shortly." });

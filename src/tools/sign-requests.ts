@@ -5,10 +5,11 @@
 import { z } from "zod";
 import { getSignContext, isTokenNotFound } from "../clients/graphql.js";
 import { CHAIN_ID, getTransaction } from "../clients/rpc.js";
-import { IS_MAINNET, MAINNET_WARNING, NETWORK, NETWORK_LABEL } from "../config.js";
+import { IS_MAINNET, MAINNET_WARNING, NETWORK, NETWORK_LABEL, WEB_BASE } from "../config.js";
 import type { OrderBookOrder, SignContextToken } from "../types/index.js";
 import {
   getSignRequestStore,
+  isExpired,
   newSignRequestId,
   SIGN_REQUEST_TTL_SECONDS,
   type SignRequest,
@@ -53,10 +54,13 @@ export function usdToRaw(amountUsd: number): string {
   return (cents * 10n ** BigInt(CURRENCY.decimals - 2)).toString();
 }
 
-/** The property link with the sign-link query (ENG-5071 routes) and the request id. */
-export function signLink(propertyLink: string, params: Record<string, string>, id: string): string {
-  const url = new URL(propertyLink);
-  for (const [key, value] of Object.entries({ ...params, signRequest: id })) url.searchParams.set(key, value);
+/**
+ * The Soil sign-link route (ENG-5071): {web}/property/{network}/{tokenId}?action=…&<plain params>&request={id}.
+ * The plain params alone prefill the dialog; request adds the agent banner and the wallet check.
+ */
+export function signLink(tokenId: string, params: Record<string, string>, id: string): string {
+  const url = new URL(`${WEB_BASE}/property/${NETWORK}/${encodeURIComponent(tokenId)}`);
+  for (const [key, value] of Object.entries({ ...params, request: id })) url.searchParams.set(key, value);
   return url.toString();
 }
 
@@ -166,7 +170,7 @@ async function issue(prepared: Prepared | Blocked) {
       warnings: record.warnings,
     },
     nextSteps: [
-      `The person opens signLink in a browser, signs in to ${new URL(record.property.link).host} with wallet ${record.wallet}, reviews the dialog and signs. The link stays open for ${SIGN_REQUEST_TTL_SECONDS / 60} minutes (until ${record.expiresAt}).`,
+      `The person opens signLink in a browser, signs in to ${new URL(WEB_BASE).host} with wallet ${record.wallet}, reviews the dialog and signs. The link stays open for ${SIGN_REQUEST_TTL_SECONDS / 60} minutes (until ${record.expiresAt}).`,
       `get_sign_request with id ${record.id} says whether it was signed; get_order_book shows the order once it is.`,
     ],
   };
@@ -208,7 +212,7 @@ export async function prepareOffer({ tokenId, slug, amountUsd, expiresDays, wall
       "If the wallet has not yet allowed the marketplace to use its USDC, the sign page asks for that approval first.",
     ],
     warnings,
-    link: id => signLink(token.propertyLink, { action: "offer", amount: String(amountUsd), expires: String(days) }, id),
+    link: id => signLink(token.tokenId, { action: "offer", amount: String(amountUsd), expires: String(days) }, id),
   };
 }
 
@@ -251,7 +255,7 @@ export async function prepareListing({ tokenId, slug, priceUsd, expiresDays, wal
       ...(IS_MAINNET ? ["A sale transfers the beneficial interest in the trust that holds the land and can trigger tax events."] : []),
     ],
     warnings,
-    link: id => signLink(token.propertyLink, { action: "list", price: String(priceUsd), expires: String(days) }, id),
+    link: id => signLink(token.tokenId, { action: "list", price: String(priceUsd), expires: String(days) }, id),
   };
 }
 
@@ -296,7 +300,7 @@ export async function prepareAccept(args: OrderActionArgs): Promise<Prepared | B
       ...(IS_MAINNET ? ["A sale transfers the beneficial interest in the trust that holds the land and can trigger tax events."] : []),
     ],
     warnings,
-    link: id => signLink(token.propertyLink, { action: "accept", order: order.marketplaceId }, id),
+    link: id => signLink(token.tokenId, { action: "accept", order: order.marketplaceId }, id),
   };
 }
 
@@ -332,7 +336,7 @@ export async function prepareBuy(args: OrderActionArgs): Promise<Prepared | Bloc
       ...(IS_MAINNET ? ["The buyer becomes the holder of the beneficial interest in the trust that holds the land, with the obligations tied to it (property taxes among them)."] : []),
     ],
     warnings,
-    link: id => signLink(token.propertyLink, { action: "accept", order: order.marketplaceId }, id),
+    link: id => signLink(token.tokenId, { action: "accept", order: order.marketplaceId }, id),
   };
 }
 
@@ -354,7 +358,7 @@ export async function prepareCancel(args: OrderActionArgs): Promise<Prepared | B
       `Confirming on the sign page (signed in with this wallet) takes the ${what} off the marketplace. No transaction and no network fee.`,
     ],
     warnings: [],
-    link: id => signLink(token.propertyLink, { action: "cancel", order: order.marketplaceId }, id),
+    link: id => signLink(token.tokenId, { action: "cancel", order: order.marketplaceId }, id),
   };
 }
 
@@ -435,7 +439,8 @@ export async function getSignRequest({ id }: GetSignRequestArgs) {
   } catch (e) {
     return { error: `Could not read the sign request: ${e instanceof Error ? e.message : String(e)}` };
   }
-  if (!record) return { error: `No open sign request ${id}: the id is unknown or the request expired (requests stay open for ${SIGN_REQUEST_TTL_SECONDS / 60} minutes). get_order_book shows what was signed.` };
+  if (!record) return { error: `No sign request ${id}: the id is unknown. get_order_book shows what was signed.` };
+  const expired = record.status === "pending" && isExpired(record);
   if (record.status === "pending") {
     try {
       const seen = observe(record, await getSignContext({ tokenId: record.property.tokenId }));
@@ -447,7 +452,7 @@ export async function getSignRequest({ id }: GetSignRequestArgs) {
   return {
     network: NETWORK_LABEL,
     id: record.id,
-    status: record.status,
+    status: expired ? "expired" : record.status,
     action: record.action,
     property: record.property,
     wallet: record.wallet,
@@ -457,6 +462,50 @@ export async function getSignRequest({ id }: GetSignRequestArgs) {
     ...(record.result ? { result: record.result } : {}),
     note: record.status === "completed"
       ? "Signed. get_order_book shows the order; a transaction hash can be followed with get_transaction_status."
-      : "Not signed yet. The person has not finished on the sign page, or the order has not reached the order book.",
+      : expired
+        ? `Expired unsigned: links stay open for ${SIGN_REQUEST_TTL_SECONDS / 60} minutes. Prepare a new one to continue.`
+        : "Not signed yet. The person has not finished on the sign page, or the order has not reached the order book.",
+  };
+}
+
+// --- the sign page's view (contract agreed with ENG-5071) ---
+
+const PAGE_ACTIONS: Record<SignRequest["action"], "offer" | "list" | "accept" | "cancel"> = {
+  make_offer: "offer",
+  list_for_sale: "list",
+  accept_offer: "accept",
+  buy: "accept",
+  cancel_order: "cancel",
+};
+
+/** What GET /sign-requests/{id} returns: the ENG-5071 shape, plus the tool name, kind, warnings, status and result. */
+export function signPageView(record: SignRequest) {
+  const order = record.order;
+  const orderExpiry = order ? new Date(Date.parse(record.createdAt) + order.durationDays * DAY_MS).toISOString() : undefined;
+  return {
+    id: record.id,
+    action: PAGE_ACTIONS[record.action],
+    tool: record.action,
+    kind: record.kind,
+    network: record.network,
+    chainId: record.chainId,
+    tokenId: record.property.tokenId,
+    contractAddress: record.property.contractAddress,
+    propertyName: record.property.name,
+    maker: record.wallet,
+    params: {
+      ...(record.action === "make_offer" && order ? { amountUsd: Number(order.priceUsd), expiresAt: orderExpiry, durationDays: order.durationDays } : {}),
+      ...(record.action === "list_for_sale" && order ? { priceUsd: Number(order.priceUsd), expiresAt: orderExpiry, durationDays: order.durationDays } : {}),
+      ...(record.orderHash ? { orderId: record.orderHash } : {}),
+    },
+    summary: record.summary.join(" "),
+    summaryLines: record.summary,
+    warnings: record.warnings,
+    status: record.status,
+    ...(record.result ? { result: record.result } : {}),
+    signLink: record.signLink,
+    payload: record.payload,
+    createdAt: record.createdAt,
+    expiresAt: record.expiresAt,
   };
 }

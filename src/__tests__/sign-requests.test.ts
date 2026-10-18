@@ -35,12 +35,13 @@ import {
   makeOffer,
   observe,
   PREPARED_STATUS,
+  signPageView,
   signLink,
   usdToRaw,
   verifyResult,
 } from "../tools/sign-requests.js";
 import { getTransactionStatus } from "../tools/transactions.js";
-import { MemoryBackend, newSignRequestId, setSignRequestStore, SignRequestStore, type SignRequest } from "../sign-requests/store.js";
+import { isExpired, MemoryBackend, newSignRequestId, setSignRequestStore, SignRequestStore, type SignRequest } from "../sign-requests/store.js";
 import { handleSignRequestHttp, parseSignRequestUrl } from "../sign-requests/http.js";
 
 const NOW = Date.parse("2026-10-18T00:00:00Z");
@@ -141,8 +142,8 @@ describe("helpers", () => {
   });
 
   it("builds the sign link on the property page with the ENG-5071 query and the id", () => {
-    const link = signLink("https://fabrica.land/property/ethereum/123", { action: "offer", amount: "500" }, "sr_x");
-    expect(link).toBe("https://fabrica.land/property/ethereum/123?action=offer&amount=500&signRequest=sr_x");
+    const link = signLink("123", { action: "offer", amount: "500" }, "sr_x");
+    expect(link).toBe("https://fabrica.land/property/ethereum/123?action=offer&amount=500&request=sr_x");
   });
 
   it("reads the id and operation from the path or the Vercel rewrite", () => {
@@ -174,10 +175,14 @@ describe("the sign-request store", () => {
     expect(await new SignRequestStore(backend, "another secret").get(r.id)).toBeNull();
   });
 
-  it("forgets a request 15 minutes after it was prepared", async () => {
+  it("marks a request expired 15 minutes after it was prepared and forgets it after a day", async () => {
     const r = record();
     await store.create(r);
+    expect(isExpired(r)).toBe(false);
     vi.setSystemTime(NOW + 15 * 60_000 + 1);
+    expect(isExpired(r)).toBe(true);
+    expect(await store.get(r.id)).toEqual(r);
+    vi.setSystemTime(NOW + 24 * 3600_000 + 1);
     expect(await store.get(r.id)).toBeNull();
   });
 
@@ -198,7 +203,7 @@ describe("make_offer", () => {
     expect(result.status).toBe(PREPARED_STATUS);
     expect(result.signRequest.kind).toBe("typedData");
     expect(result.signRequest.payload).toBeNull();
-    expect(result.signRequest.signLink).toBe(`https://fabrica.land/property/ethereum/123?action=offer&amount=9000&expires=14&signRequest=${result.signRequest.id}`);
+    expect(result.signRequest.signLink).toBe(`https://fabrica.land/property/ethereum/123?action=offer&amount=9000&expires=14&request=${result.signRequest.id}`);
     expect(result.signRequest.expiresAt).toBe(new Date(NOW + 900_000).toISOString());
     expect(result.signRequest.summary[0]).toContain("$9,000");
     const stored = await store.get(result.signRequest.id);
@@ -350,15 +355,31 @@ describe("the sign page endpoints", () => {
     await new Promise<void>((resolve) => httpServer.close(() => resolve()));
   });
 
-  it("serves the record with CORS and 404s an unknown id", async () => {
+  it("serves the ENG-5071 view with CORS, 404s an unknown id and 410s an expired one", async () => {
     const r = record();
     await store.create(r);
     const response = await fetch(`${base}/${r.id}`);
     expect(response.status).toBe(200);
     expect(response.headers.get("access-control-allow-origin")).toBe("*");
-    expect(await response.json()).toEqual(r);
+    expect(await response.json()).toMatchObject({
+      id: r.id,
+      action: "offer",
+      tool: "make_offer",
+      network: "ethereum",
+      tokenId: "123",
+      maker: BUYER,
+      params: { amountUsd: 9000, durationDays: 14, expiresAt: new Date(NOW + 14 * 86_400_000).toISOString() },
+      summary: "Offer",
+    });
     expect((await fetch(`${base}/${newSignRequestId()}`)).status).toBe(404);
     expect((await fetch(`${base}/${r.id}`, { method: "POST" })).status).toBe(405);
+    vi.setSystemTime(NOW + 16 * 60_000);
+    expect((await fetch(`${base}/${r.id}`)).status).toBe(410);
+  });
+
+  it("names the order for accept and cancel as orderId", () => {
+    expect(signPageView(record({ action: "cancel_order", kind: "offchain", order: undefined, orderHash: HASH_A })).params).toEqual({ orderId: HASH_A });
+    expect(signPageView(record({ action: "buy", kind: "transaction", order: undefined, orderHash: HASH_A })).action).toBe("accept");
   });
 
   it("records a checked result and refuses one that does not match", async () => {
