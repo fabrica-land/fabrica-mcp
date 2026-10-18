@@ -14,6 +14,7 @@ vi.mock("../clients/subgraph.js", async (importOriginal) => {
 });
 
 import { getAllLoans } from "../clients/graphql.js";
+import { IS_MAINNET } from "../config.js";
 import { getFabricaPools } from "../clients/subgraph.js";
 import { acreBand, chosenName, getLoanBook, ltvBand, originationsByMonth } from "../tools/loan-book.js";
 
@@ -120,6 +121,12 @@ describe("get_loan_book", () => {
     expect(result.largestLoans.map(l => l.loanId)).not.toContain("5");
     expect(result.largestLoansScope).toContain("1 loan in other currencies");
     expect(result.largestLoans.find(l => l.loanId === "3")?.collateral.estimatedValueToday).toBeNull();
+  });
+
+  it("carries the legal notice on mainnet", async () => {
+    const result = await getLoanBook({});
+    if ("error" in result) throw new Error(result.error);
+    if (IS_MAINNET) expect(result.legalNotice).toBeTruthy();
   });
 
   it("promises nothing about future returns", async () => {

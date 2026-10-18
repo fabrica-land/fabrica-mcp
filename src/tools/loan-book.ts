@@ -1,7 +1,7 @@
 import { LOANS_INCOMPLETE_NOTE, loansMayBeIncomplete } from "../clients/budgets.js";
 import { getAllLoans } from "../clients/graphql.js";
 import { aggregatePoolStats, getFabricaPools } from "../clients/subgraph.js";
-import { NETWORK, NETWORK_LABEL, WEB_BASE } from "../config.js";
+import { MAINNET_WARNING, NETWORK, NETWORK_LABEL, WEB_BASE } from "../config.js";
 import { formatLoanProvider, LENDING_POOL_NAME, loanVolumeByCurrency } from "../labels.js";
 import { formatTokenAmount, formatUsdOrNull, shortenAddress } from "../format.js";
 import type { LoanModel, SubgraphPool } from "../types/index.js";
@@ -273,6 +273,7 @@ export async function getLoanBook(args: GetLoanBookArgs) {
     };
     return {
       network: NETWORK_LABEL,
+      ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
       scope: {
         provider: args.provider ?? "all",
         status: args.status ?? "all",
