@@ -4,9 +4,9 @@
 // holds no key, signs nothing and submits nothing: it prepares, the person decides.
 import { z } from "zod";
 import { getSignContext, isTokenNotFound } from "../clients/graphql.js";
-import { CHAIN_ID, getTransaction } from "../clients/rpc.js";
+import { CHAIN_ID, getTransaction, getTransactionReceipt } from "../clients/rpc.js";
 import { IS_MAINNET, MAINNET_WARNING, NETWORK, NETWORK_LABEL, WEB_BASE } from "../config.js";
-import type { OrderBookOrder, SignContextToken } from "../types/index.js";
+import type { SignContextOrder, SignContextToken } from "../types/index.js";
 import {
   getSignRequestStore,
   isExpired,
@@ -15,7 +15,7 @@ import {
   type SignRequest,
   type SignRequestWarning,
 } from "../sign-requests/store.js";
-import { formatTokenAmount, isLiveOrder, relativeExpiry } from "./marketplace.js";
+import { formatTokenAmount, hasEnded, isLiveOrder, relativeExpiry } from "./marketplace.js";
 import { type ArgsOf, propertyRefInputs } from "./inputs.js";
 
 /** Orders are priced in USDC, which Fabrica counts one for one as dollars, with 6 decimals (as the web app builds them). */
@@ -102,11 +102,11 @@ function priceWarning(amountUsd: number, token: SignContextToken, what: string):
   return [];
 }
 
-function liveOrders(orders: OrderBookOrder[] | null, now: number): OrderBookOrder[] {
+function liveOrders(orders: SignContextOrder[] | null, now: number): SignContextOrder[] {
   return (orders ?? []).filter(order => isLiveOrder(order, now));
 }
 
-function findOrder(token: SignContextToken, hash: string): OrderBookOrder | null {
+function findOrder(token: SignContextToken, hash: string): SignContextOrder | null {
   return [...(token.marketplaceListings ?? []), ...(token.marketplaceBids ?? [])].find(order => same(order.marketplaceId, hash)) ?? null;
 }
 
@@ -118,12 +118,12 @@ function label(token: SignContextToken): string {
   return `${token.name ?? token.vanityName ?? "the property"} (token ${token.tokenId})`;
 }
 
-function orderPrice(order: OrderBookOrder): string {
+function orderPrice(order: SignContextOrder): string {
   const dollars = Number.parseFloat(order.usdPrice ?? "");
   return Number.isFinite(dollars) ? usd(dollars) : formatTokenAmount(order.price, order.decimals, order.symbol);
 }
 
-function expiringSoon(order: OrderBookOrder, now: number): SignRequestWarning[] {
+function expiringSoon(order: SignContextOrder, now: number): SignRequestWarning[] {
   const end = order.endTime ? Date.parse(order.endTime) : Number.NaN;
   if (Number.isNaN(end) || end - now > DAY_MS) return [];
   return [{ level: "warning", message: `This order expires ${relativeExpiry(order.endTime, now)}; sign before then.` }];
@@ -268,7 +268,7 @@ export const orderActionInput = {
 };
 export type OrderActionArgs = ArgsOf<typeof orderActionInput>;
 
-async function loadOrder({ tokenId, slug, orderHash }: OrderActionArgs): Promise<{ token: SignContextToken; order: OrderBookOrder } | { error: string }> {
+async function loadOrder({ tokenId, slug, orderHash }: OrderActionArgs): Promise<{ token: SignContextToken; order: SignContextOrder } | { error: string }> {
   const found = await lookup(tokenId, slug);
   if ("error" in found) return found;
   const order = findOrder(found.token, orderHash);
@@ -344,7 +344,7 @@ export async function prepareCancel(args: OrderActionArgs): Promise<Prepared | B
   const loaded = await loadOrder(args);
   if ("error" in loaded) return loaded;
   const { token, order } = loaded;
-  if (order.status !== "active" && order.status !== "encumbered") return { error: `Order ${args.orderHash} is ${order.status}, so there is nothing to cancel.` };
+  if (!isLiveOrder(order, Date.now()) || order.status === "pending") return { error: `Order ${args.orderHash} is no longer open (${order.status}${hasEnded(order.endTime, Date.now()) ? ", past its end time" : ""}), so there is nothing to cancel.` };
   if (!same(order.makerAddress, args.wallet)) return { error: `Order ${args.orderHash} was made by ${shorten(order.makerAddress)}; only its maker can cancel it.` };
   const what = order.side === "sell" ? "listing" : "offer";
   return {
@@ -370,25 +370,50 @@ export const cancelOrder = async (args: OrderActionArgs) => issue(await prepareC
 
 // --- results: what the sign page reports, and what the order book shows ---
 
+/** Seconds resolution: the API's order start times carry no milliseconds. */
+function createdSecond(record: SignRequest): number {
+  return Math.floor(Date.parse(record.createdAt) / 1000) * 1000;
+}
+
+/** The order this request asked for: from the wallet, on the requested side and price, started after the request. */
+function isRequestedOrder(record: SignRequest, order: SignContextOrder): boolean {
+  if (!record.order) return false;
+  return order.side === record.order.side && same(order.makerAddress, record.wallet) && order.price === record.order.price && Date.parse(order.startTime) >= createdSecond(record);
+}
+
+/** The order that accepting an offer creates: the wallet's sell order reserved for the offer's maker, made after the request. */
+function isAcceptingOrder(record: SignRequest, token: SignContextToken, order: SignContextOrder): boolean {
+  const offer = record.orderHash ? findOrder(token, record.orderHash) : null;
+  return !!offer && order.side === "sell" && same(order.makerAddress, record.wallet) && Date.parse(order.startTime) >= createdSecond(record)
+    && (order.restrictedToAddresses ?? []).some(address => same(address, offer.makerAddress));
+}
+
+/** A transaction that succeeded and, for a purchase, was sent by the request's wallet. */
+async function transactionFills(record: SignRequest, hash: string): Promise<boolean> {
+  const [transaction, receipt] = await Promise.all([getTransaction(hash), getTransactionReceipt(hash)]);
+  if (!transaction || receipt?.status !== "0x1") return false;
+  return record.action !== "buy" || same(transaction.from, record.wallet);
+}
+
 /**
  * What the order book says happened to a request, or null when it shows nothing yet. Offers and
  * listings: a live order from the wallet at the requested price, started after the request.
- * Cancel and buy: the named order is canceled or filled.
+ * Cancel: the named order is canceled. Buy: the listing was filled by a transaction from this
+ * wallet. Accept: the offer was filled by a successful transaction.
  */
-export function observe(record: SignRequest, token: SignContextToken): { orderHash: string } | null {
+export async function observe(record: SignRequest, token: SignContextToken): Promise<{ orderHash: string; transactionHash?: string } | null> {
   const now = Date.now();
-  if ((record.action === "make_offer" || record.action === "list_for_sale") && record.order) {
+  if (record.action === "make_offer" || record.action === "list_for_sale") {
     const orders = record.action === "make_offer" ? token.marketplaceBids : token.marketplaceListings;
-    const created = Date.parse(record.createdAt) - 5 * 60_000;
-    const match = liveOrders(orders, now).find(order => same(order.makerAddress, record.wallet) && order.price === record.order?.price && Date.parse(order.startTime) >= created);
+    const match = liveOrders(orders, now).find(order => isRequestedOrder(record, order));
     return match ? { orderHash: match.marketplaceId } : null;
   }
   if (!record.orderHash) return null;
   const order = findOrder(token, record.orderHash);
   if (!order) return null;
-  if (record.action === "cancel_order" && order.status === "canceled") return { orderHash: order.marketplaceId };
-  if ((record.action === "buy" || record.action === "accept_offer") && order.status === "filled") return { orderHash: order.marketplaceId };
-  return null;
+  if (record.action === "cancel_order") return order.status === "canceled" ? { orderHash: order.marketplaceId } : null;
+  if (order.status !== "filled" || !order.matchTransactionHash) return null;
+  return await transactionFills(record, order.matchTransactionHash) ? { orderHash: order.marketplaceId, transactionHash: order.matchTransactionHash } : null;
 }
 
 export const signResultSchema = z.union([
@@ -397,26 +422,27 @@ export const signResultSchema = z.union([
 ]);
 export type SignResult = z.infer<typeof signResultSchema>;
 
-/** Check a result the sign page reports against the API or the chain; a reason when it does not hold. */
+/**
+ * Check a result the sign page reports against the API and the chain; a reason when it does not hold.
+ * A transaction counts only when it is the one that filled the request's order and it succeeded.
+ */
 export async function verifyResult(record: SignRequest, result: SignResult): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const token = await getSignContext({ tokenId: record.property.tokenId });
   if ("transactionHash" in result) {
     if (record.action !== "buy" && record.action !== "accept_offer") return { ok: false, reason: `A ${record.action} sign request completes with an order hash, not a transaction.` };
-    const transaction = await getTransaction(result.transactionHash);
-    if (!transaction) return { ok: false, reason: "The transaction is not on the network (yet)." };
-    if (!same(transaction.from, record.wallet)) return { ok: false, reason: "The transaction was not sent by the request's wallet." };
-    return { ok: true };
+    const order = record.orderHash ? findOrder(token, record.orderHash) : null;
+    if (!order || order.status !== "filled" || !same(order.matchTransactionHash, result.transactionHash)) return { ok: false, reason: "The order book does not show this transaction filling the request's order (yet)." };
+    return await transactionFills(record, result.transactionHash) ? { ok: true } : { ok: false, reason: "The transaction did not succeed, or was not sent by the request's wallet." };
   }
-  const token = await getSignContext({ tokenId: record.property.tokenId });
   const order = findOrder(token, result.orderHash);
   if (!order) return { ok: false, reason: "No order with that hash on this property." };
   const named = same(order.marketplaceId, record.orderHash);
-  const madeByWallet = same(order.makerAddress, record.wallet);
   const holds = (() => {
     switch (record.action) {
-      case "make_offer": return order.side === "buy" && madeByWallet;
-      case "list_for_sale": return order.side === "sell" && madeByWallet;
-      case "accept_offer": return (order.side === "sell" && madeByWallet) || (named && order.status === "filled");
-      case "buy": return named && order.status === "filled";
+      case "make_offer":
+      case "list_for_sale": return isRequestedOrder(record, order);
+      case "accept_offer": return isAcceptingOrder(record, token, order);
+      case "buy": return false;
       case "cancel_order": return named && order.status === "canceled";
     }
   })();
@@ -443,7 +469,7 @@ export async function getSignRequest({ id }: GetSignRequestArgs) {
   const expired = record.status === "pending" && isExpired(record);
   if (record.status === "pending") {
     try {
-      const seen = observe(record, await getSignContext({ tokenId: record.property.tokenId }));
+      const seen = await observe(record, await getSignContext({ tokenId: record.property.tokenId }));
       if (seen) record = await store.complete(record, seen);
     } catch {
       // The order book check is best effort; the stored state still answers.

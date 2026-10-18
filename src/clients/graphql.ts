@@ -499,8 +499,8 @@ const GET_SIGN_CONTEXT_QUERY = gql`
       isPremint claimState supersededByTokenId offRampStatus isBurned
       supply supplyUnderLoan estimatedValue majorityOwnerAddress
       balances { balance holder { address } owner { address } }
-      marketplaceListings { ...OrderBookOrderFields }
-      marketplaceBids { ...OrderBookOrderFields }
+      marketplaceListings { ...OrderBookOrderFields matchTransactionHash }
+      marketplaceBids { ...OrderBookOrderFields matchTransactionHash }
     }
   }
 `;

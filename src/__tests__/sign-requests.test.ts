@@ -1,6 +1,6 @@
 import { createServer as createHttpServer, type Server } from "node:http";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import type { OrderBookOrder, SignContextToken } from "../types/index.js";
+import type { SignContextOrder, SignContextToken } from "../types/index.js";
 
 vi.mock("../clients/graphql.js", () => {
   class FabricaApiError extends Error {
@@ -52,7 +52,7 @@ const HASH_A = `0x${"a".repeat(64)}`;
 const HASH_B = `0x${"b".repeat(64)}`;
 const TX = `0x${"c".repeat(64)}`;
 
-function order(overrides: Partial<OrderBookOrder>): OrderBookOrder {
+function order(overrides: Partial<SignContextOrder>): SignContextOrder {
   return {
     marketplaceId: HASH_A,
     side: "buy",
@@ -70,6 +70,7 @@ function order(overrides: Partial<OrderBookOrder>): OrderBookOrder {
     restrictedToAddresses: null,
     disclosurePackage: null,
     encumbrance: null,
+    matchTransactionHash: null,
     ...overrides,
   };
 }
@@ -302,6 +303,11 @@ describe("accept_offer, buy and cancel_order", () => {
     expect(await buy({ tokenId: "123", orderHash: HASH_A, wallet: BUYER })).toHaveProperty("error");
   });
 
+  it("cancel_order refuses an order past its end time even if the API still says active", async () => {
+    vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceBids: [order({ endTime: "2026-10-01T00:00:00Z" })] }));
+    expect(await cancelOrder({ tokenId: "123", orderHash: HASH_A, wallet: BUYER })).toHaveProperty("error");
+  });
+
   it("cancel_order is for the maker only and needs no signature", async () => {
     vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceBids: [order({})] }));
     expect(await cancelOrder({ tokenId: "123", orderHash: HASH_A, wallet: OWNER })).toHaveProperty("error");
@@ -313,27 +319,62 @@ describe("accept_offer, buy and cancel_order", () => {
 });
 
 describe("results", () => {
-  it("sees a new offer from the wallet at the requested price in the order book", () => {
+  const started = new Date(NOW + 60_000).toISOString();
+
+  it("sees a new offer from the wallet at the requested price, and not one made before the request", async () => {
     const r = record();
-    expect(observe(r, token({ marketplaceBids: [order({ marketplaceId: HASH_B, price: "9000000000", startTime: new Date(NOW).toISOString() })] }))).toEqual({ orderHash: HASH_B });
-    expect(observe(r, token({ marketplaceBids: [order({ marketplaceId: HASH_B, price: "8000000000", startTime: new Date(NOW).toISOString() })] }))).toBeNull();
+    expect(await observe(r, token({ marketplaceBids: [order({ marketplaceId: HASH_B, price: "9000000000", startTime: started })] }))).toEqual({ orderHash: HASH_B });
+    expect(await observe(r, token({ marketplaceBids: [order({ marketplaceId: HASH_B, price: "8000000000", startTime: started })] }))).toBeNull();
+    expect(await observe(r, token({ marketplaceBids: [order({ marketplaceId: HASH_B, price: "9000000000", startTime: new Date(NOW - 60_000).toISOString() })] }))).toBeNull();
   });
 
-  it("checks a reported order hash and a reported transaction", async () => {
-    vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceBids: [order({ marketplaceId: HASH_B })] }));
+  it("completes a buy only when this wallet's successful transaction filled the listing", async () => {
+    const r = record({ action: "buy", kind: "transaction", order: undefined, orderHash: HASH_A });
+    const filled = token({ marketplaceListings: [order({ side: "sell", makerAddress: OWNER, status: "filled", matchTransactionHash: TX })] });
+    vi.mocked(getTransactionReceipt).mockResolvedValue({ status: "0x1", blockNumber: "0x1", gasUsed: "0x1" });
+    vi.mocked(getTransaction).mockResolvedValue({ hash: TX, from: POOL, to: POOL, value: "0x0", blockNumber: "0x1" });
+    expect(await observe(r, filled)).toBeNull();
+    vi.mocked(getTransaction).mockResolvedValue({ hash: TX, from: BUYER, to: POOL, value: "0x0", blockNumber: "0x1" });
+    expect(await observe(r, filled)).toEqual({ orderHash: HASH_A, transactionHash: TX });
+    vi.mocked(getTransactionReceipt).mockResolvedValue({ status: "0x0", blockNumber: "0x1", gasUsed: "0x1" });
+    expect(await observe(r, filled)).toBeNull();
+  });
+
+  it("accepts a reported order only when it matches the prepared terms", async () => {
+    vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceBids: [order({ marketplaceId: HASH_B, price: "9000000000", startTime: started })] }));
     expect(await verifyResult(record(), { orderHash: HASH_B })).toEqual({ ok: true });
     expect((await verifyResult(record({ wallet: OWNER }), { orderHash: HASH_B })).ok).toBe(false);
-    expect((await verifyResult(record(), { transactionHash: TX })).ok).toBe(false);
+    vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceBids: [order({ marketplaceId: HASH_B, price: "1000000", startTime: started })] }));
+    expect((await verifyResult(record(), { orderHash: HASH_B })).ok).toBe(false);
+  });
+
+  it("accepting an offer completes with the sell order reserved for the offer's maker", async () => {
+    const r = record({ action: "accept_offer", wallet: OWNER, order: undefined, orderHash: HASH_A });
+    const reserved = (restrictedToAddresses: string[]) => token({
+      marketplaceBids: [order({})],
+      marketplaceListings: [order({ side: "sell", marketplaceId: HASH_B, makerAddress: OWNER, startTime: started, restrictedToAddresses })],
+    });
+    vi.mocked(getSignContext).mockResolvedValue(reserved([BUYER]));
+    expect(await verifyResult(r, { orderHash: HASH_B })).toEqual({ ok: true });
+    vi.mocked(getSignContext).mockResolvedValue(reserved([POOL]));
+    expect((await verifyResult(r, { orderHash: HASH_B })).ok).toBe(false);
+  });
+
+  it("accepts a transaction only when it is the one that filled the order", async () => {
+    const r = record({ action: "buy", kind: "transaction", order: undefined, orderHash: HASH_A });
     vi.mocked(getTransaction).mockResolvedValue({ hash: TX, from: BUYER, to: POOL, value: "0x0", blockNumber: "0x1" });
-    expect(await verifyResult(record({ action: "buy", kind: "transaction", orderHash: HASH_A }), { transactionHash: TX })).toEqual({ ok: true });
-    vi.mocked(getTransaction).mockResolvedValue({ hash: TX, from: OWNER, to: POOL, value: "0x0", blockNumber: "0x1" });
-    expect((await verifyResult(record({ action: "buy", kind: "transaction", orderHash: HASH_A }), { transactionHash: TX })).ok).toBe(false);
+    vi.mocked(getTransactionReceipt).mockResolvedValue({ status: "0x1", blockNumber: "0x1", gasUsed: "0x1" });
+    vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceListings: [order({ side: "sell", makerAddress: OWNER, status: "active" })] }));
+    expect((await verifyResult(r, { transactionHash: TX })).ok).toBe(false);
+    vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceListings: [order({ side: "sell", makerAddress: OWNER, status: "filled", matchTransactionHash: TX })] }));
+    expect(await verifyResult(r, { transactionHash: TX })).toEqual({ ok: true });
+    expect((await verifyResult(record(), { transactionHash: TX })).ok).toBe(false);
   });
 
   it("get_sign_request completes a pending request the order book already shows", async () => {
     const r = record();
     await store.create(r);
-    vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceBids: [order({ marketplaceId: HASH_B, price: "9000000000", startTime: new Date(NOW).toISOString() })] }));
+    vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceBids: [order({ marketplaceId: HASH_B, price: "9000000000", startTime: started })] }));
     const result = await getSignRequest({ id: r.id });
     expect(result).toMatchObject({ status: "completed", result: { orderHash: HASH_B } });
     expect(await getSignRequest({ id: newSignRequestId() })).toHaveProperty("error");
@@ -385,10 +426,11 @@ describe("the sign page endpoints", () => {
   it("records a checked result and refuses one that does not match", async () => {
     const r = record();
     await store.create(r);
-    vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceBids: [order({ marketplaceId: HASH_B, makerAddress: OWNER })] }));
+    const started = new Date(NOW + 60_000).toISOString();
+    vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceBids: [order({ marketplaceId: HASH_B, makerAddress: OWNER, price: "9000000000", startTime: started })] }));
     const refused = await fetch(`${base}/${r.id}/result`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderHash: HASH_B }) });
     expect(refused.status).toBe(409);
-    vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceBids: [order({ marketplaceId: HASH_B })] }));
+    vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceBids: [order({ marketplaceId: HASH_B, price: "9000000000", startTime: started })] }));
     const accepted = await fetch(`${base}/${r.id}/result`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderHash: HASH_B }) });
     expect(accepted.status).toBe(200);
     expect(await accepted.json()).toMatchObject({ status: "completed", result: { orderHash: HASH_B } });
