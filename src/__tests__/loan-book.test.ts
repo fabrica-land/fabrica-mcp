@@ -114,6 +114,14 @@ describe("get_loan_book", () => {
     expect(result.largestLoans[0].collateral.propertyLink).toMatch(/\/property\/\w+\/20$/);
   });
 
+  it("ranks only digital-dollar loans and shows no $0 estimate", async () => {
+    const result = await getLoanBook({});
+    if ("error" in result) throw new Error(result.error);
+    expect(result.largestLoans.map(l => l.loanId)).not.toContain("5");
+    expect(result.largestLoansScope).toContain("1 loan in other currencies");
+    expect(result.largestLoans.find(l => l.loanId === "3")?.collateral.estimatedValueToday).toBeNull();
+  });
+
   it("promises nothing about future returns", async () => {
     const text = JSON.stringify(await getLoanBook({}));
     expect(text).not.toMatch(/\byield|guarantee|expected return|you will earn|safe investment/i);

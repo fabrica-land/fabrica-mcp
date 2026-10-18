@@ -3,7 +3,7 @@ import { getAllLoans } from "../clients/graphql.js";
 import { aggregatePoolStats, getFabricaPools } from "../clients/subgraph.js";
 import { NETWORK, NETWORK_LABEL, WEB_BASE } from "../config.js";
 import { formatLoanProvider, LENDING_POOL_NAME, loanVolumeByCurrency } from "../labels.js";
-import { formatTokenAmount, formatUsd, shortenAddress } from "../format.js";
+import { formatTokenAmount, formatUsdOrNull, shortenAddress } from "../format.js";
 import type { LoanModel, SubgraphPool } from "../types/index.js";
 import { z } from "zod";
 import type { ArgsOf } from "./inputs.js";
@@ -171,7 +171,7 @@ function collateral(loan: LoanModel) {
     state: loan.token?.regionCode ?? null,
     county: loan.token?.district ?? null,
     acres: amount(loan.token?.acres),
-    estimatedValueToday: formatUsd(loan.token?.estimatedValue),
+    estimatedValueToday: formatUsdOrNull(loan.token?.estimatedValue),
     propertyLink: propertyLink(loan.collateralId),
   };
 }
@@ -186,9 +186,10 @@ function ltvText(loan: LoanModel): string | null {
   return ltv === null ? null : percent(ltv * 100);
 }
 
+/** The largest digital-dollar loans by principal; loans in other currencies cannot be ranked against them. */
 function largestLoans(loans: ReadonlyArray<LoanModel>, count: number) {
-  return [...loans]
-    .sort((a, b) => Number(isDollar(b)) - Number(isDollar(a)) || (amount(b.principalScaled) ?? 0) - (amount(a.principalScaled) ?? 0))
+  return loans.filter(isDollar)
+    .sort((a, b) => (amount(b.principalScaled) ?? 0) - (amount(a.principalScaled) ?? 0))
     .slice(0, count)
     .map(l => ({
       loanId: l.loanId,
@@ -296,6 +297,7 @@ export async function getLoanBook(args: GetLoanBookArgs) {
       },
       originationsByMonth: originationsByMonth(loans, now),
       largestLoans: largestLoans(loans, largest),
+      ...(loans.length > dollarLoans.length ? { largestLoansScope: `Ranked among digital-dollar loans only; ${loans.length - dollarLoans.length} ${loans.length - dollarLoans.length === 1 ? "loan" : "loans"} in other currencies (see principalByCurrency) cannot be ranked against them.` } : {}),
       ...(args.groupBy ? { groups: { by: args.groupBy, rows: tableByPrincipal(loans, groupKey[args.groupBy], args.groupBy) } } : {}),
       poolCounts: poolCounts(allLoans, pools),
       ...(loansMayBeIncomplete(allLoans) ? { loansNote: LOANS_INCOMPLETE_NOTE } : {}),
