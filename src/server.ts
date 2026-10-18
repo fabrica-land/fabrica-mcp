@@ -114,7 +114,7 @@ export function createServer(): McpServer {
     "get_loan_book",
     {
       title: "Get loan book",
-      description: "Get the lending history of the Fabrica protocol as a distribution: loan counts and principal by status and provider, loan-to-value bands against today's property estimates, exposure by state and acreage, APR and duration spread, liquidations with the collateral auction proceeds, originations by month for the last 12 months, and the largest loans with their property pages. Covers DeFi lending pool loans and historical peer-to-peer loans. Counts come from the loan records; where the pool data source's counters differ, both are shown.",
+      description: "Get the lending history of the Fabrica protocol as a distribution: loan counts and principal by status and provider, loan-to-value bands against today's property estimates, exposure by state and acreage, APR and duration spread, repaid and liquidated counts, originations by month for the last 12 months, and the largest loans with their property pages. Covers DeFi lending pool loans and historical peer-to-peer loans. Counts come from the loan records; where the pool data source's counters differ, both are shown.",
       inputSchema: getLoanBookInput,
       annotations: readOnly("Get loan book"),
     },

@@ -1,5 +1,5 @@
 import { GraphQLClient, gql } from "graphql-request";
-import type { SubgraphLoan, SubgraphPool } from "../types/index.js";
+import type { SubgraphPool } from "../types/index.js";
 import { CONTRACTS, IS_MAINNET } from "../config.js";
 import { TtlCache } from "./cache.js";
 
@@ -61,36 +61,6 @@ export async function getFabricaPools(): Promise<SubgraphPool[] | null> {
         collateralToken: FABRICA_TOKEN_ADDRESS,
       });
       return data.pools.map(withTickTotals);
-    });
-  } catch {
-    return null;
-  }
-}
-
-/** Most loan entities read per pool query; mainnet's pool holds about 100. */
-export const MAX_POOL_LOANS = 1000;
-
-const GET_POOL_LOANS_QUERY = gql`
-  query GetPoolLoans($pools: [String!]!, $first: Int!) {
-    loans(first: $first, where: { pool_in: $pools }, orderBy: timestamp, orderDirection: desc) {
-      id pool { id } status timestamp collateralTokenIds principal proceeds
-    }
-  }
-`;
-
-const poolLoansCache = new TtlCache<SubgraphLoan[]>();
-
-/**
- * The pools' loan entities: each loan's status and, for a liquidated loan, the auction proceeds.
- * Returns null when the subgraph cannot be read. Cached briefly (failures are not cached).
- */
-export async function getPoolLoans(poolIds: ReadonlyArray<string>): Promise<SubgraphLoan[] | null> {
-  if (poolIds.length === 0) return [];
-  const pools = poolIds.map(id => id.toLowerCase()).sort();
-  try {
-    return await poolLoansCache.get(pools.join(","), async () => {
-      const data = await poolClient.request<{ loans: SubgraphLoan[] }>(GET_POOL_LOANS_QUERY, { pools, first: MAX_POOL_LOANS });
-      return data.loans;
     });
   } catch {
     return null;

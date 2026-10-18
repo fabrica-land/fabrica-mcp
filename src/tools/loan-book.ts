@@ -1,16 +1,14 @@
 import { LOANS_INCOMPLETE_NOTE, loansMayBeIncomplete } from "../clients/budgets.js";
 import { getAllLoans } from "../clients/graphql.js";
-import { aggregatePoolStats, getFabricaPools, getPoolLoans, MAX_POOL_LOANS } from "../clients/subgraph.js";
+import { aggregatePoolStats, getFabricaPools } from "../clients/subgraph.js";
 import { NETWORK, NETWORK_LABEL, WEB_BASE } from "../config.js";
 import { formatLoanProvider, LENDING_POOL_NAME, loanVolumeByCurrency } from "../labels.js";
 import { formatTokenAmount, formatUsd, shortenAddress } from "../format.js";
-import type { LoanModel, SubgraphLoan, SubgraphPool } from "../types/index.js";
+import type { LoanModel, SubgraphPool } from "../types/index.js";
 import { z } from "zod";
 import type { ArgsOf } from "./inputs.js";
 
 const STABLECOINS = new Set(["USDC", "USDT", "DAI"]);
-/** Subgraph loan amounts are 18-decimal fixed point whatever the pool currency. */
-const POOL_AMOUNT_DECIMALS = 18;
 const MONTHS_SHOWN = 12;
 const DEFAULT_LARGEST = 10;
 const DAY_MS = 86_400_000;
@@ -162,19 +160,6 @@ function tableByPrincipal<K extends string>(loans: ReadonlyArray<LoanModel>, key
 const stateOf = (l: LoanModel) => l.token?.regionCode ?? l.token?.region ?? "state not recorded";
 const providerOf = (l: LoanModel) => formatLoanProvider(l.loanProvider) ?? "Unknown provider";
 
-/** The subgraph loan behind an API pool loan: same pool, same collateral token, same start second. */
-export function matchPoolLoan(loan: LoanModel, poolLoans: ReadonlyArray<SubgraphLoan>): SubgraphLoan | null {
-  const pool = loan.loanContract.toLowerCase();
-  const candidates = poolLoans.filter(p => p.pool.id.toLowerCase() === pool && p.collateralTokenIds.includes(loan.collateralId));
-  const start = Math.floor(Date.parse(loan.startTime) / 1000);
-  return candidates.find(p => Number(p.timestamp) === start) ?? null;
-}
-
-function poolAmount(raw: string | null): number | null {
-  const num = amount(raw);
-  return num === null ? null : num / 10 ** POOL_AMOUNT_DECIMALS;
-}
-
 function propertyLink(tokenId: string): string {
   return `${WEB_BASE}/property/${NETWORK}/${encodeURIComponent(tokenId)}`;
 }
@@ -232,51 +217,6 @@ export function originationsByMonth(loans: ReadonlyArray<LoanModel>, now: Date) 
   });
 }
 
-function recovery(liquidated: ReadonlyArray<LoanModel>, poolLoans: ReadonlyArray<SubgraphLoan> | null) {
-  const rows = liquidated.map(l => {
-    const match = isPool(l) && poolLoans ? matchPoolLoan(l, poolLoans) : null;
-    const proceeds = match ? poolAmount(match.proceeds) : null;
-    return {
-      loan: l,
-      row: {
-        loanId: l.loanId,
-        provider: providerOf(l),
-        principal: formatTokenAmount(l.principalScaled, l.currencySymbol),
-        startTime: l.startTime,
-        liquidationDate: l.loanLiquidationDate,
-        loanToValueToday: ltvText(l),
-        ...(isPool(l)
-          ? { auctionProceeds: proceeds !== null ? formatTokenAmount(String(proceeds), l.currencySymbol) : null }
-          : { auctionProceeds: null, outcome: "Collateral transferred to the lender (peer-to-peer loans have no auction)." }),
-        collateral: collateral(l),
-      },
-      proceeds,
-    };
-  });
-  const pool = rows.filter(r => isPool(r.loan));
-  const withProceeds = pool.filter(r => r.proceeds !== null);
-  const proceedsTotal = withProceeds.reduce((sum, r) => sum + (r.proceeds ?? 0), 0);
-  const currency = pool[0]?.loan.currencySymbol ?? null;
-  return {
-    liquidatedLoans: rows.length,
-    liquidatedPrincipal: loanVolumeByCurrency(liquidated),
-    pool: {
-      liquidatedLoans: pool.length,
-      liquidatedPrincipal: loanVolumeByCurrency(pool.map(r => r.loan)),
-      loansWithAuctionProceeds: withProceeds.length,
-      auctionProceeds: withProceeds.length > 0 ? formatTokenAmount(String(proceedsTotal), currency) : null,
-    },
-    peerToPeer: {
-      liquidatedLoans: rows.length - pool.length,
-      liquidatedPrincipal: loanVolumeByCurrency(rows.filter(r => !isPool(r.loan)).map(r => r.loan)),
-    },
-    loans: rows.map(r => r.row),
-    source: poolLoans === null
-      ? `Auction proceeds come from the ${LENDING_POOL_NAME} data source, which did not respond, so they are unknown right now (not zero).`
-      : `Auction proceeds are what the collateral auction paid into the ${LENDING_POOL_NAME}, from the pool's data source. The loan records store no recovered amount for liquidated loans.`,
-  };
-}
-
 /**
  * Pool loan counts from the loan records next to the pool data source's own counters
  * (ENG-5029: its liquidation counter has read 0 while ten pool loans were liquidated).
@@ -315,7 +255,6 @@ export async function getLoanBook(args: GetLoanBookArgs) {
   const largest = Math.min(Math.max(Math.trunc(args.largest ?? DEFAULT_LARGEST), 1), 25);
   try {
     const [allLoans, pools] = await Promise.all([getAllLoans(), getFabricaPools()]);
-    const poolIds = (pools ?? []).map(p => p.id);
     const now = new Date();
     const since = args.sinceDays ? now.getTime() - args.sinceDays * DAY_MS : null;
     const status = args.status && args.status !== "all" ? args.status.charAt(0).toUpperCase() + args.status.slice(1) : null;
@@ -323,8 +262,6 @@ export async function getLoanBook(args: GetLoanBookArgs) {
       (args.provider === "pool" ? isPool(l) : args.provider === "peer-to-peer" ? !isPool(l) : true)
       && (status === null || l.loanStatus === status)
       && (since === null || Date.parse(l.startTime) >= since));
-    const liquidated = loans.filter(l => l.loanStatus === "Liquidated");
-    const poolLoans = liquidated.some(isPool) ? await getPoolLoans(poolIds.length > 0 ? poolIds : [...new Set(liquidated.filter(isPool).map(l => l.loanContract))]) : [];
     const dollarLoans = loans.filter(isDollar);
     const groupKey = {
       state: stateOf,
@@ -357,13 +294,11 @@ export async function getLoanBook(args: GetLoanBookArgs) {
         spread: spread(loans.map(durationDays).filter((v): v is number => v !== null), days),
         byTerm: [...countBy(loans, l => l.durationFormatted)].sort(([, a], [, b]) => b.length - a.length).map(([term, group]) => ({ term, loans: group.length })),
       },
-      recovery: recovery(liquidated, poolLoans),
       originationsByMonth: originationsByMonth(loans, now),
       largestLoans: largestLoans(loans, largest),
       ...(args.groupBy ? { groups: { by: args.groupBy, rows: tableByPrincipal(loans, groupKey[args.groupBy], args.groupBy) } } : {}),
       poolCounts: poolCounts(allLoans, pools),
       ...(loansMayBeIncomplete(allLoans) ? { loansNote: LOANS_INCOMPLETE_NOTE } : {}),
-      ...(poolLoans && poolLoans.length >= MAX_POOL_LOANS ? { recoveryNote: `Auction proceeds cover the latest ${MAX_POOL_LOANS} pool loans in the data source.` } : {}),
       notes: [
         "Principal is in each loan's own currency and is never summed across currencies. Fabrica counts one USDC as one dollar.",
         "Borrower names appear only where the wallet's owner set one; addresses are shortened.",

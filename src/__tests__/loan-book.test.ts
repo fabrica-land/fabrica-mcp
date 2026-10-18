@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { loan, loanToken } from "./fixtures.js";
-import type { SubgraphLoan, SubgraphPool } from "../types/index.js";
+import type { SubgraphPool } from "../types/index.js";
 
 const POOL = "0x842ffbf1ad5314503904626122376f71603a3cf9";
 
@@ -10,12 +10,12 @@ vi.mock("../clients/graphql.js", () => ({
 
 vi.mock("../clients/subgraph.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../clients/subgraph.js")>();
-  return { ...actual, getFabricaPools: vi.fn(), getPoolLoans: vi.fn() };
+  return { ...actual, getFabricaPools: vi.fn() };
 });
 
 import { getAllLoans } from "../clients/graphql.js";
-import { getFabricaPools, getPoolLoans } from "../clients/subgraph.js";
-import { acreBand, chosenName, getLoanBook, ltvBand, matchPoolLoan, originationsByMonth } from "../tools/loan-book.js";
+import { getFabricaPools } from "../clients/subgraph.js";
+import { acreBand, chosenName, getLoanBook, ltvBand, originationsByMonth } from "../tools/loan-book.js";
 
 function pool(overrides: Partial<SubgraphPool> = {}): SubgraphPool {
   return {
@@ -38,19 +38,6 @@ function pool(overrides: Partial<SubgraphPool> = {}): SubgraphPool {
   };
 }
 
-function poolLoan(overrides: Partial<SubgraphLoan> = {}): SubgraphLoan {
-  return {
-    id: "0xabc",
-    pool: { id: POOL },
-    status: "CollateralLiquidated",
-    timestamp: String(Date.parse("2026-05-12T17:15:47Z") / 1000),
-    collateralTokenIds: ["30"],
-    principal: "12780000000000000000000",
-    proceeds: "400000000000000000000",
-    ...overrides,
-  };
-}
-
 const loans = [
   loan({ loanId: "1", loanStatus: "Active", principalScaled: "429", collateralId: "10", startTime: "2026-08-17T20:44:47Z", maturityDate: "2026-11-15T20:44:47Z", token: loanToken({ tokenId: "10", estimatedValue: "10000", regionCode: "AZ", acres: "2.5" }), borrower: { address: "0x7f0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa7749", user: { displayName: "0x7f0…7749" } } }),
   loan({ loanId: "2", loanStatus: "Repaid", principalScaled: "50000", collateralId: "20", aprPercent: 15, startTime: "2025-11-28T15:53:23Z", token: loanToken({ tokenId: "20", estimatedValue: "100000", regionCode: "CA", acres: "0.2" }), borrower: { address: "0x94deaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaad49b", user: { displayName: "tonyherrera" } } }),
@@ -62,7 +49,6 @@ const loans = [
 beforeEach(() => {
   vi.mocked(getAllLoans).mockResolvedValue(loans);
   vi.mocked(getFabricaPools).mockResolvedValue([pool()]);
-  vi.mocked(getPoolLoans).mockResolvedValue([poolLoan()]);
 });
 
 describe("get_loan_book", () => {
@@ -91,21 +77,10 @@ describe("get_loan_book", () => {
     expect(result.poolCounts).not.toHaveProperty("note");
   });
 
-  it("reports pool auction proceeds and no proceeds for peer-to-peer liquidations", async () => {
+  it("reports no auction proceeds or per-loan liquidation rows", async () => {
     const result = await getLoanBook({});
-    if ("error" in result) throw new Error(result.error);
-    expect(result.recovery.pool).toEqual({ liquidatedLoans: 1, liquidatedPrincipal: { USDC: "12,780 USDC" }, loansWithAuctionProceeds: 1, auctionProceeds: "400 USDC" });
-    expect(result.recovery.peerToPeer.liquidatedLoans).toBe(1);
-    const p2p = result.recovery.loans.find(l => l.loanId === "4");
-    expect(p2p?.auctionProceeds).toBeNull();
-  });
-
-  it("says proceeds are unknown, not zero, when the pool data source is down", async () => {
-    vi.mocked(getPoolLoans).mockResolvedValue(null);
-    const result = await getLoanBook({});
-    if ("error" in result) throw new Error(result.error);
-    expect(result.recovery.pool.auctionProceeds).toBeNull();
-    expect(result.recovery.source).toContain("unknown");
+    expect(result).not.toHaveProperty("recovery");
+    expect(JSON.stringify(result)).not.toMatch(/proceeds/i);
   });
 
   it("filters by provider, status and start date", async () => {
@@ -174,12 +149,6 @@ describe("loan book helpers", () => {
     expect(chosenName({ address: "0x1", user: { displayName: "" } })).toBeNull();
     expect(chosenName({ address: "0x1", user: { displayName: "fedepo.eth" } })).toBe("fedepo.eth");
     expect(chosenName(null)).toBeNull();
-  });
-
-  it("matches a pool loan by pool, collateral and start second", () => {
-    expect(matchPoolLoan(loans[2], [poolLoan({ id: "0xother", timestamp: "1" }), poolLoan()])?.id).toBe("0xabc");
-    expect(matchPoolLoan(loans[2], [poolLoan({ pool: { id: "0xelse" } })])).toBeNull();
-    expect(matchPoolLoan(loans[2], [poolLoan({ timestamp: "1" })])).toBeNull();
   });
 
   it("lists the last 12 months, empty ones included", () => {
