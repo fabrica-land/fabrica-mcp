@@ -78,6 +78,12 @@ Set `FABRICA_NETWORK=sepolia` in the server's environment for the testnet.
 | `check_coverage` | Whether a US county (or state) can be added through the on-ramp, and what it asks the owner for. From a table of the on-ramp rules, dated and refreshed by hand (`npm run coverage:build`) |
 | `contact_support` | Hand a question to Fabrica support: help center section, support email, and a prefilled mailto with the summary and property link. Sends nothing itself |
 
+### Sign requests (testnet host first)
+
+On `mcp-testnet.fabrica.land` (and on mainnet only with `FABRICA_SIGN_REQUESTS=enabled`), five tools prepare marketplace actions: `make_offer`, `list_for_sale`, `accept_offer`, `buy` and `cancel_order`. Each checks the live data (the property is live, the wallet holds it or not, the order is open, buyable and the wallet's own where it has to be), then returns a `signRequest`: a summary, warnings, a sign link to the property page on fabrica.land with the dialog prefilled, and an expiry 15 minutes out. The person opens the link and signs with their own wallet. The server holds no keys, signs nothing and submits nothing; `payload` (typed data or an unsigned transaction for a wallet in the conversation) stays null until Connect Fabrica (ENG-5004). `get_sign_request` says whether a request was signed (it also checks the order book), and `get_transaction_status` follows a transaction by hash.
+
+Pending requests live in the server's own store (Vercel KV / Upstash Redis: `KV_REST_API_URL` and `KV_REST_API_TOKEN`, plus `SIGN_REQUEST_SECRET` for the records' HMAC). The sign page reads one at `GET /sign-requests/{id}` and reports the outcome at `POST /sign-requests/{id}/result` with `{ orderHash }` or `{ transactionHash }`, which the server checks against the API or the chain before recording. Contract: ENG-5073. Without a store the tools say they are not configured; locally (stdio) an in-process map is used.
+
 ### Knowledge layer
 
 `ask_fabrica` answers questions about Fabrica (the trust, fees, Property checks, lending, taxes, the onramp, the legal framework) from Fabrica's own text and returns the passages with their URLs, so an agent cites the page instead of paraphrasing from memory. Three sources feed it: [docs.fabrica.land](https://docs.fabrica.land), the [help center](https://help.fabrica.land) and the [US trust agreement](https://github.com/fabrica-land/fabrica-connectors/blob/main/connectors/us/us-trust-agreement.md).

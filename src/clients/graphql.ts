@@ -10,6 +10,7 @@ import type {
   GetOrderBookQuery,
   GetParcelIndexQuery,
   GetPremintSuccessorQuery,
+  GetSignContextQuery,
   GetPropertyLinkQuery,
   GetTaxStatusQuery,
   GetTokenQuery,
@@ -30,6 +31,7 @@ import type {
   OrderBookToken,
   ParcelIndexToken,
   ScoreRecord,
+  SignContextToken,
   SignedValuationPanel,
   TaxStatusToken,
   TokenDetail,
@@ -489,6 +491,35 @@ export async function getOrderBook(
   return data.token;
 }
 
+const GET_SIGN_CONTEXT_QUERY = gql`
+  ${ORDER_BOOK_ORDER_FIELDS}
+  query GetSignContext($tokenId: String, $slug: String, $network: String) {
+    token(tokenId: $tokenId, slug: $slug, network: $network) {
+      tokenId name vanityName propertyLink contractAddress network
+      isPremint claimState supersededByTokenId offRampStatus isBurned
+      supply supplyUnderLoan estimatedValue majorityOwnerAddress
+      balances { balance holder { address } owner { address } }
+      marketplaceListings { ...OrderBookOrderFields }
+      marketplaceBids { ...OrderBookOrderFields }
+    }
+  }
+`;
+
+/**
+ * What a prepare tool checks before it builds a sign request: the token's state, who holds it,
+ * its estimate and its order book. Never cached: a sign request must see the live order book.
+ */
+export async function getSignContext(
+  params: { tokenId?: string; slug?: string },
+): Promise<SignContextToken> {
+  const data = await request<GetSignContextQuery>(GET_SIGN_CONTEXT_QUERY, {
+    tokenId: params.tokenId,
+    slug: params.slug,
+    network: NETWORK,
+  });
+  return data.token;
+}
+
 const GET_PREMINT_SUCCESSOR_QUERY = gql`
   query GetPremintSuccessor($network: String!, $tokenId: String!) {
     premintSuccessor(network: $network, tokenId: $tokenId) {
@@ -941,6 +972,7 @@ export const API_DOCUMENTS: ReadonlyArray<{ name: string; document: string }> = 
   { name: "GetCountyBounds", document: GET_COUNTY_BOUNDS_QUERY },
   { name: "GetOrderBook", document: GET_ORDER_BOOK_QUERY },
   { name: "GetPremintSuccessor", document: GET_PREMINT_SUCCESSOR_QUERY },
+  { name: "GetSignContext", document: GET_SIGN_CONTEXT_QUERY },
   { name: "GetParcelIndex", document: GET_PARCEL_INDEX_QUERY },
   { name: "GetNetworkActivity", document: GET_NETWORK_ACTIVITY_QUERY },
   { name: "GetPropertyLink", document: GET_PROPERTY_LINK_QUERY },

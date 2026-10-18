@@ -14,6 +14,7 @@ import type {
   GetNetworkActivityQuery,
   GetOperatingAgreementQuery,
   GetOrderBookQuery,
+  GetSignContextQuery,
   GetParcelIndexQuery,
   GetPremintSuccessorQuery,
   GetTaxStatusQuery,
@@ -96,6 +97,8 @@ export type LoanLiquidatedEvent = GetLoanLiquidatedEventsQuery["loanLiquidatedEv
 export type CountyBoundsModel = NonNullable<GetCountyBoundsQuery["countyBounds"]>;
 export type OrderBookToken = GetOrderBookQuery["token"];
 export type OrderBookOrder = NonNullable<OrderBookToken["marketplaceListings"]>[number];
+/** A token as the sign-request prepare tools check it: state, holders, estimate and order book. */
+export type SignContextToken = GetSignContextQuery["token"];
 export type PremintSuccessor = GetPremintSuccessorQuery["premintSuccessor"];
 export type TrustDocumentsToken = GetTrustDocumentsQuery["token"];
 export type ConfigurationDocument = NonNullable<NonNullable<TrustDocumentsToken["configuration"]>["documents"]>[number];
