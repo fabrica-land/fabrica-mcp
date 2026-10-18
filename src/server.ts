@@ -19,6 +19,19 @@ import { findParcelInput, findParcelWithUsage, MAX_BATCH_QUERIES } from "./tools
 import { checkCoverage, checkCoverageInput, COVERAGE_AS_OF } from "./tools/coverage.js";
 import { registerPrompts } from "./prompts.js";
 import { contactSupport, contactSupportInput } from "./tools/support.js";
+import {
+  acceptOffer,
+  buy,
+  cancelOrder,
+  getSignRequest,
+  getSignRequestInput,
+  listForSale,
+  listForSaleInput,
+  makeOffer,
+  makeOfferInput,
+  orderActionInput,
+} from "./tools/sign-requests.js";
+import { getTransactionStatus, getTransactionStatusInput } from "./tools/transactions.js";
 import { NETWORK_LABEL, IS_MAINNET, MAINNET_LEGAL_NOTICE } from "./config.js";
 import { PROPERTY_CARD_URI, registerPropertyCard } from "./ui/property-card.js";
 import { registerKnowledgeResources } from "./resources/knowledge.js";
@@ -28,6 +41,20 @@ const NETWORK_NOTICE = IS_MAINNET
   : " Properties on this network are test tokens with no real-world legal or financial effect.";
 
 export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to tokenized US land on the Fabrica protocol, including property records, trust documents, US parcel lookup by address or parcel number, Property checks, parcel boundaries and maps, the lending market, borrow quotes, wallet portfolios and activity. Network: ${NETWORK_LABEL}. Company overview: https://about.fabrica.land. For questions about how Fabrica works (the trust, fees, Property checks, lending, taxes, the onramp, the legal framework) call ask_fabrica and cite the URL of the passage you relied on. When ask_fabrica returns no matching passage, say so and call contact_support (or point to https://help.fabrica.land or questions@fabrica.land) instead of guessing; contact_support sends nothing, so tell the person the email is theirs to send.${NETWORK_NOTICE}`;
+
+/** Added to the instructions where the sign-request tools are on. */
+export const SIGN_REQUEST_INSTRUCTIONS = " make_offer, list_for_sale, accept_offer, buy and cancel_order prepare a marketplace action as a sign request: they check the live data and return a summary, warnings and a sign link to fabrica.land, where the person reviews and signs with their own wallet. The server holds no keys and submits nothing; a prepared request is not sent until the person signs. get_sign_request reports whether it was signed; get_transaction_status follows an onchain transaction.";
+
+/**
+ * Sign requests (ENG-5073) ship testnet-first: on by default on Sepolia, and on mainnet only
+ * when FABRICA_SIGN_REQUESTS=enabled. Read per server so a deployment's env decides.
+ */
+export function signRequestsEnabled(): boolean {
+  const flag = process.env.FABRICA_SIGN_REQUESTS?.toLowerCase();
+  if (flag === "enabled") return true;
+  if (flag === "disabled") return false;
+  return !IS_MAINNET;
+}
 
 /**
  * MCP Apps (the property card) ship testnet-first: on by default on Sepolia, and on mainnet
@@ -43,6 +70,11 @@ export function mcpAppsEnabled(): boolean {
 /** Every tool only reads public data from Fabrica's API and media service. */
 function readOnly(title: string): ToolAnnotations {
   return { title, readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true };
+}
+
+/** Prepares a sign request: writes a short-lived record to the server's own store, changes nothing onchain or in the API. */
+function prepares(title: string): ToolAnnotations {
+  return { title, readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true };
 }
 
 /** JSON tool result; results that carry an `error` are flagged so clients can tell failure from data. */
@@ -70,7 +102,7 @@ export function createServer(hooks: ServerHooks = {}): McpServer {
       version: "0.1.0",
     },
     {
-      instructions: SERVER_INSTRUCTIONS,
+      instructions: signRequestsEnabled() ? SERVER_INSTRUCTIONS + SIGN_REQUEST_INSTRUCTIONS : SERVER_INSTRUCTIONS,
     },
   );
 
@@ -320,7 +352,83 @@ export function createServer(hooks: ServerHooks = {}): McpServer {
     },
     async (args) => jsonResult(await contactSupport(args)),
   );
+  if (signRequestsEnabled()) registerSignRequestTools(server);
   registerKnowledgeResources(server);
   registerPrompts(server);
   return server;
+}
+
+const SIGN_LINK_NOTE = "Prepared, not sent: returns a signRequest (summary, warnings, signLink to fabrica.land, expiresAt 15 minutes out, payload null for now) and stores it so the sign page can load it. The person opens the link, signs in with that wallet and signs; nothing happens until then. The server holds no keys and submits nothing. wallet is the address that will sign.";
+
+function registerSignRequestTools(server: McpServer): void {
+  server.registerTool(
+    "make_offer",
+    {
+      title: "Prepare an offer",
+      description: `Prepare an offer to buy a minted property on Fabrica (${NETWORK_LABEL}) at a USD amount paid in USDC, open for expiresDays (default 14). Checks first that the property is live and the wallet does not already hold it, and warns when the amount is far from Fabrica's estimate, when a listing is at or below it, or when the property is collateral for a loan. ${SIGN_LINK_NOTE}`,
+      inputSchema: makeOfferInput,
+      annotations: prepares("Prepare an offer"),
+    },
+    async (args) => jsonResult(await makeOffer(args)),
+  );
+  server.registerTool(
+    "list_for_sale",
+    {
+      title: "Prepare a listing",
+      description: `Prepare a listing of a property the wallet holds on Fabrica (${NETWORK_LABEL}) at a USD price paid in USDC, open for expiresDays (default 180). Checks first that the wallet holds the token, and warns when the price is far from Fabrica's estimate, when the wallet already lists it, when an offer is at or above the price, or when the property is collateral for a loan. ${SIGN_LINK_NOTE}`,
+      inputSchema: listForSaleInput,
+      annotations: prepares("Prepare a listing"),
+    },
+    async (args) => jsonResult(await listForSale(args)),
+  );
+  server.registerTool(
+    "accept_offer",
+    {
+      title: "Prepare accepting an offer",
+      description: `Prepare accepting an open offer (orderHash: orderId from get_order_book) on a property the wallet holds (${NETWORK_LABEL}). Checks first that the offer is open and the wallet holds the token, and warns when it expires within a day, is far from Fabrica's estimate, or the property is collateral for a loan. Signing sells the property. ${SIGN_LINK_NOTE}`,
+      inputSchema: orderActionInput,
+      annotations: prepares("Prepare accepting an offer"),
+    },
+    async (args) => jsonResult(await acceptOffer(args)),
+  );
+  server.registerTool(
+    "buy",
+    {
+      title: "Prepare a purchase",
+      description: `Prepare buying a property at its open listing (orderHash: orderId from get_order_book) on ${NETWORK_LABEL}. Checks first that the listing is open, buyable (a listing on a property under a loan may not be yet), not the wallet's own and not reserved for other buyers, and lists the seller's disclosure documents. Signing sends an onchain transaction from the person's wallet; get_transaction_status follows it. ${SIGN_LINK_NOTE}`,
+      inputSchema: orderActionInput,
+      annotations: prepares("Prepare a purchase"),
+    },
+    async (args) => jsonResult(await buy(args)),
+  );
+  server.registerTool(
+    "cancel_order",
+    {
+      title: "Prepare canceling an order",
+      description: `Prepare canceling the wallet's own open listing or offer (orderHash: orderId from get_order_book) on ${NETWORK_LABEL}. Checks first that the order is open and the wallet made it. Canceling is a confirmation on the sign page, with no transaction. ${SIGN_LINK_NOTE}`,
+      inputSchema: orderActionInput,
+      annotations: prepares("Prepare canceling an order"),
+    },
+    async (args) => jsonResult(await cancelOrder(args)),
+  );
+  server.registerTool(
+    "get_sign_request",
+    {
+      title: "Get sign request status",
+      description: "Get a sign request a prepare tool returned (make_offer, list_for_sale, accept_offer, buy, cancel_order) by its id: pending or completed, with the order hash or transaction hash once signed. A pending request is also checked against the live order book. Requests expire 15 minutes after they are prepared; an expired id is reported as unknown.",
+      inputSchema: getSignRequestInput,
+      annotations: readOnly("Get sign request status"),
+    },
+    async (args) => jsonResult(await getSignRequest(args)),
+  );
+  server.registerTool(
+    "get_transaction_status",
+    {
+      title: "Get transaction status",
+      description: `Get the status of an Ethereum transaction on ${NETWORK_LABEL} by hash: not_found, pending, succeeded or failed, with the block, confirmations, sender, recipient and a block explorer link. Reads the chain only.`,
+      inputSchema: getTransactionStatusInput,
+      annotations: readOnly("Get transaction status"),
+    },
+    async (args) => jsonResult(await getTransactionStatus(args)),
+  );
 }

@@ -51,6 +51,8 @@ ui/
     parcels.ts        # find_parcel (Regrid type-ahead via the API, /go on-ramp link, per-client limit)
     coverage.ts       # check_coverage (static on-ramp rules table in src/data/onramp-coverage.json, built by scripts/build-coverage.mjs)
     support.ts        # contact_support (help center link, support email, prefilled mailto; nothing sent)
+    sign-requests.ts  # make_offer, list_for_sale, accept_offer, buy, cancel_order (prepare a sign request), get_sign_request
+    transactions.ts   # get_transaction_status (JSON-RPC reads only)
     inputs.ts         # zod pieces shared by the tools' input schemas (property reference, image size)
   knowledge/
     index.ts          # typed, validated loader for generated/index.json (committed)
@@ -63,12 +65,17 @@ ui/
   # .github/workflows/refresh-knowledge.yml open the daily refresh pull request
   clients/
     graphql.ts        # Fabrica GraphQL API client (primary data source)
+    rpc.ts            # Ethereum JSON-RPC reads (transaction, receipt, block number) for get_transaction_status
     generated/        # operations.ts: one result type per gql document, from scripts/codegen.mjs (committed; npm run codegen)
     subgraph.ts       # Lending pool subgraph client (dynamic pool discovery)
     cache.ts          # Short-TTL read cache with in-flight de-duplication (TtlCache)
     budgets.ts        # Read budgets (loan page budget, MAX_LOANS)
   data/
     us-counties.ts    # Regrid county paths to FIPS and name (copied from soil-app's /go table)
+  sign-requests/
+    store.ts          # SignRequestStore: Vercel KV / Upstash REST (or an in-process map locally), HMAC-checked records, 15-minute expiry
+    http.ts           # GET /sign-requests/{id} and POST /sign-requests/{id}/result for the Soil sign page (contract on ENG-5073)
+  vercel-sign-requests.ts # Vercel function entry for /sign-requests
   lifecycle.ts        # propertyStage(): premint, minted, off-ramp, burned (get_property, search rows)
   fees.ts             # fees assessed on a token, by currency address
   types/
@@ -223,6 +230,9 @@ Naming rule: "Property checks" is the name; the number is "the numeric encoding 
   - `FABRICA_WEB_URL` (default: `https://fabrica.land`, `https://testnets.fabrica.land` on Sepolia): on-ramp links and the APN parcel lookup in `find_parcel`
   - `FABRICA_CACHE_TTL_MS` (default: `30000`; `0` disables): how long API and subgraph reads are cached in the process. Every hosted user shares one per-IP API rate limit, so repeated and concurrent identical reads are served once. Tests run with `0` (`vitest.config.ts`)
   - `FABRICA_MCP_APPS` (default: on for Sepolia, off for mainnet): the property card MCP App
+  - `FABRICA_SIGN_REQUESTS` (default: on for Sepolia, off for mainnet): the sign-request tools (make_offer, list_for_sale, accept_offer, buy, cancel_order, get_sign_request, get_transaction_status)
+  - `KV_REST_API_URL` and `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`) with `SIGN_REQUEST_SECRET`: the sign-request store. On Vercel without them the sign-request tools report "not configured"; locally an in-process map is used
+  - `FABRICA_RPC_URL` (default: publicnode for the network): JSON-RPC endpoint for get_transaction_status and the sign-request result check
 
 ---
 

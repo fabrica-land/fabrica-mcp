@@ -7,32 +7,36 @@ import { build } from "tsup";
 
 const OUTPUT = ".vercel/output";
 const FUNCTION_DIR = `${OUTPUT}/functions/mcp.func`;
+// Sign requests (ENG-5073): the sign page reads and completes them at /sign-requests/{id}.
+const SIGN_REQUESTS_DIR = `${OUTPUT}/functions/sign-requests.func`;
 const isSepolia = process.env.FABRICA_NETWORK?.toLowerCase() === "sepolia";
 const networkLabel = isSepolia ? "Sepolia testnet" : "Ethereum mainnet";
 
 await rm(OUTPUT, { recursive: true, force: true });
-await build({
-  config: false,
-  entry: { index: "src/vercel.ts" },
-  format: ["cjs"],
-  platform: "node",
-  target: "node20",
-  outDir: FUNCTION_DIR,
-  outExtension: () => ({ js: ".js" }),
-  noExternal: [/.*/],
-  splitting: false,
-  shims: true,
-  dts: false,
-  silent: true,
-});
-await writeFile(`${FUNCTION_DIR}/package.json`, JSON.stringify({ type: "commonjs" }));
-await writeFile(`${FUNCTION_DIR}/.vc-config.json`, JSON.stringify({
-  runtime: "nodejs22.x",
-  handler: "index.js",
-  launcherType: "Nodejs",
-  shouldAddHelpers: true,
-  maxDuration: 60,
-}, null, 2));
+for (const [entry, dir] of [["src/vercel.ts", FUNCTION_DIR], ["src/vercel-sign-requests.ts", SIGN_REQUESTS_DIR]]) {
+  await build({
+    config: false,
+    entry: { index: entry },
+    format: ["cjs"],
+    platform: "node",
+    target: "node20",
+    outDir: dir,
+    outExtension: () => ({ js: ".js" }),
+    noExternal: [/.*/],
+    splitting: false,
+    shims: true,
+    dts: false,
+    silent: true,
+  });
+  await writeFile(`${dir}/package.json`, JSON.stringify({ type: "commonjs" }));
+  await writeFile(`${dir}/.vc-config.json`, JSON.stringify({
+    runtime: "nodejs22.x",
+    handler: "index.js",
+    launcherType: "Nodejs",
+    shouldAddHelpers: true,
+    maxDuration: 60,
+  }, null, 2));
+}
 await mkdir(`${OUTPUT}/static`, { recursive: true });
 await writeFile(`${OUTPUT}/static/index.html`, `<!doctype html>
 <html lang="en">
@@ -72,6 +76,8 @@ await writeFile(`${OUTPUT}/config.json`, JSON.stringify({
       headers: { "Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=31536000, immutable" },
       continue: true,
     },
+    { src: "^/sign-requests/([^/]+)/result/?$", dest: "/sign-requests?id=$1&op=result" },
+    { src: "^/sign-requests/([^/]+)/?$", dest: "/sign-requests?id=$1" },
     { handle: "filesystem" },
   ],
 }, null, 2));
