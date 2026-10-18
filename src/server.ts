@@ -3,6 +3,7 @@ import { registerAppTool } from "@modelcontextprotocol/ext-apps/server";
 import type { CallToolResult, ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { searchProperties, getProperty, getPropertyMap, searchPropertiesInput, getPropertyInput, getPropertyMapInput, type GetPropertyArgs } from "./tools/properties.js";
 import { getLendingMarket, getLendingMarketInput } from "./tools/lending.js";
+import { getLoanBook, getLoanBookInput } from "./tools/loan-book.js";
 import { getPortfolio, getPortfolioInput } from "./tools/portfolio.js";
 import { getProtocolStats } from "./tools/protocol.js";
 import { explainConfidenceScore, explainConfidenceScoreInput } from "./tools/scoring.js";
@@ -139,11 +140,22 @@ export function createServer(hooks: ServerHooks = {}): McpServer {
     "get_lending_market",
     {
       title: "Get lending market",
-      description: "Get an overview of the Fabrica lending market: loan counts, loans, DeFi lending pool liquidity and utilization, average APR, and recent loan events. Owners borrow against their properties through the DeFi lending pool (pool-based lending). Loan records also include historical peer-to-peer loans made through a former integration that is now retired.",
+      description: "Get an overview of the Fabrica lending market: loan counts, loans, DeFi lending pool liquidity and utilization, average APR, and recent loan events (the distribution of the whole history, by loan-to-value, state and outcome, is in get_loan_book). Owners borrow against their properties through the DeFi lending pool (pool-based lending). Loan records also include historical peer-to-peer loans made through a former integration that is now retired.",
       inputSchema: getLendingMarketInput,
       annotations: readOnly("Get lending market"),
     },
     async (args) => jsonResult(await getLendingMarket(args)),
+  );
+
+  server.registerTool(
+    "get_loan_book",
+    {
+      title: "Get loan book",
+      description: "Get the lending history of the Fabrica protocol as a distribution: loan counts and principal by status and provider, loan-to-value bands against today's property estimates, exposure by state and acreage, APR and duration spread, repaid and liquidated counts, originations by month for the last 12 months, and the largest loans with their property pages. Covers DeFi lending pool loans and historical peer-to-peer loans. Counts come from the loan records; where the pool data source's counters differ, both are shown.",
+      inputSchema: getLoanBookInput,
+      annotations: readOnly("Get loan book"),
+    },
+    async (args) => jsonResult(await getLoanBook(args)),
   );
 
   server.registerTool(
