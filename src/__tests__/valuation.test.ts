@@ -94,7 +94,7 @@ beforeEach(() => {
   vi.mocked(getSignedValuations).mockResolvedValue(signedPanel);
 });
 
-describe("get_valuation", () => {
+describe("get_land_valuation", () => {
   it("requires a token id or slug", async () => {
     expect(await getValuation({})).toEqual({ error: "Either tokenId or slug is required" });
   });
@@ -169,7 +169,7 @@ describe("get_valuation", () => {
   });
 });
 
-describe("get_borrow_quote states why capacity is zero", () => {
+describe("estimate_land_borrowing states why capacity is zero", () => {
   it("gives the tax reason", async () => {
     vi.mocked(getToken).mockResolvedValue(tokenDetailWithPoolOracle({
       tokenId: "4", name: "Taxed Lot", estimatedValue: "1000", supplyUnderLoan: "0", loans: [],

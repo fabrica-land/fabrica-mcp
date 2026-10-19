@@ -78,7 +78,7 @@ describe("formatActivitySource", () => {
   });
 });
 
-describe("get_protocol_stats wording", () => {
+describe("get_fabrica_stats wording", () => {
   it("publishes no repayment rate and names the DeFi lending pool", async () => {
     const result = await getProtocolStats() as Record<string, unknown>;
     const text = JSON.stringify(result);
@@ -104,7 +104,7 @@ describe("get_protocol_stats wording", () => {
   });
 });
 
-describe("get_lending_market wording", () => {
+describe("get_fabrica_lending_market wording", () => {
   it("publishes no repayment rate and labels loan providers", async () => {
     const result = await getLendingMarket({}) as Record<string, unknown>;
     const text = JSON.stringify(result);
@@ -119,7 +119,7 @@ describe("get_lending_market wording", () => {
   });
 });
 
-describe("get_borrow_quote wording", () => {
+describe("estimate_land_borrowing wording", () => {
   it("reports DeFi lending pool liquidity", async () => {
     vi.mocked(getToken).mockResolvedValue(tokenDetailWithPoolOracle({
       tokenId: "1",

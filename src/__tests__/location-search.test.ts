@@ -45,7 +45,7 @@ describe("location links", () => {
   });
 });
 
-describe("search_properties by county", () => {
+describe("search_land by county", () => {
   it("returns the rows and the county page for 'for sale in Costilla County, Colorado'", async () => {
     const result = await searchProperties({ region: "CO", county: "costilla", hasListings: true }) as Record<string, unknown>;
     // hasListings is applied by the API; the mock returns every token, so both Costilla rows come back.
@@ -82,7 +82,7 @@ describe("search_properties by county", () => {
   });
 });
 
-describe("get_protocol_stats top counties", () => {
+describe("get_fabrica_stats top counties", () => {
   it("lists counties by property count with links", async () => {
     const result = await getProtocolStats() as { properties: { topCounties: Array<Record<string, unknown>> } };
     expect(result.properties.topCounties[0]).toMatchObject({ county: "Costilla County", properties: 2 });

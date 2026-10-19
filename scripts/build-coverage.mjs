@@ -1,4 +1,4 @@
-// Builds the static on-ramp coverage table behind the `check_coverage` tool from a local
+// Builds the static on-ramp coverage table behind the `check_county_coverage` tool from a local
 // checkout of the on-ramp rules (fabrica-land/fabrica-v3-rules, private), written to
 // src/data/onramp-coverage.json (committed; the hosted server holds no credential and makes
 // no call for coverage).
@@ -75,7 +75,7 @@ function steps(rawSteps) {
   if (!Array.isArray(rawSteps)) return undefined;
   return rawSteps.filter(visible).map((step) => {
     const out = { text: step.text };
-    // A document action names a rules document; check_coverage keeps it only where that document applies.
+    // A document action names a rules document; check_county_coverage keeps it only where that document applies.
     const actions = (step.userActions ?? []).filter((action) => isRecord(action) && typeof action.prompt === "string")
       .map((action) => (action.disposition === "document" ? { prompt: action.prompt, document: action.key } : { prompt: action.prompt }));
     const stages = (step.substeps ?? []).filter(visible).map((substep) => substep.text);
@@ -130,7 +130,7 @@ function assertNoArrayOverlap(layers) {
   const visit = (value, at, place) => {
     if (Array.isArray(value)) {
       const seen = arrayPaths.get(at);
-      if (seen !== undefined && seen !== place) throw new Error(`${at} is an array in both "${seen}" and "${place}"; check_coverage's merge does not handle that`);
+      if (seen !== undefined && seen !== place) throw new Error(`${at} is an array in both "${seen}" and "${place}"; check_county_coverage's merge does not handle that`);
       arrayPaths.set(at, place);
     } else if (isRecord(value)) {
       for (const [key, child] of Object.entries(value)) visit(child, `${at}.${key}`, place);

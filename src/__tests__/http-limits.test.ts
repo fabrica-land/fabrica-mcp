@@ -39,18 +39,18 @@ describe("property card image origins", () => {
   });
 });
 
-describe("find_parcel per-client limit", () => {
-  it("counts find_parcel calls in a message or batch, nothing else", async () => {
+describe("find_us_parcel per-client limit", () => {
+  it("counts find_us_parcel calls in a message or batch, nothing else", async () => {
     const { countFindParcelCalls } = await import("../http.js");
-    const call = { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "find_parcel", arguments: { query: "x" } } };
+    const call = { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "find_us_parcel", arguments: { query: "x" } } };
     expect(countFindParcelCalls(call)).toBe(1);
     expect(countFindParcelCalls([call, { ...call, id: 2 }, { jsonrpc: "2.0", id: 3, method: "tools/list" }])).toBe(2);
-    expect(countFindParcelCalls({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "get_property" } })).toBe(0);
+    expect(countFindParcelCalls({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "get_land_property" } })).toBe(0);
     expect(countFindParcelCalls(undefined)).toBe(0);
     // A list counts one lookup per query, capped at the most a call may carry.
-    expect(countFindParcelCalls({ ...call, params: { name: "find_parcel", arguments: { queries: ["a", "b", "c"] } } })).toBe(3);
-    expect(countFindParcelCalls({ ...call, params: { name: "find_parcel", arguments: { queries: Array.from({ length: 50 }, () => "a") } } })).toBe(10);
-    expect(countFindParcelCalls({ ...call, params: { name: "find_parcel", arguments: { queries: [] } } })).toBe(1);
+    expect(countFindParcelCalls({ ...call, params: { name: "find_us_parcel", arguments: { queries: ["a", "b", "c"] } } })).toBe(3);
+    expect(countFindParcelCalls({ ...call, params: { name: "find_us_parcel", arguments: { queries: Array.from({ length: 50 }, () => "a") } } })).toBe(10);
+    expect(countFindParcelCalls({ ...call, params: { name: "find_us_parcel", arguments: { queries: [] } } })).toBe(1);
   });
 
   it("answers 429 with a clear JSON-RPC error once the limit is spent", async () => {
@@ -65,7 +65,7 @@ describe("find_parcel per-client limit", () => {
     const response = await fetch(`http://127.0.0.1:${address.port}/mcp`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream", "X-Forwarded-For": "203.0.113.9, 10.0.0.1" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "find_parcel", arguments: { query: "1 Main St" } } }),
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "find_us_parcel", arguments: { query: "1 Main St" } } }),
     });
     await new Promise<void>((resolve) => server.close(() => resolve()));
     expect(response.status).toBe(429);

@@ -34,24 +34,24 @@ ui/
                       # phone, regular otherwise), hover, safe areas, fact lines; unit tested
   fonts/              # Open Sauce Two (OFL) subset, served at /fonts by the hosted server
   tools/
-    properties.ts     # search_properties, get_property, get_property_map
-    lending.ts        # get_lending_market
-    loan-book.ts      # get_loan_book (distribution of the loan records; no auction proceeds or per-loan liquidation rows, Fede 2026-10-17)
-    portfolio.ts      # get_portfolio
-    protocol.ts       # get_protocol_stats
-    scoring.ts        # explain_confidence_score
-    borrowing.ts      # get_borrow_quote
-    valuation.ts      # get_valuation (GraphQL GetValuation + REST /valuation/v1)
-    activity.ts       # get_activity
-    marketplace.ts    # get_order_book
-    images.ts         # get_property_image, get_portfolio_image
-    documents.ts      # get_trust_documents
-    tax.ts            # get_tax_status (also the taxes line on get_property)
+    properties.ts     # search_land, get_land_property, get_land_boundary
+    lending.ts        # get_fabrica_lending_market
+    loan-book.ts      # get_fabrica_loan_book (distribution of the loan records; no auction proceeds or per-loan liquidation rows, Fede 2026-10-17)
+    portfolio.ts      # get_land_portfolio
+    protocol.ts       # get_fabrica_stats
+    scoring.ts        # explain_property_checks
+    borrowing.ts      # estimate_land_borrowing
+    valuation.ts      # get_land_valuation (GraphQL GetValuation + REST /valuation/v1)
+    activity.ts       # get_land_activity
+    marketplace.ts    # get_land_order_book
+    images.ts         # get_land_map_image, get_land_portfolio_map_image
+    documents.ts      # get_land_trust_documents
+    tax.ts            # get_land_tax_status (also the taxes line on get_land_property)
     knowledge.ts      # ask_fabrica
-    parcels.ts        # find_parcel (Regrid type-ahead via the API, /go on-ramp link, per-client limit)
-    coverage.ts       # check_coverage (static on-ramp rules table in src/data/onramp-coverage.json, built by scripts/build-coverage.mjs)
-    support.ts        # contact_support (help center link, support email, prefilled mailto; nothing sent)
-    sign-requests.ts  # make_offer, list_for_sale, accept_offer, buy, cancel_order (prepare a sign request), get_sign_request
+    parcels.ts        # find_us_parcel (Regrid type-ahead via the API, /go on-ramp link, per-client limit)
+    coverage.ts       # check_county_coverage (static on-ramp rules table in src/data/onramp-coverage.json, built by scripts/build-coverage.mjs)
+    support.ts        # contact_fabrica_support (help center link, support email, prefilled mailto; nothing sent)
+    sign-requests.ts  # make_land_offer, list_land_for_sale, accept_land_offer, buy_land, cancel_land_order (prepare a sign request), get_sign_request
     transactions.ts   # get_transaction_status (JSON-RPC reads only)
     inputs.ts         # zod pieces shared by the tools' input schemas (property reference, image size)
   knowledge/
@@ -76,7 +76,7 @@ ui/
     store.ts          # SignRequestStore: Vercel KV / Upstash REST (or an in-process map locally), HMAC-checked records, 15-minute expiry
     http.ts           # GET /sign-requests/{id} and POST /sign-requests/{id}/result for the Soil sign page (contract on ENG-5073)
   vercel-sign-requests.ts # Vercel function entry for /sign-requests
-  lifecycle.ts        # propertyStage(): premint, minted, off-ramp, burned (get_property, search rows)
+  lifecycle.ts        # propertyStage(): premint, minted, off-ramp, burned (get_land_property, search rows)
   fees.ts             # fees assessed on a token, by currency address
   types/
     index.ts          # Names for the generated operation types (TokenListItem, TokenDetail, WalletModel...) plus the REST and subgraph shapes
@@ -107,7 +107,7 @@ The Apollo API routes subgraph data internally, so all onchain and offchain prop
 **Key API behaviors:**
 
 - **`tokens` query has NO `first`/`skip` pagination.** Returns all matching tokens. Pagination is client-side.
-- **Marketplace orders:** unfiltered `token.marketplaceListings` / `marketplaceBids` return every status (active, encumbered, pending, expired, canceled, filled), and `marketplaceBidCount` counts expired offers too. `get_order_book` filters client-side and treats a live order past its `endTime` as expired. `price` is the raw onchain amount (scale by `decimals`); `usdPrice` is dollars. `encumbrance` is set per listing when the property is collateral for a loan; `buyable` and `blockReason` say whether that listing can be bought now (a `LEGACY_POOL` loan cannot be paid off by a third party).
+- **Marketplace orders:** unfiltered `token.marketplaceListings` / `marketplaceBids` return every status (active, encumbered, pending, expired, canceled, filled), and `marketplaceBidCount` counts expired offers too. `get_land_order_book` filters client-side and treats a live order past its `endTime` as expired. `price` is the raw onchain amount (scale by `decimals`); `usdPrice` is dollars. `encumbrance` is set per listing when the property is collateral for a loan; `buyable` and `blockReason` say whether that listing can be bought now (a `LEGACY_POOL` loan cannot be paid off by a third party).
 - **Nested fields `loans`, `marketplaceListings`, `marketplaceBids` are NOT available on list queries** (tokens list, wallet.tokens). Use scalar fields (`supplyUnderLoan`, `marketplacePrice`) instead. Nested fields only work on single `token()` queries.
 - **`loans` query requires `network` or `networkIn`** — errors without one.
 - **`loanStartedEvents`, `loanRepaidEvents`, `loanLiquidatedEvents` require `first!` and `skip!`** (non-nullable).
@@ -125,13 +125,13 @@ The Apollo API routes subgraph data internally, so all onchain and offchain prop
 **Mainnet:** `https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-mainnet/3.13.2/gn`
 **Sepolia:** `https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-sepolia/3.13.1/gn`
 
-Used for DeFi lending pool TVL, utilization, and loan count data. Its `loansLiquidated` counter reads 0 on mainnet while 10 pool loans were liquidated (ENG-5029), so `get_loan_book` counts from the loan records and shows the pool counters next to them. The subgraph, the env var and some internal identifiers keep the MetaStreet name for historical reasons; public-facing text says DeFi lending pool. **Pools are discovered dynamically** by querying all pools that accept the Fabrica collateral token — no hardcoded pool IDs. Mainnet has 1+ pools, Sepolia has 10 (2026-10). Pool values are in 18-decimal format.
+Used for DeFi lending pool TVL, utilization, and loan count data. Its `loansLiquidated` counter reads 0 on mainnet while 10 pool loans were liquidated (ENG-5029), so `get_fabrica_loan_book` counts from the loan records and shows the pool counters next to them. The subgraph, the env var and some internal identifiers keep the MetaStreet name for historical reasons; public-facing text says DeFi lending pool. **Pools are discovered dynamically** by querying all pools that accept the Fabrica collateral token — no hardcoded pool IDs. Mainnet has 1+ pools, Sepolia has 10 (2026-10). Pool values are in 18-decimal format.
 
 ### 3. Fabrica Media Service (Images)
 
 **Endpoint:** `https://media.fabrica.land/{network}/{contractAddress}/{tokenIdOrWalletAddress}/image`
 
-Public, no auth. Returns a 308 redirect to a Mapbox Static Images API URL. Supports query params: `theme` (dark/light), `width`, `height`. Used by `get_property_image` and `get_portfolio_image` tools — the MCP fetches the image and returns it inline as base64.
+Public, no auth. Returns a 308 redirect to a Mapbox Static Images API URL. Supports query params: `theme` (dark/light), `width`, `height`. Used by `get_land_map_image` and `get_land_portfolio_map_image` tools — the MCP fetches the image and returns it inline as base64.
 
 Override with `FABRICA_MEDIA_URL` env var.
 
@@ -173,17 +173,17 @@ Defined in `src/config.ts`. Lending pools are discovered dynamically from the su
 
 Tokens on the smart contract include spam/errored entries. The MCP filters them out:
 
-- **`minScore: 72032`**: default threshold matching the frontend marketplace (public listings and protocol stats). The API pairs any `minScore` with a verified-deed requirement, so this leaves out properties the marketplace would not sell, including any whose recovery status is not Normal. `search_properties` with `ownedBy` and no `minScore` lists every property in that wallet, like the owner's holdings on the frontend; `get_portfolio` applies no score filter
+- **`minScore: 72032`**: default threshold matching the frontend marketplace (public listings and protocol stats). The API pairs any `minScore` with a verified-deed requirement, so this leaves out properties the marketplace would not sell, including any whose recovery status is not Normal. `search_land` with `ownedBy` and no `minScore` lists every property in that wallet, like the owner's holdings on the frontend; `get_land_portfolio` applies no score filter
 - **Name filtering** — client-side exclusion of tokens with names like `SyntaxError`, `Error`, `BadGatewayException`
 - Default query filters: `burned: false`, `premints: false`, `testnets: false` (mainnet) / `true` (sepolia)
 
-The `minScore` can be overridden by users in `search_properties`.
+The `minScore` can be overridden by users in `search_land`.
 
 ---
 
 ## Property checks (5-digit numeric encoding)
 
-The feature is called **Property checks** in every description and output. The API's `score` field (and `confidenceScore`, `explain_confidence_score`) keep their names as identifiers; in prose the number is "the numeric encoding of Property checks", a 5-digit positional integer where each digit represents a verification group:
+The feature is called **Property checks** in every description and output. The API's `score` field (and `confidenceScore`, `explain_property_checks`) keep their names as identifiers; in prose the number is "the numeric encoding of Property checks", a 5-digit positional integer where each digit represents a verification group:
 
 | Position | Group | Max | Weight |
 |---|---|---|---|
@@ -195,7 +195,7 @@ The feature is called **Property checks** in every description and output. The A
 
 **Max: 75342.** Recovery digit (as the API defines it): 7=Normal, 6=Recovery pending, 5=Reported stolen, 4=Tax sale or foreclosure (Distressed), 1=Void.
 
-Each digit is a category value set by its group's rules, not a count of passing checks: never label a digit "x/y checks pass". Pass counts come from the individual results (`scoringCheckResults`), which `get_property` returns as `propertyChecks { passed, total, encoding, results }` and the property card shows as "9 of 12 pass", like fabrica.land. The deprecated `valuation.confidenceScore` and `valuation.scoreBreakdown` aliases were removed in ENG-5028 (payload size); `propertyChecks` is the only copy.
+Each digit is a category value set by its group's rules, not a count of passing checks: never label a digit "x/y checks pass". Pass counts come from the individual results (`scoringCheckResults`), which `get_land_property` returns as `propertyChecks { passed, total, encoding, results }` and the property card shows as "9 of 12 pass", like fabrica.land. The deprecated `valuation.confidenceScore` and `valuation.scoreBreakdown` aliases were removed in ENG-5028 (payload size); `propertyChecks` is the only copy.
 
 Naming rule: "Property checks" is the name; the number is "the numeric encoding of Property checks". Never call it a score, rating or percentage in user-facing text. Where checks are introduced, say they are a starting point for your own research, not a title search or title insurance.
 
@@ -206,7 +206,7 @@ Naming rule: "Property checks" is the name; the number is "the numeric encoding 
 1. **Concise responses.** Return structured summaries, not raw API dumps. Format monetary values as "$12,500".
 2. **Helpful errors.** "No property found with token ID 12345" not stack traces.
 3. **Sensible defaults.** Default limit 20, non-burned active tokens, spam filtered.
-4. **Composable.** Tools chain naturally: search → get_property → get_borrow_quote.
+4. **Composable.** Tools chain naturally: search → get_land_property → estimate_land_borrowing.
 5. **Lean queries.** Only request fields that the tool returns. Respect list query restrictions.
 6. **Property checks number as raw integer.** Never normalize it, and never present it as a percentage, grade or rating.
 7. **Network-aware.** Single network per session. Mainnet responses include legal notices.
@@ -227,10 +227,10 @@ Naming rule: "Property checks" is the name; the number is "the numeric encoding 
   - `FABRICA_API_URL` (default: `https://api.fabrica.land/graphql`)
   - `FABRICA_METASTREET_SUBGRAPH_URL` (default: auto-selected per network)
   - `FABRICA_MEDIA_URL` (default: `https://media.fabrica.land`)
-  - `FABRICA_WEB_URL` (default: `https://fabrica.land`, `https://testnets.fabrica.land` on Sepolia): on-ramp links and the APN parcel lookup in `find_parcel`
+  - `FABRICA_WEB_URL` (default: `https://fabrica.land`, `https://testnets.fabrica.land` on Sepolia): on-ramp links and the APN parcel lookup in `find_us_parcel`
   - `FABRICA_CACHE_TTL_MS` (default: `30000`; `0` disables): how long API and subgraph reads are cached in the process. Every hosted user shares one per-IP API rate limit, so repeated and concurrent identical reads are served once. Tests run with `0` (`vitest.config.ts`)
   - `FABRICA_MCP_APPS` (default: on for Sepolia, off for mainnet): the property card MCP App
-  - `FABRICA_SIGN_REQUESTS` (default: on for Sepolia, off for mainnet): the sign-request tools (make_offer, list_for_sale, accept_offer, buy, cancel_order, get_sign_request, get_transaction_status)
+  - `FABRICA_SIGN_REQUESTS` (default: on for Sepolia, off for mainnet): the sign-request tools (make_land_offer, list_land_for_sale, accept_land_offer, buy_land, cancel_land_order, get_sign_request, get_transaction_status)
   - `KV_REST_API_URL` and `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`) with `SIGN_REQUEST_SECRET`: the sign-request store. On Vercel without them the sign-request tools report "not configured"; locally an in-process map is used
   - `FABRICA_RPC_URL` (default: publicnode for the network): JSON-RPC endpoint for get_transaction_status and the sign-request result check
 
@@ -267,8 +267,8 @@ Tool descriptions and outputs are read by agents and repeated to people, so they
 
 - The in-app pool is the **DeFi lending pool** (pool-based lending; "Fabrica lending pool" is retired). Do not present MetaStreet as a live venue in descriptions or output text; code identifiers may keep the name.
 - NFTfi is a **retired** peer-to-peer integration. Mention it only as historical and labeled (see `src/labels.ts`).
-- Never output a platform-wide or aggregate repayment rate. Loan counts are fine. A single wallet's own repayment percentage shown next to its counts (`get_portfolio`) is fine.
-- The per-property verification feature is **Property checks**. Not "confidence score", "Provenance Score" or "token score" as a name (the `explain_confidence_score` tool and the `score` / `confidenceScore` fields keep their identifiers). The valuation "confidence level" is a different signal and keeps its name.
+- Never output a platform-wide or aggregate repayment rate. Loan counts are fine. A single wallet's own repayment percentage shown next to its counts (`get_land_portfolio`) is fine.
+- The per-property verification feature is **Property checks**. Not "confidence score", "Provenance Score" or "token score" as a name (the `explain_property_checks` tool and the `score` / `confidenceScore` fields keep their identifiers). The valuation "confidence level" is a different signal and keeps its name.
 - Fabrica is not a party to the trust, never holds title and never custodies property. Never write that Fabrica manages, administers, operates, controls, oversees, handles or holds someone's trust, property or loan.
 - No fixed time unit and no "instantly" for money moving (sale proceeds, loans, payoffs, withdrawals).
 - Stablecoins are "digital dollars"; Fabrica counts one USDC as one dollar. Never promise the coin's value ("always equal $1").

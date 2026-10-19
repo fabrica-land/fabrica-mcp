@@ -123,15 +123,15 @@ describe.each([
   { network: "sepolia", flag: undefined, cardExpected: true },
   { network: "sepolia", flag: "enabled", cardExpected: true },
   { network: "sepolia", flag: "disabled", cardExpected: false },
-])("get_property on $network with FABRICA_MCP_APPS $flag", ({ network, flag, cardExpected }) => {
-  it(cardExpected ? "links get_property to the property card and registers the card resource" : "serves get_property as plain JSON and registers no card resource", async () => {
+])("get_land_property on $network with FABRICA_MCP_APPS $flag", ({ network, flag, cardExpected }) => {
+  it(cardExpected ? "links get_land_property to the property card and registers the card resource" : "serves get_land_property as plain JSON and registers no card resource", async () => {
     vi.stubEnv("FABRICA_NETWORK", network);
     vi.stubEnv("FABRICA_MCP_APPS", flag);
     vi.resetModules();
     const { createServer } = await import("../server.js");
     const client = await connectedClient(createServer());
     const { tools } = await client.listTools();
-    const getProperty = tools.find((tool) => tool.name === "get_property");
+    const getProperty = tools.find((tool) => tool.name === "get_land_property");
     expect(getProperty).toBeDefined();
     const ui = getProperty?._meta?.ui;
     const resourceUri = typeof ui === "object" && ui !== null && "resourceUri" in ui ? ui.resourceUri : undefined;

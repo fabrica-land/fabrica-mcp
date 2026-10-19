@@ -39,14 +39,14 @@ const VERIFY_ENDING = IS_MAINNET
 
 export function dueDiligencePrompt(tokenId: string): GetPromptResult {
   return prompt(`Run due diligence on Fabrica property ${tokenId} with the Fabrica tools, in this order:
-1. get_property: the record (location, acreage, owner wallet, trust and operating agreement link, listing, loans).
-2. Property checks: how many pass, from get_property's propertyChecks (passed of total), then explain_confidence_score with the numeric encoding of Property checks for what each group means. Never call the number a score, rating or percentage.
-3. get_tax_status: whether taxes are current, past due or unknown according to Property checks, and whether that limits borrowing.
-4. get_valuation: the value with its source and confidence level.
-5. get_order_book: the listing and the offers.
-6. get_trust_documents: the trust, the trust agreement, the legal description, the deed reference and the documents attached to the token.
-7. get_borrow_quote: the lending position, what the DeFi lending pool would lend, and from toRaise what would raise that amount (each lever with the step that moves it, stated as facts).
-8. get_activity for the property: transfers, sales, loans.
+1. get_land_property: the record (location, acreage, owner wallet, trust and operating agreement link, listing, loans).
+2. Property checks: how many pass, from get_land_property's propertyChecks (passed of total), then explain_property_checks with the numeric encoding of Property checks for what each group means. Never call the number a score, rating or percentage.
+3. get_land_tax_status: whether taxes are current, past due or unknown according to Property checks, and whether that limits borrowing.
+4. get_land_valuation: the value with its source and confidence level.
+5. get_land_order_book: the listing and the offers.
+6. get_land_trust_documents: the trust, the trust agreement, the legal description, the deed reference and the documents attached to the token.
+7. estimate_land_borrowing: the lending position, what the DeFi lending pool would lend, and from toRaise what would raise that amount (each lever with the step that moves it, stated as facts).
+8. get_land_activity for the property: transfers, sales, loans.
 Write a short report with one section per step, each fact with the tool it came from. ${VERIFY_ENDING} No recommendation to buy.`);
 }
 
@@ -54,18 +54,18 @@ export function workParcelListPrompt(parcels: string): GetPromptResult {
   return prompt(`Work through this list of US parcels (addresses or parcel numbers), one per line or comma-separated:
 ${parcels}
 
-Call find_parcel with queries: up to 10 rows per call, grouped so each call shares one state and county (pass them as state and county when the list gives them). Each resolved row comes back with onFabrica; each unresolved one with a reason. Re-run an unresolved row on its own with the state and county the list implies, or mark it as ambiguous. Then:
-- On Fabrica: note the token ID and property link; get_property for the listing and loan state if the list is short.
+Call find_us_parcel with queries: up to 10 rows per call, grouped so each call shares one state and county (pass them as state and county when the list gives them). Each resolved row comes back with onFabrica; each unresolved one with a reason. Re-run an unresolved row on its own with the state and county the list implies, or mark it as ambiguous. Then:
+- On Fabrica: note the token ID and property link; get_land_property for the listing and loan state if the list is short.
 - Not on Fabrica: note the on-ramp link (addToFabrica on the row; links.addToFabrica when a row is re-run on its own). Opening it starts adding the parcel; the owner decides there.
-End with one table: input, matched address, county and state, APN, on Fabrica (token ID) or on-ramp link, notes. find_parcel counts each query as one lookup against a per-client limit of 30 a minute, so a list longer than 30 waits a minute between batches.`);
+End with one table: input, matched address, county and state, APN, on Fabrica (token ID) or on-ramp link, notes. find_us_parcel counts each query as one lookup against a per-client limit of 30 a minute, so a list longer than 30 waits a minute between batches.`);
 }
 
 export function walletReviewPrompt(wallet: string): GetPromptResult {
   return prompt(`Review Fabrica wallet ${wallet}:
-1. get_portfolio: holdings, credit history, and active loans as borrower (lending.asBorrower) and as lender (lending.asLender), each with principal, APR, maturity date and collateral token.
-2. get_property for each property held (the ones with active loans first; for a large wallet, the first 10 and say how many were left out): its Property checks from propertyChecks (passed of total). For loans the wallet made, get_property on the collateralTokenId when the property behind the loan matters. List maturities in date order, borrowed and lent separately.
-3. get_activity for the wallet: recent transfers, sales and loans; offers made, if the activity shows them.
-4. get_portfolio_image for a map of the holdings, if the client shows images.
+1. get_land_portfolio: holdings, credit history, and active loans as borrower (lending.asBorrower) and as lender (lending.asLender), each with principal, APR, maturity date and collateral token.
+2. get_land_property for each property held (the ones with active loans first; for a large wallet, the first 10 and say how many were left out): its Property checks from propertyChecks (passed of total). For loans the wallet made, get_land_property on the collateralTokenId when the property behind the loan matters. List maturities in date order, borrowed and lent separately.
+3. get_land_activity for the wallet: recent transfers, sales and loans; offers made, if the activity shows them.
+4. get_land_portfolio_map_image for a map of the holdings, if the client shows images.
 Summarize what the wallet holds; as borrower, what it owes and when (principal, APR, maturity); as lender, what it is owed and when, kept separate from what it owes; and anything that needs attention soon (a loan near maturity, a property whose propertyChecks show fewer passed than total). Judge Property checks only from propertyChecks, never from the digits of the numeric encoding.`);
 }
 
@@ -78,9 +78,9 @@ const ONRAMP_STEPS = IS_MAINNET
 export function howToAddLandPrompt(address: string): GetPromptResult {
   return prompt(`Explain how to add this land to Fabrica: ${address}
 
-1. Call find_parcel for it. If it is already on Fabrica, say so and link the property instead.
-2. Otherwise, give the on-ramp link from find_parcel (links.addToFabrica), or ${WEB}/go if it could not resolve the parcel.
-3. Call check_coverage for the parcel's county: say whether the on-ramp is set up there, and list the documents, witnesses and questions it returns, with its as-of date.
+1. Call find_us_parcel for it. If it is already on Fabrica, say so and link the property instead.
+2. Otherwise, give the on-ramp link from find_us_parcel (links.addToFabrica), or ${WEB}/go if it could not resolve the parcel.
+3. Call check_county_coverage for the parcel's county: say whether the on-ramp is set up there, and list the documents, witnesses and questions it returns, with its as-of date.
 4. ${ONRAMP_STEPS}`);
 }
 

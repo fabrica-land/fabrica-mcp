@@ -96,12 +96,12 @@ beforeEach(() => {
 });
 
 describe("1. pool with no deposits next to a borrow quote", () => {
-  it("names the pools read and points to get_borrow_quote when deposits are zero", async () => {
+  it("names the pools read and points to estimate_land_borrowing when deposits are zero", async () => {
     const result = await getLendingMarket({}) as { poolStats: Record<string, unknown> };
     expect(result.poolStats.totalValueAvailable).toBe("$0");
     expect(result.poolStats.utilization).toBeNull();
     expect(String(result.poolStats.note)).toContain("0xpool1");
-    expect(String(result.poolStats.note)).toContain("get_borrow_quote");
+    expect(String(result.poolStats.note)).toContain("estimate_land_borrowing");
     expect(String(result.poolStats.note)).not.toContain("—");
   });
 
@@ -144,7 +144,7 @@ describe("3. name and slug are passed through as the API returns them", () => {
 });
 
 describe("4. no estimate is never $0", () => {
-  it("explains a missing estimate on get_property", async () => {
+  it("explains a missing estimate on get_land_property", async () => {
     const result = await getProperty({ tokenId: token.tokenId }) as { valuation: Record<string, unknown> };
     expect(result.valuation.estimatedValue).toBeNull();
     expect(String(result.valuation.estimateNote)).toContain("confidence threshold");
@@ -198,12 +198,12 @@ describe("6. amounts with symbols, durations in days", () => {
 });
 
 describe("7. loans sorted active first, then newest", () => {
-  it("orders get_lending_market loans", async () => {
+  it("orders get_fabrica_lending_market loans", async () => {
     const result = await getLendingMarket({}) as { loans: Array<{ loanId: string }> };
     expect(result.loans.map(l => l.loanId)).toEqual(["active-new", "active-old", "liquidated", "old-repaid"]);
   });
 
-  it("orders get_portfolio loans", async () => {
+  it("orders get_land_portfolio loans", async () => {
     vi.mocked(getWallet).mockResolvedValue(wallet({ address: "0xabc", loansTaken: [loans[1], loans[3]] }));
     const result = await getPortfolio({ address: "0xabc" }) as { lending: { asBorrower: { loans: Array<{ loanId: string }> } } };
     expect(result.lending.asBorrower.loans.map(l => l.loanId)).toEqual(["active-new", "active-old"]);
@@ -237,7 +237,7 @@ describe("ENG-4462: bounded responses", () => {
     expect(last).not.toHaveProperty("propertiesPage.nextOffset");
   });
 
-  it("caps holders and orders on get_property, with the totals", async () => {
+  it("caps holders and orders on get_land_property, with the totals", async () => {
     const balances = Array.from({ length: 30 }, (_, i) => balance({ balance: "1", holder: { address: `0x${String(i).padStart(40, "0")}`, user: { displayName: "" } } }));
     const order = (side: MarketplaceOrderSide) => marketplaceOrder({ side, status: "active", price: "1", usdPrice: "1", symbol: "USDC", makerAddress: "0x1234567890123456789012345678901234567890", endTime: null });
     vi.mocked(getToken).mockResolvedValue({

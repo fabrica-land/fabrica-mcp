@@ -28,7 +28,7 @@ describe("a missing property reads as missing, not as a rejected query", () => {
   it("keeps the API's own message for any other failure", () => {
     expect(propertyLookupError(new Error("boom"), { tokenId: "1" }, "get property")).toBe("Failed to get property: boom");
   });
-  it("get_property reports a 404 from the API as not found", async () => {
+  it("get_land_property reports a 404 from the API as not found", async () => {
     stubApi(NOT_FOUND, 404);
     expect(await getProperty({ tokenId: "12345" })).toEqual({ error: "No property found with token ID 12345" });
   });
@@ -45,7 +45,7 @@ describe("a wallet the API has never seen is an empty portfolio, not an error", 
   });
 });
 
-describe("explain_confidence_score rejects numbers that are not an encoding", () => {
+describe("explain_property_checks rejects numbers that are not an encoding", () => {
   it("rejects 99 (digits above their group maximum)", async () => {
     const result = await explainConfidenceScore({ score: 99 }) as { error?: string };
     expect(result.error).toContain("99 is not a Property checks encoding");

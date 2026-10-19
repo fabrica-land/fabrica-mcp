@@ -52,7 +52,7 @@ beforeEach(() => {
   vi.mocked(getFabricaPools).mockResolvedValue([pool()]);
 });
 
-describe("get_loan_book", () => {
+describe("get_fabrica_loan_book", () => {
   it("puts every loan in its status and provider bucket", async () => {
     const result = await getLoanBook({});
     if ("error" in result) throw new Error(result.error);

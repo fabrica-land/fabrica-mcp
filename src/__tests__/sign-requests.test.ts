@@ -121,7 +121,7 @@ function record(overrides: Partial<SignRequest> = {}): SignRequest {
     status: "pending",
     network: "ethereum",
     chainId: 1,
-    action: "make_offer",
+    action: "make_land_offer",
     kind: "typedData",
     wallet: BUYER,
     property: { tokenId: "123", contractAddress: "0x5cbeb7A0df7Ed85D82a472FD56d81ed550f3Ea95", name: "1 Test Road", link: "https://fabrica.land/property/ethereum/123" },
@@ -196,7 +196,7 @@ describe("the sign-request store", () => {
   });
 });
 
-describe("make_offer", () => {
+describe("make_land_offer", () => {
   it("prepares an offer with the link, the summary and the stored record", async () => {
     vi.mocked(getSignContext).mockResolvedValue(token());
     const result = await makeOffer({ tokenId: "123", amountUsd: 9000, wallet: BUYER });
@@ -248,7 +248,7 @@ describe("make_offer", () => {
   });
 });
 
-describe("list_for_sale", () => {
+describe("list_land_for_sale", () => {
   it("refuses a wallet that does not hold the property", async () => {
     vi.mocked(getSignContext).mockResolvedValue(token());
     expect(await listForSale({ tokenId: "123", priceUsd: 12000, wallet: BUYER })).toHaveProperty("error");
@@ -267,8 +267,8 @@ describe("list_for_sale", () => {
   });
 });
 
-describe("accept_offer, buy and cancel_order", () => {
-  it("accept_offer prepares a signature for the holder of an open offer", async () => {
+describe("accept_land_offer, buy_land and cancel_land_order", () => {
+  it("accept_land_offer prepares a signature for the holder of an open offer", async () => {
     vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceBids: [order({})] }));
     const result = await acceptOffer({ tokenId: "123", orderHash: HASH_A, wallet: OWNER });
     if (!("signRequest" in result)) throw new Error(JSON.stringify(result));
@@ -276,7 +276,7 @@ describe("accept_offer, buy and cancel_order", () => {
     expect(result.signRequest.summary[0]).toContain("$10,000");
   });
 
-  it("accept_offer refuses a listing, an expired offer and a wallet that does not hold the token", async () => {
+  it("accept_land_offer refuses a listing, an expired offer and a wallet that does not hold the token", async () => {
     vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceBids: [order({ endTime: "2026-10-01T00:00:00Z" })], marketplaceListings: [order({ side: "sell", marketplaceId: HASH_B, makerAddress: OWNER })] }));
     expect(await acceptOffer({ tokenId: "123", orderHash: HASH_B, wallet: OWNER })).toHaveProperty("error");
     expect(await acceptOffer({ tokenId: "123", orderHash: HASH_A, wallet: OWNER })).toHaveProperty("error");
@@ -303,12 +303,12 @@ describe("accept_offer, buy and cancel_order", () => {
     expect(await buy({ tokenId: "123", orderHash: HASH_A, wallet: BUYER })).toHaveProperty("error");
   });
 
-  it("cancel_order refuses an order past its end time even if the API still says active", async () => {
+  it("cancel_land_order refuses an order past its end time even if the API still says active", async () => {
     vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceBids: [order({ endTime: "2026-10-01T00:00:00Z" })] }));
     expect(await cancelOrder({ tokenId: "123", orderHash: HASH_A, wallet: BUYER })).toHaveProperty("error");
   });
 
-  it("cancel_order is for the maker only and needs no signature", async () => {
+  it("cancel_land_order is for the maker only and needs no signature", async () => {
     vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceBids: [order({})] }));
     expect(await cancelOrder({ tokenId: "123", orderHash: HASH_A, wallet: OWNER })).toHaveProperty("error");
     const result = await cancelOrder({ tokenId: "123", orderHash: HASH_A, wallet: BUYER });
@@ -329,7 +329,7 @@ describe("results", () => {
   });
 
   it("completes a buy only when this wallet's successful transaction filled the listing", async () => {
-    const r = record({ action: "buy", kind: "transaction", order: undefined, orderHash: HASH_A });
+    const r = record({ action: "buy_land", kind: "transaction", order: undefined, orderHash: HASH_A });
     const filled = token({ marketplaceListings: [order({ side: "sell", makerAddress: OWNER, status: "filled", matchTransactionHash: TX })] });
     vi.mocked(getTransactionReceipt).mockResolvedValue({ status: "0x1", blockNumber: "0x1", gasUsed: "0x1" });
     vi.mocked(getTransaction).mockResolvedValue({ hash: TX, from: POOL, to: POOL, value: "0x0", blockNumber: "0x1" });
@@ -349,7 +349,7 @@ describe("results", () => {
   });
 
   it("accepting an offer completes with the sell order reserved for the offer's maker", async () => {
-    const r = record({ action: "accept_offer", wallet: OWNER, order: undefined, orderHash: HASH_A });
+    const r = record({ action: "accept_land_offer", wallet: OWNER, order: undefined, orderHash: HASH_A });
     const reserved = (restrictedToAddresses: string[]) => token({
       marketplaceBids: [order({})],
       marketplaceListings: [order({ side: "sell", marketplaceId: HASH_B, makerAddress: OWNER, startTime: started, restrictedToAddresses })],
@@ -361,7 +361,7 @@ describe("results", () => {
   });
 
   it("accepts a transaction only when it is the one that filled the order", async () => {
-    const r = record({ action: "buy", kind: "transaction", order: undefined, orderHash: HASH_A });
+    const r = record({ action: "buy_land", kind: "transaction", order: undefined, orderHash: HASH_A });
     vi.mocked(getTransaction).mockResolvedValue({ hash: TX, from: BUYER, to: POOL, value: "0x0", blockNumber: "0x1" });
     vi.mocked(getTransactionReceipt).mockResolvedValue({ status: "0x1", blockNumber: "0x1", gasUsed: "0x1" });
     vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceListings: [order({ side: "sell", makerAddress: OWNER, status: "active" })] }));
@@ -405,7 +405,7 @@ describe("the sign page endpoints", () => {
     expect(await response.json()).toMatchObject({
       id: r.id,
       action: "offer",
-      tool: "make_offer",
+      tool: "make_land_offer",
       network: "ethereum",
       tokenId: "123",
       maker: BUYER,
@@ -419,8 +419,8 @@ describe("the sign page endpoints", () => {
   });
 
   it("names the order for accept and cancel as orderId", () => {
-    expect(signPageView(record({ action: "cancel_order", kind: "offchain", order: undefined, orderHash: HASH_A })).params).toEqual({ orderId: HASH_A });
-    expect(signPageView(record({ action: "buy", kind: "transaction", order: undefined, orderHash: HASH_A })).action).toBe("accept");
+    expect(signPageView(record({ action: "cancel_land_order", kind: "offchain", order: undefined, orderHash: HASH_A })).params).toEqual({ orderId: HASH_A });
+    expect(signPageView(record({ action: "buy_land", kind: "transaction", order: undefined, orderHash: HASH_A })).action).toBe("accept");
   });
 
   it("records a checked result and refuses one that does not match", async () => {

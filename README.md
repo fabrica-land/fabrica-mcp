@@ -58,30 +58,30 @@ Set `FABRICA_NETWORK=sepolia` in the server's environment for the testnet.
 
 | Tool | Description |
 |---|---|
-| `search_properties` | Search tokenized properties by state, county, size, Property checks, listing status, listing price and price per acre, or distance from a point; sort by price, price per acre, acres, estimated value, Property checks, mint date or distance. Each row carries its lifecycle stage and price per acre; or counts per state or county, with links to the fabrica.land location pages |
-| `get_property` | Full property details: legal, valuation, ownership, loans, media, lifecycle stage, assessed fees, duplicate-parcel flags |
-| `get_lending_market` | Lending overview: loan counts, loans, DeFi lending pool stats, average APR, events |
-| `get_loan_book` | The lending history as a distribution: loan-to-value bands, exposure by state and acreage, APR and duration spread, repaid and liquidated counts, originations by month, largest loans |
-| `get_portfolio` | Wallet holdings, credit history, loan positions |
-| `get_protocol_stats` | Protocol-wide metrics: properties, estimated value, loan volume and counts, lending pool TVL |
-| `get_property_map` | GeoJSON boundary data for mapping and spatial analysis |
-| `get_tax_status` | Property tax status from Property checks (current, past due, unknown), its basis, check dates and whether it limits borrowing |
-| `get_trust_documents` | The legal record: trust, trust agreement (name, version, link, text on request), legal description, parcel IDs, deed reference, uploaded documents |
-| `get_borrow_quote` | Borrowing options for a property: DeFi lending pool liquidity, durations, current loans, what limits the amount (pool liquidity, LTV, tax status, oracle), why capacity is zero when it is, and what would raise it (`toRaise`: each lever, what it would allow, the step that moves it) |
-| `get_valuation` | Every value the API holds for a property with its source, date and confidence: estimate, AVM, Prycd, county assessor, signed valuations, pool oracle state |
-| `get_activity` | Activity feed for a property or wallet, or the recent activity across the whole network: transfers, loans, sales, mints |
-| `get_order_book` | Listings and offers on a property: prices, sellers and buyers, expiry, whether a loan blocks each listing, premint state |
-| `explain_confidence_score` | Decode the numeric encoding of Property checks (5 digits, formerly called the confidence score) into verification groups |
-| `get_property_image` | Static map image of a property's parcel boundary (inline, dark/light themes) |
-| `get_portfolio_image` | Map image showing all properties owned by a wallet (inline, dark/light themes) |
+| `search_land` | Search tokenized properties by state, county, size, Property checks, listing status, listing price and price per acre, or distance from a point; sort by price, price per acre, acres, estimated value, Property checks, mint date or distance. Each row carries its lifecycle stage and price per acre; or counts per state or county, with links to the fabrica.land location pages |
+| `get_land_property` | Full property details: legal, valuation, ownership, loans, media, lifecycle stage, assessed fees, duplicate-parcel flags |
+| `get_fabrica_lending_market` | Lending overview: loan counts, loans, DeFi lending pool stats, average APR, events |
+| `get_fabrica_loan_book` | The lending history as a distribution: loan-to-value bands, exposure by state and acreage, APR and duration spread, repaid and liquidated counts, originations by month, largest loans |
+| `get_land_portfolio` | Wallet holdings, credit history, loan positions |
+| `get_fabrica_stats` | Protocol-wide metrics: properties, estimated value, loan volume and counts, lending pool TVL |
+| `get_land_boundary` | GeoJSON boundary data for mapping and spatial analysis |
+| `get_land_tax_status` | Property tax status from Property checks (current, past due, unknown), its basis, check dates and whether it limits borrowing |
+| `get_land_trust_documents` | The legal record: trust, trust agreement (name, version, link, text on request), legal description, parcel IDs, deed reference, uploaded documents |
+| `estimate_land_borrowing` | Borrowing options for a property: DeFi lending pool liquidity, durations, current loans, what limits the amount (pool liquidity, LTV, tax status, oracle), why capacity is zero when it is, and what would raise it (`toRaise`: each lever, what it would allow, the step that moves it) |
+| `get_land_valuation` | Every value the API holds for a property with its source, date and confidence: estimate, AVM, Prycd, county assessor, signed valuations, pool oracle state |
+| `get_land_activity` | Activity feed for a property or wallet, or the recent activity across the whole network: transfers, loans, sales, mints |
+| `get_land_order_book` | Listings and offers on a property: prices, sellers and buyers, expiry, whether a loan blocks each listing, premint state |
+| `explain_property_checks` | Decode the numeric encoding of Property checks (5 digits, formerly called the confidence score) into verification groups |
+| `get_land_map_image` | Static map image of a property's parcel boundary (inline, dark/light themes) |
+| `get_land_portfolio_map_image` | Map image showing all properties owned by a wallet (inline, dark/light themes) |
 | `ask_fabrica` | Cited passages from Fabrica's docs, help center and the US trust agreement that answer a question about how Fabrica works |
-| `find_parcel` | Any US address or parcel number (APN) to a parcel: on Fabrica or not, and the on-ramp link to add it; `queries` takes a list of up to 10 and returns a table. No owner names from parcel data; 30 lookups per minute per client, each query in a list counting as one |
-| `check_coverage` | Whether a US county (or state) can be added through the on-ramp, and what it asks the owner for. From a table of the on-ramp rules, dated and refreshed by hand (`npm run coverage:build`) |
-| `contact_support` | Hand a question to Fabrica support: help center section, support email, and a prefilled mailto with the summary and property link. Sends nothing itself |
+| `find_us_parcel` | Any US address or parcel number (APN) to a parcel: on Fabrica or not, and the on-ramp link to add it; `queries` takes a list of up to 10 and returns a table. No owner names from parcel data; 30 lookups per minute per client, each query in a list counting as one |
+| `check_county_coverage` | Whether a US county (or state) can be added through the on-ramp, and what it asks the owner for. From a table of the on-ramp rules, dated and refreshed by hand (`npm run coverage:build`) |
+| `contact_fabrica_support` | Hand a question to Fabrica support: help center section, support email, and a prefilled mailto with the summary and property link. Sends nothing itself |
 
 ### Sign requests (testnet host first)
 
-On `mcp-testnet.fabrica.land` (and on mainnet only with `FABRICA_SIGN_REQUESTS=enabled`), five tools prepare marketplace actions: `make_offer`, `list_for_sale`, `accept_offer`, `buy` and `cancel_order`. Each checks the live data (the property is live, the wallet holds it or not, the order is open, buyable and the wallet's own where it has to be), then returns a `signRequest`: a summary, warnings, a sign link to the property page on fabrica.land with the dialog prefilled, and an expiry 15 minutes out. The person opens the link and signs with their own wallet. The server holds no keys, signs nothing and submits nothing; `payload` (typed data or an unsigned transaction for a wallet in the conversation) stays null until Connect Fabrica (ENG-5004). `get_sign_request` says whether a request was signed (it also checks the order book), and `get_transaction_status` follows a transaction by hash.
+On `mcp-testnet.fabrica.land` (and on mainnet only with `FABRICA_SIGN_REQUESTS=enabled`), five tools prepare marketplace actions: `make_land_offer`, `list_land_for_sale`, `accept_land_offer`, `buy_land` and `cancel_land_order`. Each checks the live data (the property is live, the wallet holds it or not, the order is open, buyable and the wallet's own where it has to be), then returns a `signRequest`: a summary, warnings, a sign link to the property page on fabrica.land with the dialog prefilled, and an expiry 15 minutes out. The person opens the link and signs with their own wallet. The server holds no keys, signs nothing and submits nothing; `payload` (typed data or an unsigned transaction for a wallet in the conversation) stays null until Connect Fabrica (ENG-5004). `get_sign_request` says whether a request was signed (it also checks the order book), and `get_transaction_status` follows a transaction by hash.
 
 Pending requests live in the server's own store (Vercel KV / Upstash Redis: `KV_REST_API_URL` and `KV_REST_API_TOKEN`, plus `SIGN_REQUEST_SECRET` for the records' HMAC). The sign link is `{web}/property/{network}/{tokenId}?action=…&request={id}`. The sign page reads the request at `GET /sign-requests/{id}` (410 once expired) and reports the outcome at `POST /sign-requests/{id}/result` with `{ orderHash }` or `{ transactionHash }`, which the server checks against the API or the chain before recording. Contract: ENG-5073. Without a store the tools say they are not configured; locally (stdio) an in-process map is used.
 
@@ -117,7 +117,7 @@ The same documents are registered as MCP resources, so a person can attach one t
 
 ## Prompts and skill file
 
-The server offers four MCP prompts: `due_diligence` (one property, ending with what to verify yourself), `work_parcel_list` (a list of addresses or parcel numbers through `find_parcel`), `wallet_review` (holdings, loans and maturities) and `how_to_add_land` (the on-ramp for one parcel). The same loops, the tool list and the legal red lines are in the Agent Skills file [`skills/fabrica/SKILL.md`](skills/fabrica/SKILL.md), served at https://mcp.fabrica.land/skill.md for agents that do not connect to the server.
+The server offers four MCP prompts: `due_diligence` (one property, ending with what to verify yourself), `work_parcel_list` (a list of addresses or parcel numbers through `find_us_parcel`), `wallet_review` (holdings, loans and maturities) and `how_to_add_land` (the on-ramp for one parcel). The same loops, the tool list and the legal red lines are in the Agent Skills file [`skills/fabrica/SKILL.md`](skills/fabrica/SKILL.md), served at https://mcp.fabrica.land/skill.md for agents that do not connect to the server.
 
 ## Example Conversations
 
@@ -145,7 +145,7 @@ The server offers four MCP prompts: `due_diligence` (one property, ending with w
 
 ## Property card (MCP App)
 
-In clients that support [MCP Apps](https://github.com/modelcontextprotocol/ext-apps) (such as Claude on the web and desktop), `get_property` renders a property card inline in the conversation:
+In clients that support [MCP Apps](https://github.com/modelcontextprotocol/ext-apps) (such as Claude on the web and desktop), `get_land_property` renders a property card inline in the conversation:
 - a gallery with the parcel map first, followed by the owner's photos when there are any
 - name, location and acreage
 - Property checks, estimated value, listing price, and borrowing capacity
@@ -195,7 +195,7 @@ All optional; sensible defaults are built in:
 | `FABRICA_API_URL` | `https://api.fabrica.land/graphql` | Fabrica GraphQL API |
 | `FABRICA_METASTREET_SUBGRAPH_URL` | Auto-selected per network | Subgraph for the lending pool contracts (the variable keeps its original name) |
 | `FABRICA_MEDIA_URL` | `https://media.fabrica.land` | Fabrica media service for map images |
-| `FABRICA_MCP_APPS` | on for Sepolia, off for mainnet | `enabled` or `disabled`: the property card MCP App on `get_property` |
+| `FABRICA_MCP_APPS` | on for Sepolia, off for mainnet | `enabled` or `disabled`: the property card MCP App on `get_land_property` |
 
 ## Regression list
 

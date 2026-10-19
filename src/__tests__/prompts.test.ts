@@ -85,9 +85,9 @@ describe("MCP prompts", () => {
     expect(PROMPTS.due_diligence).toContain("No recommendation to buy");
   });
 
-  it("uses find_parcel for parcel lists and adding land", () => {
-    expect(PROMPTS.work_parcel_list).toContain("find_parcel");
-    expect(PROMPTS.how_to_add_land).toContain("find_parcel");
+  it("uses find_us_parcel for parcel lists and adding land", () => {
+    expect(PROMPTS.work_parcel_list).toContain("find_us_parcel");
+    expect(PROMPTS.how_to_add_land).toContain("find_us_parcel");
   });
 });
 

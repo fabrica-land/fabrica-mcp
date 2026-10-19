@@ -316,7 +316,7 @@ const GET_TOKEN_QUERY = gql`
   }
 `;
 
-/** GetToken plus each pool's oracle state and ticks; only get_borrow_quote asks for it (the ticks bound the loan). */
+/** GetToken plus each pool's oracle state and ticks; only estimate_land_borrowing asks for it (the ticks bound the loan). */
 const GET_TOKEN_WITH_POOL_ORACLE_QUERY = gql`
   ${POOL_ORACLE_FIELDS}
   ${TOKEN_DETAIL_FIELDS}
@@ -638,7 +638,7 @@ function isScoreRecord(value: unknown): value is ScoreRecord {
   return typeof value === "object" && value !== null && "checks" in value && typeof value.checks === "object" && value.checks !== null;
 }
 
-/** get_property waits on the score record inline, so a slow score API must not hold it for the full API timeout. */
+/** get_land_property waits on the score record inline, so a slow score API must not hold it for the full API timeout. */
 const SCORE_RECORD_TIMEOUT_MS = 5_000;
 
 const scoreRecordCache = new TtlCache<ScoreRecord | null>();
@@ -882,7 +882,7 @@ export async function getCountyBounds(fips: string): Promise<CountyBoundsModel |
   return data.countyBounds;
 }
 
-// --- Parcel matching (find_parcel) ---
+// --- Parcel matching (find_us_parcel) ---
 
 const GET_PARCEL_INDEX_QUERY = gql`
   query GetParcelIndex($testnets: Boolean, $contractAddress: String) {
@@ -901,7 +901,7 @@ const GET_PARCEL_INDEX_QUERY = gql`
   }
 `;
 
-/** Every minted, unburned token with its state, APN and coordinates: what find_parcel matches against. */
+/** Every minted, unburned token with its state, APN and coordinates: what find_us_parcel matches against. */
 export async function getParcelIndex(): Promise<ParcelIndexToken[]> {
   const data = await request<GetParcelIndexQuery>(GET_PARCEL_INDEX_QUERY, {
     testnets: !IS_MAINNET,
@@ -910,7 +910,7 @@ export async function getParcelIndex(): Promise<ParcelIndexToken[]> {
   return filterSpamTokens(data.tokens);
 }
 
-// --- Network-wide activity: every token's feed, merged by get_activity when no filter is given ---
+// --- Network-wide activity: every token's feed, merged by get_land_activity when no filter is given ---
 
 const GET_NETWORK_ACTIVITY_QUERY = gql`
   query GetNetworkActivity($testnets: Boolean, $contractAddress: String) {
@@ -934,7 +934,7 @@ export async function getNetworkActivity(): Promise<NetworkActivityToken[]> {
   return filterSpamTokens(data.tokens);
 }
 
-// --- One token's property page link (contact_support) ---
+// --- One token's property page link (contact_fabrica_support) ---
 
 const GET_PROPERTY_LINK_QUERY = gql`
   query GetPropertyLink($tokenId: String, $network: String) {

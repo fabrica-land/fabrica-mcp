@@ -12,7 +12,7 @@ Wording rules for every field: "Property checks" (never "confidence score"), "De
 
 The portal syncs them from the server. It should show 20 tools, all read-only, each with a title and `readOnlyHint: true`:
 
-search_properties, get_property (renders the property card), get_lending_market, get_loan_book, get_portfolio, get_protocol_stats, get_property_map, get_trust_documents, get_tax_status, explain_confidence_score, get_borrow_quote, get_valuation, get_activity, get_order_book, get_property_image, get_portfolio_image, ask_fabrica, find_parcel, check_coverage, contact_support.
+search_land, get_land_property (renders the property card), get_fabrica_lending_market, get_fabrica_loan_book, get_land_portfolio, get_fabrica_stats, get_land_boundary, get_land_trust_documents, get_land_tax_status, explain_property_checks, estimate_land_borrowing, get_land_valuation, get_land_activity, get_land_order_book, get_land_map_image, get_land_portfolio_map_image, ask_fabrica, find_us_parcel, check_county_coverage, contact_fabrica_support.
 
 ## Listing
 
@@ -83,16 +83,16 @@ No authentication. All data is public.
 
 > No credentials are needed: the server is public and has no accounts. Add https://mcp.fabrica.land/mcp as a custom connector in Claude (Settings, Connectors, Add custom connector) and run these prompts, which together call every tool:
 >
-> 1. "Find land for sale on Fabrica in Arizona, then show me the first one." (search_properties, get_property with the card)
-> 2. "Explain that property's Property checks, show its parcel boundary and a map image, and its tax status." (explain_confidence_score, get_property_map, get_property_image, get_tax_status)
-> 3. "Show its trust documents, valuation sources and order book." (get_trust_documents, get_valuation, get_order_book)
-> 4. "How much could be borrowed against it, and what does the lending market look like?" (get_borrow_quote, get_lending_market)
-> 5. "Show the portfolio, a portfolio map and the recent activity of the wallet that owns it, then the latest activity across Fabrica." (get_portfolio, get_portfolio_image, get_activity)
-> 6. "Give me Fabrica's protocol statistics." (get_protocol_stats)
-> 7. "Is 1707 Jones St, San Francisco, CA on Fabrica, and can I add land in Coconino County, Arizona?" (find_parcel, check_coverage)
-> 8. "How does the Fabrica trust work? Then draft an email to Fabrica support asking for help with my onramp." (ask_fabrica, contact_support)
+> 1. "Find land for sale on Fabrica in Arizona, then show me the first one." (search_land, get_land_property with the card)
+> 2. "Explain that property's Property checks, show its parcel boundary and a map image, and its tax status." (explain_property_checks, get_land_boundary, get_land_map_image, get_land_tax_status)
+> 3. "Show its trust documents, valuation sources and order book." (get_land_trust_documents, get_land_valuation, get_land_order_book)
+> 4. "How much could be borrowed against it, and what does the lending market look like?" (estimate_land_borrowing, get_fabrica_lending_market)
+> 5. "Show the portfolio, a portfolio map and the recent activity of the wallet that owns it, then the latest activity across Fabrica." (get_land_portfolio, get_land_portfolio_map_image, get_land_activity)
+> 6. "Give me Fabrica's protocol statistics." (get_fabrica_stats)
+> 7. "Is 1707 Jones St, San Francisco, CA on Fabrica, and can I add land in Coconino County, Arizona?" (find_us_parcel, check_county_coverage)
+> 8. "How does the Fabrica trust work? Then draft an email to Fabrica support asking for help with my onramp." (ask_fabrica, contact_fabrica_support)
 
-Confirm you have run every tool yourself. Our record: `npm run regression` against the hosted mainnet server, 45/45 cases on 2026-10-17 (after the stale `get_activity` case was updated), plus the card seen rendering in Claude on 2026-10-17.
+Confirm you have run every tool yourself. Our record: `npm run regression` against the hosted mainnet server, 45/45 cases on 2026-10-17 (after the stale `get_land_activity` case was updated), plus the card seen rendering in Claude on 2026-10-17.
 
 ## Compliance (7 acknowledgments)
 

@@ -6,7 +6,7 @@ import { resolveCounty } from "./parcels.js";
 import type { ArgsOf } from "./inputs.js";
 
 /**
- * check_coverage: whether the on-ramp is set up for a US county, and what it asks of the owner,
+ * check_county_coverage: whether the on-ramp is set up for a US county, and what it asks of the owner,
  * from a static table built out of the on-ramp rules (scripts/build-coverage.mjs). No credential
  * and no call: the table is refreshed by hand, so every answer carries the rules date. The API
  * resolves a county's rules by merging the US layer, the state's and the county's, each as the
@@ -56,7 +56,7 @@ const RULE_STATES: ReadonlySet<string> = new Set(Object.values(TABLE.layers).fla
 
 const MEANING: Record<CoverageStatus, string> = {
   supported: "The on-ramp is set up for this jurisdiction: an owner can start adding a parcel here online.",
-  notConfigured: "The on-ramp is not set up for this jurisdiction yet, so a parcel here cannot be added online today. contact_support can ask Fabrica about it.",
+  notConfigured: "The on-ramp is not set up for this jurisdiction yet, so a parcel here cannot be added online today. contact_fabrica_support can ask Fabrica about it.",
   unsupported: "Fabrica does not take property in this jurisdiction through the on-ramp.",
 };
 
@@ -153,7 +153,7 @@ const SOURCE = {
   refresh: "The table is refreshed by hand when the rules change, so it can lag them. The on-ramp page is the live answer.",
 };
 
-/** check_coverage's answer: a county (by FIPS, or state and county), or a whole state. */
+/** check_county_coverage's answer: a county (by FIPS, or state and county), or a whole state. */
 export function checkCoverage(args: CheckCoverageArgs) {
   const ownerType = args.ownerType ?? "individual";
   let place: string;
@@ -176,7 +176,7 @@ export function checkCoverage(args: CheckCoverageArgs) {
       jurisdiction = { state: state.toUpperCase() };
     }
   } else {
-    return { error: "check_coverage needs a county FIPS code, or a two-letter state (and optionally a county)." };
+    return { error: "check_county_coverage needs a county FIPS code, or a two-letter state (and optionally a county)." };
   }
 
   const rules = resolveRules(place, ownerType);
@@ -196,12 +196,12 @@ export function checkCoverage(args: CheckCoverageArgs) {
     ...(stateOnly ? {
       countiesWithOwnRules: counties,
       scope: counties.length > 0
-        ? "This is the state-wide answer. The counties listed have rules of their own; check_coverage with one of them gives its answer."
+        ? "This is the state-wide answer. The counties listed have rules of their own; check_county_coverage with one of them gives its answer."
         : "This is the state-wide answer; no county in this state has rules of its own.",
     } : {}),
     ...(status === "supported" && IS_MAINNET ? { fee: `A one-time setup fee is authorized during the on-ramp. The amount and when it is charged: ask_fabrica or ${FEES_URL}.` } : {}),
     links: { addToFabrica: `${WEB_BASE}/go`, fees: FEES_URL },
     source: SOURCE,
-    note: `find_parcel gives the on-ramp link for one parcel. Some questions depend on the parcel (onlyForSomeParcels), so the on-ramp may ask fewer.${IS_MAINNET ? "" : " On this test network the on-ramp is a test flow: no trust is created, no deed is signed or recorded and no fee is charged. mainnetRequirements is what the Ethereum Mainnet on-ramp asks for the same place."}`,
+    note: `find_us_parcel gives the on-ramp link for one parcel. Some questions depend on the parcel (onlyForSomeParcels), so the on-ramp may ask fewer.${IS_MAINNET ? "" : " On this test network the on-ramp is a test flow: no trust is created, no deed is signed or recorded and no fee is charged. mainnetRequirements is what the Ethereum Mainnet on-ramp asks for the same place."}`,
   });
 }

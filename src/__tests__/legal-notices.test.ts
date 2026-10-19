@@ -23,7 +23,7 @@ import { getProtocolStats } from "../tools/protocol.js";
 import { IS_MAINNET } from "../config.js";
 
 describe("legal notices on mainnet", () => {
-  it("search_properties includes network and legal notice on mainnet", async () => {
+  it("search_land includes network and legal notice on mainnet", async () => {
     const result = await searchProperties({}) as Record<string, unknown>;
     expect(result.network).toBeDefined();
     if (IS_MAINNET) {
@@ -31,12 +31,12 @@ describe("legal notices on mainnet", () => {
     }
   });
 
-  it("get_property returns error with legal context for missing token", async () => {
+  it("get_land_property returns error with legal context for missing token", async () => {
     const result = await getProperty({ tokenId: "nonexistent" }) as Record<string, unknown>;
     expect(result.error).toBeDefined();
   });
 
-  it("get_protocol_stats includes legal notice on mainnet", async () => {
+  it("get_fabrica_stats includes legal notice on mainnet", async () => {
     const result = await getProtocolStats() as Record<string, unknown>;
     if (IS_MAINNET) {
       expect(result.legalNotice).toBeTruthy();
@@ -47,12 +47,12 @@ describe("legal notices on mainnet", () => {
 });
 
 describe("tool input validation", () => {
-  it("get_property requires tokenId or slug", async () => {
+  it("get_land_property requires tokenId or slug", async () => {
     const result = await getProperty({}) as Record<string, unknown>;
     expect(result.error).toContain("Either tokenId or slug is required");
   });
 
-  it("search_properties returns empty message for no matches", async () => {
+  it("search_land returns empty message for no matches", async () => {
     const result = await searchProperties({ region: "XX" }) as Record<string, unknown>;
     expect(result.total).toBe(0);
     expect(result.message).toBeTruthy();

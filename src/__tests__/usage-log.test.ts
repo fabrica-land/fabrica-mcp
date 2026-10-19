@@ -26,12 +26,12 @@ describe("describeRequest", () => {
   it("keeps the method, tool name and client, never the arguments", () => {
     const calls = describeRequest([
       { jsonrpc: "2.0", id: 1, method: "initialize", params: { clientInfo: { name: "claude-ai", version: "1.2" }, capabilities: {} } },
-      { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "get_portfolio", arguments: { wallet: "0xabc" } } },
+      { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "get_land_portfolio", arguments: { wallet: "0xabc" } } },
       { jsonrpc: "2.0", method: "notifications/initialized" },
     ]);
     expect(calls).toEqual([
       { method: "initialize", client: "claude-ai/1.2" },
-      { method: "tools/call", tool: "get_portfolio" },
+      { method: "tools/call", tool: "get_land_portfolio" },
       { method: "notifications/initialized" },
     ]);
     expect(JSON.stringify(calls)).not.toContain("0xabc");
@@ -82,7 +82,7 @@ describe("trackUsage", () => {
     const spy = vi.spyOn(console, "log").mockImplementation(() => undefined);
     const res = new ServerResponse(new IncomingMessage(new Socket()));
     const usage = trackUsage(res, "test-agent");
-    usage.recordCalls([{ method: "tools/call", tool: "find_parcel" }]);
+    usage.recordCalls([{ method: "tools/call", tool: "find_us_parcel" }]);
     usage.noteOnFabrica([true]);
     usage.noteOnFabrica([false, false]);
     res.emit("close");
@@ -94,7 +94,7 @@ describe("trackUsage", () => {
   it("leaves the split out when nothing was noted", () => {
     const spy = vi.spyOn(console, "log").mockImplementation(() => undefined);
     const res = new ServerResponse(new IncomingMessage(new Socket()));
-    trackUsage(res, "test-agent").recordCalls([{ method: "tools/call", tool: "get_property" }]);
+    trackUsage(res, "test-agent").recordCalls([{ method: "tools/call", tool: "get_land_property" }]);
     res.emit("close");
     const lines = usageLines(spy);
     spy.mockRestore();
@@ -104,20 +104,20 @@ describe("trackUsage", () => {
   it("still logs one line, marked aborted, when the client disconnects before the response", () => {
     const spy = vi.spyOn(console, "log").mockImplementation(() => undefined);
     const res = new ServerResponse(new IncomingMessage(new Socket()));
-    trackUsage(res, "test-agent").recordCalls([{ method: "tools/call", tool: "get_property" }]);
+    trackUsage(res, "test-agent").recordCalls([{ method: "tools/call", tool: "get_land_property" }]);
     res.emit("close");
     res.emit("close");
     const lines = usageLines(spy);
     spy.mockRestore();
     expect(lines).toHaveLength(1);
     expect(lines[0]?.outcome).toBe("aborted");
-    expect(lines[0]?.calls[0]?.tool).toBe("get_property");
+    expect(lines[0]?.calls[0]?.tool).toBe("get_land_property");
   });
 
   it("finds an error after a large result, even when the marker is split across writes", async () => {
     const spy = vi.spyOn(console, "log").mockImplementation(() => undefined);
     const server = createHttpServer((_req, res) => {
-      trackUsage(res, "test-agent").recordCalls([{ method: "tools/call", tool: "get_property_image" }, { method: "tools/call", tool: "get_property" }]);
+      trackUsage(res, "test-agent").recordCalls([{ method: "tools/call", tool: "get_land_map_image" }, { method: "tools/call", tool: "get_land_property" }]);
       res.write(`[{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"image","data":"${"A".repeat(200_000)}"}]}},`);
       res.write('{"jsonrpc":"2.0","id":2,"result":{"content":[],"isEr');
       res.end('ror":true}}]');
@@ -155,16 +155,16 @@ describe("usage log line over HTTP", () => {
     const client = new Client({ name: "usage-test", version: "9.9.9" });
     await client.connect(new StreamableHTTPClientTransport(new URL(url)));
     await client.listTools();
-    await client.callTool({ name: "get_portfolio", arguments: { wallet: "not-a-wallet-0xdeadbeef" } });
+    await client.callTool({ name: "get_land_portfolio", arguments: { wallet: "not-a-wallet-0xdeadbeef" } });
     await client.close();
-    await vi.waitFor(() => expect(usageLines(spy).some((line) => line.calls.some((call) => call.tool === "get_portfolio"))).toBe(true));
+    await vi.waitFor(() => expect(usageLines(spy).some((line) => line.calls.some((call) => call.tool === "get_land_portfolio"))).toBe(true));
     const lines = usageLines(spy);
     spy.mockRestore();
     expect(lines.find((line) => line.calls.some((call) => call.method === "initialize"))?.calls[0]?.client).toBe("usage-test/9.9.9");
     const list = lines.find((line) => line.calls.some((call) => call.method === "tools/list"));
     expect(list?.outcome).toBe("ok");
     expect(list?.status).toBe(200);
-    const call = lines.find((line) => line.calls.some((entry) => entry.tool === "get_portfolio"));
+    const call = lines.find((line) => line.calls.some((entry) => entry.tool === "get_land_portfolio"));
     expect(call?.outcome).not.toBe("ok");
     for (const line of lines) {
       const raw = JSON.stringify(line);

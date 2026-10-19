@@ -10,7 +10,7 @@ function bodyOf(mailto: string): string {
   return decodeURIComponent(new URL(mailto).searchParams.get("body") ?? "");
 }
 
-describe("contact_support (links and email)", () => {
+describe("contact_fabrica_support (links and email)", () => {
   it("returns the topic's help center page, the support address and a mailto with the summary", async () => {
     const result = await contactSupport({ summary: "The notary step says my session expired and I cannot book a new one.", topic: "adding_property", tokenId: "123" });
     if ("error" in result) throw new Error(result.error);
@@ -89,7 +89,7 @@ describe("contact_support (links and email)", () => {
   });
 });
 
-describe("contact_support subject, disclosure and link", () => {
+describe("contact_fabrica_support subject, disclosure and link", () => {
   it("uses the caller's subject and leaves the disclosure out on request", async () => {
     const result = await contactSupport({ summary: "My on-ramp has been stuck at title review for two weeks.", subject: "Title review stuck", discloseAgent: false });
     if ("error" in result) throw new Error(result.error);

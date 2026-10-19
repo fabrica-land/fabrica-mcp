@@ -64,7 +64,7 @@ describe("formatActivityAmount", () => {
   });
 });
 
-describe("get_activity amounts", () => {
+describe("get_land_activity amounts", () => {
   it("reports a Seaport MarketplaceSold at its USDC value", async () => {
     const token = tokenDetail({ tokenId: "2998852811793877500", name: "3705 Avondale Road", vanityName: null, activity: [SEAPORT_SALE] });
     vi.mocked(getToken).mockResolvedValueOnce(token);
