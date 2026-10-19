@@ -16,7 +16,7 @@ search_properties, get_property (renders the property card), get_lending_market,
 
 ## Listing
 
-**Name:** Fabrica
+**Name:** Fabrica Land (display name; the slug stays `fabrica`)
 
 **One-liner** (200 max):
 
