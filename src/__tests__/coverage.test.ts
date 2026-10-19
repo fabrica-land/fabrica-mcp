@@ -67,7 +67,7 @@ describe("checkCoverage", () => {
     const result = checkCoverage({ state: "ca", county: "Riverside County" });
     expect(result).toMatchObject({ jurisdiction: { county: "Riverside", fips: "06065" }, status: "notConfigured" });
     expect(result).not.toHaveProperty("documents");
-    expect(JSON.stringify(result)).toContain("contact_support");
+    expect(JSON.stringify(result)).toContain("contact_fabrica_support");
   });
 
   it("answers a whole state and lists the counties with rules of their own", () => {

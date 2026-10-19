@@ -20,7 +20,7 @@ export function estimateFields(
   const formatted = formatUsdOrNull(value);
   if (formatted) return { estimatedValue: formatted };
   if (pricing === undefined) {
-    return { estimatedValue: null, estimateNote: "No estimate: no valuation source qualifies for a headline estimate. get_property lists the source values." };
+    return { estimatedValue: null, estimateNote: "No estimate: no valuation source qualifies for a headline estimate. get_land_property lists the source values." };
   }
   return {
     estimatedValue: null,

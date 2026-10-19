@@ -135,7 +135,7 @@ describe("ask_fabrica", () => {
   it("suggests lookup tools when the question is really a lookup", async () => {
     const result = await askFabrica({ question: "Show me property 12743610130101631987" });
     if ("error" in result) throw new Error(result.error);
-    expect(result.suggestedTools).toContain("get_property");
+    expect(result.suggestedTools).toContain("get_land_property");
   });
 
   it("caps the passage count and respects the source filter", async () => {

@@ -22,42 +22,42 @@ Claude Code, mainnet: `claude mcp add --transport http fabrica https://mcp.fabri
 
 | Tool | What it answers |
 |---|---|
-| `search_properties` | Properties by location, size, Property checks, listing status, price, price per acre, distance from a point (`near`); sorted with `sortBy` |
-| `get_property` | One property: location, owner wallet, valuation, listing, loans, operating agreement link |
-| `get_valuation` | Every value held for a property, each with its source, date and confidence, and the pool's oracle state |
-| `get_trust_documents` | The legal record: the trust, the trust agreement (name, version, link), legal description, parcel identifiers, deed reference and owner-uploaded documents |
-| `get_tax_status` | Whether the property's taxes are current, past due or unknown per Property checks, and whether that limits borrowing |
-| `get_order_book` | Listings and offers for one property, with prices, expiry and any loan on it |
-| `get_property_map` | Parcel boundary as GeoJSON |
-| `get_property_image` | Map image of the parcel |
-| `explain_confidence_score` | What each verification group's value means, decoded from the numeric encoding of Property checks (pass counts come from `get_property`'s `propertyChecks`) |
-| `get_borrow_quote` | What the DeFi lending pool would lend against a property, and what limits it (`limits.limitedBy`): a small amount is often the pool's free liquidity, not a valuation. `toRaise` says what would raise it: each lever, what it would allow, and the step that moves it |
-| `get_lending_market` | Loans, pool liquidity, average APR |
-| `get_loan_book` | What has been lent, at what loan-to-value (against today's estimate), where, and how many were repaid or liquidated |
-| `get_portfolio` | A wallet's holdings, credit history and loans |
-| `get_portfolio_image` | Map of a wallet's holdings |
-| `get_activity` | Transfers, sales and loans for a property or wallet; with no filter, the newest across the network |
-| `get_protocol_stats` | Protocol-wide counts and totals |
+| `search_land` | Properties by location, size, Property checks, listing status, price, price per acre, distance from a point (`near`); sorted with `sortBy` |
+| `get_land_property` | One property: location, owner wallet, valuation, listing, loans, operating agreement link |
+| `get_land_valuation` | Every value held for a property, each with its source, date and confidence, and the pool's oracle state |
+| `get_land_trust_documents` | The legal record: the trust, the trust agreement (name, version, link), legal description, parcel identifiers, deed reference and owner-uploaded documents |
+| `get_land_tax_status` | Whether the property's taxes are current, past due or unknown per Property checks, and whether that limits borrowing |
+| `get_land_order_book` | Listings and offers for one property, with prices, expiry and any loan on it |
+| `get_land_boundary` | Parcel boundary as GeoJSON |
+| `get_land_map_image` | Map image of the parcel |
+| `explain_property_checks` | What each verification group's value means, decoded from the numeric encoding of Property checks (pass counts come from `get_land_property`'s `propertyChecks`) |
+| `estimate_land_borrowing` | What the DeFi lending pool would lend against a property, and what limits it (`limits.limitedBy`): a small amount is often the pool's free liquidity, not a valuation. `toRaise` says what would raise it: each lever, what it would allow, and the step that moves it |
+| `get_fabrica_lending_market` | Loans, pool liquidity, average APR |
+| `get_fabrica_loan_book` | What has been lent, at what loan-to-value (against today's estimate), where, and how many were repaid or liquidated |
+| `get_land_portfolio` | A wallet's holdings, credit history and loans |
+| `get_land_portfolio_map_image` | Map of a wallet's holdings |
+| `get_land_activity` | Transfers, sales and loans for a property or wallet; with no filter, the newest across the network |
+| `get_fabrica_stats` | Protocol-wide counts and totals |
 | `ask_fabrica` | Cited passages from Fabrica's docs, help center and trust agreement for how Fabrica works |
-| `find_parcel` | Any US address or parcel number: the parcel, whether it is on Fabrica, and the on-ramp link if not |
-| `check_coverage` | Whether a county (or state) can be added through the on-ramp, and what it asks for: deed and forms, notarization and witnesses, questions, steps. From a table of the on-ramp rules with an as-of date |
-| `contact_support` | When the docs do not answer or a person is needed: the help center section, the support email and a prefilled email draft. Sends nothing; the person sends it |
+| `find_us_parcel` | Any US address or parcel number: the parcel, whether it is on Fabrica, and the on-ramp link if not |
+| `check_county_coverage` | Whether a county (or state) can be added through the on-ramp, and what it asks for: deed and forms, notarization and witnesses, questions, steps. From a table of the on-ramp rules with an as-of date |
+| `contact_fabrica_support` | When the docs do not answer or a person is needed: the help center section, the support email and a prefilled email draft. Sends nothing; the person sends it |
 
-On the testnet server (`mcp-testnet.fabrica.land`), five more tools prepare marketplace actions as sign requests: `make_offer`, `list_for_sale`, `accept_offer`, `buy`, `cancel_order` (each takes the `wallet` that will sign), plus `get_sign_request` and `get_transaction_status`. They return a summary, warnings and a sign link; nothing happens until the person opens the link and signs with their own wallet. Present the summary and every warning before the link, and say it was prepared, not sent.
+On the testnet server (`mcp-testnet.fabrica.land`), five more tools prepare marketplace actions as sign requests: `make_land_offer`, `list_land_for_sale`, `accept_land_offer`, `buy_land`, `cancel_land_order` (each takes the `wallet` that will sign), plus `get_sign_request` and `get_transaction_status`. They return a summary, warnings and a sign link; nothing happens until the person opens the link and signs with their own wallet. Present the summary and every warning before the link, and say it was prepared, not sent.
 
 ## Loops
 
-**Due diligence on a property.** `get_property` (its `propertyChecks` give how many Property checks pass), then `explain_confidence_score` with the numeric encoding of Property checks, then `get_tax_status`, `get_valuation` with its source, `get_order_book` and `get_trust_documents`, then `get_borrow_quote` (when the amount is small or zero, its `toRaise` gives each lever and the step that clears it) and `get_activity`. Report each fact with its source. End with what to verify independently: the county record of the deed into the trust, a title search or title insurance, taxes paid to date. Never a buy recommendation.
+**Due diligence on a property.** `get_land_property` (its `propertyChecks` give how many Property checks pass), then `explain_property_checks` with the numeric encoding of Property checks, then `get_land_tax_status`, `get_land_valuation` with its source, `get_land_order_book` and `get_land_trust_documents`, then `estimate_land_borrowing` (when the amount is small or zero, its `toRaise` gives each lever and the step that clears it) and `get_land_activity`. Report each fact with its source. End with what to verify independently: the county record of the deed into the trust, a title search or title insurance, taxes paid to date. Never a buy recommendation.
 
-**Find land for a buyer.** One `search_properties` call with the filters the person gave: `region` or `county`, `minAcres` and `maxAcres`, `maxPrice` or `maxPricePerAcre` (listed properties only), `near: { lat, lon, radiusMiles }` for "within N miles of", and `sortBy` (`pricePerAcre`, `price`, `acres`, `newest`, `distance`). Each row carries `pricePerAcre` with its basis (listing or estimate) and, with `near`, `distanceMiles` (straight-line). Then `get_property` on the shortlist. Never a buy recommendation.
+**Find land for a buyer.** One `search_land` call with the filters the person gave: `region` or `county`, `minAcres` and `maxAcres`, `maxPrice` or `maxPricePerAcre` (listed properties only), `near: { lat, lon, radiusMiles }` for "within N miles of", and `sortBy` (`pricePerAcre`, `price`, `acres`, `newest`, `distance`). Each row carries `pricePerAcre` with its basis (listing or estimate) and, with `near`, `distanceMiles` (straight-line). Then `get_land_property` on the shortlist. Never a buy recommendation.
 
-**Work a parcel list.** `find_parcel` with `queries`: up to 10 addresses or parcel numbers per call that share a state and county (give those as `state` and `county`). Each row says `onFabrica`; on Fabrica, `tokenId` and `propertyLink`; not on Fabrica, `addToFabrica` (the on-ramp link) and `coverage`. Re-run each `unresolved` entry on its own with a fuller address or with state and county. One table at the end. Each query counts as one lookup against the limit of 30 per minute per client, so a list longer than 30 waits a minute between batches of three calls.
+**Work a parcel list.** `find_us_parcel` with `queries`: up to 10 addresses or parcel numbers per call that share a state and county (give those as `state` and `county`). Each row says `onFabrica`; on Fabrica, `tokenId` and `propertyLink`; not on Fabrica, `addToFabrica` (the on-ramp link) and `coverage`. Re-run each `unresolved` entry on its own with a fuller address or with state and county. One table at the end. Each query counts as one lookup against the limit of 30 per minute per client, so a list longer than 30 waits a minute between batches of three calls.
 
-**Review a wallet.** `get_portfolio` (loans as borrower and as lender, each with principal, APR, maturity and collateral token), then `get_property` for each holding (Property checks from `propertyChecks`, passed of total) and, where it matters, for the collateral of loans the wallet made, then `get_activity`. Summarize holdings, then loans where the wallet borrows (what it owes and when) separately from loans where it lends (what it is owed and when), and what needs attention soon.
+**Review a wallet.** `get_land_portfolio` (loans as borrower and as lender, each with principal, APR, maturity and collateral token), then `get_land_property` for each holding (Property checks from `propertyChecks`, passed of total) and, where it matters, for the collateral of loans the wallet made, then `get_land_activity`. Summarize holdings, then loans where the wallet borrows (what it owes and when) separately from loans where it lends (what it is owed and when), and what needs attention soon.
 
-**Make an offer (testnet).** `get_order_book` for the open listings and offers, then `make_offer` with the amount, the days it stays open and the person's wallet. Show the summary and the warnings, then the `signLink`, and say it expires in 15 minutes. After the person says they signed, `get_sign_request` with the id; `get_order_book` shows the offer. `buy` and `accept_offer` take the `orderId` from `get_order_book` as `orderHash`; a purchase is an onchain transaction that `get_transaction_status` follows.
+**Make an offer (testnet).** `get_land_order_book` for the open listings and offers, then `make_land_offer` with the amount, the days it stays open and the person's wallet. Show the summary and the warnings, then the `signLink`, and say it expires in 15 minutes. After the person says they signed, `get_sign_request` with the id; `get_land_order_book` shows the offer. `buy_land` and `accept_land_offer` take the `orderId` from `get_land_order_book` as `orderHash`; a purchase is an onchain transaction that `get_transaction_status` follows.
 
-**Add land.** `find_parcel` for the parcel; if it is not on Fabrica, the on-ramp link `find_parcel` returns in `links.addToFabrica` (it already points at the active network, with the parcel filled in). The owner submits the property and how title is held, Fabrica reviews title, the owner verifies identity, a trust is created, the owner signs the deed and trust documents (normally with a remote online notary), the deed is recorded, and the token is issued. The setup fee is authorized up front and charged once, at the first sale, loan or use in another app. Steps: https://docs.fabrica.land/docs/on-ramp. Fees: https://docs.fabrica.land/docs/fees. Obligations: https://docs.fabrica.land/docs/property-obligations. `check_coverage` with the county says whether the on-ramp is set up there and lists the documents and questions; it answers from a dated table, so the on-ramp page is the live answer.
+**Add land.** `find_us_parcel` for the parcel; if it is not on Fabrica, the on-ramp link `find_us_parcel` returns in `links.addToFabrica` (it already points at the active network, with the parcel filled in). The owner submits the property and how title is held, Fabrica reviews title, the owner verifies identity, a trust is created, the owner signs the deed and trust documents (normally with a remote online notary), the deed is recorded, and the token is issued. The setup fee is authorized up front and charged once, at the first sale, loan or use in another app. Steps: https://docs.fabrica.land/docs/on-ramp. Fees: https://docs.fabrica.land/docs/fees. Obligations: https://docs.fabrica.land/docs/property-obligations. `check_county_coverage` with the county says whether the on-ramp is set up there and lists the documents and questions; it answers from a dated table, so the on-ramp page is the live answer.
 
 ## Legal red lines
 
@@ -68,7 +68,7 @@ On the testnet server (`mcp-testnet.fabrica.land`), five more tools prepare mark
 - The operating agreement attached to each token sets out the owner's rights and obligations.
 - Facts, not advice: no buy, sell or borrow recommendation.
 - Owner names: share the names in Fabrica's own records (the deed grantor) and a holder's chosen display name. Never name an owner from third-party parcel data, and never guess one.
-- A property is governed by the agreement version on its token, which can be older than the generic template. Quote `fabrica://property/{tokenId}/trust-agreement` (or `get_trust_documents`) for a specific property, not `fabrica://legal/us-trust-agreement`.
+- A property is governed by the agreement version on its token, which can be older than the generic template. Quote `fabrica://property/{tokenId}/trust-agreement` (or `get_land_trust_documents`) for a specific property, not `fabrica://legal/us-trust-agreement`.
 
 ## Wording
 

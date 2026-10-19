@@ -147,7 +147,7 @@ export async function getLendingMarket(args: GetLendingMarketArgs) {
       loansOrder: "Active loans first, then most recently started first.",
       recentEvents: recentLoanEvents(allLoans),
       ...(loansMayBeIncomplete(allLoans) ? { loansNote: LOANS_INCOMPLETE_NOTE } : {}),
-      loanBook: "get_loan_book has the whole history as a distribution: loan-to-value bands, exposure by state and acreage, outcomes by band, originations by month.",
+      loanBook: "get_fabrica_loan_book has the whole history as a distribution: loan-to-value bands, exposure by state and acreage, outcomes by band, originations by month.",
       recentEventsScope: `The ${RECENT_EVENT_COUNT} most recent loan events (started, repaid, liquidated) across all lenders, from the loan records. A type missing here has no event among the latest ${RECENT_EVENT_COUNT}; lifetime counts are in summary.`,
     };
   } catch (e) {

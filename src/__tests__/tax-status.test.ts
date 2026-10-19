@@ -61,7 +61,7 @@ describe("resolveTaxStatus", () => {
   });
 });
 
-describe("get_tax_status", () => {
+describe("get_land_tax_status", () => {
   it("requires a tokenId or slug", async () => {
     expect(await getTaxStatus({})).toEqual({ error: "Either tokenId or slug is required" });
   });

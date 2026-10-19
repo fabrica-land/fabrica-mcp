@@ -41,15 +41,15 @@ describe("hosted HTTP transport", () => {
     await client.connect(new StreamableHTTPClientTransport(new URL(url)));
     const { tools } = await client.listTools();
     expect(tools.map((tool) => tool.name)).toEqual(expect.arrayContaining([
-      "search_properties",
-      "get_property",
-      "get_borrow_quote",
-      "get_valuation",
-      "get_property_image",
-      "get_order_book",
-      "contact_support",
-      "check_coverage",
-      "get_loan_book",
+      "search_land",
+      "get_land_property",
+      "estimate_land_borrowing",
+      "get_land_valuation",
+      "get_land_map_image",
+      "get_land_order_book",
+      "contact_fabrica_support",
+      "check_county_coverage",
+      "get_fabrica_loan_book",
     ]));
     expect(tools).toHaveLength(20);
     expect(client.getInstructions()).toContain("Network:");
@@ -75,7 +75,7 @@ describe("hosted HTTP transport", () => {
     const offClient = new Client({ name: "http-test", version: "0.0.0" });
     await offClient.connect(new StreamableHTTPClientTransport(new URL(url)));
     const offTools = (await offClient.listTools()).tools;
-    expect(offTools.map((tool) => tool.name)).not.toContain("make_offer");
+    expect(offTools.map((tool) => tool.name)).not.toContain("make_land_offer");
     await offClient.close();
     const previous = process.env.FABRICA_SIGN_REQUESTS;
     process.env.FABRICA_SIGN_REQUESTS = "enabled";
@@ -84,7 +84,7 @@ describe("hosted HTTP transport", () => {
       await client.connect(new StreamableHTTPClientTransport(new URL(url)));
       const { tools } = await client.listTools();
       expect(tools).toHaveLength(offTools.length + 7);
-      const prepareTools = ["make_offer", "list_for_sale", "accept_offer", "buy", "cancel_order"];
+      const prepareTools = ["make_land_offer", "list_land_for_sale", "accept_land_offer", "buy_land", "cancel_land_order"];
       for (const tool of tools) {
         expect(tool.title, tool.name).toBeTruthy();
         expect(tool.annotations?.readOnlyHint, tool.name).toBe(!prepareTools.includes(tool.name));
@@ -104,18 +104,18 @@ describe("hosted HTTP transport", () => {
     const client = new Client({ name: "http-test", version: "0.0.0" });
     await client.connect(new StreamableHTTPClientTransport(new URL(url)));
     const { tools } = await client.listTools();
-    expect(tools.find((tool) => tool.name === "get_property")?._meta?.ui).toBeUndefined();
+    expect(tools.find((tool) => tool.name === "get_land_property")?._meta?.ui).toBeUndefined();
     await client.close();
   });
 
-  it("links get_property to the property card MCP App and serves it self-contained", async () => {
+  it("links get_land_property to the property card MCP App and serves it self-contained", async () => {
     const previous = process.env.FABRICA_MCP_APPS;
     process.env.FABRICA_MCP_APPS = "enabled";
     try {
     const client = new Client({ name: "http-test", version: "0.0.0" });
     await client.connect(new StreamableHTTPClientTransport(new URL(url)));
     const { tools } = await client.listTools();
-    const getProperty = tools.find((tool) => tool.name === "get_property");
+    const getProperty = tools.find((tool) => tool.name === "get_land_property");
     const ui = getProperty?._meta?.ui;
     expect(typeof ui === "object" && ui !== null && "resourceUri" in ui ? ui.resourceUri : null).toBe("ui://fabrica/property-card");
     const { contents } = await client.readResource({ uri: "ui://fabrica/property-card" });

@@ -8,7 +8,7 @@ import type { ArgsOf } from "./inputs.js";
 import { COVERAGE_AS_OF, coverageStatus, type CoverageStatus } from "./coverage.js";
 
 /**
- * find_parcel: any US address or parcel number to a parcel identity, whether it is
+ * find_us_parcel: any US address or parcel number to a parcel identity, whether it is
  * already on Fabrica, and the link that starts its on-ramp. One type-ahead lookup per
  * call (the API's Regrid type-ahead, a metered third-party search), plus one parcel
  * lookup on the web app's APN route only when a single parcel is found that is not on
@@ -68,7 +68,7 @@ function text(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
 
-/** Keeps only the fields find_parcel shows. `owner` is dropped here, before anything else sees it. */
+/** Keeps only the fields find_us_parcel shows. `owner` is dropped here, before anything else sees it. */
 export function parseTypeAhead(body: unknown): TypeAheadHit[] {
   if (!Array.isArray(body)) return [];
   return body.flatMap((row) => {
@@ -428,11 +428,11 @@ async function indexFallback(query: string, args: FindParcelArgs, failure: strin
     match: "unconfirmed" as const,
     matchSource: "fabrica-index",
     candidates: matches.slice(0, MAX_CANDIDATES).map(indexCandidate),
-    note: `${SEARCH_DOWN} (${failure}), so ${matches.length === 1 ? "this property was" : "these properties were"} matched against Fabrica's own records (the property name or its registrar parcel number), not the US parcel search. A name or parcel-number match is not a parcel-boundary check: say it is likely, not confirmed. get_property with the tokenId returns the record; try find_parcel again shortly to confirm.`,
+    note: `${SEARCH_DOWN} (${failure}), so ${matches.length === 1 ? "this property was" : "these properties were"} matched against Fabrica's own records (the property name or its registrar parcel number), not the US parcel search. A name or parcel-number match is not a parcel-boundary check: say it is likely, not confirmed. get_land_property with the tokenId returns the record; try find_us_parcel again shortly to confirm.`,
   };
 }
 
-/** Queries one find_parcel call takes; each counts as one lookup against the per-client limit. */
+/** Queries one find_us_parcel call takes; each counts as one lookup against the per-client limit. */
 export const MAX_BATCH_QUERIES = 10;
 const BATCH_CONCURRENCY = 4;
 
@@ -440,7 +440,7 @@ const queryText = z.string().min(3).max(200);
 
 export const findParcelInput = {
   query: queryText.optional().describe("Street address (with city and state when known) or parcel number (APN). Give this or queries, not both"),
-  queries: z.array(queryText).min(1).max(MAX_BATCH_QUERIES, `find_parcel takes at most ${MAX_BATCH_QUERIES} queries per call; split the list into calls of ${MAX_BATCH_QUERIES}`).optional()
+  queries: z.array(queryText).min(1).max(MAX_BATCH_QUERIES, `find_us_parcel takes at most ${MAX_BATCH_QUERIES} queries per call; split the list into calls of ${MAX_BATCH_QUERIES}`).optional()
     .describe(`Up to ${MAX_BATCH_QUERIES} addresses or parcel numbers sharing the same state and county scope; each counts as one lookup against the per-client limit. Returns one row per resolved query and an unresolved list with the reason`),
   state: z.string().regex(/^[A-Za-z]{2}$/).optional().describe("Two-letter US state code, e.g. 'AZ'"),
   county: z.string().max(80).optional().describe("County name, e.g. 'Navajo'"),
@@ -450,13 +450,13 @@ type SingleArgs = Omit<FindParcelArgs, "queries"> & { query: string };
 type IndexLoader = () => Promise<ParcelIndexToken[]>;
 type SearchResult = Awaited<ReturnType<typeof searchParcel>>;
 
-/** find_parcel's answer. Every non-error result names the network and, on mainnet, carries the legal notice. */
+/** find_us_parcel's answer. Every non-error result names the network and, on mainnet, carries the legal notice. */
 export async function findParcel(args: FindParcelArgs) {
   return (await findParcelWithUsage(args)).result;
 }
 
 /**
- * find_parcel's answer and, for the usage log, whether each settled query named a parcel on Fabrica.
+ * find_us_parcel's answer and, for the usage log, whether each settled query named a parcel on Fabrica.
  * The flags carry no query text.
  */
 export async function findParcelWithUsage(args: FindParcelArgs) {
@@ -569,10 +569,10 @@ async function searchBatch(queries: readonly string[], args: FindParcelArgs) {
       rows,
       unresolved,
       note: [
-        "One row per query that resolved to a single parcel: on Fabrica, tokenId and propertyLink (get_property returns the record); not on Fabrica, addToFabrica opens the on-ramp for that parcel, and nothing is created until a person opens it and decides there.",
-        unchecked ? "onFabrica null means Fabrica's records could not be checked for that row, so its on-ramp link is withheld; calling find_parcel again shortly retries it." : null,
-        unresolved.length > 0 ? "Unresolved queries: call find_parcel again with a fuller address, or with state and county." : null,
-        rows.some((row) => row.coverage !== undefined) ? `coverage is the county's on-ramp status as of ${COVERAGE_AS_OF}; check_coverage lists what it asks for.` : null,
+        "One row per query that resolved to a single parcel: on Fabrica, tokenId and propertyLink (get_land_property returns the record); not on Fabrica, addToFabrica opens the on-ramp for that parcel, and nothing is created until a person opens it and decides there.",
+        unchecked ? "onFabrica null means Fabrica's records could not be checked for that row, so its on-ramp link is withheld; calling find_us_parcel again shortly retries it." : null,
+        unresolved.length > 0 ? "Unresolved queries: call find_us_parcel again with a fuller address, or with state and county." : null,
+        rows.some((row) => row.coverage !== undefined) ? `coverage is the county's on-ramp status as of ${COVERAGE_AS_OF}; check_county_coverage lists what it asks for.` : null,
       ].filter(Boolean).join(" "),
     },
     onFabrica,
@@ -647,7 +647,7 @@ async function searchParcel(args: SingleArgs, loadIndex: IndexLoader) {
       query,
       match: "ambiguous" as const,
       candidates: matched.map(({ hit, token }) => toCandidate(hit, token)),
-      note: `Several parcels match. Calling find_parcel again with state (and county) narrows it to one.${indexNote ? ` ${indexNote}` : " onFabrica here comes from parcel numbers only; null means not confirmed on Fabrica, and the full check (including the parcel outline) runs once the search narrows to one parcel."}`,
+      note: `Several parcels match. Calling find_us_parcel again with state (and county) narrows it to one.${indexNote ? ` ${indexNote}` : " onFabrica here comes from parcel numbers only; null means not confirmed on Fabrica, and the full check (including the parcel outline) runs once the search narrows to one parcel."}`,
     };
   }
   if (top.token) {
@@ -655,7 +655,7 @@ async function searchParcel(args: SingleArgs, loadIndex: IndexLoader) {
       query,
       match: "single" as const,
       parcel: toCandidate(top.hit, top.token),
-      note: "This parcel is on Fabrica. get_property with the tokenId returns its record.",
+      note: "This parcel is on Fabrica. get_land_property with the tokenId returns its record.",
     };
   }
   if (indexNote) {
@@ -664,7 +664,7 @@ async function searchParcel(args: SingleArgs, loadIndex: IndexLoader) {
       query,
       match: "single" as const,
       parcel: toCandidate(top.hit, null),
-      note: `${indexNote} The add-to-Fabrica link is withheld until that check succeeds; calling find_parcel again shortly retries it.`,
+      note: `${indexNote} The add-to-Fabrica link is withheld until that check succeeds; calling find_us_parcel again shortly retries it.`,
     };
   }
   const point = top.point !== undefined ? top.point : await lookUpPoint(top.hit);
@@ -676,7 +676,7 @@ async function searchParcel(args: SingleArgs, loadIndex: IndexLoader) {
       query,
       match: "single" as const,
       parcel: toCandidate(top.hit, byOutline),
-      note: "A Fabrica property sits inside this parcel's boundary. get_property with the tokenId returns its record.",
+      note: "A Fabrica property sits inside this parcel's boundary. get_land_property with the tokenId returns its record.",
     };
   }
   const addToFabrica = point ? onRampLink(point, top.hit) : `${WEB_BASE}/go`;
@@ -693,17 +693,17 @@ async function searchParcel(args: SingleArgs, loadIndex: IndexLoader) {
 }
 
 function coverageNote(status: CoverageStatus): string {
-  if (status === "supported") return `The on-ramp is set up for this county (on-ramp rules as of ${COVERAGE_AS_OF}); check_coverage lists the documents and steps it asks for.`;
-  if (status === "notConfigured") return `The on-ramp is not set up for this county yet (on-ramp rules as of ${COVERAGE_AS_OF}), so the owner may not be able to finish online; contact_support can ask Fabrica about it.`;
+  if (status === "supported") return `The on-ramp is set up for this county (on-ramp rules as of ${COVERAGE_AS_OF}); check_county_coverage lists the documents and steps it asks for.`;
+  if (status === "notConfigured") return `The on-ramp is not set up for this county yet (on-ramp rules as of ${COVERAGE_AS_OF}), so the owner may not be able to finish online; contact_fabrica_support can ask Fabrica about it.`;
   return `Fabrica does not take property in this county through the on-ramp (on-ramp rules as of ${COVERAGE_AS_OF}).`;
 }
 
-/** Per-client limit on find_parcel calls, per warm server instance (the type-ahead is metered). */
+/** Per-client limit on find_us_parcel calls, per warm server instance (the type-ahead is metered). */
 export const FIND_PARCEL_LIMIT_PER_MINUTE = 30;
 const WINDOW_MS = 60_000;
 const recentCalls = new Map<string, number[]>();
 
-/** Records `count` find_parcel calls for `client` and says whether they fit in the limit. */
+/** Records `count` find_us_parcel calls for `client` and says whether they fit in the limit. */
 export function allowFindParcel(client: string, count: number, now: number = Date.now()): boolean {
   if (count === 0) return true;
   const recent = (recentCalls.get(client) ?? []).filter((at) => now - at < WINDOW_MS);

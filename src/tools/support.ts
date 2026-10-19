@@ -5,7 +5,7 @@ import { z } from "zod";
 import type { ArgsOf } from "./inputs.js";
 
 /**
- * contact_support, option A: no secret and nothing sent. It returns the help center
+ * contact_fabrica_support, option A: no secret and nothing sent. It returns the help center
  * section for the topic, the support address, and a prefilled mailto with the agent's
  * summary, which the person sends. Option B (opening the Intercom conversation from the
  * server) needs an Intercom token on the Vercel project and is a separate step.
@@ -113,7 +113,7 @@ export async function contactSupport(args: ContactSupportArgs) {
     return { error: "The summary looks like it contains a private key or seed phrase. Those are never needed by support and are left out of any message; remove them and call again. A transaction hash is fine when labeled, as in transaction hash: 0x…, or an etherscan /tx/ link." };
   }
   if (args.tokenId !== undefined && !TOKEN_ID.test(args.tokenId)) {
-    return { error: "tokenId must be a Fabrica token ID: digits only, as get_property and search_properties return it." };
+    return { error: "tokenId must be a Fabrica token ID: digits only, as get_land_property and search_land return it." };
   }
   const topic = TOPIC_PAGES[args.topic ?? "other"];
   const subjectText = args.subject ? wellFormed(args.subject).replace(/[\r\n]+/g, " ").trim() : "";

@@ -80,7 +80,7 @@ describe("getPropertyMap degrades on a county-outline failure instead of swallow
 });
 
 describe("getParcelIndex", () => {
-  it("leaves out spam and errored tokens, so find_parcel never matches one", async () => {
+  it("leaves out spam and errored tokens, so find_us_parcel never matches one", async () => {
     stubApi({ data: { tokens: [
       { tokenId: "1", name: "SyntaxError: Unexpected token", regionCode: "TX", definition: { offchainRegistrar: { admin: "48231", propertyId: "123" } } },
       { tokenId: "2", name: "Hunt County 5 acres", regionCode: "TX", definition: { offchainRegistrar: { admin: "48231", propertyId: "123" } } },

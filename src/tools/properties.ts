@@ -333,7 +333,7 @@ export async function searchProperties(args: SearchPropertiesArgs) {
   }
 }
 
-/** get_property keeps its response bounded: holders and orders beyond these are counted, not listed. */
+/** get_land_property keeps its response bounded: holders and orders beyond these are counted, not listed. */
 const MAX_HOLDERS = 25;
 const MAX_ORDERS = 20;
 
@@ -380,7 +380,7 @@ function flagsOf(token: TokenModel): string[] {
 }
 
 const RECENT_ACTIVITY = 10;
-/** get_property keeps the start of the legal description; get_trust_documents returns all of it. */
+/** get_land_property keeps the start of the legal description; get_land_trust_documents returns all of it. */
 export const LEGAL_DESCRIPTION_PREVIEW = 600;
 
 /** The newest events, each ScoreChanged with its new and previous encoding and the groups that moved. */
@@ -417,7 +417,7 @@ export async function getProperty(args: GetPropertyArgs) {
     if (!token) {
       return { error: `No property found with ${tokenId ? `token ID ${tokenId}` : `slug ${slug}`}` };
     }
-    // Live as get_order_book counts it: active, encumbered or pending, and not past its end time.
+    // Live as get_land_order_book counts it: active, encumbered or pending, and not past its end time.
     const now = Date.now();
     // Buyable listings first (stable otherwise), so the cap never hides the one a buyer can act on.
     const activeListings = (token.marketplaceListings?.filter(l => isLiveOrder(l, now)) ?? [])
@@ -474,19 +474,19 @@ export async function getProperty(args: GetPropertyArgs) {
         ...countChecks(checkResults),
         encoding: token.score,
         results: checkResults,
-        about: "Property checks are a starting point for your own research, not a title search or title insurance. encoding is their 5-digit numeric encoding (explain_confidence_score decodes it).",
+        about: "Property checks are a starting point for your own research, not a title search or title insurance. encoding is their 5-digit numeric encoding (explain_property_checks decodes it).",
       },
       taxes: {
         status: tax.status,
         summary: taxSummary(tax.status, tax.checkedAt, token.isPremint, tax),
         checkedAt: tax.checkedAt,
-        details: "get_tax_status",
+        details: "get_land_tax_status",
       },
       legal: {
         description: legal.description,
-        ...(legal.truncated ? { descriptionTruncated: true, descriptionNote: `The first ${LEGAL_DESCRIPTION_PREVIEW} of ${(token.definition?.claim.length ?? 0).toLocaleString("en-US")} characters; get_trust_documents returns the full legal description.` } : {}),
+        ...(legal.truncated ? { descriptionTruncated: true, descriptionNote: `The first ${LEGAL_DESCRIPTION_PREVIEW} of ${(token.definition?.claim.length ?? 0).toLocaleString("en-US")} characters; get_land_trust_documents returns the full legal description.` } : {}),
         holdingEntity: token.definition?.holdingEntity ?? null,
-        // The agreement text is long (about 150 KB); get_trust_documents returns it on request.
+        // The agreement text is long (about 150 KB); get_land_trust_documents returns it on request.
         operatingAgreement: token.operatingAgreementUrl ? toGatewayUrl(token.operatingAgreementUrl) ?? token.operatingAgreementUrl : null,
         operatingAgreementName: token.operatingAgreementName,
         // The resource serves this token's own agreement, which can be an older version than the generic one.

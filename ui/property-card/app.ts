@@ -1,4 +1,4 @@
-// Property card: the MCP App view for get_property. Renders inside the host's sandboxed
+// Property card: the MCP App view for get_land_property. Renders inside the host's sandboxed
 // frame from the tool result's structuredContent. The parcel map is always shown first;
 // owner photos follow when the property has any. All data arrives from the tool result,
 // and user-provided text is only ever set through textContent.
@@ -452,7 +452,7 @@ app.ontoolresult = (result) => {
     }
   }
   render();
-  // The agent can ask for the card fullscreen (get_property display: "fullscreen"); the host may decline.
+  // The agent can ask for the card fullscreen (get_land_property display: "fullscreen"); the host may decline.
   if (obj(current.card).displayMode === "fullscreen" && canExpand(app.getHostContext())) setDisplayMode("fullscreen");
 };
 

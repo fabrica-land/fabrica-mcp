@@ -5,7 +5,7 @@ import { API_DOCUMENTS } from "../clients/graphql.js";
 
 /**
  * Guards against a failure mode that happened: the API renamed TokenModel.metaStreetLiquidity
- * to poolLendingLiquidity, every get_property call started failing schema validation, and
+ * to poolLendingLiquidity, every get_land_property call started failing schema validation, and
  * the client reported the 400 to agents as "No property found with token ID X".
  *
  * The snapshot is checked in rather than introspected here on purpose. A test that calls

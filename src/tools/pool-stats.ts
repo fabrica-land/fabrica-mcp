@@ -14,7 +14,7 @@ function formatPoolValue(raw: string): string {
   return `$${poolValue(raw).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
-const CAPACITY_POINTER = "Borrowing capacity for one property comes from get_borrow_quote, which reads the Fabrica API and can differ from these pool totals.";
+const CAPACITY_POINTER = "Borrowing capacity for one property comes from estimate_land_borrowing, which reads the Fabrica API and can differ from these pool totals.";
 
 /**
  * Liquidated loans on these pools according to the API's loan records, when that is more than the
@@ -29,7 +29,7 @@ export function recordLiquidations(pools: SubgraphPool[], loans: ReadonlyArray<P
 }
 
 /**
- * DeFi lending pool block shared by get_lending_market and get_protocol_stats.
+ * DeFi lending pool block shared by get_fabrica_lending_market and get_fabrica_stats.
  * null pools means the subgraph could not be read: the figures are unknown, not zero.
  * `loans` (the API's loan records) corrects the subgraph's liquidation count when it lags.
  */

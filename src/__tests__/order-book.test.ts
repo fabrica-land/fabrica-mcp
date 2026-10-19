@@ -86,7 +86,7 @@ describe("formatting helpers", () => {
   });
 });
 
-describe("get_order_book", () => {
+describe("get_land_order_book", () => {
   it("requires a token ID or slug", async () => {
     expect(await getOrderBook({})).toEqual({ error: "Either tokenId or slug is required" });
   });
