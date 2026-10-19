@@ -27,17 +27,17 @@ const minScoreOfLastCall = () => {
 describe("minimum score defaults", () => {
   beforeEach(() => vi.mocked(getTokens).mockClear());
 
-  it("search_properties uses the marketplace threshold by default", async () => {
+  it("search_land uses the marketplace threshold by default", async () => {
     await searchProperties({});
     expect(minScoreOfLastCall()).toBe(72032);
   });
 
-  it("search_properties lists every property in a wallet when ownedBy is set", async () => {
+  it("search_land lists every property in a wallet when ownedBy is set", async () => {
     await searchProperties({ ownedBy: "0x0000000000000000000000000000000000000001" });
     expect(minScoreOfLastCall()).toBeUndefined();
   });
 
-  it("search_properties keeps an explicit minScore, with or without ownedBy", async () => {
+  it("search_land keeps an explicit minScore, with or without ownedBy", async () => {
     await searchProperties({ minScore: 74000 });
     expect(minScoreOfLastCall()).toBe(74000);
     await searchProperties({ minScore: 0, ownedBy: "0x0000000000000000000000000000000000000001" });

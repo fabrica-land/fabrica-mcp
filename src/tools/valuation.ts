@@ -151,7 +151,7 @@ export function describePoolOracle(pool: PoolLendingPoolValuation) {
  * Plain-word reasons a property shows no pool borrowing capacity, from the appraisal block
  * and each pool's oracle state. Empty when the API states no specific reason.
  */
-/** Reads only the appraisal block and the oracle fields, so get_valuation's lighter pools (no ticks) fit too. */
+/** Reads only the appraisal block and the oracle fields, so get_land_valuation's lighter pools (no ticks) fit too. */
 export function zeroCapacityReasons(liquidity: (Pick<PoolLendingLiquidityWithOracle, "appraisalBlockReason"> & { pools: readonly PoolLendingPoolValuation[] | null }) | null | undefined): string[] {
   if (!liquidity) return [];
   const reasons: string[] = [];

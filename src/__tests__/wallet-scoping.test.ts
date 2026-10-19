@@ -3,7 +3,7 @@ import type { ActivityModel } from "../types/index.js";
 import { tokenDetail, wallet } from "./fixtures.js";
 
 // getWallet scopes the API query to this deployment's network and token contract, and
-// get_activity keeps only events from this network. NETWORK, IS_MAINNET and CONTRACTS are
+// get_land_activity keeps only events from this network. NETWORK, IS_MAINNET and CONTRACTS are
 // module constants, so every case stubs FABRICA_NETWORK, resets modules and imports afresh.
 // The API names a token's or event's network with the same strings as FABRICA_NETWORK
 // ("ethereum", "sepolia"), checked against api.fabrica.land on 2026-10-17.

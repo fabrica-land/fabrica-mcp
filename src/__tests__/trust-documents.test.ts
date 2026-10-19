@@ -64,7 +64,7 @@ describe("orderDocuments", () => {
   });
 });
 
-describe("get_trust_documents", () => {
+describe("get_land_trust_documents", () => {
   it("requires a tokenId or slug", async () => {
     expect(await getTrustDocuments({})).toEqual({ error: "Either tokenId or slug is required" });
   });

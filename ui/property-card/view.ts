@@ -1,5 +1,5 @@
 // Pure view logic for the property card: layout choice from the host context, and the
-// fact lines built from the get_property result. No DOM access, so it is unit tested.
+// fact lines built from the get_land_property result. No DOM access, so it is unit tested.
 
 export type Layout = "compact" | "regular";
 export type DisplayMode = "inline" | "fullscreen" | "pip";

@@ -23,7 +23,7 @@ vi.mocked(getNetworkActivity).mockResolvedValue([
   { tokenId: "2", name: null, vanityName: "Lot Two", activity: [event("Transfer", 200), event("MarketplaceSold", 500, "sepolia")] },
 ]);
 
-describe("get_activity with no filter", () => {
+describe("get_land_activity with no filter", () => {
   it("merges every property's feed, newest first, naming the property and leaving out score recalculations", async () => {
     const result = await getActivity({});
     expect(result).toMatchObject({ total: 3, showing: "3" });

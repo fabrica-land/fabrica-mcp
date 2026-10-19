@@ -29,14 +29,14 @@ export interface UsageLine {
   status: number;
   outcome: UsageOutcome;
   durationMs: number;
-  /** On find_parcel lines: whether the settled queries named parcels on Fabrica, none did, or both. Absent when none settled. */
+  /** On find_us_parcel lines: whether the settled queries named parcels on Fabrica, none did, or both. Absent when none settled. */
   onFabrica?: boolean | "mixed";
 }
 
 export interface UsageTracker {
   /** The calls the request carries, from describeRequest. */
   recordCalls: (calls: UsageCall[]) => void;
-  /** One flag per settled find_parcel query: on Fabrica or not. Never the query itself. */
+  /** One flag per settled find_us_parcel query: on Fabrica or not. Never the query itself. */
   noteOnFabrica: (flags: readonly boolean[]) => void;
 }
 

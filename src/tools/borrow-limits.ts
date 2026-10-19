@@ -237,7 +237,7 @@ const POOL_CHECKS: Record<string, { lever: Lever; today: string; how: string }> 
   proofOfTitleValid: {
     lever: "deed_check",
     today: "The Property check \"Deed checked against the county\" is not passing; the pool's price for this property is zero until it does.",
-    how: "The check passes once the recorded deed into the trust is on file and matches the county record. If the on-ramp's recording step is still open (in paper-recording counties, sending the county-stamped deed back to Fabrica), completing it clears the check; otherwise Fabrica support reviews the deed on file (contact_support).",
+    how: "The check passes once the recorded deed into the trust is on file and matches the county record. If the on-ramp's recording step is still open (in paper-recording counties, sending the county-stamped deed back to Fabrica), completing it clears the check; otherwise Fabrica support reviews the deed on file (contact_fabrica_support).",
   },
   feesInGoodStanding: {
     lever: "fees",
@@ -300,7 +300,7 @@ export function raiseLevers(input: {
       wouldAllow: unblockedAllow,
       how: `${input.appraisalBlockReason === "TAX_DELINQUENT"
         ? "Paying the past-due taxes and the county's records showing them as paid; Fabrica's tax verification then reads the county again."
-        : "A current tax verification: the taxes may already be paid. Fabrica's verification reads the county's public records, so the block clears once a verification finds them shown as paid; if any are unpaid, paying them comes first."} Recent payments can take time to appear at the county; get_tax_status shows the current state.${unblockedNote}`,
+        : "A current tax verification: the taxes may already be paid. Fabrica's verification reads the county's public records, so the block clears once a verification finds them shown as paid; if any are unpaid, paying them comes first."} Recent payments can take time to appear at the county; get_land_tax_status shows the current state.${unblockedNote}`,
       url: HELP_LOAN_AMOUNT,
     });
   }
@@ -328,7 +328,7 @@ export function raiseLevers(input: {
         ? "No pool has a usable collateral price for this property right now, although valuation rows exist; the price oracle's reasons are in limits and oracle."
         : "No valuation source has a land value for this property: no Prycd value and no county assessment, so the appraisal has nothing to start from.",
       wouldAllow: null,
-      how: "Valuation sources refresh on their own schedule; get_valuation lists each source, its value and why one is missing. This is not an owner step.",
+      how: "Valuation sources refresh on their own schedule; get_land_valuation lists each source, its value and why one is missing. This is not an owner step.",
       url: DOCS_VALUATION,
     });
   } else if (best) {
@@ -338,7 +338,7 @@ export function raiseLevers(input: {
         lever: "price",
         today: `The collateral price ${usd(best.priceUsd)} is 30% of the county assessment, because no Prycd land value is on file.`,
         wouldAllow: null,
-        how: "A Prycd land value replaces the assessment fallback when the source publishes one; get_valuation lists each source. This is not an owner step.",
+        how: "A Prycd land value replaces the assessment fallback when the source publishes one; get_land_valuation lists each source. This is not an owner step.",
         url: DOCS_VALUATION,
       });
     }
@@ -367,7 +367,7 @@ export function raiseLevers(input: {
       lever: "pool_liquidity",
       today: `The pool has ${usd(best.freeLiquidityUsd)} free to lend now.`,
       wouldAllow: usd(best.configuredLimitUsd),
-      how: `The pool lends from what lenders deposit; as deposits come in, the amount for this property can rise up to ${usd(best.configuredLimitUsd)} at today's price with no step by the owner${target !== null ? `, and ${usd(target)} needs ${usd(target - best.freeLiquidityUsd)} more in deposits` : ""}. get_lending_market shows the pool's totals.`,
+      how: `The pool lends from what lenders deposit; as deposits come in, the amount for this property can rise up to ${usd(best.configuredLimitUsd)} at today's price with no step by the owner${target !== null ? `, and ${usd(target)} needs ${usd(target - best.freeLiquidityUsd)} more in deposits` : ""}. get_fabrica_lending_market shows the pool's totals.`,
       url: DOCS_LENDING_POOL,
     });
   }

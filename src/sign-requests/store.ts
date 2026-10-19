@@ -15,7 +15,7 @@ export const SIGN_REQUEST_RETENTION_SECONDS = 24 * 60 * 60;
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 const HASH = /^0x[0-9a-fA-F]{64}$/;
 
-export const signRequestActions = ["make_offer", "list_for_sale", "accept_offer", "buy", "cancel_order"] as const;
+export const signRequestActions = ["make_land_offer", "list_land_for_sale", "accept_land_offer", "buy_land", "cancel_land_order"] as const;
 
 const warningSchema = z.object({
   level: z.enum(["info", "warning"]),
@@ -29,7 +29,7 @@ export const signRequestSchema = z.object({
   chainId: z.number().int(),
   action: z.enum(signRequestActions),
   // typedData: an EIP-712 signature (offer, listing, accepting an offer); transaction: an onchain
-  // transaction the signer's client broadcasts (buy); offchain: a signed-in confirmation with no
+  // transaction the signer's client broadcasts (buy_land); offchain: a signed-in confirmation with no
   // signature (cancel, which the API records).
   kind: z.enum(["typedData", "transaction", "offchain"]),
   wallet: z.string().regex(ADDRESS),

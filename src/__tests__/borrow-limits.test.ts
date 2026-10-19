@@ -8,7 +8,7 @@ function tick(limit: number, type: 0 | 1, availableUsd: number, durationIndex = 
   return { raw: raw.toString(), available: (BigInt(Math.round(availableUsd * 1e6)) * 10n ** 12n).toString() };
 }
 
-// The mainnet pool on 2026-10-17 as get_borrow_quote read it for token 10748409388257357967.
+// The mainnet pool on 2026-10-17 as estimate_land_borrowing read it for token 10748409388257357967.
 const LIVE_POOL = oraclePool({
   oracleValuation: { signature: "0xsig", quote: { price: "642305810000", currency: "0xusdc", timestamp: 1, duration: 1200 } },
   ticks: [tick(1000, 1, 636.929173), tick(2000, 1, 289.172322, 0, 5), tick(2000, 1, 19.452335, 4, 3), tick(5000, 1, 20.691295, 5, 5), tick(8000, 1, 0.000001, 5, 7)],

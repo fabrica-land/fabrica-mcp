@@ -43,13 +43,13 @@ export type {
 
 // --- Tokens ---
 
-/** One row of a token list (GetTokens): what search_properties and the protocol stats read. */
+/** One row of a token list (GetTokens): what search_land and the protocol stats read. */
 export type TokenListItem = TokenListFieldsFragment;
 
-/** One token in full (GetToken): what get_property and the per-property tools read. */
+/** One token in full (GetToken): what get_land_property and the per-property tools read. */
 export type TokenDetail = TokenDetailFieldsFragment;
 
-/** GetToken with each pool's oracle state (GetTokenWithPoolOracle), for get_borrow_quote. */
+/** GetToken with each pool's oracle state (GetTokenWithPoolOracle), for estimate_land_borrowing. */
 export type TokenDetailWithPoolOracle = GetTokenWithPoolOracleQuery["token"];
 
 /** The full token shape; `TokenDetail` under its historical name. */
@@ -109,12 +109,12 @@ export type OperatingAgreementModel = GetOperatingAgreementQuery["token"];
 export type ParcelIndexToken = GetParcelIndexQuery["tokens"][number];
 export type NetworkActivityToken = GetNetworkActivityQuery["tokens"][number];
 
-// --- Valuation and pool oracle (get_valuation, get_borrow_quote) ---
+// --- Valuation and pool oracle (get_land_valuation, estimate_land_borrowing) ---
 
 export type TokenValuationModel = GetValuationQuery["token"];
 export type ValuationPricing = TokenValuationModel["pricing"][number];
 export type PoolLendingPoolValuation = PoolOracleFieldsFragment["pools"][number];
-/** A pool as get_borrow_quote reads it: the oracle fields plus the ticks that bound a loan. */
+/** A pool as estimate_land_borrowing reads it: the oracle fields plus the ticks that bound a loan. */
 export type PoolLendingPoolWithTicks = NonNullable<NonNullable<GetTokenWithPoolOracleQuery["token"]>["poolLendingLiquidity"]>["pools"][number];
 export type PoolLendingQuote = NonNullable<PoolLendingPoolValuation["oracleValuation"]>["quote"];
 

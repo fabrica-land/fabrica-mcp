@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { tokenListItem } from "./fixtures.js";
 
-/** ENG-5067: price range, price per acre, sort order and distance to a point on search_properties. */
+/** ENG-5067: price range, price per acre, sort order and distance to a point on search_land. */
 
 // Four parcels around Flagstaff, AZ (35.198, -111.651): Kingman is ~135 mi west, Williams ~30 mi west, Sedona ~25 mi south, Phoenix ~120 mi south.
 // Phoenix has no usable estimate ("0") and no mint date, so it exercises the "no value for this key" path.

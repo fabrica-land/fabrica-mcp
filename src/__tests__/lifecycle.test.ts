@@ -84,7 +84,7 @@ describe("fees", () => {
   });
 });
 
-describe("get_property lifecycle, fees and flags", () => {
+describe("get_land_property lifecycle, fees and flags", () => {
   it("shows an unclaimed premint with an assessed fee", async () => {
     vi.mocked(getToken).mockResolvedValueOnce(token({
       isPremint: true,
@@ -141,7 +141,7 @@ describe("get_property lifecycle, fees and flags", () => {
   });
 });
 
-describe("search_properties stage", () => {
+describe("search_land stage", () => {
   it("adds a stage to every row", async () => {
     vi.mocked(getTokens).mockResolvedValueOnce([token(), token({ tokenId: "2", offRampStatus: "in-progress" })]);
     const result = await searchProperties({});

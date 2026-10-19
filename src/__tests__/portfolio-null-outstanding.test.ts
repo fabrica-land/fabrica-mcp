@@ -11,7 +11,7 @@ import { wallet } from "./fixtures.js";
 
 const ADDRESS = "0x1234567890abcdef1234567890abcdef12345678";
 
-describe("get_portfolio with a null totalOutstandingLoansUSDC", () => {
+describe("get_land_portfolio with a null totalOutstandingLoansUSDC", () => {
   it("returns no error and a null outstandingLoans", async () => {
     const portfolioWallet = wallet({
       address: ADDRESS,

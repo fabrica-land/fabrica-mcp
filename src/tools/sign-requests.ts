@@ -1,5 +1,5 @@
-// Write tools as sign requests (ENG-5073): make_offer, list_for_sale, accept_offer, buy and
-// cancel_order check the live data, then return a sign request whose link opens the matching
+// Write tools as sign requests (ENG-5073): make_land_offer, list_land_for_sale, accept_land_offer, buy_land and
+// cancel_land_order check the live data, then return a sign request whose link opens the matching
 // dialog on fabrica.land, prefilled. The person signs there with their own wallet. The server
 // holds no key, signs nothing and submits nothing: it prepares, the person decides.
 import { z } from "zod";
@@ -32,7 +32,7 @@ export const PREPARED_STATUS = "Prepared, not sent. Nothing happens until the pe
 const PAYLOAD_NOTE = "payload is null: the order is built on the sign page from the person's own session. Signing from a wallet inside the conversation comes later.";
 
 const walletInput = z.string().regex(/^0x[0-9a-fA-F]{40}$/, "A 0x-prefixed Ethereum address").describe("The wallet that will sign (0x address). The sign page only lets this wallet sign.");
-const orderHashInput = z.string().regex(/^0x[0-9a-fA-F]{64}$/, "A 0x-prefixed 32-byte order hash").describe("The order's hash: orderId in get_order_book");
+const orderHashInput = z.string().regex(/^0x[0-9a-fA-F]{64}$/, "A 0x-prefixed 32-byte order hash").describe("The order's hash: orderId in get_land_order_book");
 
 type Lookup = { token: SignContextToken } | { error: string };
 type Prepared = Omit<SignRequest, "id" | "status" | "network" | "chainId" | "payload" | "createdAt" | "expiresAt" | "signLink" | "result"> & {
@@ -171,12 +171,12 @@ async function issue(prepared: Prepared | Blocked) {
     },
     nextSteps: [
       `The person opens signLink in a browser, signs in to ${new URL(WEB_BASE).host} with wallet ${record.wallet}, reviews the dialog and signs. The link stays open for ${SIGN_REQUEST_TTL_SECONDS / 60} minutes (until ${record.expiresAt}).`,
-      `get_sign_request with id ${record.id} says whether it was signed; get_order_book shows the order once it is.`,
+      `get_sign_request with id ${record.id} says whether it was signed; get_land_order_book shows the order once it is.`,
     ],
   };
 }
 
-// --- make_offer ---
+// --- make_land_offer ---
 
 export const makeOfferInput = {
   ...propertyRefInputs,
@@ -197,10 +197,10 @@ export async function prepareOffer({ tokenId, slug, amountUsd, expiresDays, wall
   const lowest = liveOrders(token.marketplaceListings, now)
     .filter(order => Number.parseFloat(order.usdPrice ?? "") <= amountUsd)
     .sort((a, b) => Number.parseFloat(a.usdPrice ?? "") - Number.parseFloat(b.usdPrice ?? ""))[0];
-  if (lowest) warnings.push({ level: "info", message: `It is listed for ${orderPrice(lowest)}, at or below this offer: buy (order ${lowest.marketplaceId}) takes the listing as is.` });
+  if (lowest) warnings.push({ level: "info", message: `It is listed for ${orderPrice(lowest)}, at or below this offer: buy_land (order ${lowest.marketplaceId}) takes the listing as is.` });
   if (underLoan(token)) warnings.push({ level: "info", message: "The property is collateral for an active loan; if the owner accepts, the loan is paid off from the sale at settlement." });
   return {
-    action: "make_offer",
+    action: "make_land_offer",
     kind: "typedData",
     wallet,
     property: propertyOf(token),
@@ -216,7 +216,7 @@ export async function prepareOffer({ tokenId, slug, amountUsd, expiresDays, wall
   };
 }
 
-// --- list_for_sale ---
+// --- list_land_for_sale ---
 
 export const listForSaleInput = {
   ...propertyRefInputs,
@@ -235,14 +235,14 @@ export async function prepareListing({ tokenId, slug, priceUsd, expiresDays, wal
   const days = expiresDays ?? LISTING_DAYS;
   const warnings: SignRequestWarning[] = [...priceWarning(priceUsd, token, "price")];
   const own = liveOrders(token.marketplaceListings, now).filter(order => same(order.makerAddress, wallet));
-  for (const order of own) warnings.push({ level: "warning", message: `This wallet already lists it for ${orderPrice(order)} (order ${order.marketplaceId}); cancel_order removes that listing.` });
+  for (const order of own) warnings.push({ level: "warning", message: `This wallet already lists it for ${orderPrice(order)} (order ${order.marketplaceId}); cancel_land_order removes that listing.` });
   const best = liveOrders(token.marketplaceBids, now)
     .filter(order => Number.parseFloat(order.usdPrice ?? "") >= priceUsd)
     .sort((a, b) => Number.parseFloat(b.usdPrice ?? "") - Number.parseFloat(a.usdPrice ?? ""))[0];
-  if (best) warnings.push({ level: "info", message: `There is an offer of ${orderPrice(best)}, at or above this price: accept_offer (order ${best.marketplaceId}) takes it.` });
+  if (best) warnings.push({ level: "info", message: `There is an offer of ${orderPrice(best)}, at or above this price: accept_land_offer (order ${best.marketplaceId}) takes it.` });
   if (underLoan(token)) warnings.push({ level: "warning", message: "The property is collateral for an active loan: the sale pays the loan off first, so the price has to cover the payoff, and the listing can only be bought once the payoff is approved." });
   return {
-    action: "list_for_sale",
+    action: "list_land_for_sale",
     kind: "typedData",
     wallet,
     property: propertyOf(token),
@@ -259,7 +259,7 @@ export async function prepareListing({ tokenId, slug, priceUsd, expiresDays, wal
   };
 }
 
-// --- accept_offer, buy, cancel_order ---
+// --- accept_land_offer, buy_land, cancel_land_order ---
 
 export const orderActionInput = {
   ...propertyRefInputs,
@@ -272,7 +272,7 @@ async function loadOrder({ tokenId, slug, orderHash }: OrderActionArgs): Promise
   const found = await lookup(tokenId, slug);
   if ("error" in found) return found;
   const order = findOrder(found.token, orderHash);
-  if (!order) return { error: `No order ${orderHash} on ${label(found.token)}. get_order_book lists its orders and their orderId.` };
+  if (!order) return { error: `No order ${orderHash} on ${label(found.token)}. get_land_order_book lists its orders and their orderId.` };
   return { token: found.token, order };
 }
 
@@ -281,14 +281,14 @@ export async function prepareAccept(args: OrderActionArgs): Promise<Prepared | B
   if ("error" in loaded) return loaded;
   const { token, order } = loaded;
   const now = Date.now();
-  if (order.side !== "buy") return { error: `Order ${args.orderHash} is a listing, not an offer; buy takes a listing.` };
+  if (order.side !== "buy") return { error: `Order ${args.orderHash} is a listing, not an offer; buy_land takes a listing.` };
   if (!isLiveOrder(order, now)) return { error: `The offer ${args.orderHash} is no longer open (${order.status}${order.endTime && Date.parse(order.endTime) < now ? `, expired ${relativeExpiry(order.endTime, now)}` : ""}).` };
   if (!holds(token, args.wallet)) return { error: `Wallet ${shorten(args.wallet)} does not hold ${label(token)}; only its owner can accept an offer on it.` };
   const dollars = Number.parseFloat(order.usdPrice ?? "");
   const warnings: SignRequestWarning[] = [...expiringSoon(order, now), ...(Number.isFinite(dollars) ? priceWarning(dollars, token, "offer") : [])];
   if (underLoan(token)) warnings.push({ level: "warning", message: "The property is collateral for an active loan: the sale pays the loan off first and the rest comes to the seller." });
   return {
-    action: "accept_offer",
+    action: "accept_land_offer",
     kind: "typedData",
     wallet: args.wallet,
     property: propertyOf(token),
@@ -309,11 +309,11 @@ export async function prepareBuy(args: OrderActionArgs): Promise<Prepared | Bloc
   if ("error" in loaded) return loaded;
   const { token, order } = loaded;
   const now = Date.now();
-  if (order.side !== "sell") return { error: `Order ${args.orderHash} is an offer, not a listing; accept_offer takes an offer.` };
+  if (order.side !== "sell") return { error: `Order ${args.orderHash} is an offer, not a listing; accept_land_offer takes an offer.` };
   if (!isLiveOrder(order, now)) return { error: `The listing ${args.orderHash} is no longer open (${order.status}).` };
   if (same(order.makerAddress, args.wallet)) return { error: "This wallet made the listing; it cannot buy its own listing." };
   if (order.encumbrance && !order.encumbrance.buyable) {
-    return { error: `This listing cannot be bought right now: the property is collateral for a loan and the payoff is not ready (${order.encumbrance.blockReason ?? "unknown reason"}). get_order_book explains each listing's state.` };
+    return { error: `This listing cannot be bought right now: the property is collateral for a loan and the payoff is not ready (${order.encumbrance.blockReason ?? "unknown reason"}). get_land_order_book explains each listing's state.` };
   }
   if (order.restrictedToAddresses?.length && !order.restrictedToAddresses.some(address => same(address, args.wallet))) {
     return { error: `This listing is reserved for ${order.restrictedToAddresses.map(shorten).join(", ")}; wallet ${shorten(args.wallet)} cannot buy it.` };
@@ -324,7 +324,7 @@ export async function prepareBuy(args: OrderActionArgs): Promise<Prepared | Bloc
   if (order.disclosurePackage?.length) warnings.push({ level: "info", message: `The seller attached ${order.disclosurePackage.length} disclosure document${order.disclosurePackage.length === 1 ? "" : "s"}; the sign page shows them before buying: ${order.disclosurePackage.map(d => d.name).join(", ")}.` });
   if (order.encumbrance) warnings.push({ level: "info", message: "The property is collateral for a loan that the purchase pays off at settlement; the buyer receives it free of the loan." });
   return {
-    action: "buy",
+    action: "buy_land",
     kind: "transaction",
     wallet: args.wallet,
     property: propertyOf(token),
@@ -348,7 +348,7 @@ export async function prepareCancel(args: OrderActionArgs): Promise<Prepared | B
   if (!same(order.makerAddress, args.wallet)) return { error: `Order ${args.orderHash} was made by ${shorten(order.makerAddress)}; only its maker can cancel it.` };
   const what = order.side === "sell" ? "listing" : "offer";
   return {
-    action: "cancel_order",
+    action: "cancel_land_order",
     kind: "offchain",
     wallet: args.wallet,
     property: propertyOf(token),
@@ -392,7 +392,7 @@ function isAcceptingOrder(record: SignRequest, token: SignContextToken, order: S
 async function transactionFills(record: SignRequest, hash: string): Promise<boolean> {
   const [transaction, receipt] = await Promise.all([getTransaction(hash), getTransactionReceipt(hash)]);
   if (!transaction || receipt?.status !== "0x1") return false;
-  return record.action !== "buy" || same(transaction.from, record.wallet);
+  return record.action !== "buy_land" || same(transaction.from, record.wallet);
 }
 
 /**
@@ -403,15 +403,15 @@ async function transactionFills(record: SignRequest, hash: string): Promise<bool
  */
 export async function observe(record: SignRequest, token: SignContextToken): Promise<{ orderHash: string; transactionHash?: string } | null> {
   const now = Date.now();
-  if (record.action === "make_offer" || record.action === "list_for_sale") {
-    const orders = record.action === "make_offer" ? token.marketplaceBids : token.marketplaceListings;
+  if (record.action === "make_land_offer" || record.action === "list_land_for_sale") {
+    const orders = record.action === "make_land_offer" ? token.marketplaceBids : token.marketplaceListings;
     const match = liveOrders(orders, now).find(order => isRequestedOrder(record, order));
     return match ? { orderHash: match.marketplaceId } : null;
   }
   if (!record.orderHash) return null;
   const order = findOrder(token, record.orderHash);
   if (!order) return null;
-  if (record.action === "cancel_order") return order.status === "canceled" ? { orderHash: order.marketplaceId } : null;
+  if (record.action === "cancel_land_order") return order.status === "canceled" ? { orderHash: order.marketplaceId } : null;
   if (order.status !== "filled" || !order.matchTransactionHash) return null;
   return await transactionFills(record, order.matchTransactionHash) ? { orderHash: order.marketplaceId, transactionHash: order.matchTransactionHash } : null;
 }
@@ -429,7 +429,7 @@ export type SignResult = z.infer<typeof signResultSchema>;
 export async function verifyResult(record: SignRequest, result: SignResult): Promise<{ ok: true } | { ok: false; reason: string }> {
   const token = await getSignContext({ tokenId: record.property.tokenId });
   if ("transactionHash" in result) {
-    if (record.action !== "buy" && record.action !== "accept_offer") return { ok: false, reason: `A ${record.action} sign request completes with an order hash, not a transaction.` };
+    if (record.action !== "buy_land" && record.action !== "accept_land_offer") return { ok: false, reason: `A ${record.action} sign request completes with an order hash, not a transaction.` };
     const order = record.orderHash ? findOrder(token, record.orderHash) : null;
     if (!order || order.status !== "filled" || !same(order.matchTransactionHash, result.transactionHash)) return { ok: false, reason: "The order book does not show this transaction filling the request's order (yet)." };
     return await transactionFills(record, result.transactionHash) ? { ok: true } : { ok: false, reason: "The transaction did not succeed, or was not sent by the request's wallet." };
@@ -439,11 +439,11 @@ export async function verifyResult(record: SignRequest, result: SignResult): Pro
   const named = same(order.marketplaceId, record.orderHash);
   const holds = (() => {
     switch (record.action) {
-      case "make_offer":
-      case "list_for_sale": return isRequestedOrder(record, order);
-      case "accept_offer": return isAcceptingOrder(record, token, order);
-      case "buy": return false;
-      case "cancel_order": return named && order.status === "canceled";
+      case "make_land_offer":
+      case "list_land_for_sale": return isRequestedOrder(record, order);
+      case "accept_land_offer": return isAcceptingOrder(record, token, order);
+      case "buy_land": return false;
+      case "cancel_land_order": return named && order.status === "canceled";
     }
   })();
   return holds ? { ok: true } : { ok: false, reason: `The order does not show this ${record.action} as done.` };
@@ -465,7 +465,7 @@ export async function getSignRequest({ id }: GetSignRequestArgs) {
   } catch (e) {
     return { error: `Could not read the sign request: ${e instanceof Error ? e.message : String(e)}` };
   }
-  if (!record) return { error: `No sign request ${id}: the id is unknown. get_order_book shows what was signed.` };
+  if (!record) return { error: `No sign request ${id}: the id is unknown. get_land_order_book shows what was signed.` };
   const expired = record.status === "pending" && isExpired(record);
   if (record.status === "pending") {
     try {
@@ -487,7 +487,7 @@ export async function getSignRequest({ id }: GetSignRequestArgs) {
     expiresAt: record.expiresAt,
     ...(record.result ? { result: record.result } : {}),
     note: record.status === "completed"
-      ? "Signed. get_order_book shows the order; a transaction hash can be followed with get_transaction_status."
+      ? "Signed. get_land_order_book shows the order; a transaction hash can be followed with get_transaction_status."
       : expired
         ? `Expired unsigned: links stay open for ${SIGN_REQUEST_TTL_SECONDS / 60} minutes. Prepare a new one to continue.`
         : "Not signed yet. The person has not finished on the sign page, or the order has not reached the order book.",
@@ -497,11 +497,11 @@ export async function getSignRequest({ id }: GetSignRequestArgs) {
 // --- the sign page's view (contract agreed with ENG-5071) ---
 
 const PAGE_ACTIONS: Record<SignRequest["action"], "offer" | "list" | "accept" | "cancel"> = {
-  make_offer: "offer",
-  list_for_sale: "list",
-  accept_offer: "accept",
-  buy: "accept",
-  cancel_order: "cancel",
+  make_land_offer: "offer",
+  list_land_for_sale: "list",
+  accept_land_offer: "accept",
+  buy_land: "accept",
+  cancel_land_order: "cancel",
 };
 
 /** What GET /sign-requests/{id} returns: the ENG-5071 shape, plus the tool name, kind, warnings, status and result. */
@@ -520,8 +520,8 @@ export function signPageView(record: SignRequest) {
     propertyName: record.property.name,
     maker: record.wallet,
     params: {
-      ...(record.action === "make_offer" && order ? { amountUsd: Number(order.priceUsd), expiresAt: orderExpiry, durationDays: order.durationDays } : {}),
-      ...(record.action === "list_for_sale" && order ? { priceUsd: Number(order.priceUsd), expiresAt: orderExpiry, durationDays: order.durationDays } : {}),
+      ...(record.action === "make_land_offer" && order ? { amountUsd: Number(order.priceUsd), expiresAt: orderExpiry, durationDays: order.durationDays } : {}),
+      ...(record.action === "list_land_for_sale" && order ? { priceUsd: Number(order.priceUsd), expiresAt: orderExpiry, durationDays: order.durationDays } : {}),
       ...(record.orderHash ? { orderId: record.orderHash } : {}),
     },
     summary: record.summary.join(" "),

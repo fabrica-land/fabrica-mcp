@@ -45,13 +45,13 @@ const DEFAULT_PASSAGES = 5;
 const MAX_PASSAGES = 10;
 
 const LOOKUP_HINTS: { pattern: RegExp; tools: string[] }[] = [
-  { pattern: /\b0x[0-9a-f]{40}\b/i, tools: ["get_portfolio", "get_activity", "get_portfolio_image"] },
-  { pattern: /\b\d{15,}\b/, tools: ["get_property", "get_borrow_quote", "get_activity", "get_property_map"] },
-  { pattern: /\b(for sale|listed|listing|listings|cheapest|under \$|acres? in|properties in|land in)\b/i, tools: ["search_properties"] },
-  { pattern: /\b(how much can .* borrow|borrow against|loan on|borrowing capacity)\b/i, tools: ["get_borrow_quote"] },
-  { pattern: /\b(lending market|active loans|repaid loans|pool liquidity|tvl)\b/i, tools: ["get_lending_market", "get_protocol_stats"] },
-  { pattern: /\b(how many properties|protocol stats|statistics|which states)\b/i, tools: ["get_protocol_stats"] },
-  { pattern: /\b\d{5}\b.*\b(checks|score|encoding)\b|\b(checks|score|encoding)\b.*\b\d{5}\b/i, tools: ["explain_confidence_score"] },
+  { pattern: /\b0x[0-9a-f]{40}\b/i, tools: ["get_land_portfolio", "get_land_activity", "get_land_portfolio_map_image"] },
+  { pattern: /\b\d{15,}\b/, tools: ["get_land_property", "estimate_land_borrowing", "get_land_activity", "get_land_boundary"] },
+  { pattern: /\b(for sale|listed|listing|listings|cheapest|under \$|acres? in|properties in|land in)\b/i, tools: ["search_land"] },
+  { pattern: /\b(how much can .* borrow|borrow against|loan on|borrowing capacity)\b/i, tools: ["estimate_land_borrowing"] },
+  { pattern: /\b(lending market|active loans|repaid loans|pool liquidity|tvl)\b/i, tools: ["get_fabrica_lending_market", "get_fabrica_stats"] },
+  { pattern: /\b(how many properties|protocol stats|statistics|which states)\b/i, tools: ["get_fabrica_stats"] },
+  { pattern: /\b\d{5}\b.*\b(checks|score|encoding)\b|\b(checks|score|encoding)\b.*\b\d{5}\b/i, tools: ["explain_property_checks"] },
 ];
 
 function suggestedToolsFor(question: string): string[] {

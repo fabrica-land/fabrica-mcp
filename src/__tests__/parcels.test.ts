@@ -64,7 +64,7 @@ function respond(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
 
-describe("find_parcel helpers", () => {
+describe("find_us_parcel helpers", () => {
   it("drops owner names from type-ahead rows", () => {
     const hits = parseTypeAhead([SF_HIT, { headline: "no path" }, "junk"]);
     expect(hits).toEqual([{ headline: "1707 Jones St", context: "San Francisco, CA", apn: "0151010", path: SF_HIT.path, score: 85 }]);
@@ -156,7 +156,7 @@ describe("find_parcel helpers", () => {
     expect(resolveCounty("Anchorage Municipality", "AK")?.county.fips).toBe("02020");
   });
 
-  it("limits find_parcel calls per client per minute", () => {
+  it("limits find_us_parcel calls per client per minute", () => {
     const now = 1_000_000;
     expect(allowFindParcel("limit-test", FIND_PARCEL_LIMIT_PER_MINUTE, now)).toBe(true);
     expect(allowFindParcel("limit-test", 1, now + 1000)).toBe(false);
@@ -383,7 +383,7 @@ describe("type-ahead fallback helpers", () => {
   });
 });
 
-describe("find_parcel with a list", () => {
+describe("find_us_parcel with a list", () => {
   const fetchMock = vi.fn<typeof fetch>();
   const sfOutline = sfParcel([[[-122.42, 37.79], [-122.41, 37.79], [-122.41, 37.80], [-122.42, 37.80], [-122.42, 37.79]]]);
   beforeEach(() => {
@@ -449,13 +449,13 @@ describe("find_parcel with a list", () => {
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
     const ten = Array.from({ length: 10 }, (_, i) => (i % 2 === 0 ? "71359" : "1707 Jones St, San Francisco"));
-    const ok = await client.callTool({ name: "find_parcel", arguments: { queries: ten } });
+    const ok = await client.callTool({ name: "find_us_parcel", arguments: { queries: ten } });
     expect(ok.isError).toBeFalsy();
     const [first] = Array.isArray(ok.content) ? ok.content : [];
     const text = typeof first === "object" && first !== null && "text" in first && typeof first.text === "string" ? first.text : "{}";
     expect(JSON.parse(text).rows).toHaveLength(10);
     expect(seen).toEqual([[false, true, false, true, false, true, false, true, false, true]]);
-    const eleven = await client.callTool({ name: "find_parcel", arguments: { queries: [...ten, "71359"] } }).catch((error: unknown) => ({ isError: true, content: [{ type: "text", text: String(error) }] }));
+    const eleven = await client.callTool({ name: "find_us_parcel", arguments: { queries: [...ten, "71359"] } }).catch((error: unknown) => ({ isError: true, content: [{ type: "text", text: String(error) }] }));
     expect(eleven.isError).toBe(true);
     expect(JSON.stringify(eleven.content)).toContain("at most 10 queries per call");
     await client.close();
