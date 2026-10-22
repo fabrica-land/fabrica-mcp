@@ -437,7 +437,7 @@ function registerSignRequestTools(server: McpServer): void {
     "repay_land_loan",
     {
       title: "Prepare paying off a loan",
-      description: `Prepare paying off the active DeFi lending pool loan on a property (${NETWORK_LABEL}), or the one named by loanId, with the payoff amount today. Checks first that the loan is active and the wallet is its borrower, and warns when it is past maturity. Paying off returns the token to the wallet, free of the loan. ${SIGN_LINK_NOTE}`,
+      description: `Prepare paying off the open DeFi lending pool loan on a property (${NETWORK_LABEL}), or the one named by loanId, with the payoff amount today. A loan is open while active and, past maturity, in default until the pool's auction starts. Checks first that the loan is open and the wallet is its borrower, and warns when it is past maturity. Paying off returns the token to the wallet, free of the loan. ${SIGN_LINK_NOTE}`,
       inputSchema: repayInput,
       annotations: prepares("Prepare paying off a loan"),
     },

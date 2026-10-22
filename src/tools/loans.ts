@@ -100,7 +100,7 @@ export async function prepareBorrow({ tokenId, slug, amountUsd, durationDays, wa
 
 export const repayInput = {
   ...propertyRefInputs,
-  loanId: loanIdInput.optional().describe("The loan to pay off (default: the property's active loan)"),
+  loanId: loanIdInput.optional().describe("The loan to pay off (default: the property's open loan, active or in default)"),
   wallet: walletInput,
 };
 export type RepayArgs = ArgsOf<typeof repayInput>;
@@ -115,8 +115,8 @@ export async function prepareRepay({ tokenId, slug, loanId, wallet }: RepayArgs)
   const loan = loanId ? active.find(l => l.loanId === loanId) : active[0];
   if (!loan) {
     const other = loanId ? (context.loans ?? []).find(l => l.loanId === loanId) : undefined;
-    if (other) return { error: `Loan ${loanId} on ${label(token)} is ${other.loanStatus.toLowerCase()}, not active, so there is nothing to pay off.` };
-    return { error: loanId ? `No loan ${loanId} on ${label(token)}. get_land_loan lists its loans.` : `${label(token)} has no active loan to pay off.` };
+    if (other) return { error: `Loan ${loanId} on ${label(token)} is ${other.loanStatus.toLowerCase()}, no longer open, so there is nothing to pay off.` };
+    return { error: loanId ? `No loan ${loanId} on ${label(token)}. get_land_loan lists its loans.` : `${label(token)} has no open loan to pay off.` };
   }
   if (!same(loan.borrower.address, wallet)) return { error: `Loan ${loan.loanId} was taken by ${shorten(loan.borrower.address)}; only its borrower can pay it off from the sign page.` };
   if (loan.loanProvider !== "PoolLending") return { error: `Loan ${loan.loanId} is a ${formatLoanProvider(loan.loanProvider) ?? loan.loanProvider} loan; only ${LENDING_POOL_NAME} loans can be paid off from a sign link.` };
