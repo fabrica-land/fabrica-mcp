@@ -161,6 +161,15 @@ describe("borrow_against_land", () => {
     expect(await getSignRequest({ id: result.signRequest.id })).toMatchObject({ status: "pending" });
   });
 
+  it("does not attribute a loan to a request whose link expired", async () => {
+    const result = await borrowAgainstLand({ tokenId: "123", amountUsd: 400, wallet: OWNER });
+    if (!("signRequest" in result)) throw new Error(JSON.stringify(result));
+    vi.setSystemTime(NOW + 16 * 60_000);
+    vi.mocked(getLoanContext).mockResolvedValue(context({ loans: [loan({ loanId: "900", startTime: new Date().toISOString(), principalScaled: "400", durationSeconds: String(30 * DAY) })] }));
+    expect(await getSignRequest({ id: result.signRequest.id })).toMatchObject({ status: "expired" });
+    expect(await getSignRequest({ id: result.signRequest.id })).not.toHaveProperty("result");
+  });
+
   it("does not take an older loan by the same wallet as the borrow", async () => {
     const result = await borrowAgainstLand({ tokenId: "123", amountUsd: 400, wallet: OWNER });
     if (!("signRequest" in result)) throw new Error(JSON.stringify(result));

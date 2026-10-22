@@ -427,7 +427,7 @@ function registerSignRequestTools(server: McpServer): void {
     "borrow_against_land",
     {
       title: "Prepare a loan against land",
-      description: `Prepare borrowing USDC from the DeFi lending pool against a property the wallet holds (${NETWORK_LABEL}), for amountUsd over durationDays (the pool's offered length closest to it, default about 30 days). Checks first that the wallet holds the token, the property backs no active loan, the pool lends against it and the amount is within the pool's current maximum (estimate_land_borrowing shows it). The rate and repayment come from the pool's live quote on the sign page. A loan is a real obligation: a loan not repaid by maturity lets the lender take the property through the pool's auction. ${SIGN_LINK_NOTE}`,
+      description: `Prepare borrowing USDC from the DeFi lending pool against a property the wallet holds (${NETWORK_LABEL}), for amountUsd over durationDays (the pool's offered length closest to it, default about 30 days). Checks first that the wallet holds the token, the property backs no active loan, the pool lends against it and the amount is within the pool's current maximum (estimate_land_borrowing shows it). The rate and repayment come from the pool's live quote on the sign page.${IS_MAINNET ? " A loan is a real obligation: a loan not repaid by maturity lets the lender take the property through the pool's auction." : " This is a test loan on Sepolia with no real-world effect."} ${SIGN_LINK_NOTE}`,
       inputSchema: borrowInput,
       annotations: prepares("Prepare a loan against land"),
     },

@@ -522,7 +522,8 @@ export async function getSignRequest({ id }: GetSignRequestArgs) {
   }
   if (!record) return { error: `No sign request ${id}: the id is unknown. get_land_order_book shows what was signed.` };
   const expired = record.status === "pending" && isExpired(record);
-  if (record.status === "pending") {
+  // An expired link can no longer be signed, so nothing that happens after it is this request's.
+  if (record.status === "pending" && !expired) {
     try {
       const seen = isLoanAction(record)
         ? observeLoan(record, await getLoanContext({ tokenId: record.property.tokenId }))
