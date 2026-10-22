@@ -9,7 +9,7 @@ const OUTPUT = ".vercel/output";
 const FUNCTION_DIR = `${OUTPUT}/functions/mcp.func`;
 // Sign requests: the sign page reads and completes them at /sign-requests/{id}.
 const SIGN_REQUESTS_DIR = `${OUTPUT}/functions/sign-requests.func`;
-// Discovery documents: /.well-known/mcp.json, /.well-known/mcp/server-card.json and /.well-known/ai-catalog.json.
+// Discovery documents: /.well-known/mcp.json, /.well-known/mcp/server-card.json, /.well-known/ai-catalog.json and the ChatGPT /.well-known/openai-apps-challenge.
 const WELL_KNOWN_DIR = `${OUTPUT}/functions/well-known.func`;
 const isSepolia = process.env.FABRICA_NETWORK?.toLowerCase() === "sepolia";
 const networkLabel = isSepolia ? "Sepolia testnet" : "Ethereum mainnet";
@@ -83,6 +83,7 @@ await writeFile(`${OUTPUT}/config.json`, JSON.stringify({
     { src: "^/\\.well-known/mcp\\.json$", dest: "/well-known?doc=manifest" },
     { src: "^/\\.well-known/mcp/server-card\\.json$", dest: "/well-known?doc=server-card" },
     { src: "^/\\.well-known/ai-catalog\\.json$", dest: "/well-known?doc=ai-catalog" },
+    { src: "^/\\.well-known/openai-apps-challenge$", dest: "/well-known?doc=openai-apps-challenge" },
     { handle: "filesystem" },
   ],
 }, null, 2));

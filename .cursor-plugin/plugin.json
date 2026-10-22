@@ -1,0 +1,27 @@
+{
+  "name": "fabrica-land",
+  "description": "Find US land for sale on Fabrica, mostly vacant lots and acreage, and look up any US parcel by address or APN: property records, parcel maps, property taxes and Property checks.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Fabrica",
+    "email": "questions@fabrica.land",
+    "url": "https://fabrica.land"
+  },
+  "homepage": "https://docs.fabrica.land/docs/ai-agents",
+  "repository": "https://github.com/fabrica-land/fabrica-mcp",
+  "license": "MIT",
+  "keywords": [
+    "land",
+    "land for sale",
+    "vacant land",
+    "acreage",
+    "parcel",
+    "APN",
+    "real estate",
+    "property records",
+    "maps"
+  ],
+  "logo": "./plugin/assets/logo.png",
+  "skills": "./skills/",
+  "mcpServers": "./plugin/mcp.json"
+}

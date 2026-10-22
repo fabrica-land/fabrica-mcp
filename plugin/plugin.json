@@ -1,0 +1,108 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "fabrica-land",
+  "version": "1.0.0",
+  "description": "Find US land for sale on Fabrica, mostly vacant lots and acreage, and look up any US parcel by address or APN: property records, parcel maps, property taxes and Property checks.",
+  "author": {
+    "name": "Fabrica",
+    "email": "questions@fabrica.land",
+    "url": "https://fabrica.land"
+  },
+  "homepage": "https://docs.fabrica.land/docs/ai-agents",
+  "repository": "https://github.com/fabrica-land/fabrica-mcp",
+  "license": "MIT",
+  "keywords": [
+    "land",
+    "land for sale",
+    "vacant land",
+    "acreage",
+    "parcel",
+    "APN",
+    "real estate",
+    "property records",
+    "maps"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Fabrica Land",
+        "shortDescription": "US land for sale and parcels",
+        "longDescription": "Find US land for sale on Fabrica, mostly vacant lots and acreage. Search by state, county, acres and price, then explore property records, a parcel map, property taxes and value for properties on Fabrica.\n\nFor any US parcel, look it up by address or APN (assessor parcel number) to identify it, see whether it is on Fabrica and check county coverage. Records, maps, tax status, valuations and borrowing estimates are available only for properties on Fabrica.\n\nWith it, you can:\n- Search Fabrica land by state, county, acres, price, price per acre, distance from a point, listing status and loan status, and sort results\n- Show an interactive property card with a map, photos, key facts and buttons that open fabrica.land\n- Read trust documents, property tax status, valuations, listings and offers for Fabrica properties\n- Explain Property checks, check by check\n- Return parcel boundaries as GeoJSON and map images for a Fabrica property or wallet portfolio\n- Estimate borrowing against a property's token from the DeFi lending pool, and summarize the lending market and loan book\n- Show Fabrica wallet portfolios, property onchain activity and network statistics\n- Answer Fabrica questions from documentation and help-center sources, with links\n- Draft a support email without sending it\n\nEvery property on Fabrica is a real US parcel held in a trust, and an ERC-1155 token on Ethereum represents the beneficial interest in that trust.\n\nEvery tool is read-only. The plugin provides public data and needs no account. It never signs transactions, sends support emails or changes property records. Card buttons open fabrica.land, where any purchase, offer or loan happens.\n\nProperties on Fabrica are real parcels of land, and acting on them has legal and tax consequences set out in each token's trust agreement. The plugin provides information, not financial or legal advice.",
+        "developerName": "Fabrica",
+        "category": "Lifestyle",
+        "capabilities": [
+          "Search land for sale",
+          "Look up US parcels",
+          "Read property records",
+          "Show parcel maps"
+        ],
+        "websiteURL": "https://fabrica.land",
+        "supportURL": "https://help.fabrica.land",
+        "privacyPolicyURL": "https://fabrica.land/privacy-policy",
+        "termsOfServiceURL": "https://fabrica.land/terms-of-service",
+        "defaultPrompt": [
+          "Find land for sale on Fabrica in Arizona under $50,000.",
+          "Show me APN 205-12-010D in Prescott, AZ on Fabrica.",
+          "Is 1707 Jones St, San Francisco, CA on Fabrica?"
+        ],
+        "brandColor": "#1E28FF",
+        "brandColorDark": "#8D93FF",
+        "logo": "./assets/logo.png",
+        "screenshots": [
+          "./assets/screenshot-carson-nm.png",
+          "./assets/screenshot-prescott-az.png"
+        ]
+      },
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Search land for sale and open one property",
+              "prompt": "Find land for sale on Fabrica in Arizona, then show me the first one.",
+              "tools_triggered": "search_land, get_land_property",
+              "expected_behavior": "List Arizona properties on Fabrica with county, acreage and price, then show the first one as a property card with a map, key facts and buttons that open fabrica.land."
+            },
+            {
+              "description": "Look up a parcel by APN with its records",
+              "prompt": "Show me APN 205-12-010D in Prescott, AZ on Fabrica, with its property tax status and Property checks.",
+              "tools_triggered": "find_us_parcel, get_land_property, get_land_tax_status, explain_property_checks",
+              "expected_behavior": "Show the Prescott property as a property card, say whether its taxes are current, past due or unknown, and explain its Property checks one by one."
+            },
+            {
+              "description": "Look up any US address and check county coverage",
+              "prompt": "Is 1707 Jones St, San Francisco, CA on Fabrica, and can land in Coconino County, Arizona be added to Fabrica?",
+              "tools_triggered": "find_us_parcel, check_county_coverage",
+              "expected_behavior": "Identify the San Francisco parcel and say whether it is on Fabrica, then say whether Coconino County is covered for bringing land onto Fabrica."
+            },
+            {
+              "description": "Parcel boundary and map image",
+              "prompt": "Show the parcel boundary and a map image of 92 Cuatro Ruedas Dr, Carson, NM on Fabrica.",
+              "tools_triggered": "find_us_parcel, get_land_boundary, get_land_map_image",
+              "expected_behavior": "Return the parcel boundary as GeoJSON and a map image of the Carson property with its outline."
+            },
+            {
+              "description": "Answer a question from Fabrica's documentation",
+              "prompt": "How does the Fabrica trust work?",
+              "tools_triggered": "ask_fabrica",
+              "expected_behavior": "Explain that a trust holds title to the parcel and an ERC-1155 token represents the beneficial interest in that trust, citing the URL of the documentation passage used."
+            }
+          ],
+          "negative": [
+            {
+              "description": "Purchase request: the plugin is read-only and cannot buy land",
+              "prompt": "Buy the cheapest property in Arizona for me right now."
+            },
+            {
+              "description": "Crypto transfer: the plugin never moves funds or signs transactions",
+              "prompt": "Send 0.5 ETH from my wallet to 0x000000000000000000000000000000000000dEaD."
+            },
+            {
+              "description": "Unrelated request outside land and Fabrica",
+              "prompt": "What will the weather be in Phoenix tomorrow?"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
