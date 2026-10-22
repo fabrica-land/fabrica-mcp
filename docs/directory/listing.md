@@ -27,7 +27,7 @@ search_land, get_land_property (renders the property card), get_fabrica_lending_
 > Find land for sale across the US, mostly vacant lots and acreage, and research each property's records, parcel map, taxes and value. Look up any US parcel by street address or APN (assessor parcel number) to see whether it is on Fabrica and whether its county is covered. Fabrica gives Claude read-only access to its land marketplace and real estate data, with no account and no setup.
 >
 > With it, Claude can:
-> - Search land for sale by state, county, acres, price, price per acre and distance from a point, sorted the way you ask
+> - Search land for sale by state, county, acres, price, price per acre and distance from a point
 > - Show a parcel as a card with its parcel map, photos, acreage and key facts, with buttons that open it on Fabrica
 > - Pull a property's full record: legal description, county, valuation sources, property tax status, ownership, marketplace listings and offers, and the trust agreement of the trust that holds title
 > - Explain a property's Property checks, check by check
