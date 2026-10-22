@@ -32,6 +32,7 @@ import {
   orderActionInput,
 } from "./tools/sign-requests.js";
 import { getTransactionStatus, getTransactionStatusInput } from "./tools/transactions.js";
+import { borrowAgainstLand, borrowInput, getLoan, getLoanInput, repayInput, repayLandLoan } from "./tools/loans.js";
 import { NETWORK_LABEL, IS_MAINNET, MAINNET_LEGAL_NOTICE } from "./config.js";
 import { PROPERTY_CARD_URI, registerPropertyCard } from "./ui/property-card.js";
 import { registerKnowledgeResources } from "./resources/knowledge.js";
@@ -43,7 +44,7 @@ const NETWORK_NOTICE = IS_MAINNET
 export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to tokenized US land on the Fabrica protocol, including property records, trust documents, US parcel lookup by address or parcel number, Property checks, parcel boundaries and maps, the lending market, borrow quotes, wallet portfolios and activity. Network: ${NETWORK_LABEL}. Company overview: https://about.fabrica.land. For questions about how Fabrica works (the trust, fees, Property checks, lending, taxes, the onramp, the legal framework) call ask_fabrica and cite the URL of the passage you relied on. When ask_fabrica returns no matching passage, say so and call contact_fabrica_support (or point to https://help.fabrica.land or questions@fabrica.land) instead of guessing; contact_fabrica_support sends nothing, so tell the person the email is theirs to send.${NETWORK_NOTICE}`;
 
 /** Added to the instructions where the sign-request tools are on. */
-export const SIGN_REQUEST_INSTRUCTIONS = " make_land_offer, list_land_for_sale, accept_land_offer, buy_land and cancel_land_order prepare a marketplace action as a sign request: they check the live data and return a summary, warnings and a sign link to fabrica.land, where the person reviews and signs with their own wallet. The server holds no keys and submits nothing; a prepared request is not sent until the person signs. get_sign_request reports whether it was signed; get_transaction_status follows an onchain transaction.";
+export const SIGN_REQUEST_INSTRUCTIONS = " make_land_offer, list_land_for_sale, accept_land_offer, buy_land and cancel_land_order prepare a marketplace action, and borrow_against_land and repay_land_loan a DeFi lending pool loan or its payoff, as a sign request: they check the live data and return a summary, warnings and a sign link to fabrica.land, where the person reviews and signs with their own wallet. The server holds no keys and submits nothing; a prepared request is not sent until the person signs. get_sign_request reports whether it was signed; get_transaction_status follows an onchain transaction.";
 
 /**
  * Sign requests ship testnet-first: on by default on Sepolia, and on mainnet only
@@ -236,6 +237,17 @@ export function createServer(hooks: ServerHooks = {}): McpServer {
   );
 
   server.registerTool(
+    "get_land_loan",
+    {
+      title: "Get a loan against land",
+      description: "Get one loan against a land property on Fabrica: status (active, repaid, liquidated), provider, principal, APR, start, maturity, the full repayment and, for an active loan, the payoff today, with the borrower and lender wallets shortened and the property link. Give a property (tokenId or slug) for its active or latest loan, add loanId for a specific one, or give loanId alone to look it up across the network. otherLoans lists the property's other loans.",
+      inputSchema: getLoanInput,
+      annotations: readOnly("Get a loan against land"),
+    },
+    async (args) => jsonResult(await getLoan(args)),
+  );
+
+  server.registerTool(
     "get_land_valuation",
     {
       title: "Get valuation sources",
@@ -412,10 +424,30 @@ function registerSignRequestTools(server: McpServer): void {
     async (args) => jsonResult(await cancelOrder(args)),
   );
   server.registerTool(
+    "borrow_against_land",
+    {
+      title: "Prepare a loan against land",
+      description: `Prepare borrowing USDC from the DeFi lending pool against a property the wallet holds (${NETWORK_LABEL}), for amountUsd over durationDays (the pool's offered length closest to it, default about 30 days). Checks first that the wallet holds the token, the property backs no active loan, the pool lends against it and the amount is within the pool's current maximum (estimate_land_borrowing shows it). The rate and repayment come from the pool's live quote on the sign page. A loan is a real obligation: a loan not repaid by maturity lets the lender take the property through the pool's auction. ${SIGN_LINK_NOTE}`,
+      inputSchema: borrowInput,
+      annotations: prepares("Prepare a loan against land"),
+    },
+    async (args) => jsonResult(await borrowAgainstLand(args)),
+  );
+  server.registerTool(
+    "repay_land_loan",
+    {
+      title: "Prepare paying off a loan",
+      description: `Prepare paying off the active DeFi lending pool loan on a property (${NETWORK_LABEL}), or the one named by loanId, with the payoff amount today. Checks first that the loan is active and the wallet is its borrower, and warns when it is past maturity. Paying off returns the token to the wallet, free of the loan. ${SIGN_LINK_NOTE}`,
+      inputSchema: repayInput,
+      annotations: prepares("Prepare paying off a loan"),
+    },
+    async (args) => jsonResult(await repayLandLoan(args)),
+  );
+  server.registerTool(
     "get_sign_request",
     {
       title: "Get sign request status",
-      description: "Get a sign request a prepare tool returned (make_land_offer, list_land_for_sale, accept_land_offer, buy_land, cancel_land_order) by its id: pending or completed, with the order hash or transaction hash once signed. A pending request is also checked against the live order book. Requests expire 15 minutes after they are prepared; an expired id is reported as unknown.",
+      description: "Get a sign request a prepare tool returned (make_land_offer, list_land_for_sale, accept_land_offer, buy_land, cancel_land_order, borrow_against_land, repay_land_loan) by its id: pending or completed, with the order hash, transaction hash or loan id once signed. A pending request is also checked against the live order book, or the property's loans for a borrow or payoff. Requests expire 15 minutes after they are prepared; an expired id is reported as unknown.",
       inputSchema: getSignRequestInput,
       annotations: readOnly("Get sign request status"),
     },

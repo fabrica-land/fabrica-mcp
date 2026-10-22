@@ -179,6 +179,15 @@ export type GetSignContextQueryVariables = Exact<{
 
 export type GetSignContextQuery = { token: { tokenId: string, name: string | null, vanityName: string | null, propertyLink: string, contractAddress: string, network: string, isPremint: boolean, claimState: PremintClaimState | null, supersededByTokenId: string | null, offRampStatus: string | null, isBurned: boolean, supply: string, supplyUnderLoan: string, estimatedValue: string, majorityOwnerAddress: string | null, balances: Array<{ balance: string, holder: { address: string }, owner: { address: string } }> | null, marketplaceListings: Array<{ matchTransactionHash: string | null, marketplaceId: string, side: MarketplaceOrderSide, status: MarketplaceOrderStatus, price: string, usdPrice: string | null, symbol: EthereumCurrency, decimals: number, feeBps: string, supply: string, startTime: string, endTime: string | null, makerAddress: string, restrictedToAddresses: Array<string> | null, maker: { user: { displayName: string } }, disclosurePackage: Array<{ name: string, url: string }> | null, encumbrance: { buyable: boolean, blockReason: MarketplaceOrderBlockReason | null, loanId: string } | null }> | null, marketplaceBids: Array<{ matchTransactionHash: string | null, marketplaceId: string, side: MarketplaceOrderSide, status: MarketplaceOrderStatus, price: string, usdPrice: string | null, symbol: EthereumCurrency, decimals: number, feeBps: string, supply: string, startTime: string, endTime: string | null, makerAddress: string, restrictedToAddresses: Array<string> | null, maker: { user: { displayName: string } }, disclosurePackage: Array<{ name: string, url: string }> | null, encumbrance: { buyable: boolean, blockReason: MarketplaceOrderBlockReason | null, loanId: string } | null }> | null } };
 
+export type GetLoanContextQueryVariables = Exact<{
+  tokenId?: string | null | undefined;
+  slug?: string | null | undefined;
+  network?: string | null | undefined;
+}>;
+
+
+export type GetLoanContextQuery = { token: { tokenId: string, name: string | null, vanityName: string | null, propertyLink: string, contractAddress: string, poolLendingLiquidity: { appraisalBlockReason: AppraisalBlockReason | null, maxPrincipalScaled: string, durations: Array<number>, activeLoan: { id: string, borrowerAddress: string, principal: string, repayment: string, duration: string, maturity: string } | null } | null, loans: Array<{ loanId: string, loanStatus: LoanStatus, loanProvider: LoanProvider, loanType: LoanType, principalScaled: string, maxRepaymentScaled: string, livePayoffScaled: string | null, payoffAsOf: string | null, currencySymbol: string | null, aprPercent: number | null, durationFormatted: string, durationSeconds: string, startTime: string, maturityDate: string, loanRepaidDate: string | null, loanLiquidationDate: string | null, borrower: { address: string }, lender: { address: string } | null }> } };
+
 export type GetPremintSuccessorQueryVariables = Exact<{
   network: string;
   tokenId: string;

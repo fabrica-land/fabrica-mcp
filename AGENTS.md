@@ -53,6 +53,7 @@ ui/
     coverage.ts       # check_county_coverage (static on-ramp rules table in src/data/onramp-coverage.json, built by scripts/build-coverage.mjs)
     support.ts        # contact_fabrica_support (help center link, support email, prefilled mailto; nothing sent)
     sign-requests.ts  # make_land_offer, list_land_for_sale, accept_land_offer, buy_land, cancel_land_order (prepare a sign request), get_sign_request
+    loans.ts          # borrow_against_land, repay_land_loan (sign requests, ENG-5075), get_land_loan (GetLoanContext, never cached)
     transactions.ts   # get_transaction_status (JSON-RPC reads only)
     inputs.ts         # zod pieces shared by the tools' input schemas (property reference, image size)
   knowledge/

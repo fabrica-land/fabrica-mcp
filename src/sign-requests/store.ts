@@ -15,7 +15,7 @@ export const SIGN_REQUEST_RETENTION_SECONDS = 24 * 60 * 60;
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 const HASH = /^0x[0-9a-fA-F]{64}$/;
 
-export const signRequestActions = ["make_land_offer", "list_land_for_sale", "accept_land_offer", "buy_land", "cancel_land_order"] as const;
+export const signRequestActions = ["make_land_offer", "list_land_for_sale", "accept_land_offer", "buy_land", "cancel_land_order", "borrow_against_land", "repay_land_loan"] as const;
 
 const warningSchema = z.object({
   level: z.enum(["info", "warning"]),
@@ -29,7 +29,7 @@ export const signRequestSchema = z.object({
   chainId: z.number().int(),
   action: z.enum(signRequestActions),
   // typedData: an EIP-712 signature (offer, listing, accepting an offer); transaction: an onchain
-  // transaction the signer's client broadcasts (buy_land); offchain: a signed-in confirmation with no
+  // transaction the signer's client broadcasts (buy_land, borrow, repay); offchain: a signed-in confirmation with no
   // signature (cancel, which the API records).
   kind: z.enum(["typedData", "transaction", "offchain"]),
   wallet: z.string().regex(ADDRESS),
@@ -49,6 +49,12 @@ export const signRequestSchema = z.object({
     supply: z.string(),
   }).optional(),
   orderHash: z.string().regex(HASH).optional(),
+  // Borrow and repay (ENG-5075): the principal and loan length asked for, or the loan to pay off.
+  loan: z.object({
+    amountUsd: z.number().optional(),
+    durationDays: z.number().int().optional(),
+    loanId: z.string().optional(),
+  }).optional(),
   signLink: z.string(),
   summary: z.array(z.string()),
   warnings: z.array(warningSchema),
@@ -60,6 +66,7 @@ export const signRequestSchema = z.object({
   result: z.object({
     orderHash: z.string().regex(HASH).optional(),
     transactionHash: z.string().regex(HASH).optional(),
+    loanId: z.string().optional(),
     completedAt: z.string(),
   }).optional(),
 });
@@ -165,7 +172,7 @@ export class SignRequestStore {
   }
 
   /** Record the signer's result. Keeps the original expiry. */
-  async complete(record: SignRequest, result: { orderHash?: string; transactionHash?: string }): Promise<SignRequest> {
+  async complete(record: SignRequest, result: { orderHash?: string; transactionHash?: string; loanId?: string }): Promise<SignRequest> {
     const updated: SignRequest = {
       ...record,
       status: "completed",
