@@ -21,8 +21,13 @@ export const LOAN_OBLIGATION = "A loan is a real obligation: the repayment is du
 const walletInput = z.string().regex(/^0x[0-9a-fA-F]{40}$/, "A 0x-prefixed Ethereum address").describe("The wallet that will sign (0x address). The sign page only lets this wallet sign.");
 const loanIdInput = z.string().regex(/^[0-9]{1,100}$/, "A loan id: digits, as get_land_loan or estimate_land_borrowing return it");
 
-function activeLoans(token: LoanContextToken): LoanContextLoan[] {
-  return (token.loans ?? []).filter(l => l.loanStatus === "Active");
+/** Past maturity a pool loan shows Default until its auction starts, and the borrower can still pay it off. */
+function isOpen(loan: LoanContextLoan): boolean {
+  return loan.loanStatus === "Active" || loan.loanStatus === "Default";
+}
+
+function openLoans(token: LoanContextToken): LoanContextLoan[] {
+  return (token.loans ?? []).filter(isOpen);
 }
 
 /** The loan length the pool offers closest to the one asked for, ties to the shorter. */
@@ -55,7 +60,7 @@ export async function prepareBorrow({ tokenId, slug, amountUsd, durationDays, wa
   const { token } = found;
   const context = await loanContext(token.tokenId);
   if ("error" in context) return context;
-  if (activeLoans(context).length > 0 || context.poolLendingLiquidity?.activeLoan || Number.parseInt(token.supplyUnderLoan || "0", 10) > 0) {
+  if (openLoans(context).length > 0 || context.poolLendingLiquidity?.activeLoan || Number.parseInt(token.supplyUnderLoan || "0", 10) > 0) {
     return { error: `${label(token)} already backs an active loan; repay_land_loan prepares paying it off before a new loan.` };
   }
   if (!holds(token, wallet)) return { error: `Wallet ${shorten(wallet)} does not hold ${label(token)}; only its owner can borrow against it.` };
@@ -106,7 +111,7 @@ export async function prepareRepay({ tokenId, slug, loanId, wallet }: RepayArgs)
   const { token } = found;
   const context = await loanContext(token.tokenId);
   if ("error" in context) return context;
-  const active = activeLoans(context);
+  const active = openLoans(context);
   const loan = loanId ? active.find(l => l.loanId === loanId) : active[0];
   if (!loan) {
     const other = loanId ? (context.loans ?? []).find(l => l.loanId === loanId) : undefined;
@@ -149,7 +154,7 @@ export const getLoanInput = {
 export type GetLoanArgs = ArgsOf<typeof getLoanInput>;
 
 function describeLoan(loan: LoanContextLoan) {
-  const active = loan.loanStatus === "Active";
+  const active = isOpen(loan);
   const symbol = loan.currencySymbol ?? "USDC";
   return {
     loanId: loan.loanId,
@@ -188,7 +193,7 @@ export async function getLoan({ tokenId, slug, loanId }: GetLoanArgs) {
     if (isTokenNotFound(e)) return { error: `No property found with ${propertyTokenId ? `token ID ${propertyTokenId}` : `slug ${slug}`}` };
     return { error: `Failed to load the property's loans: ${e instanceof Error ? e.message : String(e)}` };
   }
-  const loans = [...(token.loans ?? [])].sort((a, b) => Number(b.loanStatus === "Active") - Number(a.loanStatus === "Active") || Date.parse(b.startTime) - Date.parse(a.startTime));
+  const loans = [...(token.loans ?? [])].sort((a, b) => Number(isOpen(b)) - Number(isOpen(a)) || Date.parse(b.startTime) - Date.parse(a.startTime));
   const loan = loanId ? loans.find(l => l.loanId === loanId) : loans[0];
   const property = { tokenId: token.tokenId, name: token.name ?? token.vanityName, link: token.propertyLink };
   if (!loan) return { network: NETWORK_LABEL, property, error: loanId ? `No loan ${loanId} on this property.` : "This property has no loans." };

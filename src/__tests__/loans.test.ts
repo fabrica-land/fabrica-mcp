@@ -204,6 +204,15 @@ describe("repay_land_loan", () => {
     expect(await prepareRepay({ tokenId: "123", wallet: OWNER })).toMatchObject({ error: expect.stringMatching(/no active loan/) });
   });
 
+  it("still pays off a loan in default, before its auction", async () => {
+    vi.mocked(getLoanContext).mockResolvedValue(context({ loans: [loan({ loanStatus: "Default", maturityDate: "2026-10-20T00:00:00Z" })] }));
+    const prepared = await prepareRepay({ tokenId: "123", wallet: OWNER });
+    if ("error" in prepared) throw new Error(prepared.error);
+    expect(prepared.warnings.map(w => w.message).join(" ")).toMatch(/matured on 2026-10-20/);
+    vi.mocked(getLoanContext).mockResolvedValue(context({ loans: [loan({ loanStatus: "Liquidating" })] }));
+    expect(await prepareRepay({ tokenId: "123", loanId: "777", wallet: OWNER })).toMatchObject({ error: expect.stringMatching(/liquidating, not active/) });
+  });
+
   it("warns when the loan is past maturity", async () => {
     vi.mocked(getLoanContext).mockResolvedValue(context({ loans: [loan({ maturityDate: "2026-10-20T00:00:00Z" })] }));
     const prepared = await prepareRepay({ tokenId: "123", wallet: OWNER });
