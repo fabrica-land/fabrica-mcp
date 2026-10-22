@@ -138,6 +138,11 @@ describe("borrow_against_land", () => {
     expect(await prepareBorrow({ tokenId: "123", amountUsd: 100, wallet: OWNER })).toMatchObject({ error: expect.stringMatching(/does not lend against this property/) });
   });
 
+  it("checks the pool's maximum against the amount rounded to cents", async () => {
+    vi.mocked(getLoanContext).mockResolvedValue(context({ poolLendingLiquidity: { appraisalBlockReason: null, maxPrincipalScaled: "1000.006", durations: [30 * DAY], activeLoan: null } }));
+    expect(await prepareBorrow({ tokenId: "123", amountUsd: 1000.006, wallet: OWNER })).toMatchObject({ error: expect.stringMatching(/\$1,000\.01 is above/) });
+  });
+
   it("serves the sign page the borrow action with amount and length, and completes once the loan appears", async () => {
     const result = await borrowAgainstLand({ tokenId: "123", amountUsd: 400, wallet: OWNER });
     if (!("signRequest" in result)) throw new Error(JSON.stringify(result));
@@ -218,7 +223,7 @@ describe("repay_land_loan", () => {
     vi.mocked(getBlockTimestamp).mockResolvedValue(NOW + 60_000);
     expect(await verifyResult(record, { transactionHash: TX })).toMatchObject({ ok: false });
     vi.mocked(getLoanContext).mockResolvedValue(context({ loans: [loan({ loanStatus: "Repaid" })] }));
-    expect(await verifyResult(record, { transactionHash: TX })).toEqual({ ok: true });
+    expect(await verifyResult(record, { transactionHash: TX })).toEqual({ ok: true, loanId: "777" });
     expect(await verifyResult(record, { orderHash: TX })).toMatchObject({ ok: false });
   });
 
@@ -237,7 +242,7 @@ describe("repay_land_loan", () => {
     vi.mocked(getTransaction).mockResolvedValue({ hash: TX, from: OWNER, to: OTHER, blockNumber: "0x1", value: "0x0" });
     expect(await verifyResult(record, { transactionHash: TX })).toMatchObject({ ok: false, reason: expect.stringMatching(/loan's contract/) });
     vi.mocked(getTransactionReceipt).mockResolvedValue({ status: "0x1", blockNumber: "0x1", gasUsed: "0x1", logs: [{ address: POOL.toUpperCase().replace("0X", "0x") }] });
-    expect(await verifyResult(record, { transactionHash: TX })).toEqual({ ok: true });
+    expect(await verifyResult(record, { transactionHash: TX })).toEqual({ ok: true, loanId: "777" });
   });
 });
 

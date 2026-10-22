@@ -457,7 +457,7 @@ export function observeLoan(record: SignRequest, token: LoanContextToken): { loa
  * A borrow or repay result holds when the transaction succeeded, was sent by the request's wallet after
  * the request was made, touched the loan's contract, and the token's loans show the request done.
  */
-async function verifyLoanResult(record: SignRequest, result: SignResult): Promise<{ ok: true } | { ok: false; reason: string }> {
+async function verifyLoanResult(record: SignRequest, result: SignResult): Promise<{ ok: true; loanId: string } | { ok: false; reason: string }> {
   if (!("transactionHash" in result)) return { ok: false, reason: `A ${record.action} sign request completes with a transaction, not an order hash.` };
   const [transaction, receipt] = await Promise.all([getTransaction(result.transactionHash), getTransactionReceipt(result.transactionHash)]);
   if (!transaction || receipt?.status !== "0x1" || !same(transaction.from, record.wallet)) return { ok: false, reason: "The transaction did not succeed, or was not sent by the request's wallet." };
@@ -466,7 +466,7 @@ async function verifyLoanResult(record: SignRequest, result: SignResult): Promis
   const loan = findLoan(record, await getLoanContext({ tokenId: record.property.tokenId }));
   if (!loan) return { ok: false, reason: "The property's loans do not show this request as done (yet)." };
   const touchesLoan = same(transaction.to, loan.loanContract) || (receipt.logs ?? []).some(log => same(log.address, loan.loanContract));
-  return touchesLoan ? { ok: true } : { ok: false, reason: "The transaction did not go through this loan's contract." };
+  return touchesLoan ? { ok: true, loanId: loan.loanId } : { ok: false, reason: "The transaction did not go through this loan's contract." };
 }
 
 export const signResultSchema = z.union([
@@ -479,7 +479,7 @@ export type SignResult = z.infer<typeof signResultSchema>;
  * Check a result the sign page reports against the API and the chain; a reason when it does not hold.
  * A transaction counts only when it is the one that filled the request's order and it succeeded.
  */
-export async function verifyResult(record: SignRequest, result: SignResult): Promise<{ ok: true } | { ok: false; reason: string }> {
+export async function verifyResult(record: SignRequest, result: SignResult): Promise<{ ok: true; loanId?: string } | { ok: false; reason: string }> {
   if (isLoanAction(record)) return verifyLoanResult(record, result);
   const token = await getSignContext({ tokenId: record.property.tokenId });
   if ("transactionHash" in result) {

@@ -64,11 +64,11 @@ export async function prepareBorrow({ tokenId, slug, amountUsd, durationDays, wa
   if (blocked) return { error: `The ${LENDING_POOL_NAME} does not lend against this property right now: ${blocked}` };
   const maxBorrow = Number.parseFloat(pool?.maxPrincipalScaled ?? "0");
   if (!pool || !Number.isFinite(maxBorrow) || maxBorrow <= 0) return { error: `The ${LENDING_POOL_NAME} shows no borrowing capacity for ${label(token)} right now. estimate_land_borrowing explains why and what would raise it.` };
-  if (amountUsd > maxBorrow) return { error: `${usd(amountUsd)} is above the ${usd(Math.floor(maxBorrow * 100) / 100)} the ${LENDING_POOL_NAME} offers against ${label(token)} right now.` };
+  const amount = Math.round(amountUsd * 100) / 100;
+  if (amount > maxBorrow) return { error: `${usd(amount)} is above the ${usd(Math.floor(maxBorrow * 100) / 100)} the ${LENDING_POOL_NAME} offers against ${label(token)} right now.` };
   const wanted = durationDays ?? DEFAULT_DURATION_DAYS;
   const days = closestDuration(pool.durations, wanted);
   if (days === null) return { error: `The ${LENDING_POOL_NAME} offers no loan length for ${label(token)} right now.` };
-  const amount = Math.round(amountUsd * 100) / 100;
   const warnings: SignRequestWarning[] = [];
   if (durationDays !== undefined && days !== durationDays) warnings.push({ level: "info", message: `The pool does not offer ${durationDays} days; the closest length it offers is ${days} days, and the sign page uses that.` });
   if (amount > maxBorrow * 0.9) warnings.push({ level: "warning", message: `${usd(amount)} is close to the pool's current maximum of ${usd(Math.floor(maxBorrow * 100) / 100)}; the live quote on the sign page can come out lower.` });
