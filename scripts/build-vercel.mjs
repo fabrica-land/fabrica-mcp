@@ -7,7 +7,7 @@ import { build } from "tsup";
 
 const OUTPUT = ".vercel/output";
 const FUNCTION_DIR = `${OUTPUT}/functions/mcp.func`;
-// Sign requests (ENG-5073): the sign page reads and completes them at /sign-requests/{id}.
+// Sign requests: the sign page reads and completes them at /sign-requests/{id}.
 const SIGN_REQUESTS_DIR = `${OUTPUT}/functions/sign-requests.func`;
 const isSepolia = process.env.FABRICA_NETWORK?.toLowerCase() === "sepolia";
 const networkLabel = isSepolia ? "Sepolia testnet" : "Ethereum mainnet";

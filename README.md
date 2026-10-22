@@ -81,9 +81,9 @@ Set `FABRICA_NETWORK=sepolia` in the server's environment for the testnet.
 
 ### Sign requests (testnet host first)
 
-On `mcp-testnet.fabrica.land` (and on mainnet only with `FABRICA_SIGN_REQUESTS=enabled`), five tools prepare marketplace actions: `make_land_offer`, `list_land_for_sale`, `accept_land_offer`, `buy_land` and `cancel_land_order`. Each checks the live data (the property is live, the wallet holds it or not, the order is open, buyable and the wallet's own where it has to be), then returns a `signRequest`: a summary, warnings, a sign link to the property page on fabrica.land with the dialog prefilled, and an expiry 15 minutes out. The person opens the link and signs with their own wallet. The server holds no keys, signs nothing and submits nothing; `payload` (typed data or an unsigned transaction for a wallet in the conversation) stays null until Connect Fabrica (ENG-5004). `get_sign_request` says whether a request was signed (it also checks the order book), and `get_transaction_status` follows a transaction by hash.
+On `mcp-testnet.fabrica.land` (and on mainnet only with `FABRICA_SIGN_REQUESTS=enabled`), five tools prepare marketplace actions: `make_land_offer`, `list_land_for_sale`, `accept_land_offer`, `buy_land` and `cancel_land_order`. Each checks the live data (the property is live, the wallet holds it or not, the order is open, buyable and the wallet's own where it has to be), then returns a `signRequest`: a summary, warnings, a sign link to the property page on fabrica.land with the dialog prefilled, and an expiry 15 minutes out. The person opens the link and signs with their own wallet. The server holds no keys, signs nothing and submits nothing; `payload` (typed data or an unsigned transaction for a wallet in the conversation) stays null until Connect Fabrica ships. `get_sign_request` says whether a request was signed (it also checks the order book), and `get_transaction_status` follows a transaction by hash.
 
-Pending requests live in the server's own store (Vercel KV / Upstash Redis: `KV_REST_API_URL` and `KV_REST_API_TOKEN`, plus `SIGN_REQUEST_SECRET` for the records' HMAC). The sign link is `{web}/property/{network}/{tokenId}?action=…&request={id}`. The sign page reads the request at `GET /sign-requests/{id}` (410 once expired) and reports the outcome at `POST /sign-requests/{id}/result` with `{ orderHash }` or `{ transactionHash }`, which the server checks against the API or the chain before recording. Contract: ENG-5073. Without a store the tools say they are not configured; locally (stdio) an in-process map is used.
+Pending requests live in the server's own store (Vercel KV / Upstash Redis: `KV_REST_API_URL` and `KV_REST_API_TOKEN`, plus `SIGN_REQUEST_SECRET` for the records' HMAC). The sign link is `{web}/property/{network}/{tokenId}?action=…&request={id}`. The sign page reads the request at `GET /sign-requests/{id}` (410 once expired) and reports the outcome at `POST /sign-requests/{id}/result` with `{ orderHash }` or `{ transactionHash }`, which the server checks against the API or the chain before recording. Without a store the tools say they are not configured; locally (stdio) an in-process map is used.
 
 ### Knowledge layer
 
@@ -199,7 +199,7 @@ All optional; sensible defaults are built in:
 
 ## Regression list
 
-`npm run regression` (mainnet) or `npm run regression -- sepolia` calls every tool on a hosted server with the ENG-2970 case list in `scripts/regression/cases.json`: happy paths, edge cases and the wording of a miss. One line per case, exit code 1 on a failure. Run it after each release and before a directory submission.
+`npm run regression` (mainnet) or `npm run regression -- sepolia` calls every tool on a hosted server with the case list in `scripts/regression/cases.json`: happy paths, edge cases and the wording of a miss. One line per case, exit code 1 on a failure. Run it after each release and before a directory submission.
 
 ## Hosting
 

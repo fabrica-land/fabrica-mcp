@@ -4,7 +4,7 @@ import { signPageView, signResultSchema, verifyResult } from "../tools/sign-requ
 import { getSignRequestStore, isExpired, isSignRequestId } from "./store.js";
 
 /**
- * The sign page's side of a sign request (contract on ENG-5073):
+ * The sign page's side of a sign request:
  *   GET  /sign-requests/{id}         the request, for the page to prefill and check the wallet (410 once expired)
  *   POST /sign-requests/{id}/result  { orderHash } or { transactionHash }, checked before it is recorded
  * Public by design: ids are 128-bit random, links expire after 15 minutes (records are kept a day

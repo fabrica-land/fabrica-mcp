@@ -1,4 +1,4 @@
-// Write tools as sign requests (ENG-5073): make_land_offer, list_land_for_sale, accept_land_offer, buy_land and
+// Write tools as sign requests: make_land_offer, list_land_for_sale, accept_land_offer, buy_land and
 // cancel_land_order check the live data, then return a sign request whose link opens the matching
 // dialog on fabrica.land, prefilled. The person signs there with their own wallet. The server
 // holds no key, signs nothing and submits nothing: it prepares, the person decides.
@@ -55,7 +55,7 @@ export function usdToRaw(amountUsd: number): string {
 }
 
 /**
- * The Soil sign-link route (ENG-5071): {web}/property/{network}/{tokenId}?action=…&<plain params>&request={id}.
+ * The Soil sign-link route: {web}/property/{network}/{tokenId}?action=…&<plain params>&request={id}.
  * The plain params alone prefill the dialog; request adds the agent banner and the wallet check.
  */
 export function signLink(tokenId: string, params: Record<string, string>, id: string): string {
@@ -494,7 +494,7 @@ export async function getSignRequest({ id }: GetSignRequestArgs) {
   };
 }
 
-// --- the sign page's view (contract agreed with ENG-5071) ---
+// --- the sign page's view (contract agreed with the sign page) ---
 
 const PAGE_ACTIONS: Record<SignRequest["action"], "offer" | "list" | "accept" | "cancel"> = {
   make_land_offer: "offer",
@@ -504,7 +504,7 @@ const PAGE_ACTIONS: Record<SignRequest["action"], "offer" | "list" | "accept" | 
   cancel_land_order: "cancel",
 };
 
-/** What GET /sign-requests/{id} returns: the ENG-5071 shape, plus the tool name, kind, warnings, status and result. */
+/** What GET /sign-requests/{id} returns: the sign page's shape, plus the tool name, kind, warnings, status and result. */
 export function signPageView(record: SignRequest) {
   const order = record.order;
   const orderExpiry = order ? new Date(Date.parse(record.createdAt) + order.durationDays * DAY_MS).toISOString() : undefined;

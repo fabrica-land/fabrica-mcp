@@ -46,7 +46,7 @@ export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to toke
 export const SIGN_REQUEST_INSTRUCTIONS = " make_land_offer, list_land_for_sale, accept_land_offer, buy_land and cancel_land_order prepare a marketplace action as a sign request: they check the live data and return a summary, warnings and a sign link to fabrica.land, where the person reviews and signs with their own wallet. The server holds no keys and submits nothing; a prepared request is not sent until the person signs. get_sign_request reports whether it was signed; get_transaction_status follows an onchain transaction.";
 
 /**
- * Sign requests (ENG-5073) ship testnet-first: on by default on Sepolia, and on mainnet only
+ * Sign requests ship testnet-first: on by default on Sepolia, and on mainnet only
  * when FABRICA_SIGN_REQUESTS=enabled. Read per server so a deployment's env decides.
  */
 export function signRequestsEnabled(): boolean {

@@ -36,7 +36,7 @@ ui/
   tools/
     properties.ts     # search_land, get_land_property, get_land_boundary
     lending.ts        # get_fabrica_lending_market
-    loan-book.ts      # get_fabrica_loan_book (distribution of the loan records; no auction proceeds or per-loan liquidation rows, Fede 2026-10-17)
+    loan-book.ts      # get_fabrica_loan_book (distribution of the loan records; no auction proceeds or per-loan liquidation rows)
     portfolio.ts      # get_land_portfolio
     protocol.ts       # get_fabrica_stats
     scoring.ts        # explain_property_checks
@@ -74,7 +74,7 @@ ui/
     us-counties.ts    # Regrid county paths to FIPS and name (copied from soil-app's /go table)
   sign-requests/
     store.ts          # SignRequestStore: Vercel KV / Upstash REST (or an in-process map locally), HMAC-checked records, 15-minute expiry
-    http.ts           # GET /sign-requests/{id} and POST /sign-requests/{id}/result for the Soil sign page (contract on ENG-5073)
+    http.ts           # GET /sign-requests/{id} and POST /sign-requests/{id}/result for the Soil sign page
   vercel-sign-requests.ts # Vercel function entry for /sign-requests
   lifecycle.ts        # propertyStage(): premint, minted, off-ramp, burned (get_land_property, search rows)
   fees.ts             # fees assessed on a token, by currency address
@@ -125,7 +125,7 @@ The Apollo API routes subgraph data internally, so all onchain and offchain prop
 **Mainnet:** `https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-mainnet/3.13.2/gn`
 **Sepolia:** `https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-sepolia/3.13.1/gn`
 
-Used for DeFi lending pool TVL, utilization, and loan count data. Its `loansLiquidated` counter reads 0 on mainnet while 10 pool loans were liquidated (ENG-5029), so `get_fabrica_loan_book` counts from the loan records and shows the pool counters next to them. The subgraph, the env var and some internal identifiers keep the MetaStreet name for historical reasons; public-facing text says DeFi lending pool. **Pools are discovered dynamically** by querying all pools that accept the Fabrica collateral token — no hardcoded pool IDs. Mainnet has 1+ pools, Sepolia has 10 (2026-10). Pool values are in 18-decimal format.
+Used for DeFi lending pool TVL, utilization, and loan count data. Its `loansLiquidated` counter undercounts on mainnet, so `get_fabrica_loan_book` counts from the loan records and shows the pool counters next to them. The subgraph, the env var and some internal identifiers keep the MetaStreet name for historical reasons; public-facing text says DeFi lending pool. **Pools are discovered dynamically** by querying all pools that accept the Fabrica collateral token — no hardcoded pool IDs. Mainnet has 1+ pools, Sepolia has 10 (2026-10). Pool values are in 18-decimal format.
 
 ### 3. Fabrica Media Service (Images)
 
@@ -195,7 +195,7 @@ The feature is called **Property checks** in every description and output. The A
 
 **Max: 75342.** Recovery digit (as the API defines it): 7=Normal, 6=Recovery pending, 5=Reported stolen, 4=Tax sale or foreclosure (Distressed), 1=Void.
 
-Each digit is a category value set by its group's rules, not a count of passing checks: never label a digit "x/y checks pass". Pass counts come from the individual results (`scoringCheckResults`), which `get_land_property` returns as `propertyChecks { passed, total, encoding, results }` and the property card shows as "9 of 12 pass", like fabrica.land. The deprecated `valuation.confidenceScore` and `valuation.scoreBreakdown` aliases were removed in ENG-5028 (payload size); `propertyChecks` is the only copy.
+Each digit is a category value set by its group's rules, not a count of passing checks: never label a digit "x/y checks pass". Pass counts come from the individual results (`scoringCheckResults`), which `get_land_property` returns as `propertyChecks { passed, total, encoding, results }` and the property card shows as "9 of 12 pass", like fabrica.land. The deprecated `valuation.confidenceScore` and `valuation.scoreBreakdown` aliases were removed (payload size); `propertyChecks` is the only copy.
 
 Naming rule: "Property checks" is the name; the number is "the numeric encoding of Property checks". Never call it a score, rating or percentage in user-facing text. Where checks are introduced, say they are a starting point for your own research, not a title search or title insurance.
 
@@ -258,6 +258,8 @@ Run tests with `npm test` (vitest). Tests cover config, scoring, spam filtering,
 | https://api.fabrica.land/graphql | The public GraphQL API (introspection enabled). `schema/api-schema.graphql` is a checked-in snapshot; refresh with `npm run schema:refresh` |
 | `fabrica-land/fabrica-v3-contracts` | The public Solidity smart contracts (ERC-1155): onchain data structures, view functions, events |
 | `fabrica-land/fabrica-connectors` | The trust agreement: trust structure, beneficiary rights |
+
+This repository is public. Code, comments, docs, tests, commit messages and pull request titles carry no internal tracker ids (Linear `ENG-…`, `ASK-…`), no internal names or decisions, no business numbers and no credentials; describe the behavior instead. `src/__tests__/public-repo.test.ts` fails on a tracker id in a tracked file. The API's own schema descriptions (`schema/api-schema.graphql`, `src/clients/generated/`) are copied verbatim and exempt.
 
 ---
 
