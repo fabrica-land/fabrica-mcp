@@ -117,8 +117,14 @@ export async function handleWellKnownHttp(req: McpHttpRequest, res: ServerRespon
     res.end(JSON.stringify({ error: "method_not_allowed" }));
     return;
   }
-  const body = doc === "manifest" ? mcpManifest() : await serverCard();
-  // The edge keeps a copy for an hour; a deploy starts a fresh cache.
-  res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=300, s-maxage=3600" });
-  res.end(req.method === "HEAD" ? undefined : JSON.stringify(body, null, 2));
+  try {
+    const body = doc === "manifest" ? mcpManifest() : await serverCard();
+    // The edge keeps a copy for an hour; a deploy starts a fresh cache.
+    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=300, s-maxage=3600" });
+    res.end(req.method === "HEAD" ? undefined : JSON.stringify(body, null, 2));
+  } catch (error) {
+    console.error("Well-known document failed:", error);
+    res.writeHead(500, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    res.end(JSON.stringify({ error: "unavailable", message: "The discovery document could not be built. Retry shortly." }));
+  }
 }

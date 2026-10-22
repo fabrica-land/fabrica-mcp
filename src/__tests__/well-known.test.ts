@@ -1,8 +1,7 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import type { ServerResponse } from "node:http";
-import type { McpHttpRequest } from "../http.js";
+import { createServer as createHttpServer, type Server } from "node:http";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -20,26 +19,19 @@ async function registeredToolNames(): Promise<string[]> {
   return tools.map((tool) => tool.name);
 }
 
-function fakeResponse(): { res: ServerResponse; result: () => { status: number; headers: Record<string, unknown>; body: string } } {
-  let status = 0;
-  let body = "";
-  const headers: Record<string, unknown> = {};
-  const res = {
-    setHeader: (name: string, value: unknown) => { headers[name.toLowerCase()] = value; },
-    writeHead: (code: number, extra?: Record<string, unknown>) => {
-      status = code;
-      for (const [name, value] of Object.entries(extra ?? {})) headers[name.toLowerCase()] = value;
-    },
-    end: (chunk?: string) => { body = chunk ?? ""; },
-  } as unknown as ServerResponse;
-  return { res, result: () => ({ status, headers, body }) };
-}
-
-async function get(url: string, method = "GET") {
+/** Serve the handler from a fresh module graph (the network is read at import) on a local port. */
+async function get(path: string, method = "GET"): Promise<{ status: number; headers: Headers; body: string }> {
   const { handleWellKnownHttp } = await import("../well-known.js");
-  const { res, result } = fakeResponse();
-  await handleWellKnownHttp({ url, method, headers: {} } as McpHttpRequest, res);
-  return result();
+  const httpServer: Server = createHttpServer((req, res) => void handleWellKnownHttp(req, res));
+  await new Promise<void>((resolve) => httpServer.listen(0, "127.0.0.1", resolve));
+  try {
+    const address = httpServer.address();
+    if (address === null || typeof address === "string") throw new Error("HTTP test server has no port");
+    const response = await fetch(`http://127.0.0.1:${address.port}${path}`, { method });
+    return { status: response.status, headers: response.headers, body: await response.text() };
+  } finally {
+    await new Promise<void>((resolve) => httpServer.close(() => resolve()));
+  }
 }
 
 describe.each([
@@ -56,9 +48,9 @@ describe.each([
     for (const path of ["/.well-known/mcp.json", "/well-known?doc=manifest"]) {
       const response = await get(path);
       expect(response.status).toBe(200);
-      expect(response.headers["content-type"]).toMatch(/^application\/json/);
-      expect(response.headers["access-control-allow-origin"]).toBe("*");
-      expect(response.headers["cache-control"]).toMatch(/public/);
+      expect(response.headers.get("content-type")).toMatch(/^application\/json/);
+      expect(response.headers.get("access-control-allow-origin")).toBe("*");
+      expect(response.headers.get("cache-control")).toMatch(/public/);
       const manifest = JSON.parse(response.body);
       expect(manifest).toMatchObject({
         url,
