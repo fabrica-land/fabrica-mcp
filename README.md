@@ -40,6 +40,8 @@ claude mcp add --transport http fabrica-testnet https://mcp-testnet.fabrica.land
 
 Any other client that supports remote MCP servers (Streamable HTTP) works the same way. Add both URLs as two separate servers if you want to try things on testnet before mainnet: the network is fixed per URL, so an agent can never reach mainnet through the testnet server.
 
+**Discovery without a registry:** each host serves `/.well-known/mcp.json` (URL, transport, auth, docs, the other network's server) and `/.well-known/mcp/server-card.json` (the same plus every tool with its title and annotations, the prompts and the resource templates). The card is read from the running server, so it always matches what that host registers.
+
 ### Run locally (stdio)
 
 The hosted URLs above are the supported way to use the server; it is not published to npm. To run it on your own machine from source (Node 20 or later):
@@ -203,7 +205,7 @@ All optional; sensible defaults are built in:
 
 ## Hosting
 
-The hosted servers run on Vercel from this repository: one Vercel project per network, both built with `npm run build:vercel` (see `vercel.json`), which emits a single stateless Streamable HTTP function at `/mcp` and a landing page at `/`. Set `FABRICA_NETWORK` in each project's environment (`ethereum` or `sepolia`). The same handler (`src/http.ts`) can run behind any Node HTTP server.
+The hosted servers run on Vercel from this repository: one Vercel project per network, both built with `npm run build:vercel` (see `vercel.json`), which emits a stateless Streamable HTTP function at `/mcp`, the sign-request endpoints at `/sign-requests`, the discovery documents at `/.well-known/`, and a landing page at `/`. Set `FABRICA_NETWORK` in each project's environment (`ethereum` or `sepolia`). The same handler (`src/http.ts`) can run behind any Node HTTP server.
 
 ## Links
 
