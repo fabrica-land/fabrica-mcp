@@ -49,7 +49,7 @@ export const signRequestSchema = z.object({
     supply: z.string(),
   }).optional(),
   orderHash: z.string().regex(HASH).optional(),
-  // Borrow and repay (ENG-5075): the principal and loan length asked for, or the loan to pay off.
+  // Borrow and repay: the principal and loan length asked for, or the loan to pay off.
   loan: z.object({
     amountUsd: z.number().optional(),
     durationDays: z.number().int().optional(),

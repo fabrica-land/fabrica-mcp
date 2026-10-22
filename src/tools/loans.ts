@@ -1,4 +1,4 @@
-// Borrow and repay as sign requests, and one loan's state (ENG-5075). borrow_against_land and
+// Borrow and repay as sign requests, and one loan's state. borrow_against_land and
 // repay_land_loan check the pool and the token's loans, then return a sign link that opens the
 // borrow or payoff dialog on fabrica.land, prefilled. The person signs there with their own wallet;
 // the server holds no key and submits nothing. get_land_loan reads one loan's state and payoff.
