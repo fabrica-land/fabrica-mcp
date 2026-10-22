@@ -1,6 +1,6 @@
 # Claude Connectors Directory listing
 
-What to paste into [claude.ai/directory/manage](https://claude.ai/directory/manage) (Submit new, MCP connector) for the hosted mainnet server. Checked against the [submission page](https://claude.com/docs/connectors/building/submission) and the [review criteria](https://claude.com/docs/connectors/building/review-criteria) on 2026-10-17. Re-read both on the day you submit; they change.
+What to paste into [claude.ai/directory/manage](https://claude.ai/directory/manage) (Submit new, MCP connector) for the hosted mainnet server. Checked against the [submission page](https://claude.com/docs/connectors/building/submission) and the [review criteria](https://claude.com/docs/connectors/building/review-criteria) on 2026-10-22. Re-read both on the day you submit; they change.
 
 Wording rules for every field: "Property checks" (never "confidence score"), "DeFi lending pool", "onchain" as one word, no fee amounts, no yields, no investment framing, no em dashes, never "600+".
 
@@ -27,7 +27,7 @@ search_land, get_land_property (renders the property card), get_fabrica_lending_
 > Find land for sale across the US, mostly vacant lots and acreage, and research each property's records, parcel map, taxes and value. Look up any US parcel by street address or APN (assessor parcel number) to see whether it is on Fabrica and whether its county is covered. Fabrica gives Claude read-only access to its land marketplace and real estate data, with no account and no setup.
 >
 > With it, Claude can:
-> - Search land for sale by state, county, acres, listing status and loan status
+> - Search land for sale by state, county, acres, price, price per acre and distance from a point, sorted the way you ask
 > - Show a parcel as a card with its parcel map, photos, acreage and key facts, with buttons that open it on Fabrica
 > - Pull a property's full record: legal description, county, valuation sources, property tax status, ownership, marketplace listings and offers, and the trust agreement of the trust that holds title
 > - Explain a property's Property checks, check by check
@@ -92,7 +92,7 @@ No authentication. All data is public.
 > 7. "Is 1707 Jones St, San Francisco, CA on Fabrica, and can I add land in Coconino County, Arizona?" (find_us_parcel, check_county_coverage)
 > 8. "How does the Fabrica trust work? Then draft an email to Fabrica support asking for help with my onramp." (ask_fabrica, contact_fabrica_support)
 
-Confirm you have run every tool yourself. Our record: `npm run regression` against the hosted mainnet server, 45/45 cases on 2026-10-17 (after the stale `get_land_activity` case was updated), plus the card seen rendering in Claude on 2026-10-17.
+Confirm you have run every tool yourself. Our record: `npm run regression` against the hosted mainnet server, 47/47 cases on 2026-10-19 after the tool renames, plus the card seen rendering in Claude on 2026-10-17.
 
 ## Compliance (7 acknowledgments)
 
