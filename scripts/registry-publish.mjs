@@ -38,9 +38,15 @@ async function post(path, body, token) {
   return { status: response.status, json };
 }
 
-const pem = process.env.MCP_REGISTRY_PRIVATE_KEY
-  ?? await readFile(process.env.MCP_REGISTRY_KEY_PATH ?? join(homedir(), ".config/mcp-registry/fabrica-land-ed25519.pem"), "utf8");
-const key = createPrivateKey(pem);
+const keyPath = process.env.MCP_REGISTRY_KEY_PATH ?? join(homedir(), ".config/mcp-registry/fabrica-land-ed25519.pem");
+let key;
+try {
+  key = createPrivateKey(process.env.MCP_REGISTRY_PRIVATE_KEY ?? await readFile(keyPath, "utf8"));
+} catch (error) {
+  const source = process.env.MCP_REGISTRY_PRIVATE_KEY ? "MCP_REGISTRY_PRIVATE_KEY" : keyPath;
+  console.error(`No usable registry key at ${source} (${error.code ?? error.message}). Set MCP_REGISTRY_PRIVATE_KEY to the PEM text, or MCP_REGISTRY_KEY_PATH to the PEM file of the fabrica.land DNS key.`);
+  process.exit(1);
+}
 const timestamp = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
 const signature = sign(null, Buffer.from(timestamp), key).toString("hex");
 const auth = await post("/v0.1/auth/dns", { domain: "fabrica.land", timestamp, signed_timestamp: signature });
