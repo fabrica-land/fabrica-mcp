@@ -9,7 +9,7 @@ const OUTPUT = ".vercel/output";
 const FUNCTION_DIR = `${OUTPUT}/functions/mcp.func`;
 // Sign requests (ENG-5073): the sign page reads and completes them at /sign-requests/{id}.
 const SIGN_REQUESTS_DIR = `${OUTPUT}/functions/sign-requests.func`;
-// Discovery documents: /.well-known/mcp.json and /.well-known/mcp/server-card.json.
+// Discovery documents: /.well-known/mcp.json, /.well-known/mcp/server-card.json and /.well-known/ai-catalog.json.
 const WELL_KNOWN_DIR = `${OUTPUT}/functions/well-known.func`;
 const isSepolia = process.env.FABRICA_NETWORK?.toLowerCase() === "sepolia";
 const networkLabel = isSepolia ? "Sepolia testnet" : "Ethereum mainnet";
@@ -82,6 +82,7 @@ await writeFile(`${OUTPUT}/config.json`, JSON.stringify({
     { src: "^/sign-requests/([^/]+)/?$", dest: "/sign-requests?id=$1" },
     { src: "^/\\.well-known/mcp\\.json$", dest: "/well-known?doc=manifest" },
     { src: "^/\\.well-known/mcp/server-card\\.json$", dest: "/well-known?doc=server-card" },
+    { src: "^/\\.well-known/ai-catalog\\.json$", dest: "/well-known?doc=ai-catalog" },
     { handle: "filesystem" },
   ],
 }, null, 2));

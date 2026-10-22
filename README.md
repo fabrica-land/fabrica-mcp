@@ -40,7 +40,7 @@ claude mcp add --transport http fabrica-testnet https://mcp-testnet.fabrica.land
 
 Any other client that supports remote MCP servers (Streamable HTTP) works the same way. Add both URLs as two separate servers if you want to try things on testnet before mainnet: the network is fixed per URL, so an agent can never reach mainnet through the testnet server.
 
-**Discovery without a registry:** each host serves `/.well-known/mcp.json` (URL, transport, auth, docs, the other network's server) and `/.well-known/mcp/server-card.json` (the same plus every tool with its title and annotations, the prompts and the resource templates). The card is read from the running server, so it always matches what that host registers.
+**Discovery without a registry:** each host serves `/.well-known/mcp.json` (URL, transport, auth, docs, the other network's server) and `/.well-known/mcp/server-card.json` (the same plus every tool with its title and annotations, the prompts and the resource templates), plus `/.well-known/ai-catalog.json`, the AI Catalog that domain-level discovery reads first, pointing at both servers' cards. The card is read from the running server, so it always matches what that host registers.
 
 ### Run locally (stdio)
 

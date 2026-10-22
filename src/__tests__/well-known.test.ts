@@ -99,6 +99,22 @@ describe("well-known routing", () => {
     expect(parseWellKnownUrl("/.well-known/mcp.json?doc=server-card")).toBe("manifest");
     expect(parseWellKnownUrl("/.well-known/mcp/server-card.json?doc=manifest")).toBe("server-card");
     expect(parseWellKnownUrl("/well-known?doc=server-card")).toBe("server-card");
+    expect(parseWellKnownUrl("/.well-known/ai-catalog.json?doc=manifest")).toBe("ai-catalog");
+  });
+
+  it("serves an AI Catalog that points at both servers' cards", async () => {
+    for (const path of ["/.well-known/ai-catalog.json", "/well-known?doc=ai-catalog"]) {
+      const response = await get(path);
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toMatch(/^application\/ai-catalog\+json/);
+      expect(JSON.parse(response.body)).toEqual({
+        specVersion: "1.0",
+        entries: [
+          { identifier: "urn:air:fabrica.land:mcp:mcp", type: "application/mcp-server-card+json", url: "https://mcp.fabrica.land/.well-known/mcp/server-card.json" },
+          { identifier: "urn:air:fabrica.land:mcp:mcp-testnet", type: "application/mcp-server-card+json", url: "https://mcp-testnet.fabrica.land/.well-known/mcp/server-card.json" },
+        ],
+      });
+    }
   });
 
   it("keeps the description in buyer vocabulary and inside the wording rules", async () => {

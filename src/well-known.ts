@@ -10,6 +10,7 @@ import { createServer } from "./server.js";
  * Discovery documents for clients that start from the domain:
  *   GET /.well-known/mcp.json              where the server is, its transport and auth, the docs
  *   GET /.well-known/mcp/server-card.json  the same plus the tools, prompts and resource templates
+ *   GET /.well-known/ai-catalog.json       the AI Catalog that domain-level discovery fetches first: both servers' cards
  * The card is read from a live in-process server, so it lists exactly what this deployment
  * registers (sign-request tools appear only where the store is configured) and cannot drift.
  * On Vercel the routes rewrite to /well-known?doc=…; a plain Node server passes the path.
@@ -22,8 +23,9 @@ export const DOCS_URL = "https://docs.fabrica.land/docs/ai-agents";
 /** Buyer vocabulary first, as in the directory one-liner and the registry entry; the card schema caps it at 100 characters. */
 export const SERVER_DESCRIPTION = "US land for sale and any US parcel by address or APN: maps, Property checks, taxes, trust documents.";
 export const SERVER_CARD_SCHEMA = "https://static.modelcontextprotocol.io/schemas/v1/server-card.schema.json";
-// The card's registered media type (ext-server-card discovery); the manifest stays plain JSON.
+// Registered media types from the ext-server-card discovery doc; the manifest stays plain JSON.
 const SERVER_CARD_MEDIA_TYPE = "application/mcp-server-card+json";
+const AI_CATALOG_MEDIA_TYPE = "application/ai-catalog+json";
 const REPOSITORY = { url: "https://github.com/fabrica-land/fabrica-mcp", source: "github" };
 
 const CORS_HEADERS: Record<string, string> = {
@@ -55,6 +57,21 @@ export function mcpManifest(): object {
     serverCard: new URL("/.well-known/mcp/server-card.json", thisUrl()).toString(),
     skill: new URL("/skill.md", thisUrl()).toString(),
     otherServers: [otherNetwork()],
+  };
+}
+
+/** Both networks' cards, mainnet first; identifiers follow urn:air:{publisher}:{namespace}:{name} for land.fabrica/{name}. */
+export function aiCatalog(): object {
+  return {
+    specVersion: "1.0",
+    entries: [
+      { name: "mcp", url: MAINNET_MCP_URL },
+      { name: "mcp-testnet", url: TESTNET_MCP_URL },
+    ].map(({ name, url }) => ({
+      identifier: `urn:air:fabrica.land:mcp:${name}`,
+      type: SERVER_CARD_MEDIA_TYPE,
+      url: new URL("/.well-known/mcp/server-card.json", url).toString(),
+    })),
   };
 }
 
@@ -100,13 +117,22 @@ export async function serverCard(): Promise<object> {
   }
 }
 
+type WellKnownDoc = "manifest" | "server-card" | "ai-catalog";
+
+const MEDIA_TYPES: Record<WellKnownDoc, string> = {
+  manifest: "application/json",
+  "server-card": SERVER_CARD_MEDIA_TYPE,
+  "ai-catalog": AI_CATALOG_MEDIA_TYPE,
+};
+
 /** Which document a request asks for: the path when it names one, else the query the Vercel rewrite adds. */
-export function parseWellKnownUrl(url: string | undefined): "manifest" | "server-card" | null {
+export function parseWellKnownUrl(url: string | undefined): WellKnownDoc | null {
   const parsed = new URL(url ?? "/", "http://localhost");
   if (/^\/\.well-known\/mcp\.json$/.test(parsed.pathname)) return "manifest";
   if (/^\/\.well-known\/mcp\/server-card\.json$/.test(parsed.pathname)) return "server-card";
+  if (/^\/\.well-known\/ai-catalog\.json$/.test(parsed.pathname)) return "ai-catalog";
   const doc = parsed.searchParams.get("doc");
-  return doc === "manifest" || doc === "server-card" ? doc : null;
+  return doc === "manifest" || doc === "server-card" || doc === "ai-catalog" ? doc : null;
 }
 
 export async function handleWellKnownHttp(req: McpHttpRequest, res: ServerResponse): Promise<void> {
@@ -128,9 +154,9 @@ export async function handleWellKnownHttp(req: McpHttpRequest, res: ServerRespon
     return;
   }
   try {
-    const body = doc === "manifest" ? mcpManifest() : await serverCard();
+    const body = doc === "manifest" ? mcpManifest() : doc === "ai-catalog" ? aiCatalog() : await serverCard();
     // The edge keeps a copy for an hour; a deploy starts a fresh cache.
-    res.writeHead(200, { "Content-Type": `${doc === "server-card" ? SERVER_CARD_MEDIA_TYPE : "application/json"}; charset=utf-8`, "Cache-Control": "public, max-age=300, s-maxage=3600" });
+    res.writeHead(200, { "Content-Type": `${MEDIA_TYPES[doc]}; charset=utf-8`, "Cache-Control": "public, max-age=300, s-maxage=3600" });
     res.end(req.method === "HEAD" ? undefined : JSON.stringify(body, null, 2));
   } catch (error) {
     console.error("Well-known document failed:", error);
