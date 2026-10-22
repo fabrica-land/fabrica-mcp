@@ -76,6 +76,8 @@ ui/
     store.ts          # SignRequestStore: Vercel KV / Upstash REST (or an in-process map locally), HMAC-checked records, 15-minute expiry
     http.ts           # GET /sign-requests/{id} and POST /sign-requests/{id}/result for the Soil sign page (contract on ENG-5073)
   vercel-sign-requests.ts # Vercel function entry for /sign-requests
+  well-known.ts       # /.well-known/mcp.json, /.well-known/mcp/server-card.json, /.well-known/ai-catalog.json (card read from a live in-process server)
+  vercel-well-known.ts # Vercel function entry for /.well-known
   lifecycle.ts        # propertyStage(): premint, minted, off-ramp, burned (get_land_property, search rows)
   fees.ts             # fees assessed on a token, by currency address
   types/
