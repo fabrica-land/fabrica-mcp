@@ -1,0 +1,10 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "land.fabrica/mcp",
+  "title": "Fabrica",
+  "description": "US land for sale and any US parcel by address or APN: maps, Property checks, taxes, trust documents.",
+  "version": "0.2.0",
+  "websiteUrl": "https://docs.fabrica.land/docs/ai-agents",
+  "repository": { "url": "https://github.com/fabrica-land/fabrica-mcp", "source": "github" },
+  "remotes": [{ "type": "streamable-http", "url": "https://mcp.fabrica.land/mcp" }]
+}
