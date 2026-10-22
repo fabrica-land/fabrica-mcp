@@ -9,7 +9,7 @@ const OUTPUT = ".vercel/output";
 const FUNCTION_DIR = `${OUTPUT}/functions/mcp.func`;
 // Sign requests (ENG-5073): the sign page reads and completes them at /sign-requests/{id}.
 const SIGN_REQUESTS_DIR = `${OUTPUT}/functions/sign-requests.func`;
-// Discovery documents (ENG-5139): /.well-known/mcp.json and /.well-known/mcp/server-card.json.
+// Discovery documents: /.well-known/mcp.json and /.well-known/mcp/server-card.json.
 const WELL_KNOWN_DIR = `${OUTPUT}/functions/well-known.func`;
 const isSepolia = process.env.FABRICA_NETWORK?.toLowerCase() === "sepolia";
 const networkLabel = isSepolia ? "Sepolia testnet" : "Ethereum mainnet";

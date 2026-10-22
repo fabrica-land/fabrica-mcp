@@ -7,7 +7,7 @@ import type { McpHttpRequest } from "./http.js";
 import { createServer } from "./server.js";
 
 /**
- * Discovery documents for clients that start from the domain (ENG-5139):
+ * Discovery documents for clients that start from the domain:
  *   GET /.well-known/mcp.json              where the server is, its transport and auth, the docs
  *   GET /.well-known/mcp/server-card.json  the same plus the tools, prompts and resource templates
  * The card is read from a live in-process server, so it lists exactly what this deployment
