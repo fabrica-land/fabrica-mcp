@@ -67,6 +67,7 @@ describe.each([
     const expected = await registeredToolNames();
     const response = await get("/.well-known/mcp/server-card.json");
     expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toMatch(/^application\/mcp-server-card\+json/);
     const card = JSON.parse(response.body);
     expect(card).toMatchObject({
       $schema: "https://static.modelcontextprotocol.io/schemas/v1/server-card.schema.json",

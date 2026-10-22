@@ -22,6 +22,8 @@ export const DOCS_URL = "https://docs.fabrica.land/docs/ai-agents";
 /** Buyer vocabulary first, as in the directory one-liner and the registry entry; the card schema caps it at 100 characters. */
 export const SERVER_DESCRIPTION = "US land for sale and any US parcel by address or APN: maps, Property checks, taxes, trust documents.";
 export const SERVER_CARD_SCHEMA = "https://static.modelcontextprotocol.io/schemas/v1/server-card.schema.json";
+// The card's registered media type (ext-server-card discovery); the manifest stays plain JSON.
+const SERVER_CARD_MEDIA_TYPE = "application/mcp-server-card+json";
 const REPOSITORY = { url: "https://github.com/fabrica-land/fabrica-mcp", source: "github" };
 
 const CORS_HEADERS: Record<string, string> = {
@@ -128,7 +130,7 @@ export async function handleWellKnownHttp(req: McpHttpRequest, res: ServerRespon
   try {
     const body = doc === "manifest" ? mcpManifest() : await serverCard();
     // The edge keeps a copy for an hour; a deploy starts a fresh cache.
-    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=300, s-maxage=3600" });
+    res.writeHead(200, { "Content-Type": `${doc === "server-card" ? SERVER_CARD_MEDIA_TYPE : "application/json"}; charset=utf-8`, "Cache-Control": "public, max-age=300, s-maxage=3600" });
     res.end(req.method === "HEAD" ? undefined : JSON.stringify(body, null, 2));
   } catch (error) {
     console.error("Well-known document failed:", error);
