@@ -89,6 +89,8 @@ export interface SignRequestBackend {
   /** Store with the given time to live; `keepTtl` keeps the key's remaining time instead. */
   set(key: string, value: string, ttl: { seconds: number } | "keep"): Promise<void>;
   get(key: string): Promise<string | null>;
+  /** Store only when the key is absent; true when this call stored it. */
+  setIfAbsent(key: string, value: string, ttl: { seconds: number }): Promise<boolean>;
 }
 
 export class MemoryBackend implements SignRequestBackend {
@@ -105,6 +107,11 @@ export class MemoryBackend implements SignRequestBackend {
       return null;
     }
     return entry.value;
+  }
+  async setIfAbsent(key: string, value: string, ttl: { seconds: number }): Promise<boolean> {
+    if (await this.get(key) !== null) return false;
+    await this.set(key, value, ttl);
+    return true;
   }
 }
 
@@ -132,6 +139,9 @@ export class RedisRestBackend implements SignRequestBackend {
   async get(key: string): Promise<string | null> {
     const result = await this.command(["GET", key]);
     return typeof result === "string" ? result : null;
+  }
+  async setIfAbsent(key: string, value: string, ttl: { seconds: number }): Promise<boolean> {
+    return await this.command(["SET", key, value, "EX", ttl.seconds, "NX"]) === "OK";
   }
 }
 
@@ -169,6 +179,16 @@ export class SignRequestStore {
     const actual = Buffer.from(stored.data.mac);
     if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return null;
     return stored.data.record;
+  }
+
+  /**
+   * Tie a loan to one request, so one signed loan never completes two requests made for the same
+   * terms. True when the loan is this request's: claimed now, or by this request before.
+   */
+  async claimLoan(record: SignRequest, loanId: string): Promise<boolean> {
+    const key = `sign-request-loan:${record.action}:${loanId}`;
+    if (await this.backend.setIfAbsent(key, record.id, { seconds: SIGN_REQUEST_RETENTION_SECONDS })) return true;
+    return await this.backend.get(key) === record.id;
   }
 
   /** Record the signer's result. Keeps the original expiry. */

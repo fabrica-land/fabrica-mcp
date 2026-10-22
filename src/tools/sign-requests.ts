@@ -528,7 +528,7 @@ export async function getSignRequest({ id }: GetSignRequestArgs) {
       const seen = isLoanAction(record)
         ? observeLoan(record, await getLoanContext({ tokenId: record.property.tokenId }))
         : await observe(record, await getSignContext({ tokenId: record.property.tokenId }));
-      if (seen) record = await store.complete(record, seen);
+      if (seen && (!("loanId" in seen) || await store.claimLoan(record, seen.loanId))) record = await store.complete(record, seen);
     } catch {
       // The order book check is best effort; the stored state still answers.
     }

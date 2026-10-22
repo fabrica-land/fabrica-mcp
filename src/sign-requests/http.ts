@@ -92,6 +92,10 @@ export async function handleSignRequestHttp(req: McpHttpRequest, res: ServerResp
       send(res, 409, { error: "does_not_match", message: verdict.reason });
       return;
     }
+    if (verdict.loanId && !(await store.claimLoan(record, verdict.loanId))) {
+      send(res, 409, { error: "does_not_match", message: "That loan is already recorded for another sign request." });
+      return;
+    }
     // A loan result keeps the loan it was verified against, as the polling path does.
     send(res, 200, signPageView(await store.complete(record, verdict.loanId ? { ...result.data, loanId: verdict.loanId } : result.data)));
   } catch (error) {
