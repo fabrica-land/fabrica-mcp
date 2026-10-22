@@ -117,6 +117,18 @@ describe("well-known routing", () => {
     }
   });
 
+  it("answers the ChatGPT domain challenge with the bare token, and 404 until one is set", async () => {
+    expect((await get("/.well-known/openai-apps-challenge")).status).toBe(404);
+    vi.stubEnv("OPENAI_APPS_CHALLENGE", "  tok_123abc\n");
+    for (const path of ["/.well-known/openai-apps-challenge", "/well-known?doc=openai-apps-challenge"]) {
+      const response = await get(path);
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toMatch(/^text\/plain/);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(response.body).toBe("tok_123abc");
+    }
+  });
+
   it("keeps the description in buyer vocabulary and inside the wording rules", async () => {
     const { SERVER_DESCRIPTION } = await import("../well-known.js");
     expect(SERVER_DESCRIPTION).toMatch(/land for sale/);

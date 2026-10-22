@@ -11,6 +11,7 @@ import { createServer } from "./server.js";
  *   GET /.well-known/mcp.json              where the server is, its transport and auth, the docs
  *   GET /.well-known/mcp/server-card.json  the same plus the tools, prompts and resource templates
  *   GET /.well-known/ai-catalog.json       the AI Catalog that domain-level discovery fetches first: both servers' cards
+ *   GET /.well-known/openai-apps-challenge the ChatGPT plugin domain-verification token, plain text, from OPENAI_APPS_CHALLENGE
  * The card is read from a live in-process server, so it lists exactly what this deployment
  * registers (sign-request tools appear only where the store is configured) and cannot drift.
  * On Vercel the routes rewrite to /well-known?doc=…; a plain Node server passes the path.
@@ -117,13 +118,20 @@ export async function serverCard(): Promise<object> {
   }
 }
 
-type WellKnownDoc = "manifest" | "server-card" | "ai-catalog";
+type WellKnownDoc = "manifest" | "server-card" | "ai-catalog" | "openai-apps-challenge";
+const DOCS: readonly WellKnownDoc[] = ["manifest", "server-card", "ai-catalog", "openai-apps-challenge"];
 
 const MEDIA_TYPES: Record<WellKnownDoc, string> = {
   manifest: "application/json",
   "server-card": SERVER_CARD_MEDIA_TYPE,
   "ai-catalog": AI_CATALOG_MEDIA_TYPE,
+  "openai-apps-challenge": "text/plain",
 };
+
+/** The token OpenAI's plugin dashboard issues for this host; unset means there is no challenge to answer. */
+function openAiAppsChallenge(): string | null {
+  return process.env.OPENAI_APPS_CHALLENGE?.trim() || null;
+}
 
 /** Which document a request asks for: the path when it names one, else the query the Vercel rewrite adds. */
 export function parseWellKnownUrl(url: string | undefined): WellKnownDoc | null {
@@ -131,8 +139,9 @@ export function parseWellKnownUrl(url: string | undefined): WellKnownDoc | null 
   if (/^\/\.well-known\/mcp\.json$/.test(parsed.pathname)) return "manifest";
   if (/^\/\.well-known\/mcp\/server-card\.json$/.test(parsed.pathname)) return "server-card";
   if (/^\/\.well-known\/ai-catalog\.json$/.test(parsed.pathname)) return "ai-catalog";
+  if (/^\/\.well-known\/openai-apps-challenge$/.test(parsed.pathname)) return "openai-apps-challenge";
   const doc = parsed.searchParams.get("doc");
-  return doc === "manifest" || doc === "server-card" || doc === "ai-catalog" ? doc : null;
+  return DOCS.find((name) => name === doc) ?? null;
 }
 
 export async function handleWellKnownHttp(req: McpHttpRequest, res: ServerResponse): Promise<void> {
@@ -151,6 +160,13 @@ export async function handleWellKnownHttp(req: McpHttpRequest, res: ServerRespon
   if (req.method !== "GET" && req.method !== "HEAD") {
     res.writeHead(405, { "Content-Type": "application/json", Allow: "GET, HEAD, OPTIONS" });
     res.end(JSON.stringify({ error: "method_not_allowed" }));
+    return;
+  }
+  if (doc === "openai-apps-challenge") {
+    // The verifier wants the bare token as the whole body: no JSON, no trailing newline, never cached.
+    const token = openAiAppsChallenge();
+    res.writeHead(token ? 200 : 404, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
+    res.end(req.method === "HEAD" || !token ? undefined : token);
     return;
   }
   try {
