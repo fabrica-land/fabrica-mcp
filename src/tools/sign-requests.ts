@@ -4,9 +4,9 @@
 // holds no key, signs nothing and submits nothing: it prepares, the person decides.
 import { z } from "zod";
 import { getLoanContext, getSignContext, isTokenNotFound } from "../clients/graphql.js";
-import { CHAIN_ID, getTransaction, getTransactionReceipt } from "../clients/rpc.js";
+import { CHAIN_ID, getBlockTimestamp, getTransaction, getTransactionReceipt } from "../clients/rpc.js";
 import { IS_MAINNET, MAINNET_WARNING, NETWORK, NETWORK_LABEL, WEB_BASE } from "../config.js";
-import type { LoanContextToken, SignContextOrder, SignContextToken } from "../types/index.js";
+import type { LoanContextLoan, LoanContextToken, SignContextOrder, SignContextToken } from "../types/index.js";
 import {
   getSignRequestStore,
   isExpired,
@@ -423,28 +423,50 @@ export function isLoanAction(record: SignRequest): boolean {
   return LOAN_ACTIONS.has(record.action);
 }
 
+/** A pool loan on the terms the request asked for: the principal to the cent and the loan length. */
+function hasRequestedTerms(record: SignRequest, loan: LoanContextLoan): boolean {
+  if (loan.loanProvider !== "PoolLending") return false;
+  const { amountUsd, durationDays } = record.loan ?? {};
+  if (amountUsd !== undefined && Math.abs(Number(loan.principalScaled) - amountUsd) >= 0.005) return false;
+  return durationDays === undefined || Number(loan.durationSeconds) === durationDays * 86_400;
+}
+
 /**
- * What the token's loans say happened to a borrow or repay request, or null when they show nothing yet.
- * Borrow: an active pool loan to this wallet, started after the request. Repay: the named loan is repaid.
+ * The loan a borrow or repay request is about, once the token's loans show it done. Borrow: an active
+ * pool loan to this wallet on the requested terms, started after the request. Repay: the named loan, repaid.
  */
-export function observeLoan(record: SignRequest, token: LoanContextToken): { loanId: string } | null {
+function findLoan(record: SignRequest, token: LoanContextToken): LoanContextLoan | null {
   const loans = token.loans ?? [];
   if (record.action === "borrow_against_land") {
-    const loan = loans.find(l => l.loanStatus === "Active" && same(l.borrower.address, record.wallet) && Date.parse(l.startTime) >= createdSecond(record));
-    return loan ? { loanId: loan.loanId } : null;
+    return loans.find(l => l.loanStatus === "Active" && same(l.borrower.address, record.wallet) && Date.parse(l.startTime) >= createdSecond(record) && hasRequestedTerms(record, l)) ?? null;
   }
   if (record.action === "repay_land_loan") {
     const loan = loans.find(l => l.loanId === record.loan?.loanId);
-    return loan?.loanStatus === "Repaid" ? { loanId: loan.loanId } : null;
+    return loan?.loanStatus === "Repaid" ? loan : null;
   }
   return null;
 }
 
+/** What the token's loans say happened to a borrow or repay request, or null when they show nothing yet. */
+export function observeLoan(record: SignRequest, token: LoanContextToken): { loanId: string } | null {
+  const loan = findLoan(record, token);
+  return loan ? { loanId: loan.loanId } : null;
+}
+
+/**
+ * A borrow or repay result holds when the transaction succeeded, was sent by the request's wallet after
+ * the request was made, touched the loan's contract, and the token's loans show the request done.
+ */
 async function verifyLoanResult(record: SignRequest, result: SignResult): Promise<{ ok: true } | { ok: false; reason: string }> {
   if (!("transactionHash" in result)) return { ok: false, reason: `A ${record.action} sign request completes with a transaction, not an order hash.` };
   const [transaction, receipt] = await Promise.all([getTransaction(result.transactionHash), getTransactionReceipt(result.transactionHash)]);
   if (!transaction || receipt?.status !== "0x1" || !same(transaction.from, record.wallet)) return { ok: false, reason: "The transaction did not succeed, or was not sent by the request's wallet." };
-  return observeLoan(record, await getLoanContext({ tokenId: record.property.tokenId })) ? { ok: true } : { ok: false, reason: "The property's loans do not show this request as done (yet)." };
+  const minedAt = await getBlockTimestamp(receipt.blockNumber);
+  if (minedAt === null || minedAt < createdSecond(record)) return { ok: false, reason: "The transaction was mined before this sign request was made." };
+  const loan = findLoan(record, await getLoanContext({ tokenId: record.property.tokenId }));
+  if (!loan) return { ok: false, reason: "The property's loans do not show this request as done (yet)." };
+  const touchesLoan = same(transaction.to, loan.loanContract) || (receipt.logs ?? []).some(log => same(log.address, loan.loanContract));
+  return touchesLoan ? { ok: true } : { ok: false, reason: "The transaction did not go through this loan's contract." };
 }
 
 export const signResultSchema = z.union([

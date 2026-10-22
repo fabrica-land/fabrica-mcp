@@ -530,7 +530,7 @@ const GET_LOAN_CONTEXT_QUERY = gql`
       tokenId name vanityName propertyLink contractAddress
       poolLendingLiquidity { appraisalBlockReason maxPrincipalScaled durations activeLoan { id borrowerAddress principal repayment duration maturity } }
       loans {
-        loanId loanStatus loanProvider loanType
+        loanId loanStatus loanProvider loanType loanContract
         principalScaled maxRepaymentScaled livePayoffScaled payoffAsOf currencySymbol
         aprPercent durationFormatted durationSeconds startTime maturityDate
         loanRepaidDate loanLiquidationDate

@@ -12,10 +12,11 @@ vi.mock("../clients/rpc.js", () => ({
   CHAIN_ID: 1,
   getTransaction: vi.fn(),
   getTransactionReceipt: vi.fn(),
+  getBlockTimestamp: vi.fn(),
 }));
 
 import { getAllLoans, getLoanContext, getSignContext } from "../clients/graphql.js";
-import { getTransaction, getTransactionReceipt } from "../clients/rpc.js";
+import { getBlockTimestamp, getTransaction, getTransactionReceipt } from "../clients/rpc.js";
 import { borrowAgainstLand, closestDuration, getLoan, prepareBorrow, prepareRepay, repayLandLoan } from "../tools/loans.js";
 import { getSignRequest, signPageView, verifyResult } from "../tools/sign-requests.js";
 import { MemoryBackend, setSignRequestStore, SignRequestStore } from "../sign-requests/store.js";
@@ -24,6 +25,7 @@ const NOW = Date.parse("2026-10-22T00:00:00Z");
 const OWNER = "0x2222222222222222222222222222222222222222";
 const OTHER = "0x1111111111111111111111111111111111111111";
 const TX = `0x${"c".repeat(64)}`;
+const POOL = "0x842ffbf1ad5314503904626122376f71603a3cf9";
 const DAY = 86_400;
 
 function token(overrides: Partial<SignContextToken> = {}): SignContextToken {
@@ -56,6 +58,7 @@ function loan(overrides: Partial<LoanContextLoan> = {}): LoanContextLoan {
     loanStatus: "Active",
     loanProvider: "PoolLending",
     loanType: "Prorated",
+    loanContract: POOL,
     principalScaled: "500",
     maxRepaymentScaled: "520.5",
     livePayoffScaled: "505.25",
@@ -140,9 +143,22 @@ describe("borrow_against_land", () => {
     if (!("signRequest" in result)) throw new Error(JSON.stringify(result));
     const pending = await getSignRequest({ id: result.signRequest.id });
     expect(pending).toMatchObject({ status: "pending" });
-    vi.mocked(getLoanContext).mockResolvedValue(context({ loans: [loan({ loanId: "900", startTime: new Date(NOW + 60_000).toISOString() })] }));
+    const started = new Date(NOW + 60_000).toISOString();
+    vi.mocked(getLoanContext).mockResolvedValue(context({ loans: [loan({ loanId: "900", startTime: started, principalScaled: "400", durationSeconds: String(30 * DAY) })] }));
     const done = await getSignRequest({ id: result.signRequest.id });
     expect(done).toMatchObject({ status: "completed", result: { loanId: "900" } });
+  });
+
+  it("does not take a new loan on other terms as the borrow", async () => {
+    const result = await borrowAgainstLand({ tokenId: "123", amountUsd: 400, wallet: OWNER });
+    if (!("signRequest" in result)) throw new Error(JSON.stringify(result));
+    const startTime = new Date(NOW + 60_000).toISOString();
+    vi.mocked(getLoanContext).mockResolvedValue(context({ loans: [
+      loan({ loanId: "901", startTime, principalScaled: "500", durationSeconds: String(30 * DAY) }),
+      loan({ loanId: "902", startTime, principalScaled: "400", durationSeconds: String(60 * DAY) }),
+      loan({ loanId: "903", startTime, principalScaled: "400", durationSeconds: String(30 * DAY), loanProvider: "NFTfi" }),
+    ] }));
+    expect(await getSignRequest({ id: result.signRequest.id })).toMatchObject({ status: "pending" });
   });
 
   it("does not take an older loan by the same wallet as the borrow", async () => {
@@ -188,12 +204,31 @@ describe("repay_land_loan", () => {
     const record = await getSignRequestStore()?.get(result.signRequest.id);
     if (!record) throw new Error("not stored");
     expect(signPageView(record)).toMatchObject({ action: "repay", params: { loanId: "777" } });
-    vi.mocked(getTransaction).mockResolvedValue({ hash: TX, from: OWNER, to: null, blockNumber: "0x1", value: "0x0" });
+    vi.mocked(getTransaction).mockResolvedValue({ hash: TX, from: OWNER, to: POOL, blockNumber: "0x1", value: "0x0" });
     vi.mocked(getTransactionReceipt).mockResolvedValue({ status: "0x1", blockNumber: "0x1", gasUsed: "0x1" });
+    vi.mocked(getBlockTimestamp).mockResolvedValue(NOW + 60_000);
     expect(await verifyResult(record, { transactionHash: TX })).toMatchObject({ ok: false });
     vi.mocked(getLoanContext).mockResolvedValue(context({ loans: [loan({ loanStatus: "Repaid" })] }));
     expect(await verifyResult(record, { transactionHash: TX })).toEqual({ ok: true });
     expect(await verifyResult(record, { orderHash: TX })).toMatchObject({ ok: false });
+  });
+
+  it("refuses a transaction mined before the request, or one that never touched the loan's contract", async () => {
+    const result = await repayLandLoan({ tokenId: "123", wallet: OWNER });
+    if (!("signRequest" in result)) throw new Error(JSON.stringify(result));
+    const { getSignRequestStore } = await import("../sign-requests/store.js");
+    const record = await getSignRequestStore()?.get(result.signRequest.id);
+    if (!record) throw new Error("not stored");
+    vi.mocked(getLoanContext).mockResolvedValue(context({ loans: [loan({ loanStatus: "Repaid" })] }));
+    vi.mocked(getTransactionReceipt).mockResolvedValue({ status: "0x1", blockNumber: "0x1", gasUsed: "0x1" });
+    vi.mocked(getTransaction).mockResolvedValue({ hash: TX, from: OWNER, to: POOL, blockNumber: "0x1", value: "0x0" });
+    vi.mocked(getBlockTimestamp).mockResolvedValue(NOW - DAY * 1000);
+    expect(await verifyResult(record, { transactionHash: TX })).toMatchObject({ ok: false, reason: expect.stringMatching(/before this sign request/) });
+    vi.mocked(getBlockTimestamp).mockResolvedValue(NOW + 60_000);
+    vi.mocked(getTransaction).mockResolvedValue({ hash: TX, from: OWNER, to: OTHER, blockNumber: "0x1", value: "0x0" });
+    expect(await verifyResult(record, { transactionHash: TX })).toMatchObject({ ok: false, reason: expect.stringMatching(/loan's contract/) });
+    vi.mocked(getTransactionReceipt).mockResolvedValue({ status: "0x1", blockNumber: "0x1", gasUsed: "0x1", logs: [{ address: POOL.toUpperCase().replace("0X", "0x") }] });
+    expect(await verifyResult(record, { transactionHash: TX })).toEqual({ ok: true });
   });
 });
 
