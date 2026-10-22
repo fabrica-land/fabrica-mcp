@@ -20,30 +20,32 @@ search_land, get_land_property (renders the property card), get_fabrica_lending_
 
 **One-liner** (200 max):
 
-> Find US land for sale, mostly vacant lots and acreage, by state, county and acres, with property records, parcel maps, tax status and borrowing estimates. Look up any US parcel by address or APN.
+> Find US land for sale on Fabrica, mostly vacant land, lots and acreage, by county, acres and price. See property records, parcel maps and property taxes. Look up any US parcel by address or APN.
 
 **Description** (2,000 max):
 
-> Find land for sale across the US, mostly vacant lots and acreage, and research each property's records, parcel map, taxes and value. Look up any US parcel by street address or APN (assessor parcel number) to see whether it is on Fabrica and whether its county is covered. Fabrica gives Claude read-only access to its land marketplace and real estate data, with no account and no setup.
+> Find US land for sale on Fabrica, mostly vacant lots and acreage. Search by state, county, acres and price, then explore property records, a parcel map, property taxes and value for properties on Fabrica.
+>
+> For any US parcel, look it up by address or APN (assessor parcel number) to identify it, see whether it is on Fabrica and check county coverage. Records, maps, tax status, valuations and borrowing estimates are available only for properties on Fabrica.
 >
 > With it, Claude can:
-> - Search land for sale by state, county, acres, price, price per acre and distance from a point
-> - Show a parcel as a card with its parcel map, photos, acreage and key facts, with buttons that open it on Fabrica
-> - Pull a property's full record: legal description, county, valuation sources, property tax status, ownership, marketplace listings and offers, and the trust agreement of the trust that holds title
-> - Explain a property's Property checks, check by check
-> - Return parcel boundaries as GeoJSON, and map images of a parcel or of every property a wallet holds
-> - Look up any US parcel by address or APN, and say whether its county can be brought onto Fabrica
-> - Estimate what a property could borrow from the DeFi lending pool, and summarize that pool
-> - Show a wallet's portfolio and the onchain activity of a property, a wallet or the whole network
-> - Answer questions about how Fabrica works from its documentation and help center, with links to the source
+> - Search Fabrica land by state, county, acres, price, price per acre, distance from a point, listing status and loan status, and sort results
+> - Show an interactive property card with a map, photos, key facts and buttons that open fabrica.land
+> - Read trust documents, property tax status, valuations, listings and offers for Fabrica properties
+> - Explain Property checks, check by check
+> - Return parcel boundaries as GeoJSON and map images for a Fabrica property or wallet portfolio
+> - Estimate borrowing against a property's token from the DeFi lending pool, and summarize the lending market and loan book
+> - Show Fabrica wallet portfolios, property onchain activity and network statistics
+> - Answer Fabrica questions from documentation and help-center sources, with links
+> - Draft a support email without sending it
 >
 > Every property on Fabrica is a real US parcel held in a trust, and an ERC-1155 token on Ethereum represents the beneficial interest in that trust.
 >
-> Every tool is read-only. The connector never signs, sends or changes anything, and it serves public data from Fabrica's own API. The card's buttons open fabrica.land, where any purchase, offer or loan happens.
+> Every tool is read-only. The connector provides public data and never signs transactions, sends support emails or changes property records. Card buttons open fabrica.land.
 >
 > Properties on Fabrica are real parcels of land, and acting on them has legal and tax consequences set out in each token's trust agreement. The connector provides information, not financial or legal advice.
 
-**Categories** (1 to 5, pick the closest the portal offers): Real estate, Finance, Data & analytics, Maps / location, Research.
+**Categories** (1 to 5, pick the closest the portal offers): Real estate, Maps / location, Research, Data & analytics, Finance.
 
 **Documentation URL:** https://docs.fabrica.land/docs/ai-agents
 
