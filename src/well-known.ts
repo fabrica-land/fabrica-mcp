@@ -1,5 +1,6 @@
 import type { ServerResponse } from "node:http";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { SUPPORTED_PROTOCOL_VERSIONS } from "@modelcontextprotocol/sdk/types.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { IS_MAINNET, NETWORK, NETWORK_LABEL } from "./config.js";
 import type { McpHttpRequest } from "./http.js";
@@ -18,8 +19,10 @@ export const MAINNET_MCP_URL = "https://mcp.fabrica.land/mcp";
 export const TESTNET_MCP_URL = "https://mcp-testnet.fabrica.land/mcp";
 export const DOCS_URL = "https://docs.fabrica.land/docs/ai-agents";
 
-/** Buyer vocabulary first, as in the directory one-liner and the registry entry. */
-export const SERVER_DESCRIPTION = "US land and property records: search land for sale, look up any US parcel by address or APN, parcel maps, Property checks, trust documents, tax status and borrowing estimates on Fabrica.";
+/** Buyer vocabulary first, as in the directory one-liner and the registry entry; the card schema caps it at 100 characters. */
+export const SERVER_DESCRIPTION = "US land for sale and any US parcel by address or APN: maps, Property checks, taxes, trust documents.";
+export const SERVER_CARD_SCHEMA = "https://static.modelcontextprotocol.io/schemas/v1/server-card.schema.json";
+const REPOSITORY = { url: "https://github.com/fabrica-land/fabrica-mcp", source: "github" };
 
 const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -65,14 +68,20 @@ export async function serverCard(): Promise<object> {
       client.listPrompts(),
       client.listResourceTemplates(),
     ]);
+    // Identity, transport and protocol versions in the MCP Server Card v1 shape (the same name as the
+    // registry entry); serverInfo, authentication and the primitives are what Smithery's scan reads.
     return {
-      serverInfo: { name: info?.name, title: info?.title, version: info?.version },
+      $schema: SERVER_CARD_SCHEMA,
+      name: IS_MAINNET ? "land.fabrica/mcp" : "land.fabrica/mcp-testnet",
+      version: info?.version,
+      title: IS_MAINNET ? "Fabrica" : "Fabrica (Sepolia testnet)",
       description: SERVER_DESCRIPTION,
+      websiteUrl: DOCS_URL,
+      repository: REPOSITORY,
+      remotes: [{ type: "streamable-http", url: thisUrl(), supportedProtocolVersions: SUPPORTED_PROTOCOL_VERSIONS }],
+      serverInfo: { name: info?.name, title: info?.title, version: info?.version },
       network: NETWORK,
-      url: thisUrl(),
-      transport: { type: "streamable-http", url: thisUrl() },
       authentication: { required: false },
-      documentation: DOCS_URL,
       tools: tools.map((tool) => ({
         name: tool.name,
         title: tool.title ?? tool.annotations?.title,
@@ -89,14 +98,13 @@ export async function serverCard(): Promise<object> {
   }
 }
 
-/** Which document a request asks for, from the query (Vercel rewrite) or the path. */
+/** Which document a request asks for: the path when it names one, else the query the Vercel rewrite adds. */
 export function parseWellKnownUrl(url: string | undefined): "manifest" | "server-card" | null {
   const parsed = new URL(url ?? "/", "http://localhost");
-  const doc = parsed.searchParams.get("doc");
-  if (doc === "manifest" || doc === "server-card") return doc;
   if (/^\/\.well-known\/mcp\.json$/.test(parsed.pathname)) return "manifest";
   if (/^\/\.well-known\/mcp\/server-card\.json$/.test(parsed.pathname)) return "server-card";
-  return null;
+  const doc = parsed.searchParams.get("doc");
+  return doc === "manifest" || doc === "server-card" ? doc : null;
 }
 
 export async function handleWellKnownHttp(req: McpHttpRequest, res: ServerResponse): Promise<void> {

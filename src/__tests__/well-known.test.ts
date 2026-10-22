@@ -68,7 +68,14 @@ describe.each([
     const response = await get("/.well-known/mcp/server-card.json");
     expect(response.status).toBe(200);
     const card = JSON.parse(response.body);
-    expect(card.url).toBe(url);
+    expect(card).toMatchObject({
+      $schema: "https://static.modelcontextprotocol.io/schemas/v1/server-card.schema.json",
+      name: network === "ethereum" ? "land.fabrica/mcp" : "land.fabrica/mcp-testnet",
+      version: expect.stringMatching(/^\d+\.\d+\.\d+$/),
+      remotes: [expect.objectContaining({ type: "streamable-http", url })],
+    });
+    expect(card.name).toMatch(/^[a-zA-Z0-9.-]+\/[a-zA-Z0-9._-]+$/);
+    expect(card.description.length).toBeLessThanOrEqual(100);
     expect(card.serverInfo.name).toBe("fabrica-mcp");
     expect(card.tools.map((tool: { name: string }) => tool.name)).toEqual(expected);
     for (const tool of card.tools) {
@@ -86,9 +93,17 @@ describe("well-known routing", () => {
     expect((await get("/.well-known/mcp.json", "OPTIONS")).status).toBe(204);
   });
 
+  it("serves the document the path names, whatever the query says", async () => {
+    const { parseWellKnownUrl } = await import("../well-known.js");
+    expect(parseWellKnownUrl("/.well-known/mcp.json?doc=server-card")).toBe("manifest");
+    expect(parseWellKnownUrl("/.well-known/mcp/server-card.json?doc=manifest")).toBe("server-card");
+    expect(parseWellKnownUrl("/well-known?doc=server-card")).toBe("server-card");
+  });
+
   it("keeps the description in buyer vocabulary and inside the wording rules", async () => {
     const { SERVER_DESCRIPTION } = await import("../well-known.js");
     expect(SERVER_DESCRIPTION).toMatch(/land for sale/);
+    expect(SERVER_DESCRIPTION.length).toBeLessThanOrEqual(100);
     expect(SERVER_DESCRIPTION).not.toMatch(/—|land loan|600\+/);
   });
 });
