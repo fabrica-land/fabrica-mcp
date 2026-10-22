@@ -26,6 +26,7 @@ src/
   vercel.ts           # Vercel function entry, bundled by scripts/build-vercel.mjs
   ui/property-card.ts # registers the property card MCP App resource (ui://fabrica/property-card)
   ui/generated/       # gitignored: HTML built from /ui by scripts/build-ui.mjs
+server.json, server.testnet.json # MCP Registry entries (land.fabrica/mcp, land.fabrica/mcp-testnet); npm run registry:publish
 skills/fabrica/SKILL.md # Agent Skills file, served at /skill.md by scripts/build-vercel.mjs; keep it in step with the tools
 ui/
   property-card/      # the MCP App view (index.html template + app.ts), bundled with the

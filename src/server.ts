@@ -99,7 +99,7 @@ export function createServer(hooks: ServerHooks = {}): McpServer {
     {
       name: "fabrica-mcp",
       title: "Fabrica",
-      version: "0.1.0",
+      version: "0.2.0",
     },
     {
       instructions: signRequestsEnabled() ? SERVER_INSTRUCTIONS + SIGN_REQUEST_INSTRUCTIONS : SERVER_INSTRUCTIONS,

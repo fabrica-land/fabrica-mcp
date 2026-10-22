@@ -1,0 +1,10 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "land.fabrica/mcp-testnet",
+  "title": "Fabrica (Sepolia testnet)",
+  "description": "Fabrica test properties on Sepolia: try every Fabrica tool with no real-world effect.",
+  "version": "0.2.0",
+  "websiteUrl": "https://docs.fabrica.land/docs/ai-agents",
+  "repository": { "url": "https://github.com/fabrica-land/fabrica-mcp", "source": "github" },
+  "remotes": [{ "type": "streamable-http", "url": "https://mcp-testnet.fabrica.land/mcp" }]
+}
