@@ -1,4 +1,4 @@
-// Pending sign requests (ENG-5073). A prepare tool writes one record; the Soil sign page reads it
+// Pending sign requests. A prepare tool writes one record; the Soil sign page reads it
 // by id, the person signs there with their own wallet, and the page reports the order hash or
 // transaction hash back. The record never holds a key or a signature. Records live in the MCP's
 // own store (Vercel KV / Upstash Redis over REST), expire 15 minutes after creation, and carry an
@@ -53,7 +53,7 @@ export const signRequestSchema = z.object({
   summary: z.array(z.string()),
   warnings: z.array(warningSchema),
   // The EIP-712 typed data or unsigned transaction. Null until the MCP can build orders for a
-  // connected user (Connect Fabrica, ENG-5004); the sign page builds them meanwhile.
+  // connected user (Connect Fabrica); the sign page builds them meanwhile.
   payload: z.null(),
   createdAt: z.string(),
   expiresAt: z.string(),

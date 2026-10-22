@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 /**
- * ENG-4993: the seven things the 2026-09-27 live run showed an agent could relay as wrong.
+ * The seven things the 2026-09-27 live run showed an agent could relay as wrong.
  * One fixture per item.
  */
 
@@ -136,7 +136,7 @@ describe("2. liquidation counts carry their scope", () => {
 });
 
 describe("3. name and slug are passed through as the API returns them", () => {
-  it("does not rewrite the name or the property link (the mismatch is API data, ENG-5012)", async () => {
+  it("does not rewrite the name or the property link (the mismatch is API data)", async () => {
     const result = await getProperty({ tokenId: token.tokenId }) as Record<string, unknown>;
     expect(result.name).toBe("157 Madrone Way, Felton, CA");
     expect(result.propertyLink).toBe(token.propertyLink);
@@ -226,7 +226,7 @@ describe("display valuation", () => {
   });
 });
 
-describe("ENG-4462: bounded responses", () => {
+describe("bounded responses", () => {
   it("pages a wallet's properties and keeps the counts whole", async () => {
     const tokens = Array.from({ length: 7 }, (_, i) => walletToken({ tokenId: String(i), name: `Lot ${i}`, estimatedValue: "1000", supplyUnderLoan: "0", marketplacePrice: null }));
     vi.mocked(getWallet).mockResolvedValue(wallet({ address: "0xabc", tokenCount: "7", tokens }));

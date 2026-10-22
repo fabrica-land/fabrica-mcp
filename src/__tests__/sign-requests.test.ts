@@ -142,7 +142,7 @@ describe("helpers", () => {
     expect(usdToRaw(12.345)).toBe("12350000");
   });
 
-  it("builds the sign link on the property page with the ENG-5071 query and the id", () => {
+  it("builds the sign link on the property page with the sign page's query and the id", () => {
     const link = signLink("123", { action: "offer", amount: "500" }, "sr_x");
     expect(link).toBe("https://fabrica.land/property/ethereum/123?action=offer&amount=500&request=sr_x");
   });
@@ -396,7 +396,7 @@ describe("the sign page endpoints", () => {
     await new Promise<void>((resolve) => httpServer.close(() => resolve()));
   });
 
-  it("serves the ENG-5071 view with CORS, 404s an unknown id and 410s an expired one", async () => {
+  it("serves the sign page's view with CORS, 404s an unknown id and 410s an expired one", async () => {
     const r = record();
     await store.create(r);
     const response = await fetch(`${base}/${r.id}`);
