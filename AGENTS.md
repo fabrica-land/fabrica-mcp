@@ -261,7 +261,7 @@ Run tests with `npm test` (vitest). Tests cover config, scoring, spam filtering,
 | `fabrica-land/fabrica-v3-contracts` | The public Solidity smart contracts (ERC-1155): onchain data structures, view functions, events |
 | `fabrica-land/fabrica-connectors` | The trust agreement: trust structure, beneficiary rights |
 
-This repository is public. Code, comments, docs, tests, commit messages and pull request titles carry no internal tracker ids (Linear `ENG-…`, `ASK-…`), no internal names or decisions, no business numbers and no credentials; describe the behavior instead. `src/__tests__/public-repo.test.ts` fails on a tracker id in a tracked file. The API's own schema descriptions (`schema/api-schema.graphql`, `src/clients/generated/`) are copied verbatim and exempt.
+This repository is public. Code, comments, docs, tests, commit messages and pull request titles carry no internal tracker ids (Linear `ENG-…`, `ASK-…`), no internal names or decisions, no business numbers and no credentials; describe the behavior instead. `src/__tests__/public-repo.test.ts` fails on a tracker id in a tracked file; commit messages and pull request titles follow the rule by review, and commits made before the rule are left as they are. The API's own schema descriptions (`schema/api-schema.graphql`, `src/clients/generated/`) are copied verbatim and exempt.
 
 ---
 
