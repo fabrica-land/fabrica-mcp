@@ -108,9 +108,11 @@ export class MemoryBackend implements SignRequestBackend {
     }
     return entry.value;
   }
+  // Check and insert with no await between them, so concurrent claims cannot both win.
   async setIfAbsent(key: string, value: string, ttl: { seconds: number }): Promise<boolean> {
-    if (await this.get(key) !== null) return false;
-    await this.set(key, value, ttl);
+    const current = this.entries.get(key);
+    if (current && current.expiresAt > Date.now()) return false;
+    this.entries.set(key, { value, expiresAt: Date.now() + ttl.seconds * 1000 });
     return true;
   }
 }

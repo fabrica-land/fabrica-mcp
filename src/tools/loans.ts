@@ -3,6 +3,7 @@
 // borrow or payoff dialog on fabrica.land, prefilled. The person signs there with their own wallet;
 // the server holds no key and submits nothing. get_land_loan reads one loan's state and payoff.
 import { z } from "zod";
+import { MAX_LOANS, loansMayBeIncomplete } from "../clients/budgets.js";
 import { getAllLoans, getLoanContext, isTokenNotFound } from "../clients/graphql.js";
 import { IS_MAINNET, NETWORK_LABEL } from "../config.js";
 import { describeAppraisalBlock, formatLoanProvider, LENDING_POOL_NAME } from "../labels.js";
@@ -179,7 +180,9 @@ export async function getLoan({ tokenId, slug, loanId }: GetLoanArgs) {
   let propertyTokenId = tokenId;
   if (!tokenId && !slug && loanId) {
     try {
-      const match = (await getAllLoans()).find(l => l.loanId === loanId);
+      const loans = await getAllLoans();
+      const match = loans.find(l => l.loanId === loanId);
+      if (!match && loansMayBeIncomplete(loans)) return { error: `Loan ${loanId} is not among the first ${MAX_LOANS.toLocaleString("en-US")} loans the API returned. Pass the property (tokenId or slug) to look it up directly.` };
       if (!match) return { error: `No loan ${loanId} on ${NETWORK_LABEL}.` };
       propertyTokenId = match.collateralId;
     } catch (e) {

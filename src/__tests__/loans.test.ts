@@ -295,6 +295,12 @@ describe("get_land_loan", () => {
     expect(await getLoan({ loanId: "999" })).toMatchObject({ error: expect.stringMatching(/No loan 999/) });
   });
 
+  it("does not claim a loan is missing when the network walk hit its cap", async () => {
+    const { MAX_LOANS } = await import("../clients/budgets.js");
+    vi.mocked(getAllLoans).mockResolvedValue(Array.from({ length: MAX_LOANS }, (_, i) => networkLoan({ loanId: String(i), collateralId: "123" })));
+    expect(await getLoan({ loanId: "999999" })).toMatchObject({ error: expect.stringMatching(/not among the first .* Pass the property/) });
+  });
+
   it("needs a property or a loan id", async () => {
     expect(await getLoan({})).toMatchObject({ error: expect.stringMatching(/required/) });
   });

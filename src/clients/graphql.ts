@@ -528,7 +528,7 @@ const GET_LOAN_CONTEXT_QUERY = gql`
   query GetLoanContext($tokenId: String, $slug: String, $network: String) {
     token(tokenId: $tokenId, slug: $slug, network: $network) {
       tokenId name vanityName propertyLink contractAddress
-      poolLendingLiquidity { appraisalBlockReason maxPrincipalScaled durations activeLoan { id borrowerAddress principal repayment duration maturity } }
+      poolLendingLiquidity { appraisalBlockReason maxPrincipalScaled durations activeLoan { id } }
       loans {
         loanId loanStatus loanProvider loanType loanContract
         principalScaled maxRepaymentScaled livePayoffScaled payoffAsOf currencySymbol
