@@ -211,7 +211,7 @@ describe("repay_land_loan", () => {
     expect(await prepareRepay({ tokenId: "123", wallet: OTHER })).toMatchObject({ error: expect.stringMatching(/only its borrower/) });
     vi.mocked(getLoanContext).mockResolvedValue(context({ loans: [loan({ loanStatus: "Repaid" })] }));
     expect(await prepareRepay({ tokenId: "123", loanId: "777", wallet: OWNER })).toMatchObject({ error: expect.stringMatching(/repaid, no longer open/) });
-    expect(await prepareRepay({ tokenId: "123", wallet: OWNER })).toMatchObject({ error: expect.stringMatching(/no active loan/) });
+    expect(await prepareRepay({ tokenId: "123", wallet: OWNER })).toMatchObject({ error: expect.stringMatching(/no open loan/) });
   });
 
   it("still pays off a loan in default, before its auction", async () => {
