@@ -1,11 +1,11 @@
 {
- "builtAt": "2026-10-17",
+ "builtAt": "2026-10-22",
  "sources": {
   "docs": {
    "url": "https://docs.fabrica.land",
    "repo": "fabrica-land/docs",
    "ref": "v3.0",
-   "commit": "3b9d87dd0409cefed628b93b61ceb3aabdd6a200",
+   "commit": "b18a0eaa0505a35af5b78a5c21b97a1ced30d833",
    "documents": 47
   },
   "help": {
@@ -29,7 +29,7 @@
    "sectionTitle": "AI agents and MCP",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "Connect AI agents to Fabrica property data and documentation through hosted Model Context Protocol (MCP) servers.",
-   "updatedAt": "2026-10-16"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:c31810e1958f",
@@ -38,7 +38,7 @@
    "sectionTitle": "AI agents and MCP",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "The Fabrica MCP server gives AI agents read-only access to the data behind the Fabrica protocol: tokenized properties, the lending market, account portfolios, protocol-wide statistics, parcel geometry, and map images. It implements the Model Context Protocol (https://modelcontextprotocol.io) (MCP), the open standard that assistants and agent frameworks such as Claude, ChatGPT, and Cursor use to call external tools, so any MCP client that supports remote servers can connect to it.\n\nIt serves two audiences: people who use an AI assistant and want it to answer questions about Fabrica properties from live data, and developers building agents that reason over tokenized real property.\n\nEverything the server exposes is public data already available through the Fabrica GraphQL API. No API key, account, or wallet is required, and the server never asks for one.",
-   "updatedAt": "2026-10-16"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:de6becd4413e",
@@ -47,7 +47,7 @@
    "sectionTitle": "Hosted Endpoints",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "| Network | URL | Data |\n|---|---|---|\n| Ethereum mainnet | `https://mcp.fabrica.land/mcp` | Real US parcels. Responses carry a legal notice. |\n| Sepolia testnet | `https://mcp-testnet.fabrica.land/mcp` | Test properties only. |\n\nThe network is fixed per URL: an agent connected to the testnet server cannot reach mainnet data, and vice versa. Add both as separate servers if you want to try things on testnet before mainnet.\n\nThe hosted server is stateless. Each request is served by a fresh server instance with no session, the transport is Streamable HTTP with JSON responses, and only `POST` is accepted (a `GET` returns 405, and a request body over 1 MB is refused with 413). Browser-based clients can call it directly, since responses carry permissive CORS headers. The hosted endpoints are deployed from the `main` branch of the public repository, so they track its current tool set, and both serve the property card described below.",
-   "updatedAt": "2026-10-16"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:e2aa6a1d7e8c",
@@ -56,7 +56,7 @@
    "sectionTitle": "Connecting",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "**Claude (claude.ai and the desktop app):** Settings, then Connectors, then Add custom connector, and paste the URL.\n\n**Claude Code:**\n\n```bash\nclaude mcp add --transport http fabrica https://mcp.fabrica.land/mcp\nclaude mcp add --transport http fabrica-testnet https://mcp-testnet.fabrica.land/mcp\n```\n\n**Cursor** (`.cursor/mcp.json`):\n\n```json\n{\n  \"mcpServers\": {\n    \"fabrica\": { \"url\": \"https://mcp.fabrica.land/mcp\" }\n  }\n}\n```\n\nAny other client that supports remote MCP servers over Streamable HTTP is configured the same way.",
-   "updatedAt": "2026-10-16"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:044f2fde8f49",
@@ -65,7 +65,7 @@
    "sectionTitle": "Running Locally",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "The server also runs locally over stdio from a clone of the repository. It is not published to npm, so install from source (Node 20 or later):\n\n```bash\ngit clone https://github.com/fabrica-land/fabrica-mcp.git\ncd fabrica-mcp\nnpm install\nnpm run build\n```\n\nThen point your client at the built entry point. With Claude Code:\n\n```bash\nclaude mcp add fabrica -- node /absolute/path/to/fabrica-mcp/dist/index.js\n```\n\nWith Claude Desktop (`claude_desktop_config.json`), here selecting Sepolia:\n\n```json\n{\n  \"mcpServers\": {\n    \"fabrica\": {\n      \"command\": \"node\",\n      \"args\": [\"/absolute/path/to/fabrica-mcp/dist/index.js\"],\n      \"env\": { \"FABRICA_NETWORK\": \"sepolia\" }\n    }\n  }\n}\n```\n\nA local server connects to Ethereum mainnet unless told otherwise. All environment variables are optional:\n\n| Variable | Default | Purpose |\n|---|---|---|\n| `FABRICA_NETWORK` | `ethereum` | `ethereum` or `sepolia` |\n| `FABRICA_API_URL` | `https://api.fabrica.land/graphql` | Fabrica GraphQL API the tools read from |\n| `FABRICA_METASTREET_SUBGRAPH_URL` | selected per network | Subgraph the server reads lending-pool statistics from |\n| `FABRICA_MEDIA_URL` | `https://media.fabrica.land` | Media service that renders the map images |\n| `FABRICA_MCP_APPS` | `enabled` on Sepolia, `disabled` on mainnet | `enabled` or `disabled`: whether `get_land_property` also serves the property card |",
-   "updatedAt": "2026-10-16"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:43ac7946d353",
@@ -74,7 +74,7 @@
    "sectionTitle": "What the Server Can and Cannot Do",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "Every tool is read-only, and says so in the standard MCP way: each tool is registered with a human-readable `title` and with annotations `readOnlyHint: true`, `destructiveHint: false`, and `idempotentHint: true`, so a client that gates state-changing tools behind confirmation can treat every Fabrica tool as a plain read. The server queries the public Fabrica GraphQL API (plus a lending-pool subgraph for pool statistics and the Fabrica media service for map images) and returns formatted results. It holds no keys, signs nothing, and cannot transfer a token, list a property, place a bid, or open or repay a loan. An agent that wants to act on what it learns has to do so through the application (https://fabrica.land) or directly against the smart contracts with the user's own account.",
-   "updatedAt": "2026-10-16"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:5610e74944bb",
@@ -83,7 +83,7 @@
    "sectionTitle": "What the Server Can and Cannot Do",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "**Mainnet legal notice.** On the mainnet endpoint, the server's instructions carry a legal notice written as a statement of facts rather than as directions to the agent. It states that Fabrica properties are real parcels of land in the United States, each held in a trust whose beneficial interest is represented by an ERC-1155 token, and that acquiring, transferring, listing, or borrowing against a token has real-world legal and financial consequences: owning a token means owning the beneficial interest in the trust that holds the property, with the trustee designated by the token holder and by default the holder; owners can carry obligations tied to the land, such as property taxes, maintenance, and environmental liability; transfers and sales are legally binding and can trigger tax events such as capital gains or transfer taxes; the operating agreement (the trust instrument) attached to each token sets out the owner's rights and obligations, and its URL is included in property details; and the data is informational, not financial or legal advice. Property search, property detail, and protocol statistics responses on mainnet also carry a one-sentence version of the notice. The testnet server states instead that its properties are test tokens with no real-world legal or financial effect.",
-   "updatedAt": "2026-10-16"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:2e21654b0a9f",
@@ -92,7 +92,7 @@
    "sectionTitle": "What the Server Can and Cannot Do",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "**Default filters.** Property searches and protocol statistics exclude burned tokens, premints (properties still being added), and tokens below a minimum numeric encoding of Property checks, together with a small set of known spam entries. The default minimum is 72,032, the same threshold the Fabrica marketplace applies to its public listings; the API pairs any minimum with a verified-deed requirement, so the default leaves out every property the marketplace would not sell, including any whose recovery status is not Normal. The `minScore` input of `search_land` (the minimum numeric encoding) overrides the default. A search with `ownedBy` and no `minScore` lists every property in that account, as the owner's own holdings appear in the application, and `get_land_portfolio` applies no minimum.\n\n**Errors.** Tools return an `error` field with a plain-language message instead of raising, and a result that carries one is flagged with the MCP `isError` marker so clients can tell failure from data. A property that does not exist is reported as such; a failure of the underlying API is reported as an API error carrying the API's own message, so an agent can tell the two apart. A request to the underlying API that does not answer within 20 seconds is reported as an error that suggests retrying, and a map image larger than 5 MB is refused with a request for smaller dimensions. The county outline in `get_land_boundary` is an extra layer: if it cannot be fetched, the parcel geometry is still returned and the failure is listed under `warnings`.",
-   "updatedAt": "2026-10-16"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:963d9180d609",
@@ -101,7 +101,7 @@
    "sectionTitle": "Tool Reference",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "Eleven tools, all read-only. Inputs marked with an asterisk are required; every other input is optional. Property tools accept either a `tokenId` or the property `slug` from its Fabrica URL (for example `us/nevada/elko-county/elko/apn-063025003`).\n\n| Tool | Inputs | Returns |\n\n|---|---|---|\n\n| `search_land` | `region` (US state code), `minAcres`, `maxAcres`, `minScore`, `hasListings`, `hasLoans`, `ownedBy` (account address), `limit` (default 20, max 100), `offset` | Matching properties with location, acreage, the numeric encoding of Property checks, estimated value, listing price, loan flag, owner, and property link, plus the total match count for paging (an offset past the end says so rather than reporting no matches) |\n\n| `get_land_property` | `tokenId` or `slug` | Full detail: location, legal description and trust name, operating agreement URL, Property checks (how many pass, with each check's result and the numeric encoding), valuation with per-source pricing, ownership and holders, active loans and DeFi lending pool capacity, active listings and bids (in US dollars when the API prices them so, otherwise in the order's own currency), the owner's description and photos (up to eight, with resized thumbnails) and parcel map image links in both themes, recent activity, whether the property is still a premint, and warnings for recovery, default, or liquidation status. Boundary geometry comes from `get_land_boundary` |",
-   "updatedAt": "2026-10-16"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:8dcbeb77e6e9",
@@ -110,7 +110,7 @@
    "sectionTitle": "Tool Reference",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "| `get_land_boundary` | `tokenId` or `slug`, `includeCountyBounds` (default true) | GeoJSON FeatureCollection with the parcel boundary (or a point when no boundary exists) and the county outline |\n\n| `get_land_map_image` | `tokenId` or `slug`, `theme` (`dark` by default, or `light`), `width`, `height` (100 to 1280 pixels, default 640) | Inline static map image of the parcel boundary, or a pin when no boundary exists |\n\n| `explain_property_checks` | `tokenId` or `score` | Explains Property checks: a digit-by-digit breakdown of the numeric encoding's five groups against the 75,342 maximum, with the individual check results when a token is given. The result states that the encoding is positional, not a percentage or a grade, and no percentage is reported |\n\n| `get_fabrica_lending_market` | `status` (`active`, `repaid`, `liquidated`, `all`), `borrower`, `lender`, `since` (ISO date), `limit` (default 20, max 100) | Market summary (loans by status, loan volume per currency, average APR of active loans), DeFi lending pool statistics (value locked, in use, available, utilization, loan counts), matching loans with their terms and venue, and the ten most recent loan events |\n\n| `estimate_land_borrowing` | `tokenId` or `slug` | DeFi lending pool availability for the property (the advertised maximum principal in whole USDC, rounded down, subject to available pool liquidity, and the available durations) and any active loan on it. The amount is an estimate; the amount and rate are set by a live quote when borrowing |",
-   "updatedAt": "2026-10-16"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:0ec02ed7e897",
@@ -119,7 +119,7 @@
    "sectionTitle": "Tool Reference",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "| `get_land_portfolio` | `address`* | Properties held, lending positions as borrower and as lender, credit history, marketplace activity, and total portfolio value for an account, scoped to the server's network and token contract. The outstanding-loans total is null when a loan has no dollar price |\n\n| `get_land_portfolio_map_image` | `address`*, `theme`, `width`, `height` | Inline static map with every property held by the account plotted as points |\n\n| `get_land_activity` | `tokenId`, `slug`, or `address`; `type` (for example `loan`, `transfer`, `sale`, `mint`); `limit` | Event timeline for a property or an account: mints, transfers, sales, loans started, repaid, or liquidated, and configuration changes |\n\n| `get_fabrica_stats` | none | Protocol-wide figures: token count and estimated value, states represented, loan counts and loan volume per currency, lending-pool statistics, active listings, and the token contract address (on mainnet, the retired peer-to-peer lending contracts are listed separately as historical) |",
-   "updatedAt": "2026-10-16"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:f0a895f82b83",
@@ -128,7 +128,7 @@
    "sectionTitle": "Tool Reference",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "Monetary values are formatted in US dollars where the source provides a dollar figure. Activity amounts are derived from the event's own currency amount and decimals: stablecoin amounts read as dollars and other currencies in their own unit (for example WETH), and the API's dollar figure is used only as a fallback. Loan principals are stated in the loan's own currency, and loan volumes are totaled per currency rather than summed across currencies or presented as dollars. Each loan and lending event names its venue: pool loans read \"Pool-based lending\", and loans made through the former peer-to-peer integration are labeled as retired. Borrow quotes list only the DeFi lending pool, since that integration has shut down (see Peer-to-Peer Lending). Loan counts are reported by status; the server does not publish an aggregate repayment rate. This table is derived from the server source and checked against the hosted endpoints; the `tools/list` response of the deployment you are connected to is authoritative.",
-   "updatedAt": "2026-10-16"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:5765f12e559a",
@@ -137,7 +137,7 @@
    "sectionTitle": "Property Card (MCP App)",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "In clients that support MCP Apps (https://github.com/modelcontextprotocol/ext-apps), such as Claude on the web and in the desktop app, `get_land_property` renders a property card inline in the conversation instead of a block of JSON. The card shows:\n\n- a gallery with the parcel map first, followed by the owner's photos when the property has any\n- the property name, location, and acreage\n- how many Property checks pass (for example \"16 of 18 pass\", as on fabrica.land), estimated value, listing price, and borrowing capacity\n- **Buy** (when the property is listed and its token has been issued), **Make an offer**, **Contact owner**, and **View on Fabrica** buttons\n\nEvery button opens the property's page on Fabrica, where the user completes the action and signs with their own account. The server never prepares or submits a transaction, so the card changes how the data is shown, not what the server can do. Clients without MCP Apps support receive the same data as JSON.\n\nThe card is served as an MCP resource at `ui://fabrica/property-card`, and the `get_land_property` tool points to it through its metadata; a client that supports MCP Apps picks it up automatically. It renders in the client's sandbox and loads images only from Fabrica's IPFS gateway, the Fabrica media service, and the map-tile provider behind it. Both hosted endpoints serve the card. A local server serves it by default on Sepolia and not on mainnet; set `FABRICA_MCP_APPS=enabled` to turn it on there, or `disabled` to turn it off.",
-   "updatedAt": "2026-10-16"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:bdeb2f2b195d",
@@ -146,7 +146,7 @@
    "sectionTitle": "Repository",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "The server is developed in the public repository github.com/fabrica-land/fabrica-mcp (https://github.com/fabrica-land/fabrica-mcp) under the MIT license. The repository also holds a checked-in snapshot of the GraphQL schema that every query is validated against, so an upstream API change surfaces as a reviewable diff rather than a runtime failure.",
-   "updatedAt": "2026-10-16"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:4a8ddeaedd32",
@@ -155,7 +155,7 @@
    "sectionTitle": "Documentation server",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "`https://docs.fabrica.land/mcp` gives agents this documentation and the API reference. Add it the same way when an agent needs to answer questions about the protocol, the trust, or the API.",
-   "updatedAt": "2026-10-16"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:5ee0bbdfe044",
@@ -164,7 +164,7 @@
    "sectionTitle": "Other resources for agents",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "- `fabrica.land/llms.txt` (https://fabrica.land/llms.txt): a summary of Fabrica written for language models, served as `text/markdown`, listing the hosted MCP servers, the GraphQL endpoint, the token contract and the documentation. Every page of fabrica.land points to it with `Link: </llms.txt>; rel=\"describedby\"` and `rel=\"llms-txt\"` headers, and a request for the homepage with `Accept: text/markdown` returns it in place of the HTML (other pages are not served as markdown)\n- GraphQL API at `https://api.fabrica.land/graphql`: public, no API key, introspection enabled",
-   "updatedAt": "2026-10-16"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:a09ca0c24aa4",
@@ -173,7 +173,7 @@
    "sectionTitle": "Related",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "- Build on Fabrica, the permissionless primitives on which an agent's findings can be acted\n- Property checks, what each check tests and how to read the numeric encoding that `explain_property_checks` decodes\n- Property Valuation and Price Oracle, where the estimated values come from\n- [Fabrica API Reference](../reference/fabrica-v3-api), the REST surface alongside the GraphQL API the server reads",
-   "updatedAt": "2026-10-16"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:088a38e000a6",
@@ -3863,7 +3863,7 @@
    "sectionTitle": "Property checks",
    "url": "https://docs.fabrica.land/docs/confidence-scoring-system",
    "text": "What each property check tests, where its data comes from, and how the results are encoded as a 5-digit number\n\n**Property checks** are the tests a validator runs on each property token: at issuance, on transactions, and periodically. Each check tests one thing about the token, its owners, or the property, and draws on a stated data source: county records, lien data, identity-verification records, ownership and transfer history, or Fabrica requirements. Not every check is a comparison with county records.\n\nProperty checks are a starting point for your own research, not a title search or title insurance.\n\n> Property checks were formerly called the Provenance Score (and, in earlier versions of these docs, the confidence score). The feature and its identifiers are unchanged.\n\n> Property checks are a work in progress and continue to evolve as Fabrica refines its validation approach.",
-   "updatedAt": "2026-10-09"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:c221f535371c",
@@ -3872,7 +3872,7 @@
    "sectionTitle": "Identifiers",
    "url": "https://docs.fabrica.land/docs/confidence-scoring-system",
    "text": "Validators also publish the results as a 5-digit number: **the numeric encoding of Property checks**. Existing identifiers keep their names for compatibility:\n\n* `score`: the numeric encoding of Property checks\n* `confidenceScore`: the numeric encoding of Property checks\n* `explain_property_checks` (MCP tool): explains the numeric encoding by group, digit by digit. Individual check results must be read separately for the token\n* `minScore` (search parameter): the minimum numeric encoding a property must have to be returned\n\nThe numeric encoding groups the results differently from the Property checks checklist in the Fabrica app, and it does not show every individual result. It is not the same list, and it is not a percentage, grade or rating.\n\nThe fastest read is the leading digit: a value starting with **7** indicates a property in normal standing, while any other leading digit signals the token-property link is compromised or under review and should be treated with caution. The rest of this page explains how each digit is composed.",
-   "updatedAt": "2026-10-09"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:e7f03c1953a3",
@@ -3881,7 +3881,7 @@
    "sectionTitle": "Encoding structure",
    "url": "https://docs.fabrica.land/docs/confidence-scoring-system",
    "text": "The numeric encoding uses a **positional digit system** where each digit represents a group of checks:\n\n| Position       | Group              | Max | What the group covers                                       |\n| -------------- | ------------------ | --- | ----------------------------------------------------------- |\n| Ten-Thousands  | `recoveryStatus`   | 7   | Recovery and integrity status of the token-property link    |\n| Thousands      | `pastTitleAndLoad` | 5   | Title, legal description, liens and taxes for the property  |\n| Hundreds       | `ownership`        | 3   | Identity-verification records and contact for the owners    |\n| Tens           | `onChainHistory`   | 4   | Theft reports, flagged addresses, fees and transfer timing  |\n| Ones           | `basicValidation`  | 2   | Foundational documents and metadata the token must carry    |\n\nThe maximum possible value is **75,342**.\n\n**Example:** A value of `72101` breaks down as:\n\n* `recoveryStatus` = 7 (Normal)\n* `pastTitleAndLoad` = 2\n* `ownership` = 1\n* `onChainHistory` = 0\n* `basicValidation` = 1\n\nThe most significant digits (leftmost) represent the most critical ownership-related checks.",
-   "updatedAt": "2026-10-09"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:2af38e9b05ab",
@@ -3890,7 +3890,7 @@
    "sectionTitle": "Recovery Status Digit",
    "url": "https://docs.fabrica.land/docs/confidence-scoring-system",
    "text": "The most significant digit reflects the recovery status of the property. Unlike the other digits, which are computed from Property checks, this digit is set administratively based on recovery events.\n\n| Value | Status             | Description                                                                                                                                                                                                                                       |\n\n| ----- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n\n| 7     | Normal             | Default state. No recovery activity.                                                                                                                                                                                                              |\n\n| 6     | Recovery Pending   | A §10.2 Notice of Lost Token Control has been recorded by the Beneficiary to recover access. Token-property link intact; Quiet Period running.                                                                                                    |\n\n| 5     | Stolen             | The token has been reported as stolen via an unauthorized transfer.                                                                                                                                                                               |",
-   "updatedAt": "2026-10-09"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:95ce76a105cd",
@@ -3899,7 +3899,7 @@
    "sectionTitle": "Recovery Status Digit",
    "url": "https://docs.fabrica.land/docs/confidence-scoring-system",
    "text": "| 4     | Distressed         | The Property is at material risk of loss to a third party through involuntary process (tax sale, judicial foreclosure of a pre-existing lien, eminent domain, or equivalent). The Trust still holds title and the Beneficiary may still cure. Reversible upon cure. |\n\n| 1     | Void               | The token has been permanently dissociated from the Property and the Trust following an Alternative Dissolution Event or involuntary loss of title. **Irreversible.**                                                                              |\n\nA value starting with `7` indicates a property in normal standing. Any other leading digit signals that the token-property link is compromised or under review, and applications should treat the token with caution regardless of the other digits.",
-   "updatedAt": "2026-10-09"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:e8cd5a129fe3",
@@ -3908,7 +3908,7 @@
    "sectionTitle": "Distressed (4) Lifecycle",
    "url": "https://docs.fabrica.land/docs/confidence-scoring-system",
    "text": "Like every recovery status, **Distressed** is set administratively: a validator assigns it after confirming that an involuntary process has been initiated against the Property that, if uncured, will result in loss of title. Status updates are not instantaneous; they follow the validator receiving and processing the evidence. Examples include:\n\n* The county has issued a tax certificate, tax sale notice, or equivalent post-delinquency instrument\n* A lienholder has commenced judicial foreclosure proceedings against the Property\n* A condemnation or eminent domain action has been filed\n\nWhile in the Distressed state, the Property is still held by the Trust and the Beneficiary may take action to cure (pay back taxes, satisfy the lien, etc.). After a successful cure, the validator can return the token to Normal (7). If the process completes and title transfers to a third party of record, the validator moves the token to Void (1).\n\nApplications surfacing a Distressed token to its Beneficiary should display a clear warning of the underlying risk and a path to cure.",
-   "updatedAt": "2026-10-09"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:5554848f651e",
@@ -3917,7 +3917,7 @@
    "sectionTitle": "The checks",
    "url": "https://docs.fabrica.land/docs/confidence-scoring-system",
    "text": "The thousands, hundreds and tens digits count the passing checks in their group. The ones digit (`basicValidation`) encodes two cumulative requirement levels, described below. The recovery digit is an administratively assigned status, described above. What each check tests and where its data comes from:\n\n**`pastTitleAndLoad` (thousands)**\n\n| Check | What it tests | Data source |\n| ----- | ------------- | ----------- |\n| `proofOfTitleValid` | The proof of title referenced by the token has been checked and confirmed | The recorded deed |\n| `claimMatchesLegalDescription` | The claim in the token matches the legal description on record | County records, through a third-party property data provider |\n| `holdingEntityMatchesOwnerNameAtAssessor` | The token's holding entity matches the owner name at the county assessor | County assessor records, through a third-party parcel data provider |\n| `noLiensFound` | No voluntary liens (such as a mortgage) with an open estimated balance were found. In the application a mortgage shows as \"On record\" (a claim the owner agreed to, usual for a home), not as an item to review, and it does not change the property's verdict; the check still earns no point in the numeric encoding | Lien data from a third-party property data provider |\n| `propertyTaxesCurrent` | Property taxes are up to date | County tax records |\n\n**`ownership` (hundreds)**",
-   "updatedAt": "2026-10-09"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:ea877b97e4bb",
@@ -3926,7 +3926,7 @@
    "sectionTitle": "The checks",
    "url": "https://docs.fabrica.land/docs/confidence-scoring-system",
    "text": "| Check | What it tests | Data source |\n| ----- | ------------- | ----------- |\n| `currentOwnersKycd` | Every current holder has an identity-verification record | Identity-verification records |\n| `allTransfersKycd` | Every recipient of a past transfer has an identity-verification record | Transfer history and identity-verification records |\n| `ownerHasVerifiedContact` | The majority owner has a verified email or phone on file | Fabrica account records |\n\n**`onChainHistory` (tens)**\n\n| Check | What it tests | Data source |\n| ----- | ------------- | ----------- |\n| `notReportedAsStolen` | The token is not on Fabrica's flagged-token list, and OpenSea does not flag it as suspicious (when OpenSea returns a result) | Fabrica's flagged-token list and the OpenSea API |\n| `currentOwnersNotInDarklist` | No current holder's address appears on the flagged-address list Fabrica uses | MyEtherWallet's public address darklist, with a copy embedded in the validator as a fallback |\n| `feesInGoodStanding` | Platform fees are in good standing (the deferred setup fee authorization is intact) | Fabrica requirements and onchain approvals |\n| `transferCooldownMet` | The required post-transfer cooldown period has elapsed | Onchain transfer history |\n\n**`basicValidation` (ones)**",
-   "updatedAt": "2026-10-09"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:f7503c11365a",
@@ -3935,7 +3935,7 @@
    "sectionTitle": "The checks",
    "url": "https://docs.fabrica.land/docs/confidence-scoring-system",
    "text": "| Check | What it tests | Data source |\n| ----- | ------------- | ----------- |\n| `holdingEntityDeclared` | A holding entity (trust/LLC) is declared | Token metadata |\n| `formationDocumentAvailable` | The holding entity's formation document (operating agreement) is linked | Token metadata |\n| `deedAvailable` | A proof of title document is linked | Token metadata |\n| `legalDescriptionAvailable` | The token's claim (legal description) is defined | Token metadata |\n| `coordinatesValid` | The property's geographic coordinates are valid | Token metadata |\n\nThe `basicValidation` digit is 1 when `holdingEntityDeclared`, `legalDescriptionAvailable` and `coordinatesValid` all pass, and 2 when `deedAvailable` and `formationDocumentAvailable` also pass.",
-   "updatedAt": "2026-10-09"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:bb8f7d7b030b",
@@ -3944,7 +3944,7 @@
    "sectionTitle": "Reading the numeric encoding",
    "url": "https://docs.fabrica.land/docs/confidence-scoring-system",
    "text": "Applications can read the numeric encoding from the API (`score`) or the MCP server (`explain_property_checks`) as one input to their own research before transacting.\n\nWhen reading it:\n\n* Check the recovery status digit first (ten-thousands). A value other than `7` indicates the token-property link is compromised or under review.\n* Check the next digits for ownership-critical status: title and liens (thousands) and owner verification (hundreds).\n* In the thousands, hundreds and tens positions, a higher digit means more checks in that group passed. The ones digit is a requirement level (0, 1 or 2), and the leading digit is a status, not a count.\n* Applications can parse individual digits to make decisions based on specific groups of checks, and should read the individual check results where a decision depends on one check.",
-   "updatedAt": "2026-10-09"
+   "updatedAt": "2026-10-19"
   },
   {
    "id": "docs:d2b8e50163ae",
@@ -4736,7 +4736,7 @@
    "sectionTitle": "What if I can't repay my loan by the due date?",
    "url": "https://help.fabrica.land/en/articles/8602900-what-if-i-can-t-repay-my-loan-by-the-due-date",
    "text": "We want you to know exactly how this works before you ever need it. Here is the full timeline, with no sugarcoating.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:ac6b0f6403a3",
@@ -4745,7 +4745,7 @@
    "sectionTitle": "Before the due date",
    "url": "https://help.fabrica.land/en/articles/8602900-what-if-i-can-t-repay-my-loan-by-the-due-date",
    "text": "We email you reminders 14 days, 5 days, and 1 day before your loan matures, in your property's local timezone. Important: emails can occasionally be marked as spam. Always set your own reminders. Default will occur regardless of any notification issues, and repayment responsibility lies solely with you.\n\nIf repaying in full is hard, check your property page for a Refinance option, and watch the reminder emails for an extension offer. Acting before the due date gives you the most options.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:4ac334323782",
@@ -4754,7 +4754,7 @@
    "sectionTitle": "At the due date",
    "url": "https://help.fabrica.land/en/articles/8602900-what-if-i-can-t-repay-my-loan-by-the-due-date",
    "text": "There is no grace period. If the loan is not fully repaid by the due date, it defaults. Two things are then true at once:\n\n- You are still the beneficial owner of your property.\n\n- The defaulted loan can now move toward liquidation.\n\nYour property page will show a Defaulted Loan card marked overdue.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:8be9db0b9119",
@@ -4763,7 +4763,7 @@
    "sectionTitle": "The notice period",
    "url": "https://help.fabrica.land/en/articles/8602900-what-if-i-can-t-repay-my-loan-by-the-due-date",
    "text": "Before any sale, a formal notice is issued under the UCC (the Uniform Commercial Code, the commercial law that governs secured loans). You then have at least 10 days' notice before the auction can begin. The notice explains your redemption rights and deadlines.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:1e5c186e30e4",
@@ -4772,7 +4772,7 @@
    "sectionTitle": "The auction",
    "url": "https://help.fabrica.land/en/articles/8602900-what-if-i-can-t-repay-my-loan-by-the-due-date",
    "text": "After the notice period, the property token is sold at a public auction. How long it runs depends on the lending pool: legacy pools ran 24-hour auctions, and newer pools run 2-week auctions. Bids are placed in USDC, a stablecoin (a digital dollar), with a minimum increase of 2% per bid.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:2ccaf48bdf71",
@@ -4781,7 +4781,7 @@
    "sectionTitle": "Your rights, plainly",
    "url": "https://help.fabrica.land/en/articles/8602900-what-if-i-can-t-repay-my-loan-by-the-due-date",
    "text": "- Before the auction starts, full repayment prevents it. Repay the full outstanding amount, including accrued interest and costs, and the process stops and your property returns to your account. Partial payments do not stop the process. Only full repayment does.\n\n- Once the auction starts, bidding in it is the only way to keep the property. You remain the owner until the auction closes, but when it closes, the winning bidder becomes the new owner. If you want to keep your property at that point, you have to be the winning bidder.\n\n- Surplus comes back to you. If the auction brings in more than your debt plus costs, the excess is returned to you. If it brings in less, you receive nothing, but the property is sold at public auction rather than simply taken by the lender.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:6f3197437839",
@@ -4790,7 +4790,7 @@
    "sectionTitle": "Afterward",
    "url": "https://help.fabrica.land/en/articles/8602900-what-if-i-can-t-repay-my-loan-by-the-due-date",
    "text": "The loan's only recourse is the property token itself. Once the liquidation completes, you owe nothing further, even if the auction brought in less than your debt. Fabrica does not report to credit bureaus, so a default here does not appear on your credit report.\n\nA default might affect your future borrowing on Fabrica, though: your repayment history here can be taken into account when future loan offers are calculated. If your situation is heading this way, talk to us early: open the chat bubble in the corner.\n\nLearn more: Loan defaults in detail (https://docs.fabrica.land/docs/loan-defaults)",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:6b83382ae878",
@@ -4835,7 +4835,7 @@
    "sectionTitle": "What happens when a loan defaults?",
    "url": "https://help.fabrica.land/en/articles/8673843-what-happens-when-a-loan-defaults",
    "text": "If you provide capital to a lending pool, you should know exactly what happens when a borrower does not repay. Here is the process, step by step.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:a599984a4e62",
@@ -4844,7 +4844,7 @@
    "sectionTitle": "The recovery process",
    "url": "https://help.fabrica.land/en/articles/8673843-what-happens-when-a-loan-defaults",
    "text": "- Default at maturity. There is no grace period. If a loan is not fully repaid by its due date, it is in default. Borrowers receive reminder emails 14 days, 5 days, and 1 day before maturity.\n\n- UCC notice. Before any sale, a formal disposition notice is issued under the UCC (the Uniform Commercial Code, the law governing secured lending). The borrower gets at least 10 days' notice.\n\n- Public auction. After the notice period, the property token is sold at a public auction. How long it runs depends on the pool: legacy pools ran 24-hour auctions, and newer pools run 2-week auctions. Bids are in USDC, a stablecoin (a digital dollar), with a minimum increase of 2% per bid.\n\n- Recovery. Auction proceeds repay the outstanding debt and costs. Any surplus above that is returned to the borrower.\n\nThe borrower can prevent the auction by repaying in full before it starts. Partial payments do not stop the process. Once the auction starts, the borrower keeps the property only by being the winning bidder. In this model the pool does not take the land directly; recovery comes through a public sale, which keeps the process clean and market-priced.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:40e4ec2fff51",
@@ -4853,7 +4853,7 @@
    "sectionTitle": "Why the collateral is enforceable",
    "url": "https://help.fabrica.land/en/articles/8673843-what-happens-when-a-loan-defaults",
    "text": "Each property sits in its own trust with a deed recorded at the county, and the property token controls the trust. Transfers of the token to lending contracts are custody only; beneficial ownership stays with the borrower until the collateral is sold at public auction. The collateral interest is designed around UCC Article 12, the commercial-law framework for digital assets. The legal protections for lenders are documented in detail in the developer docs linked below.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:f40cd39b9554",
@@ -4862,7 +4862,7 @@
    "sectionTitle": "Questions about a specific loan",
    "url": "https://help.fabrica.land/en/articles/8673843-what-happens-when-a-loan-defaults",
    "text": "If you are a depositor or lender with questions about a defaulted loan, email hello@fabrica.land or open the chat bubble in the corner.\n\nLearn more: Loan defaults (https://docs.fabrica.land/docs/loan-defaults) · Lender protections (https://docs.fabrica.land/docs/lender-protections) · UCC Article 12 (https://docs.fabrica.land/docs/ucc-article-12)",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:21e0a5d58586",
@@ -4952,7 +4952,7 @@
    "sectionTitle": "Your property taxes: who pays, how much, and why it matters",
    "url": "https://help.fabrica.land/en/articles/8809464-your-property-taxes-who-pays-how-much-and-why-it-matters",
    "text": "Owning land through Fabrica is real ownership. That means the property taxes are yours too. This article covers who pays, how to find your bill, and what happens if taxes go unpaid.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:5d6db429f1c6",
@@ -4961,7 +4961,7 @@
    "sectionTitle": "Who pays property taxes?",
    "url": "https://help.fabrica.land/en/articles/8809464-your-property-taxes-who-pays-how-much-and-why-it-matters",
    "text": "You do. Whoever owns the property on Fabrica at any given time is responsible for the property taxes, exactly as with any land you own. Fabrica does its best to surface tax information, but paying on time is your responsibility, and Fabrica is not responsible for late or missed payments.\n\nIf you buy a property and the previous owner left taxes unpaid, the outstanding balance follows the property. As the new owner, you owe it, and it may be difficult or impossible to recover that money from the seller. Check the tax status before you buy.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:d8aa0acfd151",
@@ -4970,7 +4970,7 @@
    "sectionTitle": "How much do I owe, and where do I pay?",
    "url": "https://help.fabrica.land/en/articles/8809464-your-property-taxes-who-pays-how-much-and-why-it-matters",
    "text": "Property taxes are set and collected by the county where the land sits. They are usually due once or twice a year, and the amount is based on the county's assessed value of the property.\n\nTo find your bill:\n\n- Search the web for your county's name plus \"property taxes\".\n\n- On the county website, look for the Tax Collector or Treasurer section.\n\n- Look up your property by its APN (the parcel number on your tax bill and on your Fabrica property page).\n\n- You can usually see the amount due, the due dates, and pay online.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:8886e4a2e988",
@@ -4979,7 +4979,7 @@
    "sectionTitle": "Why does the bill show a trust's name instead of mine?",
    "url": "https://help.fabrica.land/en/articles/8809464-your-property-taxes-who-pays-how-much-and-why-it-matters",
    "text": "At the county, your property is titled in the name of your own trust. That is how Fabrica ownership works: you are the beneficiary of the trust, and by default you are also your own trustee. Some counties are also slow to update their records after a transfer, so the bill may show the trust or a previous owner's name.\n\nRegardless of the name printed on the bill, the current owner is the one who owes the taxes. If you would like the name or mailing address on file corrected, contact us and we will help.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:04ef4f9057b6",
@@ -4988,7 +4988,7 @@
    "sectionTitle": "Don't wait for a notice",
    "url": "https://help.fabrica.land/en/articles/8809464-your-property-taxes-who-pays-how-much-and-why-it-matters",
    "text": "County mailing records can lag behind, so a tax bill may go to an old address or arrive late. You still owe the taxes even if no notice reaches you. Check your county's website at least once a year, or set a reminder around your county's due dates.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:81e78d4d157c",
@@ -4997,7 +4997,7 @@
    "sectionTitle": "What happens if taxes go unpaid",
    "url": "https://help.fabrica.land/en/articles/8809464-your-property-taxes-who-pays-how-much-and-why-it-matters",
    "text": "Unpaid property taxes have real consequences:\n\n- The county can place a lien on the property and eventually sell it at a tax sale.\n\n- Under the trust agreement, a tax sale can trigger automatic dissolution of your trust and void the token. In plain terms: if the county sells the land for unpaid taxes, the Fabrica token no longer represents anything.\n\n- Borrowing on Fabrica is blocked unless your taxes are verifiably current. If the tax status is unknown, that blocks loans too.\n\n- The \"Property taxes paid\" check in your property's Property checks stops passing, and buyers and lenders can see that on your property page.\n\nKeeping taxes current is the single most important thing you can do as an owner.\n\nIf you get stuck, message us through the chat bubble in the corner.\n\nLearn more: Property obligations (https://docs.fabrica.land/docs/property-obligations)",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:0e04bf352ebd",
@@ -5006,7 +5006,7 @@
    "sectionTitle": "Who is Fabrica?",
    "url": "https://help.fabrica.land/en/articles/8809585-who-is-fabrica",
    "text": "Fabrica serves as a facilitator in real estate transactions, connecting traditional property ownership with blockchain technology.\n\nFor its users, Fabrica utilizes blockchain technology to represent property ownership in a digital format. Each property is held in its own trust, which holds record title, and a digital Property Token represents ownership of that trust. Transferring the token transfers ownership of the trust, and with it the property.\n\nFor counties, Fabrica streamlines onchain information about the property to give assessors the relevant information they need to do their constitutional duties. When beneficial ownership of a property changes, a change of ownership is reported to the county through the normal channels.\n\nFor an overview of Fabrica, the protocol and live properties, see about.fabrica.land (https://about.fabrica.land).\n\nFor more detail on how the platform works, see the developer documentation at docs.fabrica.land (https://docs.fabrica.land), including the overview of the regulatory framework (https://docs.fabrica.land/docs/regulatory-framework). Questions are always welcome at hello@fabrica.land.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:cdae26989726",
@@ -5078,7 +5078,7 @@
    "sectionTitle": "What are my responsibilities as a property owner?",
    "url": "https://help.fabrica.land/en/articles/8848772-what-are-my-responsibilities-as-a-property-owner",
    "text": "Owning land through Fabrica is full ownership: possession, control, the right to sell, lease, or borrow against it, and all the income it produces. Full ownership also means the normal obligations of a landowner stay with you. Fabrica is the platform you own it through, not a property manager.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:3b9d7fd7f362",
@@ -5087,7 +5087,7 @@
    "sectionTitle": "Property taxes",
    "url": "https://help.fabrica.land/en/articles/8848772-what-are-my-responsibilities-as-a-property-owner",
    "text": "The big one. Taxes are owed to the county every year, whether or not a bill reaches you. Unpaid taxes can lead to liens, a county tax sale, a blocked loan capacity, and a \"Property taxes paid\" check that stops passing on your property page. See \"Your property taxes\" (https://help.fabrica.land/en/articles/8809464-who-pays-property-taxes) in this collection for the full picture.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:74ecc290f0b7",
@@ -5096,7 +5096,7 @@
    "sectionTitle": "Local rules and code compliance",
    "url": "https://help.fabrica.land/en/articles/8848772-what-are-my-responsibilities-as-a-property-owner",
    "text": "Counties and local authorities can require upkeep. A common example: in fire-prone areas you may be required to clear brush or keep trees pruned. Weed abatement, fencing, and dumping rules also come up. Notices about these usually come from the county, and mail sent to your property or trust is scanned and emailed to you, so read what arrives and act on it.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:c74e798e5a3e",
@@ -5105,7 +5105,7 @@
    "sectionTitle": "HOA dues and liens",
    "url": "https://help.fabrica.land/en/articles/8848772-what-are-my-responsibilities-as-a-property-owner",
    "text": "If the property sits in an HOA or a road-maintenance association, those dues are yours to pay. Any liens or assessments recorded against the property follow the property, not the previous owner, so keep an eye on them and resolve them where you can.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:ccf481d3c82a",
@@ -5114,7 +5114,7 @@
    "sectionTitle": "Insurance",
    "url": "https://help.fabrica.land/en/articles/8848772-what-are-my-responsibilities-as-a-property-owner",
    "text": "Fabrica does not insure your land. Whether to carry liability or other coverage is your decision, as it would be with any property you own, and it is worth discussing with an insurance professional, especially if people access the land.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:bda4b45c58fc",
@@ -5123,7 +5123,7 @@
    "sectionTitle": "The short version",
    "url": "https://help.fabrica.land/en/articles/8848772-what-are-my-responsibilities-as-a-property-owner",
    "text": "If a traditional landowner would have to handle it, you have to handle it. Fabrica gives you the tools to own, sell, and borrow at the speed of software, and forwards you the mail, but the land and its obligations are yours.\n\nQuestions about a specific notice or obligation? Message us through the chat bubble in the corner, or email hello@fabrica.land.\n\nLearn more: Property obligations (https://docs.fabrica.land/docs/property-obligations)",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:665d6b88e6a4",
@@ -5510,7 +5510,7 @@
    "sectionTitle": "What is the setup fee? (No charge today)",
    "url": "https://help.fabrica.land/en/articles/16280907-what-is-the-setup-fee-no-charge-today",
    "text": "There is no charge to add a property to Fabrica. During setup, a dialog called \"Setup fee\" asks you to authorize a one-time setup fee, currently $500 for most areas and always shown in the app before you authorize. Nothing is charged today. We collect it once, the first time you sell the property, borrow against it, or use it in another app, and it is waived if you remove the property without using it.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:0e6fc1c074b6",
@@ -5519,7 +5519,7 @@
    "sectionTitle": "What the dialog shows",
    "url": "https://help.fabrica.land/en/articles/16280907-what-is-the-setup-fee-no-charge-today",
    "text": "At the top you see the amount, for example \"$500.00\", with a \"$0 today\" label and the line \"One-time fee for adding this property\".\n\nUnder \"When it’s charged\", the dialog lists three moments:\n\n- \"Today\": \"Nothing is charged. You authorize us to collect it later.\"\n\n- \"When you first sell it, borrow against it, or use it in another app\": \"We collect it once, at that time.\"\n\n- \"If you remove the property unused\": \"The fee is waived. You never pay it.\"\n\nUsing it in another app means putting your property's digital ownership record to work in a service other than Fabrica.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:f9be7e1d23db",
@@ -5528,7 +5528,7 @@
    "sectionTitle": "What the fee covers",
    "url": "https://help.fabrica.land/en/articles/16280907-what-is-the-setup-fee-no-charge-today",
    "text": "Under \"What it covers\", the dialog lists everything included:\n\n- Online notarization\n\n- County recording\n\n- Identity verification\n\n- Digital ownership record",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:c6a47ac52912",
@@ -5537,7 +5537,7 @@
    "sectionTitle": "One click to authorize",
    "url": "https://help.fabrica.land/en/articles/16280907-what-is-the-setup-fee-no-charge-today",
    "text": "Click \"Authorize fee\". There is no box to check. Under the button, the dialog notes: \"By authorizing, you accept the Terms of Service.\" It also has a \"How the fee works\" link, which brings you to this article.\n\nYour account may ask you to confirm the request. If you decline it there, or something goes wrong, the dialog tells you that nothing was charged and offers \"Try again\" and \"Close\".",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:72b33cdfd6d7",
@@ -5546,7 +5546,7 @@
    "sectionTitle": "An allowance, not a payment",
    "url": "https://help.fabrica.land/en/articles/16280907-what-is-the-setup-fee-no-charge-today",
    "text": "Technically, you're granting a spending allowance in USDC, a stablecoin (a digital dollar), not making a payment. Nothing leaves your account when you authorize. The fee is collected once per property, the first time you sell it, borrow against it, or use it in another app. If you never do any of those and later remove the property, you never pay it.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:a8d38e6ca5e6",
@@ -5555,7 +5555,7 @@
    "sectionTitle": "If the authorization lapses",
    "url": "https://help.fabrica.land/en/articles/16280907-what-is-the-setup-fee-no-charge-today",
    "text": "If your authorization ever lapses, we'll email you to renew it. Without it, your property won't be visible on the marketplace and you won't be able to take out loans against it. You can re-approve any time with \"Authorize Fee\" in the Owner Toolbox on your property page, or through the link in the email. Both open the same \"Setup fee\" dialog, with your property shown at the top.\n\nWhen it goes through, the dialog shows \"Fee authorized\" and \"Nothing was charged. We’ll collect it only when you first sell it, borrow against it, or use it in another app.\" If you had already authorized the fee, the dialog shows the date you did it and tells you there's nothing else to do.\n\nQuestions? Message us through the chat bubble in the corner.\n\nLearn more: Fees on Fabrica (https://docs.fabrica.land/docs/fees)",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:c94a664d4a68",
@@ -5564,7 +5564,7 @@
    "sectionTitle": "What happens after I submit my property?",
    "url": "https://help.fabrica.land/en/articles/16280908-what-happens-after-i-submit-my-property",
    "text": "Once you start adding your property, most of the work happens on our side. Here's what's going on behind the scenes, how long each part usually takes, and what you'll hear from us along the way.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:4376d0dcf7f1",
@@ -5573,7 +5573,7 @@
    "sectionTitle": "Watching the progress",
    "url": "https://help.fabrica.land/en/articles/16280908-what-happens-after-i-submit-my-property",
    "text": "Your property page shows a slim status bar near the top. Most of the time it stays quiet, with a note like: \"We're getting your property ready in the background: photos, description, title history. Nothing for you to do right now.\" Progress shows as a row of dots (for example, \"3 of 5\"), and clicking \"See details\" opens the full checklist. The exact steps vary by property and county, but you'll typically see steps like:\n\n- \"Who currently owns the property?\"\n\n- \"Preparing your property\"\n\n- \"Writing a description based on property features\"\n\n- \"Generating AI pictures tailored to the location\"\n\n- \"Verifying the property's ownership history\"\n\n- \"Drafting deed and tax documents\"\n\n- \"Legal documents are being reviewed\" (which becomes \"Deed and tax documents are ready\")\n\n- \"Payment authorization\" (shown as \"Pay on first use\")\n\nWhen something needs you, the bar says so plainly, for example \"1 step needs you: approve the setup fee.\" with a button that takes you straight there. Those steps usually take about a minute each. If a step runs into a problem on our side, the bar shows \"Something needs attention:\" with the step, so nothing is ever silently stuck.\n\nYou can safely close the page at any point. Everything keeps moving on our side, and we email you whenever a step needs you.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:795e088d8096",
@@ -5582,7 +5582,7 @@
    "sectionTitle": "You can list for sale while setup continues",
    "url": "https://help.fabrica.land/en/articles/16280908-what-happens-after-i-submit-my-property",
    "text": "Your property page is live as soon as you submit, and you can list your property for sale right away. Buyers can see the price and send you offers while the paperwork completes in the background. Completing the setup is what lets you accept an offer, close a sale, or take a loan.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:17fa8c0c3a1c",
@@ -5591,7 +5591,7 @@
    "sectionTitle": "What's automated and what's human",
    "url": "https://help.fabrica.land/en/articles/16280908-what-happens-after-i-submit-my-property",
    "text": "Some steps are fast and automated: writing the property description takes under a minute, and the pictures take a few minutes. Others involve real people. Verifying your property's ownership history can take up to about a day, especially in counties with sparse online records, where our team does the research by hand. Every deed is reviewed by a person before you sign, which usually takes a few hours. In the rare case that review finds a problem we can't resolve, the process is canceled rather than left hanging, so reach out through the chat if that happens.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:98d51a792901",
@@ -5600,7 +5600,7 @@
    "sectionTitle": "Signing and recording",
    "url": "https://help.fabrica.land/en/articles/16280908-what-happens-after-i-submit-my-property",
    "text": "Signing, notarization, and county recording usually happen at closing, when your property sells. In the checklist those steps carry an \"at closing\" tag, which means they're waiting on purpose, not stuck. You can also complete them earlier: when your documents are ready, the status bar reads \"Your paperwork is ready. Sign now to let buyers buy right away and to enable borrowing, or wait for a buyer.\" Signing early means a buyer can purchase right away, without waiting for paperwork at closing.\n\nSigning itself is a short online notary session, about 10 minutes. Then we submit the deed to your county for recording. In the few counties that only record paper deeds, you sign in person and record the deed at the county yourself; see Signing and notarization (https://help.fabrica.land/en/articles/16280906-signing-and-notarization). Processing time varies by location. It typically takes a few days, though some counties complete within hours, and remote counties without online records can take longer.\n\nAfter recording, your property is fully set up in your Fabrica account. Fabrica pays the network processing costs for this, not you.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:3dd042f36871",
@@ -5609,7 +5609,7 @@
    "sectionTitle": "Emails you'll receive",
    "url": "https://help.fabrica.land/en/articles/16280908-what-happens-after-i-submit-my-property",
    "text": "- \"[Your property] is live on Fabrica\" when the process begins.\n\n- \"Your documents for [your property] are ready to sign\" when your documents are prepared, with copies attached.\n\n- \"[Your property] has been added to your Fabrica account\" once recording is done and everything is in place.\n\nIf you get stuck at any step, message us through the chat bubble in the corner.\n\nLearn more: How adding a property works (https://docs.fabrica.land/docs/on-ramp) · The property lifecycle (https://docs.fabrica.land/docs/property-lifecycle)",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:db69d629a987",
@@ -5672,7 +5672,7 @@
    "sectionTitle": "Why is my loan amount low or zero?",
    "url": "https://help.fabrica.land/en/articles/16280912-why-is-my-loan-amount-low-or-zero",
    "text": "This is the question we hear most about borrowing, so here is the honest answer. The Instant Liquidity card shows the most the lending pool will offer against your property right now. When that number is low, or $0, one of the checks below is the reason.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:944d1e207e65",
@@ -5681,7 +5681,7 @@
    "sectionTitle": "When borrowing is blocked, the card tells you why",
    "url": "https://help.fabrica.land/en/articles/16280912-why-is-my-loan-amount-low-or-zero",
    "text": "When borrowing is blocked entirely, the Instant Liquidity card on your property page shows a short explanation instead of the borrowing sliders. There are two messages you might see:\n\n- \"Heads up: borrowing isn't available for this property yet. Its property taxes haven't been verified as current. Check back once they're verified.\" This is the tax check described just below, and it is the most common blocker.\n\n- \"Heads up: this property isn't eligible for borrowing at this time. Check back later.\" This is the general message when the block is something other than taxes, usually one of the other checks on this page.\n\nThese explanations are shown only to you as the owner. Visitors to your property page are not shown your tax status.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:cc099998ca4f",
@@ -5690,7 +5690,7 @@
    "sectionTitle": "Your property must be fully added first",
    "url": "https://help.fabrica.land/en/articles/16280912-why-is-my-loan-amount-low-or-zero",
    "text": "You may see a borrowing-power figure while your property is still being added. That preview is real, but taking a loan requires the property to be fully added, with its token issued. Finish the setup and the borrowing option activates.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:61d08d135b2a",
@@ -5699,7 +5699,7 @@
    "sectionTitle": "Property taxes must be verifiably current",
    "url": "https://help.fabrica.land/en/articles/16280912-why-is-my-loan-amount-low-or-zero",
    "text": "This is the most common blocker. The pool will not lend against a property with unpaid taxes, and it also will not lend when the tax status cannot be verified. So \"unknown\" blocks borrowing just like \"unpaid\" does. If you have recently paid your taxes, it can take time for the county's public records to reflect it. Paying your taxes, and making sure the county shows them as paid, is the single best way to open up borrowing.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:604b26a25f14",
@@ -5708,7 +5708,7 @@
    "sectionTitle": "The deed and fee checks must pass",
    "url": "https://help.fabrica.land/en/articles/16280912-why-is-my-loan-amount-low-or-zero",
    "text": "The lending pool also looks at two of your property's Property checks: \"Deed checked against the county\" and \"Fabrica fees in good standing\". Both have to pass. If you never completed the fee authorization, or it lapsed, borrowing stays blocked until it is fixed. You can authorize it from the Owner Toolbox on your property page with Authorize Fee.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:190cdd850a4a",
@@ -5717,7 +5717,7 @@
    "sectionTitle": "The valuation is deliberately conservative",
    "url": "https://help.fabrica.land/en/articles/16280912-why-is-my-loan-amount-low-or-zero",
    "text": "The pool lends against a cautious estimate of your property's value, not the highest one. It takes the minimum of two independent valuation models. Very low-value properties get sharply reduced loan capacity on top of that. This protects both you and the lenders from loans that the land cannot support.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:4b94b1e9e19b",
@@ -5726,7 +5726,7 @@
    "sectionTitle": "Your loan history matters",
    "url": "https://help.fabrica.land/en/articles/16280912-why-is-my-loan-amount-low-or-zero",
    "text": "A past default or liquidation might reduce the amount the pool offers you, depending on how it was resolved. Repaying on time doesn't earn you a bonus, but it keeps your borrowing capacity intact.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:a0b10c44601e",
@@ -5735,7 +5735,7 @@
    "sectionTitle": "There is no fixed percentage",
    "url": "https://help.fabrica.land/en/articles/16280912-why-is-my-loan-amount-low-or-zero",
    "text": "Fabrica does not use a fixed loan-to-value percentage, so there is no rule of thumb to apply to your property's value. The app shows your exact borrowing power for each property: \"Unlock up to $N\" when you add it, and the Instant Liquidity card on the property page after that. Because the valuations are conservative, that number is often lower than you would expect. Clearing the blockers above is what raises it.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:9ae409eb0868",
@@ -5744,7 +5744,7 @@
    "sectionTitle": "The pool itself may be low on funds",
    "url": "https://help.fabrica.land/en/articles/16280912-why-is-my-loan-amount-low-or-zero",
    "text": "Loan offers depend on how much money (stablecoins, digital dollars) the lending pool has available. If the pool is low, offers shrink for everyone. This usually resolves on its own as the pool refills.\n\nIf none of this seems to explain your number, open the chat bubble in the corner and we'll look at your specific property.\n\nLearn more: How property valuation works (https://docs.fabrica.land/docs/valuation) · How pool lending works (https://docs.fabrica.land/docs/lending-pool)",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:91211c305eb6",
@@ -5843,7 +5843,7 @@
    "sectionTitle": "Can I trade my land for someone else's land?",
    "url": "https://help.fabrica.land/en/articles/16280915-can-i-trade-my-land-for-someone-else-s-land",
    "text": "There is no direct land-for-land swap on Fabrica today. The way to do it is two sales: you sell your property and buy theirs. Each sale settles in stablecoins (digital dollars), so the money side is simple and immediate.\n\nA few things to know if you are planning a swap:\n\n- Each property added to Fabrica has its own one-time setup fee, so a swap involving a property that is not on Fabrica yet means adding it first.\n\n- If both owners already have their properties on Fabrica, the two sales can happen back-to-back, which gets you close to a swap in practice.\n\n- If the values differ, the money from your sale covers the difference naturally.\n\nIf you are planning a specific swap, message us in the chat bubble in the corner and we will help you think through the steps for your situation.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:4c79efc7083a",
@@ -5852,7 +5852,7 @@
    "sectionTitle": "Can I buy in installments or with financing?",
    "url": "https://help.fabrica.land/en/articles/16280916-can-i-buy-in-installments-or-with-financing",
    "text": "Most purchases on Fabrica are paid in full, either with stablecoins (digital dollars) or through your bank account at checkout.\n\nInstallment and financed purchases exist in specific cases, but they are not something you can set up on your own in the app today. If a listing interests you and you would need payment terms to buy it, message us in the chat bubble in the corner with a link to the property. We will look at that specific listing and tell you honestly what is possible.\n\nThere is also a grounded alternative that works today: buy the property, then borrow against it. Loans are funded by a lending pool, and the terms are shown before you confirm. See \"How do I borrow against my property?\" (https://help.fabrica.land/en/articles/11149960-how-do-i-take-a-loan) in this help center.\n\nLearn more: Buy now, pay later on the blog (https://blog.fabrica.land/buy-now-pay-later) · How pool lending works (https://docs.fabrica.land/docs/lending-pool)",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:d32dda32360d",
@@ -6833,7 +6833,7 @@
    "sectionTitle": "When would I remove my property from Fabrica?",
    "url": "https://help.fabrica.land/en/articles/16280939-when-would-i-remove-my-property-from-fabrica",
    "text": "Removing a property (the off-ramp) puts the deed back in your name, or in the name of anyone you choose, and takes the property off Fabrica. It is always your call. Here are the most common reasons people do it.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:b9901c22fa4f",
@@ -6842,7 +6842,7 @@
    "sectionTitle": "Common reasons",
    "url": "https://help.fabrica.land/en/articles/16280939-when-would-i-remove-my-property-from-fabrica",
    "text": "- A traditional sale. You want to sell through a real-estate agent and a title company, and they want title held in your name the usual way.\n\n- Traditional financing. A bank or mortgage lender is refinancing or lending against the property and requires the deed in your name.\n\n- Personal preference. You simply want to hold the property the way you did before. That is a perfectly good reason.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:590065b34ed5",
@@ -6851,7 +6851,7 @@
    "sectionTitle": "What you give up",
    "url": "https://help.fabrica.land/en/articles/16280939-when-would-i-remove-my-property-from-fabrica",
    "text": "While a property is off Fabrica, you lose the online rails: listing it for sale on the marketplace, receiving offers, borrowing against it through the lending pool, and transferring it in minutes. Selling or borrowing goes back to the traditional pace and paperwork.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:fc459550ad3c",
@@ -6860,7 +6860,7 @@
    "sectionTitle": "What you keep",
    "url": "https://help.fabrica.land/en/articles/16280939-when-would-i-remove-my-property-from-fabrica",
    "text": "Everything that matters. You owned the property through your own trust while it was on Fabrica, and after removal you own it directly, with a fresh deed recorded at the county. Nothing about your ownership is reduced by removing it.",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:a47710286028",
@@ -6869,7 +6869,7 @@
    "sectionTitle": "Can I come back later?",
    "url": "https://help.fabrica.land/en/articles/16280939-when-would-i-remove-my-property-from-fabrica",
    "text": "Yes. You can add the property again any time by starting a new setup at fabrica.land/go (https://fabrica.land/go).",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:5be752af2f05",
@@ -6878,7 +6878,7 @@
    "sectionTitle": "What it costs",
    "url": "https://help.fabrica.land/en/articles/16280939-when-would-i-remove-my-property-from-fabrica",
    "text": "There is no Fabrica fee to remove a property. If you never sold it, borrowed against it, or used it in another app while it was on Fabrica, the setup fee you authorized is waived. Counties charge their own recording costs, and Fabrica guides you through them.\n\nIf you are weighing it and want to talk it through, message us through the chat bubble in the corner.\n\nLearn more: Off-ramp (https://docs.fabrica.land/docs/off-ramp)",
-   "updatedAt": "updated a week ago at build"
+   "updatedAt": "updated 2 weeks ago at build"
   },
   {
    "id": "help:377d6c11e104",
