@@ -297,7 +297,7 @@ export function stateRetryText(query: string, state: string | undefined, countyS
 }
 
 /**
- * The type-ahead's upstream search answers 503 to any query with a comma (ENG-5024), so
+ * The type-ahead's upstream search answers 503 to any query with a comma, so
  * commas become spaces before the call. The words and their order are unchanged.
  */
 export function typeAheadText(query: string): string {

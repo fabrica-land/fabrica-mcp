@@ -220,7 +220,7 @@ export function originationsByMonth(loans: ReadonlyArray<LoanModel>, now: Date) 
 
 /**
  * Pool loan counts from the loan records next to the pool data source's own counters
- * (ENG-5029: its liquidation counter has read 0 while ten pool loans were liquidated).
+ * (its liquidation counter can read lower than the loan records).
  * Covers every pool loan, whatever the filters.
  */
 function poolCounts(allLoans: ReadonlyArray<LoanModel>, pools: SubgraphPool[] | null) {

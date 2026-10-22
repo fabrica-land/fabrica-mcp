@@ -109,4 +109,4 @@ Confirm you have run every tool yourself. Our record: `npm run regression` again
 - Listing URL: `https://claude.ai/directory/connectors/fabrica`. Add it to the README and set it as the "Add to Claude" link on about.fabrica.land.
 - Status and reviewer feedback appear in the portal. Escalations: mcp-review@anthropic.com.
 - Screenshots and listing text can be edited after publication; the slug cannot.
-- Then submit the same server to the ChatGPT apps directory and the Cursor MCP directory with the same text (ENG-4988).
+- Then submit the same server to the ChatGPT apps directory and the Cursor MCP directory with the same text.

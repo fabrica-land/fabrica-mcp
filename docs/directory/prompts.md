@@ -2,7 +2,7 @@
 
 Directory spec: PNG, at least 1000 px wide, 3 to 5 images, cropped to the card only (no prompt in the image), each paired with its prompt.
 
-Choose parcels whose card shows no "Borrow now" amount, whose photos are of the actual property (not labeled "Illustrative Purpose"), and that have no open data issue (ENG-5019 name/slug mismatches). Each image is captured in Claude with the mainnet connector.
+Choose parcels whose card shows no "Borrow now" amount, whose photos are of the actual property (not labeled "Illustrative Purpose"), and that have no open data issue (name/slug mismatches). Each image is captured in Claude with the mainnet connector.
 
 | File | Prompt | Notes |
 |---|---|---|
