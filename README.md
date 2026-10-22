@@ -211,7 +211,7 @@ The hosted servers run on Vercel from this repository: one Vercel project per ne
 
 Both hosts are listed in the official [MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=land.fabrica) as `land.fabrica/mcp` and `land.fabrica/mcp-testnet` (remote servers, no package). PulseMCP, Glama, the GitHub MCP registry and VS Code read from it. The entries live in `server.json` and `server.testnet.json`.
 
-To republish after a release: bump `version` in `package.json`, `src/server.ts` and both server files (a test keeps them equal), then run `npm run registry:publish` (`-- --dry-run` prints the entries). The namespace is proven by the `v=MCPv1` TXT record on fabrica.land; the script reads the matching Ed25519 private key from `MCP_REGISTRY_PRIVATE_KEY` or `~/.config/mcp-registry/fabrica-land-ed25519.pem`.
+To republish after a release: bump `version` in `package.json`, `src/server.ts` and both server files (a test keeps them equal), then run `npm run registry:publish` (`-- --dry-run` prints the entries). Before writing anything it checks both entries against the registry: a version already there with the same content is skipped, so a rerun after a partial publish finishes the job, and one with different content stops the run. The namespace is proven by the `v=MCPv1` TXT record on fabrica.land; the script reads the matching Ed25519 private key from `MCP_REGISTRY_PRIVATE_KEY` or `~/.config/mcp-registry/fabrica-land-ed25519.pem`.
 
 ## Links
 
