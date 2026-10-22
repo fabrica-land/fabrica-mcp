@@ -1,5 +1,5 @@
 // Publishes server.json (mainnet) and server.testnet.json to the official MCP Registry
-// (https://registry.modelcontextprotocol.io) under the land.fabrica/* namespace (ENG-5138).
+// (https://registry.modelcontextprotocol.io) under the land.fabrica/* namespace.
 // Auth is DNS: fabrica.land carries TXT "v=MCPv1; k=ed25519; p=<public key>". The private key
 // comes from MCP_REGISTRY_PRIVATE_KEY (PEM text, for CI) or the file at MCP_REGISTRY_KEY_PATH
 // (default ~/.config/mcp-registry/fabrica-land-ed25519.pem). It is never printed or committed.
