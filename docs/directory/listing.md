@@ -88,7 +88,7 @@ No authentication. All data is public.
 > 1. "Find land for sale on Fabrica in Arizona, then show me the first one." (search_land, get_land_property with the card)
 > 2. "Explain that property's Property checks, show its parcel boundary and a map image, and its tax status." (explain_property_checks, get_land_boundary, get_land_map_image, get_land_tax_status)
 > 3. "Show its trust documents, valuation sources and order book." (get_land_trust_documents, get_land_valuation, get_land_order_book)
-> 4. "How much could be borrowed against it, and what does the lending market look like?" (estimate_land_borrowing, get_fabrica_lending_market)
+> 4. "How much could be borrowed against it, what does the lending market look like, and show the loan book." (estimate_land_borrowing, get_fabrica_lending_market, get_fabrica_loan_book)
 > 5. "Show the portfolio, a portfolio map and the recent activity of the wallet that owns it, then the latest activity across Fabrica." (get_land_portfolio, get_land_portfolio_map_image, get_land_activity)
 > 6. "Give me Fabrica's protocol statistics." (get_fabrica_stats)
 > 7. "Is 1707 Jones St, San Francisco, CA on Fabrica, and can I add land in Coconino County, Arizona?" (find_us_parcel, check_county_coverage)
