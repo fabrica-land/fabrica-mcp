@@ -465,8 +465,25 @@ async function verifyLoanResult(record: SignRequest, result: SignResult): Promis
   if (minedAt === null || minedAt < createdSecond(record)) return { ok: false, reason: "The transaction was mined before this sign request was made." };
   const loan = findLoan(record, await getLoanContext({ tokenId: record.property.tokenId }));
   if (!loan) return { ok: false, reason: "The property's loans do not show this request as done (yet)." };
-  const touchesLoan = same(transaction.to, loan.loanContract) || (receipt.logs ?? []).some(log => same(log.address, loan.loanContract));
-  return touchesLoan ? { ok: true, loanId: loan.loanId } : { ok: false, reason: "The transaction did not go through this loan's contract." };
+  const topics = loanIdTopics(loan.loanId);
+  const namesLoan = (receipt.logs ?? []).some(log => same(log.address, loan.loanContract) && (log.topics ?? []).some(topic => topics.includes(topic.toLowerCase())));
+  return namesLoan ? { ok: true, loanId: loan.loanId } : { ok: false, reason: "The transaction did not originate or repay this loan." };
+}
+
+/**
+ * The pool's LoanOriginated and LoanRepaid events index the loan receipt hash. The API reports that
+ * hash as a decimal loan id read in the opposite byte order, so match either order.
+ */
+function loanIdTopics(loanId: string): string[] {
+  let hex: string;
+  try {
+    hex = BigInt(loanId).toString(16).padStart(64, "0");
+  } catch {
+    return [];
+  }
+  if (hex.length !== 64) return [];
+  const reversed = hex.match(/../g)!.reverse().join("");
+  return [`0x${hex}`, `0x${reversed}`];
 }
 
 export const signResultSchema = z.union([

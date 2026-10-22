@@ -27,7 +27,7 @@ const receiptSchema = z.object({
   status: z.string().nullable().optional(),
   blockNumber: z.string(),
   gasUsed: z.string(),
-  logs: z.array(z.object({ address: z.string() })).optional(),
+  logs: z.array(z.object({ address: z.string(), topics: z.array(z.string()).optional() })).optional(),
 });
 export type RpcReceipt = z.infer<typeof receiptSchema>;
 

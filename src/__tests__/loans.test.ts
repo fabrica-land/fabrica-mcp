@@ -26,6 +26,13 @@ const OWNER = "0x2222222222222222222222222222222222222222";
 const OTHER = "0x1111111111111111111111111111111111111111";
 const TX = `0x${"c".repeat(64)}`;
 const POOL = "0x842ffbf1ad5314503904626122376f71603a3cf9";
+const LOAN_REPAID = "0x1d7f9b884cc43b9a5c67bd7c6f6fb5ddb8cb3eb3994e934e8448d7bf4a4a25c9";
+
+/** A pool event indexing the loan receipt hash, in the byte order the chain uses (reversed from the API's loan id). */
+function poolLog(loanId: string, address = POOL) {
+  const hex = BigInt(loanId).toString(16).padStart(64, "0");
+  return { address, topics: [LOAN_REPAID, `0x${hex.match(/../g)!.reverse().join("")}`] };
+}
 const DAY = 86_400;
 
 function token(overrides: Partial<SignContextToken> = {}): SignContextToken {
@@ -238,7 +245,7 @@ describe("repay_land_loan", () => {
     if (!record) throw new Error("not stored");
     expect(signPageView(record)).toMatchObject({ action: "repay", params: { loanId: "777" } });
     vi.mocked(getTransaction).mockResolvedValue({ hash: TX, from: OWNER, to: POOL, blockNumber: "0x1", value: "0x0" });
-    vi.mocked(getTransactionReceipt).mockResolvedValue({ status: "0x1", blockNumber: "0x1", gasUsed: "0x1" });
+    vi.mocked(getTransactionReceipt).mockResolvedValue({ status: "0x1", blockNumber: "0x1", gasUsed: "0x1", logs: [poolLog("777")] });
     vi.mocked(getBlockTimestamp).mockResolvedValue(NOW + 60_000);
     expect(await verifyResult(record, { transactionHash: TX })).toMatchObject({ ok: false });
     vi.mocked(getLoanContext).mockResolvedValue(context({ loans: [loan({ loanStatus: "Repaid" })] }));
@@ -246,21 +253,29 @@ describe("repay_land_loan", () => {
     expect(await verifyResult(record, { orderHash: TX })).toMatchObject({ ok: false });
   });
 
-  it("refuses a transaction mined before the request, or one that never touched the loan's contract", async () => {
+  it("refuses a transaction mined before the request, or one with no pool event for this loan", async () => {
     const result = await repayLandLoan({ tokenId: "123", wallet: OWNER });
     if (!("signRequest" in result)) throw new Error(JSON.stringify(result));
     const { getSignRequestStore } = await import("../sign-requests/store.js");
     const record = await getSignRequestStore()?.get(result.signRequest.id);
     if (!record) throw new Error("not stored");
     vi.mocked(getLoanContext).mockResolvedValue(context({ loans: [loan({ loanStatus: "Repaid" })] }));
-    vi.mocked(getTransactionReceipt).mockResolvedValue({ status: "0x1", blockNumber: "0x1", gasUsed: "0x1" });
+    vi.mocked(getTransactionReceipt).mockResolvedValue({ status: "0x1", blockNumber: "0x1", gasUsed: "0x1", logs: [poolLog("777")] });
     vi.mocked(getTransaction).mockResolvedValue({ hash: TX, from: OWNER, to: POOL, blockNumber: "0x1", value: "0x0" });
     vi.mocked(getBlockTimestamp).mockResolvedValue(NOW - DAY * 1000);
     expect(await verifyResult(record, { transactionHash: TX })).toMatchObject({ ok: false, reason: expect.stringMatching(/before this sign request/) });
     vi.mocked(getBlockTimestamp).mockResolvedValue(NOW + 60_000);
+    const noEvent = { ok: false, reason: expect.stringMatching(/did not originate or repay this loan/) };
+    // Sent to the pool, but about another loan, or the right loan id from another contract.
+    vi.mocked(getTransactionReceipt).mockResolvedValue({ status: "0x1", blockNumber: "0x1", gasUsed: "0x1", logs: [{ address: POOL }, poolLog("778")] });
+    expect(await verifyResult(record, { transactionHash: TX })).toMatchObject(noEvent);
+    vi.mocked(getTransactionReceipt).mockResolvedValue({ status: "0x1", blockNumber: "0x1", gasUsed: "0x1", logs: [poolLog("777", OTHER)] });
+    expect(await verifyResult(record, { transactionHash: TX })).toMatchObject(noEvent);
+    // Through a router: the pool's event names the loan, in either byte order.
     vi.mocked(getTransaction).mockResolvedValue({ hash: TX, from: OWNER, to: OTHER, blockNumber: "0x1", value: "0x0" });
-    expect(await verifyResult(record, { transactionHash: TX })).toMatchObject({ ok: false, reason: expect.stringMatching(/loan's contract/) });
-    vi.mocked(getTransactionReceipt).mockResolvedValue({ status: "0x1", blockNumber: "0x1", gasUsed: "0x1", logs: [{ address: POOL.toUpperCase().replace("0X", "0x") }] });
+    vi.mocked(getTransactionReceipt).mockResolvedValue({ status: "0x1", blockNumber: "0x1", gasUsed: "0x1", logs: [{ ...poolLog("777"), address: POOL.toUpperCase().replace("0X", "0x") }] });
+    expect(await verifyResult(record, { transactionHash: TX })).toEqual({ ok: true, loanId: "777" });
+    vi.mocked(getTransactionReceipt).mockResolvedValue({ status: "0x1", blockNumber: "0x1", gasUsed: "0x1", logs: [{ address: POOL, topics: [LOAN_REPAID, `0x${(777).toString(16).padStart(64, "0")}`] }] });
     expect(await verifyResult(record, { transactionHash: TX })).toEqual({ ok: true, loanId: "777" });
   });
 });
