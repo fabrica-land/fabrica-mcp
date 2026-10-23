@@ -3,10 +3,10 @@
 // dialog on fabrica.land, prefilled. The person signs there with their own wallet. The server
 // holds no key, signs nothing and submits nothing: it prepares, the person decides.
 import { z } from "zod";
-import { getSignContext, isTokenNotFound } from "../clients/graphql.js";
-import { CHAIN_ID, getTransaction, getTransactionReceipt } from "../clients/rpc.js";
+import { getLoanContext, getSignContext, isTokenNotFound } from "../clients/graphql.js";
+import { CHAIN_ID, getBlockTimestamp, getTransaction, getTransactionReceipt } from "../clients/rpc.js";
 import { IS_MAINNET, MAINNET_WARNING, NETWORK, NETWORK_LABEL, WEB_BASE } from "../config.js";
-import type { SignContextOrder, SignContextToken } from "../types/index.js";
+import type { LoanContextLoan, LoanContextToken, SignContextOrder, SignContextToken } from "../types/index.js";
 import {
   getSignRequestStore,
   isExpired,
@@ -35,16 +35,16 @@ const walletInput = z.string().regex(/^0x[0-9a-fA-F]{40}$/, "A 0x-prefixed Ether
 const orderHashInput = z.string().regex(/^0x[0-9a-fA-F]{64}$/, "A 0x-prefixed 32-byte order hash").describe("The order's hash: orderId in get_land_order_book");
 
 type Lookup = { token: SignContextToken } | { error: string };
-type Prepared = Omit<SignRequest, "id" | "status" | "network" | "chainId" | "payload" | "createdAt" | "expiresAt" | "signLink" | "result"> & {
+export type Prepared = Omit<SignRequest, "id" | "status" | "network" | "chainId" | "payload" | "createdAt" | "expiresAt" | "signLink" | "result"> & {
   link: (id: string) => string;
 };
-type Blocked = { error: string; warnings?: SignRequestWarning[] };
+export type Blocked = { error: string; warnings?: SignRequestWarning[] };
 
-const same = (a: string | null | undefined, b: string | null | undefined): boolean => !!a && !!b && a.toLowerCase() === b.toLowerCase();
+export const same = (a: string | null | undefined, b: string | null | undefined): boolean => !!a && !!b && a.toLowerCase() === b.toLowerCase();
 
-const shorten = (address: string): string => `${address.slice(0, 6)}...${address.slice(-4)}`;
+export const shorten = (address: string): string => `${address.slice(0, 6)}...${address.slice(-4)}`;
 
-function usd(amount: number): string {
+export function usd(amount: number): string {
   return `$${amount.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 }
 
@@ -64,7 +64,7 @@ export function signLink(tokenId: string, params: Record<string, string>, id: st
   return url.toString();
 }
 
-async function lookup(tokenId: string | undefined, slug: string | undefined): Promise<Lookup> {
+export async function lookup(tokenId: string | undefined, slug: string | undefined): Promise<Lookup> {
   if (!tokenId && !slug) return { error: "Either tokenId or slug is required" };
   const name = tokenId ? `token ID ${tokenId}` : `slug ${slug}`;
   let token: SignContextToken;
@@ -110,11 +110,11 @@ function findOrder(token: SignContextToken, hash: string): SignContextOrder | nu
   return [...(token.marketplaceListings ?? []), ...(token.marketplaceBids ?? [])].find(order => same(order.marketplaceId, hash)) ?? null;
 }
 
-function propertyOf(token: SignContextToken): SignRequest["property"] {
+export function propertyOf(token: SignContextToken): SignRequest["property"] {
   return { tokenId: token.tokenId, contractAddress: token.contractAddress, name: token.name ?? token.vanityName ?? null, link: token.propertyLink };
 }
 
-function label(token: SignContextToken): string {
+export function label(token: SignContextToken): string {
   return `${token.name ?? token.vanityName ?? "the property"} (token ${token.tokenId})`;
 }
 
@@ -130,7 +130,7 @@ function expiringSoon(order: SignContextOrder, now: number): SignRequestWarning[
 }
 
 /** Store the request and shape the tool's answer. */
-async function issue(prepared: Prepared | Blocked) {
+export async function issue(prepared: Prepared | Blocked) {
   if ("error" in prepared) return prepared;
   const store = getSignRequestStore();
   if (!store) return { error: "Sign requests are not configured on this server yet. The same action can be taken on the property page.", propertyLink: prepared.property.link };
@@ -171,7 +171,7 @@ async function issue(prepared: Prepared | Blocked) {
     },
     nextSteps: [
       `The person opens signLink in a browser, signs in to ${new URL(WEB_BASE).host} with wallet ${record.wallet}, reviews the dialog and signs. The link stays open for ${SIGN_REQUEST_TTL_SECONDS / 60} minutes (until ${record.expiresAt}).`,
-      `get_sign_request with id ${record.id} says whether it was signed; get_land_order_book shows the order once it is.`,
+      `get_sign_request with id ${record.id} says whether it was signed; ${isLoanAction(record) ? "get_land_loan shows the loan" : "get_land_order_book shows the order"} once it is.`,
     ],
   };
 }
@@ -416,6 +416,76 @@ export async function observe(record: SignRequest, token: SignContextToken): Pro
   return await transactionFills(record, order.matchTransactionHash) ? { orderHash: order.marketplaceId, transactionHash: order.matchTransactionHash } : null;
 }
 
+const LOAN_ACTIONS: ReadonlySet<SignRequest["action"]> = new Set(["borrow_against_land", "repay_land_loan"]);
+
+/** Borrow and repay are loans, not orders: they complete when the token's loans show them. */
+export function isLoanAction(record: SignRequest): boolean {
+  return LOAN_ACTIONS.has(record.action);
+}
+
+/** A pool loan on the terms the request asked for: the principal to the cent and the loan length. */
+function hasRequestedTerms(record: SignRequest, loan: LoanContextLoan): boolean {
+  if (loan.loanProvider !== "PoolLending") return false;
+  const { amountUsd, durationDays } = record.loan ?? {};
+  if (amountUsd !== undefined && Math.abs(Number(loan.principalScaled) - amountUsd) >= 0.005) return false;
+  return durationDays === undefined || Number(loan.durationSeconds) === durationDays * 86_400;
+}
+
+/**
+ * The loan a borrow or repay request is about, once the token's loans show it done. Borrow: an active
+ * pool loan to this wallet on the requested terms, started after the request. Repay: the named loan, repaid.
+ */
+function findLoan(record: SignRequest, token: LoanContextToken): LoanContextLoan | null {
+  const loans = token.loans ?? [];
+  if (record.action === "borrow_against_land") {
+    return loans.find(l => l.loanStatus === "Active" && same(l.borrower.address, record.wallet) && Date.parse(l.startTime) >= createdSecond(record) && hasRequestedTerms(record, l)) ?? null;
+  }
+  if (record.action === "repay_land_loan") {
+    const loan = loans.find(l => l.loanId === record.loan?.loanId);
+    return loan?.loanStatus === "Repaid" ? loan : null;
+  }
+  return null;
+}
+
+/** What the token's loans say happened to a borrow or repay request, or null when they show nothing yet. */
+export function observeLoan(record: SignRequest, token: LoanContextToken): { loanId: string } | null {
+  const loan = findLoan(record, token);
+  return loan ? { loanId: loan.loanId } : null;
+}
+
+/**
+ * A borrow or repay result holds when the transaction succeeded, was sent by the request's wallet after
+ * the request was made, touched the loan's contract, and the token's loans show the request done.
+ */
+async function verifyLoanResult(record: SignRequest, result: SignResult): Promise<{ ok: true; loanId: string } | { ok: false; reason: string }> {
+  if (!("transactionHash" in result)) return { ok: false, reason: `A ${record.action} sign request completes with a transaction, not an order hash.` };
+  const [transaction, receipt] = await Promise.all([getTransaction(result.transactionHash), getTransactionReceipt(result.transactionHash)]);
+  if (!transaction || receipt?.status !== "0x1" || !same(transaction.from, record.wallet)) return { ok: false, reason: "The transaction did not succeed, or was not sent by the request's wallet." };
+  const minedAt = await getBlockTimestamp(receipt.blockNumber);
+  if (minedAt === null || minedAt < createdSecond(record)) return { ok: false, reason: "The transaction was mined before this sign request was made." };
+  const loan = findLoan(record, await getLoanContext({ tokenId: record.property.tokenId }));
+  if (!loan) return { ok: false, reason: "The property's loans do not show this request as done (yet)." };
+  const topics = loanIdTopics(loan.loanId);
+  const namesLoan = (receipt.logs ?? []).some(log => same(log.address, loan.loanContract) && (log.topics ?? []).some(topic => topics.includes(topic.toLowerCase())));
+  return namesLoan ? { ok: true, loanId: loan.loanId } : { ok: false, reason: "The transaction did not originate or repay this loan." };
+}
+
+/**
+ * The pool's LoanOriginated and LoanRepaid events index the loan receipt hash. The API reports that
+ * hash as a decimal loan id read in the opposite byte order, so match either order.
+ */
+function loanIdTopics(loanId: string): string[] {
+  let hex: string;
+  try {
+    hex = BigInt(loanId).toString(16).padStart(64, "0");
+  } catch {
+    return [];
+  }
+  if (hex.length !== 64) return [];
+  const reversed = hex.match(/../g)!.reverse().join("");
+  return [`0x${hex}`, `0x${reversed}`];
+}
+
 export const signResultSchema = z.union([
   z.object({ orderHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/) }).strict(),
   z.object({ transactionHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/) }).strict(),
@@ -426,7 +496,8 @@ export type SignResult = z.infer<typeof signResultSchema>;
  * Check a result the sign page reports against the API and the chain; a reason when it does not hold.
  * A transaction counts only when it is the one that filled the request's order and it succeeded.
  */
-export async function verifyResult(record: SignRequest, result: SignResult): Promise<{ ok: true } | { ok: false; reason: string }> {
+export async function verifyResult(record: SignRequest, result: SignResult): Promise<{ ok: true; loanId?: string } | { ok: false; reason: string }> {
+  if (isLoanAction(record)) return verifyLoanResult(record, result);
   const token = await getSignContext({ tokenId: record.property.tokenId });
   if ("transactionHash" in result) {
     if (record.action !== "buy_land" && record.action !== "accept_land_offer") return { ok: false, reason: `A ${record.action} sign request completes with an order hash, not a transaction.` };
@@ -444,6 +515,7 @@ export async function verifyResult(record: SignRequest, result: SignResult): Pro
       case "accept_land_offer": return isAcceptingOrder(record, token, order);
       case "buy_land": return false;
       case "cancel_land_order": return named && order.status === "canceled";
+      default: return false;
     }
   })();
   return holds ? { ok: true } : { ok: false, reason: `The order does not show this ${record.action} as done.` };
@@ -467,10 +539,13 @@ export async function getSignRequest({ id }: GetSignRequestArgs) {
   }
   if (!record) return { error: `No sign request ${id}: the id is unknown. get_land_order_book shows what was signed.` };
   const expired = record.status === "pending" && isExpired(record);
-  if (record.status === "pending") {
+  // An expired link can no longer be signed, so nothing that happens after it is this request's.
+  if (record.status === "pending" && !expired) {
     try {
-      const seen = await observe(record, await getSignContext({ tokenId: record.property.tokenId }));
-      if (seen) record = await store.complete(record, seen);
+      const seen = isLoanAction(record)
+        ? observeLoan(record, await getLoanContext({ tokenId: record.property.tokenId }))
+        : await observe(record, await getSignContext({ tokenId: record.property.tokenId }));
+      if (seen && (!("loanId" in seen) || await store.claimLoan(record, seen.loanId))) record = await store.complete(record, seen);
     } catch {
       // The order book check is best effort; the stored state still answers.
     }
@@ -487,21 +562,27 @@ export async function getSignRequest({ id }: GetSignRequestArgs) {
     expiresAt: record.expiresAt,
     ...(record.result ? { result: record.result } : {}),
     note: record.status === "completed"
-      ? "Signed. get_land_order_book shows the order; a transaction hash can be followed with get_transaction_status."
+      ? isLoanAction(record)
+        ? "Signed. get_land_loan shows the loan's state and payoff."
+        : "Signed. get_land_order_book shows the order; a transaction hash can be followed with get_transaction_status."
       : expired
         ? `Expired unsigned: links stay open for ${SIGN_REQUEST_TTL_SECONDS / 60} minutes. Prepare a new one to continue.`
-        : "Not signed yet. The person has not finished on the sign page, or the order has not reached the order book.",
+        : isLoanAction(record)
+          ? "Not signed yet. The person has not finished on the sign page, or the loan has not reached the API yet."
+          : "Not signed yet. The person has not finished on the sign page, or the order has not reached the order book.",
   };
 }
 
 // --- the sign page's view (contract agreed with the sign page) ---
 
-const PAGE_ACTIONS: Record<SignRequest["action"], "offer" | "list" | "accept" | "cancel"> = {
+const PAGE_ACTIONS: Record<SignRequest["action"], "offer" | "list" | "accept" | "cancel" | "borrow" | "repay"> = {
   make_land_offer: "offer",
   list_land_for_sale: "list",
   accept_land_offer: "accept",
   buy_land: "accept",
   cancel_land_order: "cancel",
+  borrow_against_land: "borrow",
+  repay_land_loan: "repay",
 };
 
 /** What GET /sign-requests/{id} returns: the sign page's shape, plus the tool name, kind, warnings, status and result. */
@@ -523,6 +604,9 @@ export function signPageView(record: SignRequest) {
       ...(record.action === "make_land_offer" && order ? { amountUsd: Number(order.priceUsd), expiresAt: orderExpiry, durationDays: order.durationDays } : {}),
       ...(record.action === "list_land_for_sale" && order ? { priceUsd: Number(order.priceUsd), expiresAt: orderExpiry, durationDays: order.durationDays } : {}),
       ...(record.orderHash ? { orderId: record.orderHash } : {}),
+      ...(record.loan?.amountUsd !== undefined ? { amountUsd: record.loan.amountUsd } : {}),
+      ...(record.loan?.durationDays !== undefined ? { durationDays: record.loan.durationDays } : {}),
+      ...(record.loan?.loanId !== undefined ? { loanId: record.loan.loanId } : {}),
     },
     summary: record.summary.join(" "),
     summaryLines: record.summary,

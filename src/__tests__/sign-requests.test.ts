@@ -194,6 +194,14 @@ describe("the sign-request store", () => {
     expect(done.status).toBe("completed");
     expect(await store.get(r.id)).toEqual(done);
   });
+
+  it("gives a loan to one request even when two claim it at once", async () => {
+    const first = { ...record(), id: newSignRequestId() };
+    const second = { ...record(), id: newSignRequestId() };
+    const claims = await Promise.all([store.claimLoan(first, "900"), store.claimLoan(second, "900")]);
+    expect(claims.filter(Boolean)).toHaveLength(1);
+    expect(await store.claimLoan(claims[0] ? first : second, "900")).toBe(true);
+  });
 });
 
 describe("make_land_offer", () => {

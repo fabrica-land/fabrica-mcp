@@ -11,6 +11,7 @@ import type {
   GetParcelIndexQuery,
   GetPremintSuccessorQuery,
   GetSignContextQuery,
+  GetLoanContextQuery,
   GetPropertyLinkQuery,
   GetTaxStatusQuery,
   GetTokenQuery,
@@ -22,6 +23,7 @@ import type {
 } from "./generated/operations.js";
 import type {
   CountyBoundsModel,
+  LoanContextToken,
   LoanLiquidatedEvent,
   LoanModel,
   LoanRepaidEvent,
@@ -520,6 +522,38 @@ export async function getSignContext(
   return data.token;
 }
 
+// --- Loan context: the pool's capacity and the token's loans, for borrow/repay sign requests and get_land_loan ---
+
+const GET_LOAN_CONTEXT_QUERY = gql`
+  query GetLoanContext($tokenId: String, $slug: String, $network: String) {
+    token(tokenId: $tokenId, slug: $slug, network: $network) {
+      tokenId name vanityName propertyLink contractAddress
+      poolLendingLiquidity { appraisalBlockReason maxPrincipalScaled durations activeLoan { id } }
+      loans {
+        loanId loanStatus loanProvider loanType loanContract
+        principalScaled maxRepaymentScaled livePayoffScaled payoffAsOf currencySymbol
+        aprPercent durationFormatted durationSeconds startTime maturityDate
+        loanRepaidDate loanLiquidationDate
+        borrower { address }
+        lender { address }
+      }
+    }
+  }
+`;
+
+/**
+ * The pool's capacity for a token and every loan on it, with the live payoff of an active loan.
+ * Never cached: a borrow or repay sign request must see the live state.
+ */
+export async function getLoanContext(params: { tokenId?: string; slug?: string }): Promise<LoanContextToken> {
+  const data = await request<GetLoanContextQuery>(GET_LOAN_CONTEXT_QUERY, {
+    tokenId: params.tokenId,
+    slug: params.slug,
+    network: NETWORK,
+  });
+  return data.token;
+}
+
 const GET_PREMINT_SUCCESSOR_QUERY = gql`
   query GetPremintSuccessor($network: String!, $tokenId: String!) {
     premintSuccessor(network: $network, tokenId: $tokenId) {
@@ -973,6 +1007,7 @@ export const API_DOCUMENTS: ReadonlyArray<{ name: string; document: string }> = 
   { name: "GetOrderBook", document: GET_ORDER_BOOK_QUERY },
   { name: "GetPremintSuccessor", document: GET_PREMINT_SUCCESSOR_QUERY },
   { name: "GetSignContext", document: GET_SIGN_CONTEXT_QUERY },
+  { name: "GetLoanContext", document: GET_LOAN_CONTEXT_QUERY },
   { name: "GetParcelIndex", document: GET_PARCEL_INDEX_QUERY },
   { name: "GetNetworkActivity", document: GET_NETWORK_ACTIVITY_QUERY },
   { name: "GetPropertyLink", document: GET_PROPERTY_LINK_QUERY },

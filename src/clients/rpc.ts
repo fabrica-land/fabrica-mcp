@@ -27,6 +27,7 @@ const receiptSchema = z.object({
   status: z.string().nullable().optional(),
   blockNumber: z.string(),
   gasUsed: z.string(),
+  logs: z.array(z.object({ address: z.string(), topics: z.array(z.string()).optional() })).optional(),
 });
 export type RpcReceipt = z.infer<typeof receiptSchema>;
 
@@ -60,6 +61,13 @@ export async function getTransaction(hash: string): Promise<RpcTransaction | nul
 export async function getTransactionReceipt(hash: string): Promise<RpcReceipt | null> {
   const result = await call("eth_getTransactionReceipt", [hash]);
   return result == null ? null : receiptSchema.parse(result);
+}
+
+/** The block's timestamp in milliseconds, or null when the node does not know the block. */
+export async function getBlockTimestamp(blockNumber: string): Promise<number | null> {
+  const result = await call("eth_getBlockByNumber", [blockNumber, false]);
+  if (result == null) return null;
+  return Number.parseInt(z.object({ timestamp: z.string() }).parse(result).timestamp, 16) * 1000;
 }
 
 export async function getBlockNumber(): Promise<number> {
