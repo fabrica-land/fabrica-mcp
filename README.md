@@ -28,7 +28,11 @@ claude mcp add --transport http fabrica https://mcp.fabrica.land/mcp
 claude mcp add --transport http fabrica-testnet https://mcp-testnet.fabrica.land/mcp
 ```
 
-**Cursor** (`.cursor/mcp.json`):
+**Cursor:** one click installs the mainnet server:
+
+[![Add Fabrica to Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=fabrica&config=eyJ1cmwiOiJodHRwczovL21jcC5mYWJyaWNhLmxhbmQvbWNwIn0%3D)
+
+Or add it by hand (`.cursor/mcp.json`):
 
 ```json
 {
