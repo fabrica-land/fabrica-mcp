@@ -20,6 +20,9 @@ import type {
   GetTrustDocumentsQuery,
   GetValuationQuery,
   GetWalletQuery,
+  GetWalletLoansQuery,
+  GetDepositPoolsQuery,
+  GetPoolDepositsQuery,
 } from "./generated/operations.js";
 import type {
   CountyBoundsModel,
@@ -42,6 +45,9 @@ import type {
   TokenValuationModel,
   TrustDocumentsToken,
   WalletModel,
+  WalletLoans,
+  DepositPool,
+  PoolDeposit,
 } from "../types/index.js";
 import { CONTRACTS, IS_MAINNET, NETWORK } from "../config.js";
 import { TtlCache } from "./cache.js";
@@ -780,6 +786,86 @@ export async function getWallet(walletAddress: string): Promise<WalletModel | nu
     if (isWalletNotFound(error)) return null;
     throw error;
   }
+}
+
+// --- A wallet's own lending: its loans with live payoff, and its pool deposits (get_my_loans) ---
+
+const WALLET_LOAN_FIELDS = gql`
+  fragment WalletLoanFields on LoanModel {
+    loanId loanStatus loanProvider
+    principalScaled maxRepaymentScaled livePayoffScaled payoffAsOf currencySymbol
+    aprPercent durationFormatted startTime maturityDate
+    loanRepaidDate loanLiquidationDate
+    collateralId
+    borrower { address }
+    lender { address }
+    token { tokenId name vanityName propertyLink }
+  }
+`;
+
+const GET_WALLET_LOANS_QUERY = gql`
+  ${WALLET_LOAN_FIELDS}
+  query GetWalletLoans($walletAddress: String!, $network: String!, $testnets: Boolean!, $contractAddress: String!) {
+    wallet(walletAddress: $walletAddress, network: $network, testnets: $testnets, contractAddress: $contractAddress, burned: false) {
+      address
+      loansTaken(network: $network) { ...WalletLoanFields }
+      loansMade(network: $network) { ...WalletLoanFields }
+    }
+  }
+`;
+
+/**
+ * A wallet's loans, taken and made, with the live payoff of an active loan. Never cached: the
+ * payoff moves every block. Null for a wallet the API does not know.
+ */
+export async function getWalletLoans(walletAddress: string): Promise<WalletLoans | null> {
+  try {
+    const data = await request<GetWalletLoansQuery>(GET_WALLET_LOANS_QUERY, {
+      walletAddress,
+      network: NETWORK,
+      testnets: !IS_MAINNET,
+      contractAddress: CONTRACTS.fabricaToken,
+    });
+    return data.wallet;
+  } catch (error) {
+    if (isWalletNotFound(error)) return null;
+    throw error;
+  }
+}
+
+const GET_DEPOSIT_POOLS_QUERY = gql`
+  query GetDepositPools($network: String!) {
+    poolLendingPools(network: $network) {
+      pools {
+        address
+        currencyToken { symbol decimals }
+        ticks { raw value shares redemptionPending }
+      }
+    }
+  }
+`;
+
+/** This network's lending pools with each tick's value and shares, to price a deposit. */
+export async function getDepositPools(): Promise<DepositPool[]> {
+  const data = await request<GetDepositPoolsQuery>(GET_DEPOSIT_POOLS_QUERY, { network: NETWORK });
+  return data.poolLendingPools.pools;
+}
+
+const GET_POOL_DEPOSITS_QUERY = gql`
+  query GetPoolDeposits($walletAddress: String!, $network: String!, $poolAddress: String!) {
+    user(walletAddress: $walletAddress, network: $network) {
+      poolLendingDeposits(network: $network, poolAddress: $poolAddress) {
+        id tickRaw shares depositedAmount
+        redemptions { redemptionId shares }
+      }
+    }
+  }
+`;
+
+/** A wallet's deposits in one pool. Never cached: a deposit or redemption must show at once. */
+export async function getPoolDeposits(walletAddress: string, poolAddress: string): Promise<PoolDeposit[]> {
+  const data = await request<GetPoolDepositsQuery>(GET_POOL_DEPOSITS_QUERY, { walletAddress, network: NETWORK, poolAddress });
+  return data.user.poolLendingDeposits;
 }
 
 // --- Loan queries ---

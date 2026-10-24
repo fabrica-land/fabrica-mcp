@@ -8,6 +8,9 @@
 // responses, which have no schema to generate from.
 import type {
   GetCountyBoundsQuery,
+  GetDepositPoolsQuery,
+  GetPoolDepositsQuery,
+  GetWalletLoansQuery,
   GetLoanLiquidatedEventsQuery,
   GetLoanRepaidEventsQuery,
   GetLoanStartedEventsQuery,
@@ -106,6 +109,12 @@ export type SignContextOrder = NonNullable<SignContextToken["marketplaceListings
 export type LoanContextToken = GetLoanContextQuery["token"];
 export type LoanContextLoan = NonNullable<LoanContextToken["loans"]>[number];
 export type PremintSuccessor = GetPremintSuccessorQuery["premintSuccessor"];
+/** A wallet's loans as get_my_loans reads them, with the live payoff of an active loan. */
+export type WalletLoans = GetWalletLoansQuery["wallet"];
+export type WalletLoan = NonNullable<WalletLoans["loansTaken"]>[number];
+/** A lending pool with its ticks' value and shares, to price a deposit. */
+export type DepositPool = GetDepositPoolsQuery["poolLendingPools"]["pools"][number];
+export type PoolDeposit = GetPoolDepositsQuery["user"]["poolLendingDeposits"][number];
 export type TrustDocumentsToken = GetTrustDocumentsQuery["token"];
 export type ConfigurationDocument = NonNullable<NonNullable<TrustDocumentsToken["configuration"]>["documents"]>[number];
 export type TaxStatusToken = GetTaxStatusQuery["token"];

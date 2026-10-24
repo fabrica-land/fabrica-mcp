@@ -227,6 +227,34 @@ export type GetWalletQueryVariables = Exact<{
 
 export type GetWalletQuery = { wallet: { address: string, tokenCount: string, totalValue: string, totalAcres: string, totalCollateralValue: string, totalOutstandingLoansUSDC: string | null, propertyCountUnderLoan: string, user: { displayName: string, profilePath: string | null, avatarUrl: string | null }, creditHistory: { activeLoans: { loanCount: string, totalPrincipalValue: string, totalPaidValue: string, averageDurationDays: string }, defaultedLoans: { loanCount: string, totalPrincipalValue: string, totalPaidValue: string, averageDurationDays: string }, liquidatedLoans: { loanCount: string, totalPrincipalValue: string, totalPaidValue: string, averageDurationDays: string }, repaidLoans: { loanCount: string, totalPrincipalValue: string, totalPaidValue: string, averageDurationDays: string }, totalLoans: { loanCount: string, totalPrincipalValue: string, totalPaidValue: string, averageDurationDays: string }, tokens: { tokenCount: string, totalEstimatedValue: string } }, tokens: Array<{ tokenId: string, name: string | null, vanityName: string | null, acres: string | null, region: string | null, regionCode: string | null, district: string | null, estimatedValue: string, score: number | null, marketplacePrice: string | null, supplyUnderLoan: string }>, loansTaken: Array<{ loanId: string, loanStatus: LoanStatus, loanProvider: LoanProvider, principalScaled: string, currencySymbol: string | null, aprPercent: number | null, durationFormatted: string, maturityDate: string, startTime: string, collateralId: string, amountPaidToLenderScaled: string | null, loanRepaidDate: string | null, lender: { address: string } | null }> | null, loansMade: Array<{ loanId: string, loanStatus: LoanStatus, loanProvider: LoanProvider, principalScaled: string, currencySymbol: string | null, aprPercent: number | null, durationFormatted: string, maturityDate: string, startTime: string, collateralId: string, amountPaidToLenderScaled: string | null, loanRepaidDate: string | null, borrower: { address: string } }> | null, marketplaceOffersMade: Array<{ marketplaceId: string, tokenId: string, side: MarketplaceOrderSide, status: MarketplaceOrderStatus, price: string, symbol: EthereumCurrency }> | null, activity: Array<{ activity: ActivityType, source: ActivitySource, time: string, timestamp: number, network: string, tokenId: string | null, transactionHash: string | null, currencyAmount: string | null, currencyDecimals: number | null, currencySymbol: string | null, usdAmount: string | null, newValue: string | null }> } };
 
+export type WalletLoanFieldsFragment = { loanId: string, loanStatus: LoanStatus, loanProvider: LoanProvider, principalScaled: string, maxRepaymentScaled: string, livePayoffScaled: string | null, payoffAsOf: string | null, currencySymbol: string | null, aprPercent: number | null, durationFormatted: string, startTime: string, maturityDate: string, loanRepaidDate: string | null, loanLiquidationDate: string | null, collateralId: string, borrower: { address: string }, lender: { address: string } | null, token: { tokenId: string, name: string | null, vanityName: string | null, propertyLink: string } | null };
+
+export type GetWalletLoansQueryVariables = Exact<{
+  walletAddress: string;
+  network: string;
+  testnets: boolean;
+  contractAddress: string;
+}>;
+
+
+export type GetWalletLoansQuery = { wallet: { address: string, loansTaken: Array<{ loanId: string, loanStatus: LoanStatus, loanProvider: LoanProvider, principalScaled: string, maxRepaymentScaled: string, livePayoffScaled: string | null, payoffAsOf: string | null, currencySymbol: string | null, aprPercent: number | null, durationFormatted: string, startTime: string, maturityDate: string, loanRepaidDate: string | null, loanLiquidationDate: string | null, collateralId: string, borrower: { address: string }, lender: { address: string } | null, token: { tokenId: string, name: string | null, vanityName: string | null, propertyLink: string } | null }> | null, loansMade: Array<{ loanId: string, loanStatus: LoanStatus, loanProvider: LoanProvider, principalScaled: string, maxRepaymentScaled: string, livePayoffScaled: string | null, payoffAsOf: string | null, currencySymbol: string | null, aprPercent: number | null, durationFormatted: string, startTime: string, maturityDate: string, loanRepaidDate: string | null, loanLiquidationDate: string | null, collateralId: string, borrower: { address: string }, lender: { address: string } | null, token: { tokenId: string, name: string | null, vanityName: string | null, propertyLink: string } | null }> | null } };
+
+export type GetDepositPoolsQueryVariables = Exact<{
+  network: string;
+}>;
+
+
+export type GetDepositPoolsQuery = { poolLendingPools: { pools: Array<{ address: string, currencyToken: { symbol: string | null, decimals: number | null }, ticks: Array<{ raw: string, value: string, shares: string, redemptionPending: string }> }> } };
+
+export type GetPoolDepositsQueryVariables = Exact<{
+  walletAddress: string;
+  network: string;
+  poolAddress: string;
+}>;
+
+
+export type GetPoolDepositsQuery = { user: { poolLendingDeposits: Array<{ id: string, tickRaw: string, shares: string, depositedAmount: string, redemptions: Array<{ redemptionId: string, shares: string }> }> } };
+
 export type LoanFieldsFragment = { loanId: string, loanStatus: LoanStatus, loanProvider: LoanProvider, loanType: LoanType, loanContract: string, principalScaled: string, currencySymbol: string | null, aprPercent: number | null, interestForDurationPercent: number, durationFormatted: string, maturityDate: string, startTime: string, maxRepaymentScaled: string, collateralId: string, collateralContract: string, networkName: string, amountPaidToLenderScaled: string | null, loanRepaidDate: string | null, loanLiquidationDate: string | null, borrower: { address: string, user: { displayName: string } }, lender: { address: string, user: { displayName: string } } | null, token: { tokenId: string, name: string | null, acres: string | null, region: string | null, regionCode: string | null, district: string | null, estimatedValue: string } | null };
 
 export type GetLoansQueryVariables = Exact<{

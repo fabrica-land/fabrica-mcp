@@ -40,6 +40,8 @@ import type { AccountAuth } from "./auth/token.js";
 import { getMyAccount, getMyProperties, getMyPropertiesInput } from "./tools/account.js";
 import { getMyOnRamps, getOnRampStatus, getOnRampStatusInput } from "./tools/onramps.js";
 import { getMyOffers, getMyOffersInput } from "./tools/offers.js";
+import { getMyLoans } from "./tools/my-loans.js";
+import { LENDING_POOL_NAME } from "./labels.js";
 
 const NETWORK_NOTICE = IS_MAINNET
   ? `\n\n${MAINNET_LEGAL_NOTICE}`
@@ -51,7 +53,7 @@ export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to toke
 export const SIGN_REQUEST_INSTRUCTIONS = " make_land_offer, list_land_for_sale, accept_land_offer, buy_land and cancel_land_order prepare a marketplace action, and borrow_against_land and repay_land_loan a DeFi lending pool loan or its payoff, as a sign request: they check the live data and return a summary, warnings and a sign link to fabrica.land, where the person reviews and signs with their own wallet. The server holds no keys and submits nothing; a prepared request is not sent until the person signs. get_sign_request reports whether it was signed; get_transaction_status follows an onchain transaction.";
 
 /** Added to the instructions on the signed-in endpoint (/mcp/account). */
-export const ACCOUNT_INSTRUCTIONS = " This is the signed-in endpoint: the person connected their Fabrica account to this client. get_my_account reads that person's own account (email, linked accounts, verification status, and what the connection may read) get_my_properties lists their own properties, get_my_offers lists the offers they made and the ones waiting on their properties, and get_my_onramps and get_onramp_status read the properties they are adding to Fabrica (each step, who acts next, and the link to do it); every other tool works exactly as on the anonymous endpoint and reads public data only. Personal data on this endpoint belongs to the connected person and is private to them.";
+export const ACCOUNT_INSTRUCTIONS = " This is the signed-in endpoint: the person connected their Fabrica account to this client. get_my_account reads that person's own account (email, linked accounts, verification status, and what the connection may read) get_my_properties lists their own properties, get_my_offers lists the offers they made and the ones waiting on their properties, get_my_loans lists their loans and pool deposits, and get_my_onramps and get_onramp_status read the properties they are adding to Fabrica (each step, who acts next, and the link to do it); every other tool works exactly as on the anonymous endpoint and reads public data only. Personal data on this endpoint belongs to the connected person and is private to them.";
 
 /**
  * Sign requests ship testnet-first: on by default on Sepolia, and on mainnet only
@@ -508,6 +510,16 @@ function registerAccountTools(server: McpServer, account: AccountAuth): void {
       annotations: readOnly("Get my offers"),
     },
     async (args) => jsonResult(await getMyOffers(account, args)),
+  );
+  server.registerTool(
+    "get_my_loans",
+    {
+      title: "Get my loans",
+      description: `List the connected person's lending on Fabrica (${NETWORK_LABEL}), across every wallet on their account: taken, the loans against their properties (active first, with maturity date, days to maturity, maturingSoon within 14 days, payoff today and its as-of time, APR and the property page where it is repaid); made, loans they funded; deposits, their position in the ${LENDING_POOL_NAME} (value at current pool prices, amount deposited, pending redemptions, pool page link); and their loan counts. Prepares nothing: repaying and depositing happen on fabrica.land. Needs the connection's portfolio:read grant.`,
+      inputSchema: {},
+      annotations: readOnly("Get my loans"),
+    },
+    async () => jsonResult(await getMyLoans(account)),
   );
   server.registerTool(
     "get_my_onramps",
