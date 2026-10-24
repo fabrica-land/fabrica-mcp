@@ -36,6 +36,8 @@ import { borrowAgainstLand, borrowInput, getLoan, getLoanInput, repayInput, repa
 import { NETWORK_LABEL, IS_MAINNET, MAINNET_LEGAL_NOTICE } from "./config.js";
 import { PROPERTY_CARD_URI, registerPropertyCard } from "./ui/property-card.js";
 import { registerKnowledgeResources } from "./resources/knowledge.js";
+import type { AccountAuth } from "./auth/token.js";
+import { getMyAccount } from "./tools/account.js";
 
 const NETWORK_NOTICE = IS_MAINNET
   ? `\n\n${MAINNET_LEGAL_NOTICE}`
@@ -45,6 +47,9 @@ export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to toke
 
 /** Added to the instructions where the sign-request tools are on. */
 export const SIGN_REQUEST_INSTRUCTIONS = " make_land_offer, list_land_for_sale, accept_land_offer, buy_land and cancel_land_order prepare a marketplace action, and borrow_against_land and repay_land_loan a DeFi lending pool loan or its payoff, as a sign request: they check the live data and return a summary, warnings and a sign link to fabrica.land, where the person reviews and signs with their own wallet. The server holds no keys and submits nothing; a prepared request is not sent until the person signs. get_sign_request reports whether it was signed; get_transaction_status follows an onchain transaction.";
+
+/** Added to the instructions on the signed-in endpoint (/mcp/account). */
+export const ACCOUNT_INSTRUCTIONS = " This is the signed-in endpoint: the person connected their Fabrica account to this client. get_my_account reads that person's own account (email, linked accounts, verification status, and what the connection may read); every other tool works exactly as on the anonymous endpoint and reads public data only. Personal data on this endpoint belongs to the connected person and is private to them.";
 
 /**
  * Sign requests ship testnet-first: on by default on Sepolia, and on mainnet only
@@ -89,6 +94,8 @@ function jsonResult(result: object): CallToolResult {
 export interface ServerHooks {
   /** Receives, per find_us_parcel call, whether each settled query named a parcel on Fabrica (the usage log's split). */
   onFindParcel?: (onFabrica: readonly boolean[]) => void;
+  /** The connected user on the signed-in endpoint; adds the personal tools. Absent on the anonymous endpoint. */
+  account?: AccountAuth;
 }
 
 export function createServer(hooks: ServerHooks = {}): McpServer {
@@ -103,7 +110,9 @@ export function createServer(hooks: ServerHooks = {}): McpServer {
       version: "0.2.0",
     },
     {
-      instructions: signRequestsEnabled() ? SERVER_INSTRUCTIONS + SIGN_REQUEST_INSTRUCTIONS : SERVER_INSTRUCTIONS,
+      instructions: SERVER_INSTRUCTIONS
+        + (signRequestsEnabled() ? SIGN_REQUEST_INSTRUCTIONS : "")
+        + (hooks.account ? ACCOUNT_INSTRUCTIONS : ""),
     },
   );
 
@@ -365,6 +374,7 @@ export function createServer(hooks: ServerHooks = {}): McpServer {
     async (args) => jsonResult(await contactSupport(args)),
   );
   if (signRequestsEnabled()) registerSignRequestTools(server);
+  if (hooks.account) registerAccountTools(server, hooks.account);
   registerKnowledgeResources(server);
   registerPrompts(server);
   return server;
@@ -462,5 +472,19 @@ function registerSignRequestTools(server: McpServer): void {
       annotations: readOnly("Get transaction status"),
     },
     async (args) => jsonResult(await getTransactionStatus(args)),
+  );
+}
+
+/** Personal reads for the connected user: only on the signed-in endpoint, each with the user's token. */
+function registerAccountTools(server: McpServer, account: AccountAuth): void {
+  server.registerTool(
+    "get_my_account",
+    {
+      title: "Get my Fabrica account",
+      description: `Get the connected person's own Fabrica account on ${NETWORK_LABEL}: their email, their linked accounts (the wallet addresses on the account: the one Fabrica created at sign-up and any they connected), their verification status, and what this connection may read (its scopes and when its access token expires). Takes no input: it always answers for the person who connected, never for anyone else.`,
+      inputSchema: {},
+      annotations: readOnly("Get my Fabrica account"),
+    },
+    async () => jsonResult(await getMyAccount(account)),
   );
 }

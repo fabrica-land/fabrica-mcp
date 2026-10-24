@@ -65,6 +65,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "graphql": "^16.13.2",
     "graphql-request": "^7.4.0",
+    "jose": "^6.2.13",
     "zod": "^4.3.6"
   },
   "devDependencies": {

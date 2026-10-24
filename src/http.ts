@@ -3,12 +3,15 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { createServer } from "./server.js";
 import { describeRequest, trackUsage } from "./usage-log.js";
 import { allowFindParcel, FIND_PARCEL_LIMIT_PER_MINUTE, MAX_BATCH_QUERIES } from "./tools/parcels.js";
+import { ACCOUNT_PATH, oauthEnabled, resourceMetadataUrl } from "./auth/config.js";
+import { checkAccessToken, type AccountAuth } from "./auth/token.js";
 
 /**
- * Origin policy: this public server serves only public, read-only data and holds no
+ * Origin policy: the anonymous endpoint serves only public, read-only data and holds no
  * credentials or session state, so any browser origin may call it (wildcard CORS below).
- * DNS rebinding targets local servers with privileged access, which this is not. Revisit
- * when authenticated tools exist.
+ * DNS rebinding targets local servers with privileged access, which this is not. The
+ * signed-in endpoint (/mcp/account) takes a bearer token in the Authorization header, never
+ * a cookie, so a browser cannot attach it on a cross-site request: wildcard CORS stays safe.
  *
  * Stateless Streamable HTTP entrypoint. Every POST gets a fresh server and
  * transport, so the same handler runs on serverless platforms (Vercel) and
@@ -20,7 +23,7 @@ const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, GET, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Accept, Authorization, Mcp-Session-Id, Mcp-Protocol-Version, Last-Event-ID",
-  "Access-Control-Expose-Headers": "Mcp-Session-Id, Mcp-Protocol-Version",
+  "Access-Control-Expose-Headers": "Mcp-Session-Id, Mcp-Protocol-Version, WWW-Authenticate",
 };
 
 const MAX_BODY_BYTES = 1024 * 1024;
@@ -87,12 +90,54 @@ export function countFindParcelCalls(body: unknown): number {
   }, 0);
 }
 
+/** Whether the request is for the signed-in endpoint: its path, or the query the Vercel rewrite adds. */
+export function isAccountRequest(url: string | undefined): boolean {
+  const parsed = new URL(url ?? "/", "http://localhost");
+  return parsed.pathname.replace(/\/+$/, "") === ACCOUNT_PATH || parsed.searchParams.get("endpoint") === "account";
+}
+
+/** The RFC 6750 challenge that points the client at the protected resource metadata (RFC 9728). */
+function challenge(error?: { code: string; description: string }): string {
+  const parts = [`resource_metadata="${resourceMetadataUrl()}"`];
+  if (error) parts.unshift(`error="${error.code}"`, `error_description="${error.description.replace(/["\\]/g, "")}"`);
+  return `Bearer ${parts.join(", ")}`;
+}
+
+/**
+ * The signed-in endpoint's gate: the verified caller, or a response already sent (404 while
+ * Connect Fabrica is off, 401 with the challenge without a valid token, 503 when the issuer's
+ * keys cannot be read).
+ */
+async function authenticate(req: McpHttpRequest, res: ServerResponse): Promise<AccountAuth | null> {
+  if (!oauthEnabled()) {
+    sendJsonRpcError(res, 404, -32000, "Not found. The anonymous Fabrica MCP endpoint is /mcp.");
+    return null;
+  }
+  const check = await checkAccessToken(req.headers.authorization);
+  if (check.ok) return check.auth;
+  if (check.reason === "unavailable") {
+    sendJsonRpcError(res, 503, -32000, "Fabrica sign-in is temporarily unavailable. Retry shortly; the anonymous endpoint /mcp keeps working.");
+    return null;
+  }
+  res.setHeader("WWW-Authenticate", challenge(check.reason === "invalid" ? { code: "invalid_token", description: check.description } : undefined));
+  sendJsonRpcError(res, 401, -32001, check.reason === "invalid" ? `${check.description} Reconnect Fabrica to get a new one.` : "This endpoint needs a Fabrica connection: authorize this client with Fabrica (OAuth), or use the anonymous endpoint /mcp.");
+  return null;
+}
+
 export async function handleMcpHttpRequest(req: McpHttpRequest, res: ServerResponse): Promise<void> {
   for (const [name, value] of Object.entries(CORS_HEADERS)) res.setHeader(name, value);
   if (req.method === "OPTIONS") {
     res.writeHead(204);
     res.end();
     return;
+  }
+  let account: AccountAuth | undefined;
+  if (isAccountRequest(req.url)) {
+    // Personal responses must never be shared by a cache.
+    res.setHeader("Cache-Control", "no-store");
+    const auth = await authenticate(req, res);
+    if (!auth) return;
+    account = auth;
   }
   if (req.method !== "POST") {
     sendJsonRpcError(res, 405, -32000, "Method not allowed. This server is stateless: send MCP JSON-RPC messages with POST.");
@@ -115,7 +160,7 @@ export async function handleMcpHttpRequest(req: McpHttpRequest, res: ServerRespo
     sendJsonRpcError(res, 429, -32000, `find_us_parcel is limited to ${FIND_PARCEL_LIMIT_PER_MINUTE} lookups per minute per client. Wait a minute and retry.`);
     return;
   }
-  const server = createServer({ onFindParcel: usage.noteOnFabrica });
+  const server = createServer({ onFindParcel: usage.noteOnFabrica, account });
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
   res.on("close", () => {
     void transport.close();

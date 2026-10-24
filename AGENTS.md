@@ -24,6 +24,9 @@ src/
   http.ts             # stateless Streamable HTTP handler (hosted)
   usage-log.ts        # one structured log line per request, no arguments or IPs (docs/usage/)
   vercel.ts           # Vercel function entry, bundled by scripts/build-vercel.mjs
+  auth/
+    config.ts         # Connect Fabrica (OAuth resource server): FABRICA_OAUTH flag, issuer per network, the /mcp/account resource
+    token.ts          # access-token checks (ES256 JWT, issuer, audience, expiry, at+jwt) against the issuer's JWKS; never logged
   ui/property-card.ts # registers the property card MCP App resource (ui://fabrica/property-card)
   ui/generated/       # gitignored: HTML built from /ui by scripts/build-ui.mjs
 server.json, server.testnet.json # MCP Registry entries (land.fabrica/mcp, land.fabrica/mcp-testnet); npm run registry:publish
@@ -55,6 +58,7 @@ ui/
     sign-requests.ts  # make_land_offer, list_land_for_sale, accept_land_offer, buy_land, cancel_land_order (prepare a sign request), get_sign_request
     loans.ts          # borrow_against_land, repay_land_loan (sign requests), get_land_loan (GetLoanContext, never cached)
     transactions.ts   # get_transaction_status (JSON-RPC reads only)
+    account.ts        # get_my_account (signed-in endpoint /mcp/account only, the connected user's own token)
     inputs.ts         # zod pieces shared by the tools' input schemas (property reference, image size)
   knowledge/
     index.ts          # typed, validated loader for generated/index.json (committed)
@@ -67,6 +71,7 @@ ui/
   # .github/workflows/refresh-knowledge.yml open the daily refresh pull request
   clients/
     graphql.ts        # Fabrica GraphQL API client (primary data source)
+    account.ts        # personal reads with the connected user's token (never cached, never on anonymous calls)
     rpc.ts            # Ethereum JSON-RPC reads (transaction, receipt, block number) for get_transaction_status
     generated/        # operations.ts: one result type per gql document, from scripts/codegen.mjs (committed; npm run codegen)
     subgraph.ts       # Lending pool subgraph client (dynamic pool discovery)
@@ -237,6 +242,9 @@ Naming rule: "Property checks" is the name; the number is "the numeric encoding 
   - `FABRICA_SIGN_REQUESTS` (default: on for Sepolia, off for mainnet): the sign-request tools (make_land_offer, list_land_for_sale, accept_land_offer, buy_land, cancel_land_order, get_sign_request, get_transaction_status)
   - `KV_REST_API_URL` and `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`) with `SIGN_REQUEST_SECRET`: the sign-request store. On Vercel without them the sign-request tools report "not configured"; locally an in-process map is used
   - `FABRICA_RPC_URL` (default: publicnode for the network): JSON-RPC endpoint for get_transaction_status and the sign-request result check
+  - `FABRICA_OAUTH` (default: off on both networks): Connect Fabrica. `enabled` serves the signed-in endpoint `/mcp/account` (401 with an RFC 9728 challenge without a token) and `/.well-known/oauth-protected-resource[/mcp/account]`; off, both answer 404 and `/mcp` is unchanged
+  - `FABRICA_OAUTH_ISSUER` (default: `https://api.fabrica.land`, `https://api-test.fabrica.land` on Sepolia), `FABRICA_OAUTH_JWKS_URL` (default: the issuer's `/.well-known/jwks.json`), `FABRICA_MCP_ORIGIN` (default: `https://mcp.fabrica.land`, `https://mcp-testnet.fabrica.land` on Sepolia; the token audience is `<origin>/mcp/account`)
+  - `FABRICA_OAUTH_JWKS` (Sepolia and local only, ignored on mainnet): inline public JWKS for the mocked issuer; `node scripts/oauth-mock-issuer.mjs` prints one with a matching access token and can serve a mock `GET /oauth/account`
 
 ---
 
