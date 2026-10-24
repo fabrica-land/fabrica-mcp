@@ -60,7 +60,7 @@ beforeEach(() => {
   vi.mocked(getAccountProfile).mockResolvedValue({ email: null, kycStatus: null, wallets: [{ address: WALLET, kind: "embedded" }] });
 });
 
-describe("get_my_onramps", () => {
+describe("get_my_properties_being_added", () => {
   it("shows one waiting on the owner's deed upload and one in Fabrica review, owner's first", async () => {
     vi.mocked(getOnRampsForWallet).mockResolvedValue([inReview, waitingOnDeed]);
     const result = await getMyOnRamps(auth());
@@ -124,7 +124,7 @@ describe("get_my_onramps", () => {
   });
 });
 
-describe("get_onramp_status", () => {
+describe("get_adding_status", () => {
   it("gives every visible step, the open actions with links, and what the owner entered", async () => {
     vi.mocked(getOnRampRecord).mockResolvedValue(waitingOnDeed);
     const result = await getOnRampStatus(auth(), { tokenId: "11" });

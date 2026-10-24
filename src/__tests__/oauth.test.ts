@@ -267,7 +267,7 @@ describe("signed-in endpoint with Connect Fabrica on", () => {
     await withServer(async (base) => {
       const signedIn = await connect(`${base}/mcp/account`, await token());
       const { tools } = await signedIn.listTools();
-      const personal = ["get_my_account", "get_my_properties", "get_my_offers", "get_my_loans", "get_my_onramps", "get_onramp_status", "what_needs_attention"];
+      const personal = ["get_my_account", "get_my_properties", "get_my_offers", "get_my_loans", "get_my_properties_being_added", "get_adding_status", "what_needs_attention"];
       expect(tools.map((tool) => tool.name)).toEqual(expect.arrayContaining(personal));
       for (const tool of tools.filter((t) => personal.includes(t.name))) {
         expect(prose(`${tool.title ?? ""} ${tool.description ?? ""} ${JSON.stringify(tool.inputSchema)}`), tool.name).not.toMatch(jargon);
