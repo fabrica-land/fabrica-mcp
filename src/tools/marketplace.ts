@@ -8,7 +8,7 @@ import { type ArgsOf, propertyRefInputs } from "./inputs.js";
 const DAY_MS = 86_400_000;
 
 /** Orders that can still be filled or are waiting on the seller's loan payoff: the default view. */
-const LIVE_STATUSES: ReadonlySet<OrderBookOrder["status"]> = new Set(["active", "encumbered", "pending"]);
+export const LIVE_STATUSES: ReadonlySet<OrderBookOrder["status"]> = new Set(["active", "encumbered", "pending"]);
 
 /** Why a listing on a property under a loan cannot be bought right now (API `MarketplaceOrderBlockReason`). */
 const BLOCK_REASONS: Record<NonNullable<NonNullable<OrderBookOrder["encumbrance"]>["blockReason"]>, string> = {
@@ -62,12 +62,12 @@ export function hasEnded(endTime: string | null | undefined, now: number): boole
  * An order whose end time has passed is expired whatever status the API still reports,
  * so a stale "active" row never reads as live.
  */
-function effectiveStatus(order: OrderBookOrder, now: number): OrderBookOrder["status"] {
+export function effectiveStatus(order: OrderBookOrder, now: number): OrderBookOrder["status"] {
   if (LIVE_STATUSES.has(order.status) && hasEnded(order.endTime, now)) return "expired";
   return order.status;
 }
 
-function formatOrder(order: OrderBookOrder, status: OrderBookOrder["status"], now: number) {
+export function formatOrder(order: OrderBookOrder, status: OrderBookOrder["status"], now: number) {
   const feeBps = Number.parseInt(order.feeBps, 10);
   return {
     price: formatUsd(order.usdPrice),
@@ -99,7 +99,7 @@ const usdValue = (order: OrderBookOrder): number | null => {
 };
 
 /** Sort by USD price; an order the API could not price in USD is not comparable and goes last. */
-function byUsd(direction: 1 | -1) {
+export function byUsd(direction: 1 | -1) {
   return (a: { order: OrderBookOrder }, b: { order: OrderBookOrder }): number => {
     const x = usdValue(a.order);
     const y = usdValue(b.order);
