@@ -5,6 +5,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { IS_MAINNET, NETWORK, NETWORK_LABEL } from "./config.js";
 import type { McpHttpRequest } from "./http.js";
 import { createServer } from "./server.js";
+import { accountResource, OAUTH_SCOPES, oauthEnabled, oauthIssuer } from "./auth/config.js";
 
 /**
  * Discovery documents for clients that start from the domain:
@@ -12,6 +13,7 @@ import { createServer } from "./server.js";
  *   GET /.well-known/mcp/server-card.json  the same plus the tools, prompts and resource templates
  *   GET /.well-known/ai-catalog.json       the AI Catalog that domain-level discovery fetches first: both servers' cards
  *   GET /.well-known/openai-apps-challenge the ChatGPT plugin domain-verification token, plain text, from OPENAI_APPS_CHALLENGE
+ *   GET /.well-known/oauth-protected-resource[/mcp/account]  RFC 9728 metadata for the signed-in endpoint (404 while Connect Fabrica is off)
  * The card is read from a live in-process server, so it lists exactly what this deployment
  * registers (sign-request tools appear only where the store is configured) and cannot drift.
  * On Vercel the routes rewrite to /well-known?doc=…; a plain Node server passes the path.
@@ -118,15 +120,32 @@ export async function serverCard(): Promise<object> {
   }
 }
 
-type WellKnownDoc = "manifest" | "server-card" | "ai-catalog" | "openai-apps-challenge";
-const DOCS: readonly WellKnownDoc[] = ["manifest", "server-card", "ai-catalog", "openai-apps-challenge"];
+type WellKnownDoc = "manifest" | "server-card" | "ai-catalog" | "openai-apps-challenge" | "oauth-protected-resource";
+const DOCS: readonly WellKnownDoc[] = ["manifest", "server-card", "ai-catalog", "openai-apps-challenge", "oauth-protected-resource"];
 
 const MEDIA_TYPES: Record<WellKnownDoc, string> = {
   manifest: "application/json",
   "server-card": SERVER_CARD_MEDIA_TYPE,
   "ai-catalog": AI_CATALOG_MEDIA_TYPE,
   "openai-apps-challenge": "text/plain",
+  "oauth-protected-resource": "application/json",
 };
+
+/**
+ * RFC 9728 protected resource metadata for the signed-in endpoint: the resource (the token
+ * audience), the one authorization server that issues tokens for it, and the scopes. Served at
+ * both the path-inserted and the root location, since clients try either.
+ */
+export function protectedResourceMetadata(): object {
+  return {
+    resource: accountResource(),
+    authorization_servers: [oauthIssuer()],
+    scopes_supported: [...OAUTH_SCOPES],
+    bearer_methods_supported: ["header"],
+    resource_name: IS_MAINNET ? "Fabrica" : "Fabrica (Sepolia testnet)",
+    resource_documentation: DOCS_URL,
+  };
+}
 
 /** The token OpenAI's plugin dashboard issues for this host; unset means there is no challenge to answer. */
 function openAiAppsChallenge(): string | null {
@@ -140,6 +159,7 @@ export function parseWellKnownUrl(url: string | undefined): WellKnownDoc | null 
   if (/^\/\.well-known\/mcp\/server-card\.json$/.test(parsed.pathname)) return "server-card";
   if (/^\/\.well-known\/ai-catalog\.json$/.test(parsed.pathname)) return "ai-catalog";
   if (/^\/\.well-known\/openai-apps-challenge$/.test(parsed.pathname)) return "openai-apps-challenge";
+  if (/^\/\.well-known\/oauth-protected-resource(\/mcp\/account)?\/?$/.test(parsed.pathname)) return "oauth-protected-resource";
   const doc = parsed.searchParams.get("doc");
   return DOCS.find((name) => name === doc) ?? null;
 }
@@ -152,7 +172,7 @@ export async function handleWellKnownHttp(req: McpHttpRequest, res: ServerRespon
     return;
   }
   const doc = parseWellKnownUrl(req.url);
-  if (!doc) {
+  if (!doc || (doc === "oauth-protected-resource" && !oauthEnabled())) {
     res.writeHead(404, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ error: "not_found" }));
     return;
@@ -170,7 +190,10 @@ export async function handleWellKnownHttp(req: McpHttpRequest, res: ServerRespon
     return;
   }
   try {
-    const body = doc === "manifest" ? mcpManifest() : doc === "ai-catalog" ? aiCatalog() : await serverCard();
+    const body = doc === "manifest" ? mcpManifest()
+      : doc === "ai-catalog" ? aiCatalog()
+      : doc === "oauth-protected-resource" ? protectedResourceMetadata()
+      : await serverCard();
     // The edge keeps a copy for an hour; a deploy starts a fresh cache.
     res.writeHead(200, { "Content-Type": `${MEDIA_TYPES[doc]}; charset=utf-8`, "Cache-Control": "public, max-age=300, s-maxage=3600" });
     res.end(req.method === "HEAD" ? undefined : JSON.stringify(body, null, 2));
