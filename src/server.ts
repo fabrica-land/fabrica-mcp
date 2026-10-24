@@ -4,14 +4,15 @@ import type { CallToolResult, ToolAnnotations } from "@modelcontextprotocol/sdk/
 import { searchProperties, getProperty, getPropertyMap, searchPropertiesInput, getPropertyInput, getPropertyMapInput, type GetPropertyArgs } from "./tools/properties.js";
 import { getLendingMarket, getLendingMarketInput } from "./tools/lending.js";
 import { getLoanBook, getLoanBookInput } from "./tools/loan-book.js";
-import { getPortfolio, getPortfolioInput } from "./tools/portfolio.js";
+import { getPortfolio, getPortfolioInput, type GetPortfolioArgs } from "./tools/portfolio.js";
 import { getProtocolStats } from "./tools/protocol.js";
 import { explainConfidenceScore, explainConfidenceScoreInput } from "./tools/scoring.js";
 import { getBorrowQuote, getBorrowQuoteInput } from "./tools/borrowing.js";
 import { getValuation, getValuationInput } from "./tools/valuation.js";
 import { getActivity, getActivityInput } from "./tools/activity.js";
 import { getOrderBook, getOrderBookInput } from "./tools/marketplace.js";
-import { getPropertyImage, getPortfolioImage, getPropertyImageInput, getPortfolioImageInput } from "./tools/images.js";
+import { getPropertyImage, getPortfolioImage, getPropertyImageInput, getPortfolioImageInput, type GetPortfolioImageArgs } from "./tools/images.js";
+import { ownWalletArg, walletIfMe, walletOrOwn } from "./tools/own-wallet.js";
 import { getTrustDocuments, getTrustDocumentsInput } from "./tools/documents.js";
 import { getTaxStatus, getTaxStatusInput } from "./tools/tax.js";
 import { askFabrica, askFabricaInput } from "./tools/knowledge.js";
@@ -54,7 +55,7 @@ export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to toke
 export const SIGN_REQUEST_INSTRUCTIONS = " make_land_offer, list_land_for_sale, accept_land_offer, buy_land and cancel_land_order prepare a marketplace action, and borrow_against_land and repay_land_loan a DeFi lending pool loan or its payoff, as a sign request: they check the live data and return a summary, warnings and a sign link to fabrica.land, where the person reviews and signs with their own wallet. The server holds no keys and submits nothing; a prepared request is not sent until the person signs. get_sign_request reports whether it was signed; get_transaction_status follows an onchain transaction.";
 
 /** Added to the instructions on the signed-in endpoint (/mcp/account). */
-export const ACCOUNT_INSTRUCTIONS = " This is the signed-in endpoint: the person connected their Fabrica account to this client. get_my_account reads that person's own account (email, linked accounts, verification status, and what the connection may read) get_my_properties lists their own properties, get_my_offers lists the offers they made and the ones waiting on their properties, get_my_loans lists their loans and pool deposits, get_my_properties_being_added and get_adding_status read the properties they are adding to Fabrica (each step, who acts next, and the link to do it), and what_needs_attention ranks everything waiting on them; every other tool works exactly as on the anonymous endpoint and reads public data only. Personal data on this endpoint belongs to the connected person and is private to them.";
+export const ACCOUNT_INSTRUCTIONS = " This is the signed-in endpoint: the person connected their Fabrica account to this client. get_my_account reads that person's own account (email, linked accounts, verification status, and what the connection may read) get_my_properties lists their own properties, get_my_offers lists the offers they made and the ones waiting on their properties, get_my_loans lists their loans and pool deposits, get_my_properties_being_added and get_adding_status read the properties they are adding to Fabrica (each step, who acts next, and the link to do it), and what_needs_attention ranks everything waiting on them; every other tool reads public data only, as on the anonymous endpoint, except that get_land_portfolio and get_land_portfolio_map_image read the connected person's own wallet when address is left out, and get_land_activity (address) and search_land (ownedBy) take 'me' for it. Personal data on this endpoint belongs to the connected person and is private to them.";
 
 /**
  * Sign requests ship testnet-first: on by default on Sepolia, and on mainnet only
@@ -103,6 +104,9 @@ export interface ServerHooks {
   account?: AccountAuth;
 }
 
+/** A tool's arguments with its wallet argument optional, as on the signed-in endpoint. */
+type OwnWalletArgs<A, K extends keyof A> = Omit<A, K> & { [P in K]?: string };
+
 export function createServer(hooks: ServerHooks = {}): McpServer {
   // `instructions` belongs in the SDK's ServerOptions (second argument), not in the
   // Implementation record. Passed in the first argument it rode along inside
@@ -121,15 +125,28 @@ export function createServer(hooks: ServerHooks = {}): McpServer {
     },
   );
 
+  // On the signed-in endpoint the wallet-scoped tools default to the person's own wallet
+  // (own-wallet.ts); on the anonymous endpoint they are unchanged.
+  const account = hooks.account;
+  const ownOrGiven = <R extends object>(value: string | undefined, run: (address: string) => Promise<R>) => {
+    if (account) return walletOrOwn(account, value, run);
+    return value === undefined ? Promise.resolve({ error: "address is required (Ethereum wallet address)" }) : run(value);
+  };
+  const meOrGiven = <R extends object>(value: string | undefined, run: (address: string | undefined) => Promise<R>) =>
+    (account ? walletIfMe(account, value, run) : run(value));
+  const ownNote = (omittedMeansOwn: boolean, key: string) => (account
+    ? ` On this signed-in endpoint, ${omittedMeansOwn ? `leave ${key} out` : `pass ${key} "me"`} to read the connected person's own wallet; walletUsed says which one.`
+    : "");
+
   server.registerTool(
     "search_land",
     {
       title: "Search land",
-      description: `Search US land on Fabrica (${NETWORK_LABEL}): land for sale and every other property on the network, mostly vacant lots and acreage. Returns a list of properties matching the given filters (location, size, Property checks, listing status, listing price and price per acre, distance from a point), sorted by price, price per acre, acres, estimated value, Property checks, date added or distance; each row carries its price per acre (listing or estimate, labeled) and, with near, its straight-line distance. Or counts per state or county with groupBy. When a state or county is given, the response includes the link to that location's page on fabrica.land.${IS_MAINNET ? " Each result is a real parcel of land in the US, held in a trust whose beneficial interest is an ERC-1155 token." : " These are test properties on Sepolia with no real-world effect."}`,
-      inputSchema: searchPropertiesInput,
+      description: `Search US land on Fabrica (${NETWORK_LABEL}): land for sale and every other property on the network, mostly vacant lots and acreage. Returns a list of properties matching the given filters (location, size, Property checks, listing status, listing price and price per acre, distance from a point), sorted by price, price per acre, acres, estimated value, Property checks, date added or distance; each row carries its price per acre (listing or estimate, labeled) and, with near, its straight-line distance. Or counts per state or county with groupBy. When a state or county is given, the response includes the link to that location's page on fabrica.land.${IS_MAINNET ? " Each result is a real parcel of land in the US, held in a trust whose beneficial interest is an ERC-1155 token." : " These are test properties on Sepolia with no real-world effect."}${ownNote(false, "ownedBy")}`,
+      inputSchema: account ? { ...searchPropertiesInput, ownedBy: ownWalletArg("Filter by owner wallet address", false) } : searchPropertiesInput,
       annotations: readOnly("Search land"),
     },
-    async (args) => jsonResult(await searchProperties(args)),
+    async ({ ownedBy, ...rest }) => jsonResult(await meOrGiven(ownedBy, (owner) => searchProperties({ ...rest, ownedBy: owner }))),
   );
 
   const getPropertyConfig = {
@@ -177,11 +194,11 @@ export function createServer(hooks: ServerHooks = {}): McpServer {
     "get_land_portfolio",
     {
       title: "Get wallet portfolio",
-      description: "Get a wallet's land portfolio on Fabrica: properties owned (paged), active loans (as borrower or lender), listings and offers, credit history, and total portfolio value. Counts and totals always cover the whole wallet.",
-      inputSchema: getPortfolioInput,
+      description: `Get a wallet's land portfolio on Fabrica: properties owned (paged), active loans (as borrower or lender), listings and offers, credit history, and total portfolio value. Counts and totals always cover the whole wallet.${ownNote(true, "address")}`,
+      inputSchema: account ? { ...getPortfolioInput, address: ownWalletArg("Ethereum wallet address", true) } : getPortfolioInput,
       annotations: readOnly("Get wallet portfolio"),
     },
-    async (args) => jsonResult(await getPortfolio(args)),
+    async ({ address, ...rest }: OwnWalletArgs<GetPortfolioArgs, "address">) => jsonResult(await ownOrGiven(address, (wallet) => getPortfolio({ ...rest, address: wallet }))),
   );
 
   server.registerTool(
@@ -276,11 +293,11 @@ export function createServer(hooks: ServerHooks = {}): McpServer {
     "get_land_activity",
     {
       title: "Get activity history",
-      description: "Get the activity feed for a property or wallet, or, with no tokenId, slug or address, the most recent activity across every property on the network: properties added, transfers, sales, listings, loans started, repaid or liquidated, configuration changes, and more. Covers transaction history and event timelines.",
-      inputSchema: getActivityInput,
+      description: `Get the activity feed for a property or wallet, or, with no tokenId, slug or address, the most recent activity across every property on the network: properties added, transfers, sales, listings, loans started, repaid or liquidated, configuration changes, and more. Covers transaction history and event timelines.${ownNote(false, "address")}`,
+      inputSchema: account ? { ...getActivityInput, address: ownWalletArg("Wallet address (for wallet activity)", false) } : getActivityInput,
       annotations: readOnly("Get activity history"),
     },
-    async (args) => jsonResult(await getActivity(args)),
+    async ({ address, ...rest }) => jsonResult(await meOrGiven(address, (wallet) => getActivity({ ...rest, address: wallet }))),
   );
 
   server.registerTool(
@@ -318,17 +335,19 @@ export function createServer(hooks: ServerHooks = {}): McpServer {
     "get_land_portfolio_map_image",
     {
       title: "Get portfolio map image",
-      description: "Get a static map image showing all properties a wallet owns on Fabrica, plotted as points on a single map. Returns an inline image. Supports dark/light themes and custom dimensions.",
-      inputSchema: getPortfolioImageInput,
+      description: `Get a static map image showing all properties a wallet owns on Fabrica, plotted as points on a single map. Returns an inline image. Supports dark/light themes and custom dimensions.${ownNote(true, "address")}`,
+      inputSchema: account ? { ...getPortfolioImageInput, address: ownWalletArg("Ethereum wallet address", true) } : getPortfolioImageInput,
       annotations: readOnly("Get portfolio map image"),
     },
-    async (args) => {
-      const result = await getPortfolioImage(args);
+    async ({ address, ...rest }: OwnWalletArgs<GetPortfolioImageArgs, "address">): Promise<CallToolResult> => {
+      const result = await ownOrGiven(address, (wallet) => getPortfolioImage({ ...rest, address: wallet }));
       if ("error" in result) return jsonResult(result);
       return {
         content: [
           { type: "text", text: `Portfolio map for ${result.address}` },
           { type: "image", data: result.image.data, mimeType: result.image.mimeType },
+          // Which wallet was read, with the account's other addresses, so the agent can map those too.
+          ...("walletUsed" in result && result.walletUsed ? [{ type: "text" as const, text: JSON.stringify({ walletUsed: result.walletUsed }) }] : []),
         ],
       };
     },

@@ -63,6 +63,7 @@ ui/
     my-loans.ts       # get_my_loans (signed-in endpoint only, portfolio:read; loans with live payoff, pool deposits valued at tick prices)
     offers.ts         # get_my_offers (signed-in endpoint only, portfolio:read; public order data for the account's wallets)
     onramps.ts        # get_my_properties_being_added, get_adding_status (signed-in endpoint only, onramp:read)
+    own-wallet.ts     # On the signed-in endpoint, fills wallet arguments from the account (omitted or "me"; portfolio:read); public reads otherwise unchanged
     inputs.ts         # zod pieces shared by the tools' input schemas (property reference, image size)
   knowledge/
     index.ts          # typed, validated loader for generated/index.json (committed)
