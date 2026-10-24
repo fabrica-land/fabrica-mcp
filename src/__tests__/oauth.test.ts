@@ -278,6 +278,25 @@ describe("signed-in endpoint with Connect Fabrica on", () => {
     });
   });
 
+  it("makes the wallet argument optional on the signed-in endpoint only", async () => {
+    enable();
+    await withServer(async (base) => {
+      const required = (tools: Array<{ name: string; inputSchema: { required?: string[] } }>, name: string) => tools.find((tool) => tool.name === name)?.inputSchema.required ?? [];
+      const signedIn = await connect(`${base}/mcp/account`, await token());
+      const mine = (await signedIn.listTools()).tools;
+      expect(required(mine, "get_land_portfolio")).not.toContain("address");
+      expect(required(mine, "get_land_portfolio_map_image")).not.toContain("address");
+      expect(mine.find((tool) => tool.name === "get_land_portfolio")?.description).toContain("own wallet");
+      await signedIn.close();
+      const anonymousClient = new Client({ name: "oauth-test", version: "0.0.0" });
+      await anonymousClient.connect(new StreamableHTTPClientTransport(new URL(`${base}/mcp`)));
+      const anonymous = (await anonymousClient.listTools()).tools;
+      expect(required(anonymous, "get_land_portfolio")).toContain("address");
+      expect(anonymous.find((tool) => tool.name === "get_land_portfolio")?.description).not.toContain("own wallet");
+      await anonymousClient.close();
+    });
+  });
+
   it("get_my_account reads the profile with the caller's token and never logs it", async () => {
     enable();
     const bearer = await token();
