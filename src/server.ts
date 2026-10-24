@@ -54,7 +54,7 @@ export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to toke
 export const SIGN_REQUEST_INSTRUCTIONS = " make_land_offer, list_land_for_sale, accept_land_offer, buy_land and cancel_land_order prepare a marketplace action, and borrow_against_land and repay_land_loan a DeFi lending pool loan or its payoff, as a sign request: they check the live data and return a summary, warnings and a sign link to fabrica.land, where the person reviews and signs with their own wallet. The server holds no keys and submits nothing; a prepared request is not sent until the person signs. get_sign_request reports whether it was signed; get_transaction_status follows an onchain transaction.";
 
 /** Added to the instructions on the signed-in endpoint (/mcp/account). */
-export const ACCOUNT_INSTRUCTIONS = " This is the signed-in endpoint: the person connected their Fabrica account to this client. get_my_account reads that person's own account (email, linked accounts, verification status, and what the connection may read) get_my_properties lists their own properties, get_my_offers lists the offers they made and the ones waiting on their properties, get_my_loans lists their loans and pool deposits, get_my_onramps and get_onramp_status read the properties they are adding to Fabrica (each step, who acts next, and the link to do it), and what_needs_attention ranks everything waiting on them; every other tool works exactly as on the anonymous endpoint and reads public data only. Personal data on this endpoint belongs to the connected person and is private to them.";
+export const ACCOUNT_INSTRUCTIONS = " This is the signed-in endpoint: the person connected their Fabrica account to this client. get_my_account reads that person's own account (email, linked accounts, verification status, and what the connection may read) get_my_properties lists their own properties, get_my_offers lists the offers they made and the ones waiting on their properties, get_my_loans lists their loans and pool deposits, get_my_properties_being_added and get_adding_status read the properties they are adding to Fabrica (each step, who acts next, and the link to do it), and what_needs_attention ranks everything waiting on them; every other tool works exactly as on the anonymous endpoint and reads public data only. Personal data on this endpoint belongs to the connected person and is private to them.";
 
 /**
  * Sign requests ship testnet-first: on by default on Sepolia, and on mainnet only
@@ -533,17 +533,17 @@ function registerAccountTools(server: McpServer, account: AccountAuth): void {
     async () => jsonResult(await whatNeedsAttention(account)),
   );
   server.registerTool(
-    "get_my_onramps",
+    "get_my_properties_being_added",
     {
       title: "Get the properties I'm adding",
-      description: `List the properties the connected person is adding to Fabrica (${NETWORK_LABEL}), across every wallet on their account, those waiting on them first. Each has its address, county and parcel number, status, how many steps are done, the next step with who acts (the owner, Fabrica, or the county recorder), what it asks and the link to do it, any required details still missing, and the live token once it is live. Needs the connection's onramp:read grant. get_onramp_status gives one in full.`,
+      description: `List the properties the connected person is adding to Fabrica (${NETWORK_LABEL}), across every wallet on their account, those waiting on them first. Each has its address, county and parcel number, status, how many steps are done, the next step with who acts (the owner, Fabrica, or the county recorder), what it asks and the link to do it, any required details still missing, and the live token once it is live. Needs the connection's onramp:read grant. get_adding_status gives one in full.`,
       inputSchema: {},
       annotations: readOnly("Get the properties I'm adding"),
     },
     async () => jsonResult(await getMyOnRamps(account)),
   );
   server.registerTool(
-    "get_onramp_status",
+    "get_adding_status",
     {
       title: "Get where a property I'm adding stands",
       description: `Get one property the connected person is adding to Fabrica (${NETWORK_LABEL}) in full: every step with its status and dates, the next step and who acts, the actions open on it with the owner's own links, and what the owner entered so far (the owners named on the deed and the details the county asks for). Answers only for a property this account is adding. Needs the connection's onramp:read grant.`,

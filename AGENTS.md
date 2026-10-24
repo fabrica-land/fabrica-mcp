@@ -62,7 +62,7 @@ ui/
     attention.ts      # what_needs_attention (signed-in endpoint only; ranks items from the other personal reads plus fees and checks on up to 20 live properties)
     my-loans.ts       # get_my_loans (signed-in endpoint only, portfolio:read; loans with live payoff, pool deposits valued at tick prices)
     offers.ts         # get_my_offers (signed-in endpoint only, portfolio:read; public order data for the account's wallets)
-    onramps.ts        # get_my_onramps, get_onramp_status (signed-in endpoint only, onramp:read)
+    onramps.ts        # get_my_properties_being_added, get_adding_status (signed-in endpoint only, onramp:read)
     inputs.ts         # zod pieces shared by the tools' input schemas (property reference, image size)
   knowledge/
     index.ts          # typed, validated loader for generated/index.json (committed)

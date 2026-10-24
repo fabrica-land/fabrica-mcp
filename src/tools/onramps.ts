@@ -103,7 +103,7 @@ export interface OnRampStatusResult extends Partial<MyOnRampRow> {
 }
 
 export const getOnRampStatusInput = {
-  tokenId: z.string().regex(/^\d+$/, "tokenId is the numeric token id").describe("Token id of the property being added (tokenId from get_my_onramps)"),
+  tokenId: z.string().regex(/^\d+$/, "tokenId is the numeric token id").describe("Token id of the property being added (tokenId from get_my_properties_being_added)"),
 };
 export type GetOnRampStatusArgs = ArgsOf<typeof getOnRampStatusInput>;
 
@@ -232,7 +232,7 @@ export async function getOnRampStatus(auth: AccountAuth, args: GetOnRampStatusAr
   try {
     const record = await getOnRampRecord(auth, args.tokenId);
     if (!record) {
-      return { network: NETWORK_LABEL, notes: [`Token ${args.tokenId} is not a property this account is adding to Fabrica. get_my_onramps lists the ones it is.`] };
+      return { network: NETWORK_LABEL, notes: [`Token ${args.tokenId} is not a property this account is adding to Fabrica. get_my_properties_being_added lists the ones it is.`] };
     }
     const liveTokenId = await liveTokenOf(record);
     const row = toRow(record, liveTokenId);
