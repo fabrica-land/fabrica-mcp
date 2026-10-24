@@ -1,4 +1,5 @@
 import { oauthIssuer } from "../auth/config.js";
+import { CONTRACTS, NETWORK } from "../config.js";
 import type { AccountAuth } from "../auth/token.js";
 
 /**
@@ -89,4 +90,152 @@ export async function getAccountProfile(auth: AccountAuth, scope = "profile:read
   const profile = parseProfile(await response.json().catch(() => null));
   if (!profile) throw new AccountApiError(502, "Fabrica API returned an account record this server does not understand. Try again shortly.");
   return profile;
+}
+
+/** One action the API offers the owner on a step (a form, an approval, a signing session). */
+export interface OnRampUserAction {
+  label: string;
+  prompt: string;
+  detail: string | null;
+  /** Owner-only: the API leaves it off a non-owner read. Empty or absent when the action has no page. */
+  url: string | null;
+}
+
+export interface OnRampStep {
+  order: number;
+  key: string;
+  status: "not-started" | "in-progress" | "complete" | "failed";
+  text: string;
+  textCompleted: string;
+  visible: boolean;
+  expectedCompletion: string | null;
+  completed: string | null;
+  userActions: OnRampUserAction[];
+}
+
+export interface OnRampGrantor {
+  /** The individual's full name or the entity's legal name, as the owner entered it. */
+  name: string;
+  kind: "individual" | "entity" | "concurrent";
+  role: string | null;
+}
+
+/** An on-ramp as the API serves it to its owner (GET /on-ramp/:network/:contract[/:tokenId]). */
+export interface OnRampRecord {
+  tokenId: string;
+  status: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+  address: string | null;
+  county: string | null;
+  state: string | null;
+  parcelNumber: string | null;
+  missingRequiredFields: string[];
+  steps: OnRampStep[];
+  collectedFields: Record<string, string>;
+  grantors: OnRampGrantor[];
+}
+
+const STEP_STATUSES: ReadonlySet<string> = new Set(["not-started", "in-progress", "complete", "failed"]);
+
+function text(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+function isStepStatus(value: unknown): value is OnRampStep["status"] {
+  return typeof value === "string" && STEP_STATUSES.has(value);
+}
+
+function parseAction(action: unknown): OnRampUserAction | null {
+  if (!isRecord(action)) return null;
+  const label = text(action.label);
+  if (!label) return null;
+  return { label, prompt: text(action.prompt) ?? label, detail: text(action.detail), url: text(action.url) };
+}
+
+function parseStep(step: unknown): OnRampStep | null {
+  if (!isRecord(step) || typeof step.key !== "string" || !isStepStatus(step.status)) return null;
+  const actions = Array.isArray(step.userActions) ? step.userActions.map(parseAction).filter((a): a is OnRampUserAction => a !== null) : [];
+  return {
+    order: typeof step.order === "number" ? step.order : 0,
+    key: step.key,
+    status: step.status,
+    text: text(step.text) ?? step.key,
+    textCompleted: text(step.textCompleted) ?? text(step.text) ?? step.key,
+    visible: step.visibility !== false,
+    expectedCompletion: text(step.expectedCompletion),
+    completed: text(step.completed),
+    userActions: actions,
+  };
+}
+
+function parseGrantors(value: unknown): OnRampGrantor[] {
+  if (!Array.isArray(value)) return [];
+  const grantors: OnRampGrantor[] = [];
+  for (const signer of value) {
+    if (!isRecord(signer)) continue;
+    if (signer.signerType === "individual") {
+      const name = text(signer.fullName);
+      if (name) grantors.push({ name, kind: "individual", role: text(signer.role) });
+    } else if (signer.signerType === "entity") {
+      const name = text(signer.name);
+      if (name) grantors.push({ name, kind: "entity", role: text(signer.type) });
+    } else if (signer.signerType === "concurrent") {
+      for (const inner of parseGrantors(signer.signers)) grantors.push({ ...inner, kind: inner.kind === "individual" ? "concurrent" : inner.kind });
+    }
+  }
+  return grantors;
+}
+
+/**
+ * Null for anything that is not the owner's view: the API's non-owner read has no tokenId and no
+ * recipients, and a record without them is not this person's to show.
+ */
+function parseOnRamp(body: unknown): OnRampRecord | null {
+  if (!isRecord(body) || typeof body.tokenId !== "string" || !isRecord(body.recipients)) return null;
+  const steps = Array.isArray(body.steps) ? body.steps.map(parseStep).filter((s): s is OnRampStep => s !== null) : [];
+  const collected: Record<string, string> = {};
+  if (isRecord(body.collectedFields)) {
+    for (const [key, value] of Object.entries(body.collectedFields)) if (typeof value === "string") collected[key] = value;
+  }
+  return {
+    tokenId: body.tokenId,
+    status: text(body.status) ?? "premint",
+    createdAt: text(body.createdAt),
+    updatedAt: text(body.updatedAt),
+    address: text(body.address),
+    county: text(body.district),
+    state: text(body.regionCode),
+    parcelNumber: text(body.propertyId),
+    missingRequiredFields: Array.isArray(body.missingRequiredFields) ? body.missingRequiredFields.filter((f): f is string => typeof f === "string") : [],
+    steps: steps.sort((a, b) => a.order - b.order),
+    collectedFields: collected,
+    grantors: parseGrantors(body.grantors),
+  };
+}
+
+function onRampPath(): string {
+  return `/on-ramp/${NETWORK}/${CONTRACTS.fabricaToken}`;
+}
+
+const UNREADABLE_ONRAMP = "Fabrica API returned an on-ramp record this server does not understand. Try again shortly.";
+
+/** The on-ramps that will mint to one of the user's wallets (onramp:read). */
+export async function getOnRampsForWallet(auth: AccountAuth, wallet: string): Promise<OnRampRecord[]> {
+  const response = await accountFetch(auth, `${onRampPath()}?wallet=${encodeURIComponent(wallet)}`);
+  if (!response.ok) throw refusal(response.status, "onramp:read");
+  const body: unknown = await response.json().catch(() => null);
+  if (!Array.isArray(body)) throw new AccountApiError(502, UNREADABLE_ONRAMP);
+  return body.map(parseOnRamp).filter((record): record is OnRampRecord => record !== null);
+}
+
+/**
+ * One on-ramp by token id; null when there is none, or when the API answers with the non-owner
+ * view (the property is not being added by this account).
+ */
+export async function getOnRampRecord(auth: AccountAuth, tokenId: string): Promise<OnRampRecord | null> {
+  const response = await accountFetch(auth, `${onRampPath()}/${encodeURIComponent(tokenId)}`);
+  if (response.status === 404) return null;
+  if (!response.ok) throw refusal(response.status, "onramp:read");
+  return parseOnRamp(await response.json().catch(() => null));
 }

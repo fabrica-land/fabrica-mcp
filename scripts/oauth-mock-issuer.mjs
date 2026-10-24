@@ -1,7 +1,7 @@
 // Mocked Connect Fabrica issuer, for running the signed-in endpoint (/mcp/account) before the
 // Fabrica API's authorization server is live. Generates a throwaway ES256 key, prints the env
 // for a local or testnet server and an access token for MCP Inspector, and optionally serves a
-// mock of the API's GET /oauth/account so get_my_account has something to read.
+// mock of the API's GET /oauth/account and on-ramp reads so the personal tools have something to read.
 //
 //   node scripts/oauth-mock-issuer.mjs [--scope "profile:read portfolio:read onramp:read"]
 //     [--origin http://localhost:3000] [--sub <account id>] [--hours 1] [--serve 8787]
@@ -48,6 +48,30 @@ console.log(`FABRICA_OAUTH_JWKS='${JSON.stringify(jwks)}'`);
 console.log("\n# Access token (Authorization: Bearer ...)");
 console.log(token);
 
+// One property waiting on its owner's fee approval, in the shape the API serves to the owner.
+function mockOnRamp() {
+  const step = (order, key, status, text) => ({ order, key, status, text, textCompleted: `${text} (done)`, visibility: true, started: null, expectedDurationSeconds: null, expectedCompletion: null, completed: null });
+  return {
+    tokenId: "1234567890",
+    status: "premint",
+    createdAt: "2026-10-01T12:00:00.000Z",
+    updatedAt: "2026-10-20T12:00:00.000Z",
+    address: "County Road 12, San Luis, CO",
+    district: "Costilla",
+    regionCode: "CO",
+    propertyId: "70310050",
+    recipients: { "0x000000000000000000000000000000000000dEaD": "1" },
+    missingRequiredFields: [],
+    collectedFields: {},
+    grantors: [{ signerType: "individual", firstName: "Sam", lastName: "Owner", fullName: "Sam Owner" }],
+    steps: [
+      step(1, "CollectInfoFromUser", "complete", "Tell us about the property"),
+      { ...step(2, "GetFeeApproval", "in-progress", "Approve the fee"), userActions: [{ order: 1, key: "approve-fee", label: "Approve", prompt: "Approve the Fabrica fee", disposition: "action" }] },
+      step(3, "PropertyResearch", "not-started", "Fabrica researches the title"),
+    ],
+  };
+}
+
 if (serve) {
   createServer((req, res) => {
     const authorized = req.headers.authorization === `Bearer ${token}`;
@@ -56,6 +80,13 @@ if (serve) {
       res.end(JSON.stringify(authorized
         ? { userId: sub, email: "connected.user@example.com", wallets: [{ address: "0x000000000000000000000000000000000000dEaD", kind: "embedded" }], kyc: { status: "approved" } }
         : { error: "invalid_token" }));
+      return;
+    }
+    const onRamps = /^\/on-ramp\/sepolia\/0x[0-9a-fA-F]{40}(\/(\d+))?(\?.*)?$/.exec(req.url ?? "");
+    if (onRamps && req.method === "GET") {
+      const record = mockOnRamp();
+      res.writeHead(authorized ? 200 : 401, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(authorized ? (onRamps[2] ? record : [record]) : { error: "invalid_token" }));
       return;
     }
     res.writeHead(404, { "Content-Type": "application/json" });
