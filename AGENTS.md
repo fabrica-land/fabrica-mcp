@@ -58,7 +58,7 @@ ui/
     sign-requests.ts  # make_land_offer, list_land_for_sale, accept_land_offer, buy_land, cancel_land_order (prepare a sign request), get_sign_request
     loans.ts          # borrow_against_land, repay_land_loan (sign requests), get_land_loan (GetLoanContext, never cached)
     transactions.ts   # get_transaction_status (JSON-RPC reads only)
-    account.ts        # get_my_account (signed-in endpoint /mcp/account only, the connected user's own token)
+    account.ts        # get_my_account, get_my_properties (signed-in endpoint /mcp/account only, the connected user's own token)
     inputs.ts         # zod pieces shared by the tools' input schemas (property reference, image size)
   knowledge/
     index.ts          # typed, validated loader for generated/index.json (committed)
