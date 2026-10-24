@@ -21,7 +21,7 @@ const MAX_CANDIDATES = 5;
 /** Type-ahead scores run roughly 0 to 100; a lead this large means one parcel clearly matches. */
 const CLEAR_LEAD = 10;
 
-export const COVERAGE_NOTE = "Fabrica operates in all 50 states; the on-ramp page shows what this county requires.";
+export const COVERAGE_NOTE = "Fabrica has operations across all 50 states, with varying degrees of functionality; the on-ramp page shows what this county requires.";
 
 const API_BASE = new URL(process.env.FABRICA_API_URL ?? DEFAULT_API_URL).origin;
 
