@@ -41,13 +41,13 @@ beforeEach(() => vi.mocked(getToken).mockReset());
 
 describe("propertyStage", () => {
   it("names every stage", () => {
-    expect(propertyStage({ isPremint: true, isBurned: false, claimState: "UNCLAIMED" })).toBe("premint_unclaimed");
-    expect(propertyStage({ isPremint: true, isBurned: false, claimState: "CLAIMED" })).toBe("premint_claimed");
-    expect(propertyStage({ isPremint: true, isBurned: false, supersededByTokenId: "99" })).toBe("premint_superseded");
-    expect(propertyStage({ isPremint: false, isBurned: false })).toBe("minted");
-    expect(propertyStage({ isPremint: false, isBurned: false, offRampStatus: "in-progress" })).toBe("off_ramp_in_progress");
-    expect(propertyStage({ isPremint: false, isBurned: false, offRampStatus: "complete" })).toBe("off_ramped");
-    expect(propertyStage({ isPremint: false, isBurned: true, offRampStatus: "complete" })).toBe("burned");
+    expect(propertyStage({ isPremint: true, isBurned: false, claimState: "UNCLAIMED" })).toBe("unclaimed");
+    expect(propertyStage({ isPremint: true, isBurned: false, claimState: "CLAIMED" })).toBe("being_added");
+    expect(propertyStage({ isPremint: true, isBurned: false, supersededByTokenId: "99" })).toBe("replaced");
+    expect(propertyStage({ isPremint: false, isBurned: false })).toBe("live");
+    expect(propertyStage({ isPremint: false, isBurned: false, offRampStatus: "in-progress" })).toBe("removal_in_progress");
+    expect(propertyStage({ isPremint: false, isBurned: false, offRampStatus: "complete" })).toBe("removed");
+    expect(propertyStage({ isPremint: false, isBurned: true, offRampStatus: "complete" })).toBe("retired");
   });
 });
 
@@ -93,7 +93,7 @@ describe("get_land_property lifecycle, fees and flags", () => {
     }));
     const result = await getProperty({ tokenId: "12345" });
     expect(result).toMatchObject({
-      lifecycle: { stage: "premint_unclaimed", claimState: "UNCLAIMED" },
+      lifecycle: { stage: "unclaimed", claimState: "UNCLAIMED" },
       fees: { total: "$500", unpaidCount: 1 },
     });
     expect(result).toHaveProperty("flags", []);
@@ -102,14 +102,14 @@ describe("get_land_property lifecycle, fees and flags", () => {
   it("shows a minted token without empty blocks", async () => {
     vi.mocked(getToken).mockResolvedValueOnce(token());
     const result = await getProperty({ tokenId: "12345" });
-    expect(result).toMatchObject({ lifecycle: { stage: "minted" } });
+    expect(result).toMatchObject({ lifecycle: { stage: "live" } });
     expect(result).toHaveProperty("fees", null);
     expect(result).toHaveProperty("flags", []);
   });
 
   it("shows an off-ramping token", async () => {
     vi.mocked(getToken).mockResolvedValueOnce(token({ offRampStatus: "in-progress" }));
-    expect(await getProperty({ tokenId: "12345" })).toMatchObject({ lifecycle: { stage: "off_ramp_in_progress", offRampStatus: "in-progress" } });
+    expect(await getProperty({ tokenId: "12345" })).toMatchObject({ lifecycle: { stage: "removal_in_progress", offRampStatus: "in-progress" } });
   });
 
   it("flags duplicate parcels and the marketplace screen in plain words", async () => {
@@ -130,7 +130,7 @@ describe("get_land_property lifecycle, fees and flags", () => {
     vi.mocked(getPremintSuccessor).mockResolvedValueOnce("222");
     const result = await getProperty({ tokenId: "111" });
     expect(getToken).toHaveBeenLastCalledWith({ tokenId: "222" });
-    expect(result).toMatchObject({ tokenId: "222", lifecycle: { stage: "minted", replacesPremintTokenId: "111" } });
+    expect(result).toMatchObject({ tokenId: "222", lifecycle: { stage: "live", replacesTokenId: "111" } });
   });
 
   it("reports a missing token as an error when there is no successor", async () => {
@@ -145,6 +145,6 @@ describe("search_land stage", () => {
   it("adds a stage to every row", async () => {
     vi.mocked(getTokens).mockResolvedValueOnce([token(), token({ tokenId: "2", offRampStatus: "in-progress" })]);
     const result = await searchProperties({});
-    expect("properties" in result && result.properties.map(p => p.stage)).toEqual(["minted", "off_ramp_in_progress"]);
+    expect("properties" in result && result.properties.map(p => p.stage)).toEqual(["live", "removal_in_progress"]);
   });
 });

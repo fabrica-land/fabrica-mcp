@@ -75,11 +75,11 @@ export async function lookup(tokenId: string | undefined, slug: string | undefin
     return { error: `Failed to load the property: ${e instanceof Error ? e.message : String(e)}` };
   }
   if (token.isPremint && token.supersededByTokenId) {
-    return { error: `Token ${token.tokenId} was a premint that has been replaced by minted token ${token.supersededByTokenId}; prepare the action on ${token.supersededByTokenId}.` };
+    return { error: `Token ${token.tokenId} was the record of this property before its token was issued; it has been replaced by token ${token.supersededByTokenId}. Prepare the action on ${token.supersededByTokenId}.` };
   }
-  if (token.isPremint) return { error: "This property is a premint (its token has not been minted yet). Sign requests cover minted properties only for now; offers on a premint are made on its property page." };
-  if (token.isBurned) return { error: "This property's token has been burned: it is no longer on Fabrica, so it cannot be bought, sold or offered on." };
-  if (token.offRampStatus) return { error: "This property is being removed from Fabrica (off-ramp in progress), so marketplace actions are closed on it." };
+  if (token.isPremint) return { error: "This property is still being added to Fabrica (its token is not issued yet). Sign requests cover live properties only for now; offers on it are made on its property page." };
+  if (token.isBurned) return { error: "This property's token has been retired: it is no longer on Fabrica, so it cannot be bought, sold or offered on." };
+  if (token.offRampStatus) return { error: "This property is being removed from Fabrica, so marketplace actions are closed on it." };
   return { token };
 }
 

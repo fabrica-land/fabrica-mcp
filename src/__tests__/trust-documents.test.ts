@@ -112,7 +112,7 @@ describe("get_land_trust_documents", () => {
     expect(result.mediaCount).toBe(0);
     expect((result.parcel as Record<string, unknown>).county).toBe("Santa Cruz");
     const notes = result.notes as string[];
-    expect(notes.join(" ")).toContain("premint");
+    expect(notes.join(" ")).toContain("still being added");
     expect(notes.join(" ")).toContain("No deed is on file");
   });
 

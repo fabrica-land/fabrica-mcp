@@ -40,7 +40,7 @@ export const getActivityInput = {
   tokenId: z.string().optional().describe("Property token ID (for property activity). Leave tokenId, slug and address out for the recent activity across every property on the network."),
   slug: propertyRefInputs.slug.describe("Property slug (for property activity)"),
   address: z.string().optional().describe("Wallet address (for wallet activity)"),
-  type: z.string().optional().describe("Filter by activity type (e.g. 'loan', 'transfer', 'sale', 'mint')"),
+  type: z.string().optional().describe("Filter by activity type, matched against the API's event names (e.g. 'loan', 'transfer', 'sale', 'mint' for properties added)"),
   limit: z.number().int().min(1).max(100).optional().describe("Max results (default 20, max 100)"),
 };
 export type GetActivityArgs = ArgsOf<typeof getActivityInput>;
@@ -106,7 +106,7 @@ async function getNetworkWideActivity(activityType: string | undefined, limit: n
       return feed.map((a, i) => ({ ...formatActivity(a, previous.get(i)), tokenId: token.tokenId, property: token.name ?? token.vanityName ?? null, timestamp: a.timestamp }));
     }).sort((a, b) => b.timestamp - a.timestamp);
     const label = `every property on ${NETWORK_LABEL}`;
-    const scope = `Activity across ${tokens.length} minted properties on ${NETWORK_LABEL}, newest first.${lower ? "" : " Property checks recalculations (ScoreChanged) are left out; type \"ScoreChanged\" lists them."} tokenId, slug or address narrows it to one property or wallet.`;
+    const scope = `Activity across ${tokens.length} live properties on ${NETWORK_LABEL}, newest first.${lower ? "" : " Property checks recalculations (ScoreChanged) are left out; type \"ScoreChanged\" lists them."} tokenId, slug or address narrows it to one property or wallet.`;
     if (events.length === 0) {
       return { label, total: 0, events: [], scope, message: `No${activityType ? ` "${activityType}"` : ""} activity found across the network.` };
     }

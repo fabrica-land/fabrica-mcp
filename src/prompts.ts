@@ -21,6 +21,7 @@ export const WORDING_RULES = `Wording for the answer:
 - The in-app pool is the DeFi lending pool. NFTfi is a retired peer-to-peer integration and appears only as history.
 ${OWNERSHIP_RULE}
 - No fixed time and no "instantly" for money moving. Stablecoins are digital dollars.
+- Use the names people see on fabrica.land: "property" is the default noun; a property not yet on Fabrica is "unclaimed" or "being added" (never "premint"); people "add" a property and "remove" it (not "on-ramp", "off-ramp", "mint" or "burn"); a token is "issued".
 - Write "onchain" as one word. No buy, sell or borrow recommendation: lay out the facts and what to verify.`;
 
 const NETWORK_LINE = IS_MAINNET
@@ -56,8 +57,8 @@ ${parcels}
 
 Call find_us_parcel with queries: up to 10 rows per call, grouped so each call shares one state and county (pass them as state and county when the list gives them). Each resolved row comes back with onFabrica; each unresolved one with a reason. Re-run an unresolved row on its own with the state and county the list implies, or mark it as ambiguous. Then:
 - On Fabrica: note the token ID and property link; get_land_property for the listing and loan state if the list is short.
-- Not on Fabrica: note the on-ramp link (addToFabrica on the row; links.addToFabrica when a row is re-run on its own). Opening it starts adding the parcel; the owner decides there.
-End with one table: input, matched address, county and state, APN, on Fabrica (token ID) or on-ramp link, notes. find_us_parcel counts each query as one lookup against a per-client limit of 30 a minute, so a list longer than 30 waits a minute between batches.`);
+- Not on Fabrica: note the link to add it (addToFabrica on the row; links.addToFabrica when a row is re-run on its own). Opening it starts adding the parcel; the owner decides there.
+End with one table: input, matched address, county and state, APN, on Fabrica (token ID) or link to add it, notes. find_us_parcel counts each query as one lookup against a per-client limit of 30 a minute, so a list longer than 30 waits a minute between batches.`);
 }
 
 export function walletReviewPrompt(wallet: string): GetPromptResult {
@@ -70,17 +71,17 @@ Summarize what the wallet holds; as borrower, what it owes and when (principal, 
 }
 
 const ONRAMP_STEPS = IS_MAINNET
-  ? `Explain the on-ramp, from https://docs.fabrica.land/docs/on-ramp: the owner submits the property and how title is held, Fabrica (as validator) reviews title, the owner verifies identity, a trust is created to hold title, the owner signs the deed and trust documents (normally with a remote online notary), the deed is recorded at the county, and the token is issued. About 10 minutes online for the owner; the property page is live from the start, and the owner can choose to list it for sale from then.
+  ? `Explain the steps to add a property, from https://docs.fabrica.land/docs/on-ramp: the owner submits the property and how title is held, Fabrica (as validator) reviews title, the owner verifies identity, a trust is created to hold title, the owner signs the deed and trust documents (normally with a remote online notary), the deed is recorded at the county, and the token is issued. About 10 minutes online for the owner; the property page is live from the start, and the owner can choose to list it for sale from then.
 5. Fees, from https://docs.fabrica.land/docs/fees: the setup fee is authorized when the property is added and charged once, at the first sale, loan or use in another app; it is waived if the property is removed unused. Current amounts: https://help.fabrica.land/en/articles/3305355-what-does-fabrica-cost.
 6. Obligations that stay with the owner (taxes, maintenance, liability): https://docs.fabrica.land/docs/property-obligations.`
-  : "This is the Sepolia test network: properties here are test tokens for trying the flow. No trust is created, no deed is signed or recorded, and nothing changes who owns the land. For the real on-ramp (title review, identity, trust, deed recording at the county), point to https://docs.fabrica.land/docs/on-ramp and Ethereum Mainnet.";
+  : "This is the Sepolia test network: properties here are test tokens for trying the flow. No trust is created, no deed is signed or recorded, and nothing changes who owns the land. For adding real property (title review, identity, trust, deed recording at the county), point to https://docs.fabrica.land/docs/on-ramp and Ethereum Mainnet.";
 
 export function howToAddLandPrompt(address: string): GetPromptResult {
   return prompt(`Explain how to add this land to Fabrica: ${address}
 
 1. Call find_us_parcel for it. If it is already on Fabrica, say so and link the property instead.
-2. Otherwise, give the on-ramp link from find_us_parcel (links.addToFabrica), or ${WEB}/go if it could not resolve the parcel.
-3. Call check_county_coverage for the parcel's county: say whether the on-ramp is set up there, and list the documents, witnesses and questions it returns, with its as-of date.
+2. Otherwise, give the link to add it from find_us_parcel (links.addToFabrica), or ${WEB}/go if it could not resolve the parcel.
+3. Call check_county_coverage for the parcel's county: say whether adding property is set up there, and list the documents, witnesses and questions it returns, with its as-of date.
 4. ${ONRAMP_STEPS}`);
 }
 
@@ -98,7 +99,7 @@ export function registerPrompts(server: McpServer): void {
     "work_parcel_list",
     {
       title: "Work a list of parcels",
-      description: "For each US address or parcel number in a list: find the parcel, whether it is on Fabrica, and the on-ramp link if not. Ends with one table.",
+      description: "For each US address or parcel number in a list: find the parcel, whether it is on Fabrica, and the link to add it if not. Ends with one table.",
       argsSchema: { parcels: z.string().describe("Addresses or parcel numbers, one per line or comma-separated") },
     },
     ({ parcels }) => workParcelListPrompt(parcels),
@@ -117,7 +118,7 @@ export function registerPrompts(server: McpServer): void {
     {
       title: "How to add land to Fabrica",
       description: IS_MAINNET
-        ? "What the on-ramp involves for a given parcel: the link to start it, the steps (title review, identity, notary, recording), the deferred setup fee, and the owner's obligations."
+        ? "What adding a given parcel to Fabrica involves: the link to start it, the steps (title review, identity, notary, recording), the deferred setup fee, and the owner's obligations."
         : "How adding a parcel works on the Sepolia test network: the link to start it, and that test tokens create no trust, record no deed and change no ownership.",
       argsSchema: { address: z.string().describe("Street address or parcel number of the land") },
     },

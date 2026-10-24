@@ -71,6 +71,30 @@ describe("hosted HTTP transport", () => {
     await client.close();
   });
 
+  it("keeps internal vocabulary out of titles, descriptions and instructions", async () => {
+    // People see "unclaimed", "being added", "add" and "remove" on fabrica.land; the API's
+    // premint, on-ramp, mint and burn words stay in identifiers. Tool and field names
+    // (snake_case or camelCase), quoted enum values ('mint') and docs URLs are left out
+    // before matching.
+    const jargon = /\bpre-?mints?\b|\bon-?ramp(s|ed|ing)?\b|\boff-?ramp(s|ed|ing)?\b|\bmint(s|ed|ing)?\b|\bburn(ed|s)?\b|\bNFTs?\b|\blabelled\b|\bland loans?\b|\bon-chain\b|\boperates in all 50 states\b/i;
+    const prose = (text: string) => text.replace(/https?:\/\/\S+/g, "").replace(/'[a-z_]+'/g, "").replace(/\b[a-z]+(?:_[a-z0-9]+)+\b|\b[a-z]+(?:[A-Z][a-z0-9]*)+\b/g, "");
+    const previous = process.env.FABRICA_SIGN_REQUESTS;
+    process.env.FABRICA_SIGN_REQUESTS = "enabled";
+    try {
+      const client = new Client({ name: "http-test", version: "0.0.0" });
+      await client.connect(new StreamableHTTPClientTransport(new URL(url)));
+      const { tools } = await client.listTools();
+      for (const tool of tools) {
+        expect(prose(`${tool.title ?? ""} ${tool.description ?? ""} ${JSON.stringify(tool.inputSchema)}`), tool.name).not.toMatch(jargon);
+      }
+      expect(prose(client.getInstructions() ?? "")).not.toMatch(jargon);
+      await client.close();
+    } finally {
+      if (previous === undefined) delete process.env.FABRICA_SIGN_REQUESTS;
+      else process.env.FABRICA_SIGN_REQUESTS = previous;
+    }
+  });
+
   it("keeps the sign-request tools off on mainnet unless FABRICA_SIGN_REQUESTS=enabled, and marks them as prepare tools", async () => {
     const offClient = new Client({ name: "http-test", version: "0.0.0" });
     await offClient.connect(new StreamableHTTPClientTransport(new URL(url)));
