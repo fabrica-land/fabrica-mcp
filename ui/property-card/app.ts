@@ -57,7 +57,7 @@ function button(label: string, className: string, url: string): HTMLButtonElemen
 
 function actions(link: string, buyablePrice: string | null, isPremint: boolean): HTMLDivElement {
   const row = el("div", "actions");
-  // Premints can take offers but can't be bought until they are minted.
+  // Premints can take offers but can't be bought until their token is issued.
   const canBuy = buyablePrice !== null && !isPremint;
   if (canBuy) row.append(button(`Buy · ${buyablePrice}`, "cta", actionLink(link, "buy")));
   row.append(
@@ -272,7 +272,7 @@ function render(): void {
   const checks = obj(data.propertyChecks);
   const passed = num(checks.passed);
   const total = num(checks.total);
-  // Like fabrica.land: the pass count, falling back to the numeric encoding, labelled as such.
+  // Like fabrica.land: the pass count, falling back to the numeric encoding, labeled as such.
   const encoding = num(checks.encoding) ?? num(valuation.confidenceScore);
   const checksText = passed !== null && total !== null && total > 0
     ? `${passed} of ${total} pass`
@@ -368,7 +368,7 @@ function render(): void {
           ["Holding entity", str(legal.holdingEntity)],
           ["County", str(registrar.admin)],
           ["Parcel number", str(registrar.propertyId)],
-          ["Minted", shortDate(data.mintedAt)],
+          ["Added to Fabrica", shortDate(data.mintedAt)],
         ])),
       ].filter((n): n is HTMLElement => n !== null);
     },

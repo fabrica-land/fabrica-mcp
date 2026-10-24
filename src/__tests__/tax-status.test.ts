@@ -148,7 +148,7 @@ describe("get_land_tax_status", () => {
     expect(result.checkedAt).toBe("2026-10-17T00:32:12.498Z");
     expect(result.summary).toContain("never verified, or the last verification expired");
     expect(result.nextSteps).toContain("county treasurer");
-    expect(result.nextSteps).toContain("onramp collects tax evidence");
+    expect(result.nextSteps).toContain("setup collects tax evidence");
     expect(result.affectsLending).toBe(true);
   });
 
@@ -188,7 +188,7 @@ describe("get_land_tax_status", () => {
     const result = await getTaxStatus({ tokenId: "1" }) as Record<string, unknown>;
     expect(getScoreRecord).not.toHaveBeenCalled();
     expect(result.status).toBe("unknown");
-    expect(result.summary).toContain("premint");
+    expect(result.summary).toContain("still being added");
   });
 
   it("never claims the taxes are paid, and names the source as a data lookup", async () => {

@@ -52,7 +52,7 @@ export function taxSummary(
 ): string {
   if (status === "current") return `Fabrica's checks found the property taxes current ${asOf(checkedAt)}.`;
   if (status === "delinquent") return `Fabrica's checks found the property taxes past due ${asOf(checkedAt)}.`;
-  if (isPremint) return "Fabrica's checks have not verified the property taxes yet: this property is a premint, and the onramp collects tax evidence.";
+  if (isPremint) return "Fabrica's checks have not verified the property taxes yet: this property is still being added to Fabrica, and adding it collects tax evidence.";
   if (basis === "conflicting") return `Fabrica's tax check and the ${LENDING_POOL_NAME} disagree on the property taxes right now, so there is no current tax status.`;
   if (recordUnavailable) return "Fabrica's tax check could not be read right now, so there is no current tax status for this property.";
   return "Fabrica's checks have no current tax status for this property: it was never verified, or the last verification expired.";
@@ -61,7 +61,7 @@ export function taxSummary(
 function nextSteps(status: TaxStatus): string {
   if (status === "current") return "For the amount and due date of the next installment, check the county treasurer's records.";
   if (status === "delinquent") return "The county treasurer has the amount due, any penalties and how to pay. Unpaid property taxes can lead to a tax sale.";
-  return "Check the county treasurer's records for the parcel. When a property is onboarded, the onramp collects tax evidence.";
+  return "Check the county treasurer's records for the parcel. When a property is added to Fabrica, the setup collects tax evidence.";
 }
 
 /** The tax signals of one token: the check from its score record and the lending block reason. */
@@ -79,7 +79,7 @@ export async function loadTaxSignals(token: {
       record = await getScoreRecord(token.contractAddress, token.tokenId);
     } catch (e) {
       recordUnavailable = true;
-      warnings.push(`Score record unavailable, so the tax check and its dates could not be read: ${e instanceof Error ? e.message : String(e)}`);
+      warnings.push(`Property checks record unavailable, so the tax check and its dates could not be read: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
   // A check past its expiry, or one whose expiry cannot be read, says nothing about today.

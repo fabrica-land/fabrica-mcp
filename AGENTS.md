@@ -85,7 +85,7 @@ ui/
   vercel-sign-requests.ts # Vercel function entry for /sign-requests
   well-known.ts       # /.well-known/mcp.json, /.well-known/mcp/server-card.json, /.well-known/ai-catalog.json (card read from a live in-process server)
   vercel-well-known.ts # Vercel function entry for /.well-known
-  lifecycle.ts        # propertyStage(): premint, minted, off-ramp, burned (get_land_property, search rows)
+  lifecycle.ts        # propertyStage(): unclaimed, being_added, replaced, live, removal_in_progress, removed, retired
   fees.ts             # fees assessed on a token, by currency address
   types/
     index.ts          # Names for the generated operation types (TokenListItem, TokenDetail, WalletModel...) plus the REST and subgraph shapes
@@ -287,3 +287,5 @@ Tool descriptions and outputs are read by agents and repeated to people, so they
 - No fixed time unit and no "instantly" for money moving (sale proceeds, loans, payoffs, withdrawals).
 - Stablecoins are "digital dollars"; Fabrica counts one USDC as one dollar. Never promise the coin's value ("always equal $1").
 - Write "onchain" as one word. No em dashes in descriptions or output text (`http.test.ts` checks descriptions and instructions).
+- Use the product names people see on fabrica.land, not the API's internal vocabulary. "Property" is the default noun; name the token where the text identifies the asset (token ID, contract, the plain explanation of land, trust and token). A premint is "unclaimed" (no owner yet) or "being added" (claimed); a superseded premint is "replaced". People "add" a property to Fabrica and "remove" it; in prose, not "on-ramp", "off-ramp", "onboard", "mint" or "burn" (a token is "issued"; a burned token is "retired"). The property intake fee is the "setup fee". Values this server defines and people read follow the same names (lifecycle stages `unclaimed` ... `retired`, the borrowing lever `setup`, `replacesTokenId`). Docs URL slugs (`/docs/on-ramp`) and the API's own fields and values (`isPremint`, `offRampStatus`, `claimState`, the `Mint` activity type) keep their names.
+- American English ("labeled"). Operations across all 50 states are "with varying degrees of functionality"; never a bare "operates in all 50 states".

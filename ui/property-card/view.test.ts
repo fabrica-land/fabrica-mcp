@@ -151,6 +151,8 @@ describe("fullscreen panels", () => {
   it("names activity in plain words and dates it in UTC", () => {
     expect(activityLabel("LoanRepaid")).toBe("Loan repaid");
     expect(activityLabel("ScoreChanged")).toBe("Property checks updated");
+    expect(activityLabel("Mint")).toBe("Added to Fabrica");
+    expect(activityLabel("Minted")).toBe("Added to Fabrica");
     expect(activityLabel("SomethingNewHappened")).toBe("Something new happened");
     expect(shortDate("2026-06-30T22:04:23.000Z")).toBe("Jun 30, 2026");
     expect(shortDate("not a date")).toBeNull();

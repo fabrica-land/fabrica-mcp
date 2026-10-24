@@ -219,7 +219,7 @@ const HELP_LOAN_AMOUNT = "https://help.fabrica.land/en/articles/16280912-why-is-
 const DOCS_LENDING_POOL = "https://docs.fabrica.land/docs/lending-pool";
 const DOCS_VALUATION = "https://docs.fabrica.land/docs/valuation";
 
-export type Lever = "onramp" | "tax_status" | "deed_check" | "fees" | "existing_loan" | "price" | "ltv" | "pool_liquidity";
+export type Lever = "setup" | "tax_status" | "deed_check" | "fees" | "existing_loan" | "price" | "ltv" | "pool_liquidity";
 
 export interface RaiseLever {
   lever: Lever;
@@ -237,7 +237,7 @@ const POOL_CHECKS: Record<string, { lever: Lever; today: string; how: string }> 
   proofOfTitleValid: {
     lever: "deed_check",
     today: "The Property check \"Deed checked against the county\" is not passing; the pool's price for this property is zero until it does.",
-    how: "The check passes once the recorded deed into the trust is on file and matches the county record. If the on-ramp's recording step is still open (in paper-recording counties, sending the county-stamped deed back to Fabrica), completing it clears the check; otherwise Fabrica support reviews the deed on file (contact_fabrica_support).",
+    how: "The check passes once the recorded deed into the trust is on file and matches the county record. If the recording step of adding the property is still open (in paper-recording counties, sending the county-stamped deed back to Fabrica), completing it clears the check; otherwise Fabrica support reviews the deed on file (contact_fabrica_support).",
   },
   feesInGoodStanding: {
     lever: "fees",
@@ -284,10 +284,10 @@ export function raiseLevers(input: {
 
   if (input.isPremint) {
     levers.push({
-      lever: "onramp",
+      lever: "setup",
       today: "The property is still being added to Fabrica; the token is not issued yet.",
       wouldAllow: null,
-      how: "Borrowing opens once the on-ramp is finished and the token is issued.",
+      how: "Borrowing opens once the property is added to Fabrica and its token is issued.",
       url: HELP_LOAN_AMOUNT,
     });
   }

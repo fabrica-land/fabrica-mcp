@@ -215,7 +215,7 @@ describe("findParcel", () => {
     expect(raw).not.toContain("OWNER");
     expect(raw).not.toContain("PRIVATE RD");
     expect(result).toMatchObject({ coverage: { status: "supported" } });
-    expect(raw).toContain("The on-ramp is set up for this county");
+    expect(raw).toContain("Adding property is set up for this county");
   });
 
   it("finds a token inside the parcel outline when the APN differs", async () => {

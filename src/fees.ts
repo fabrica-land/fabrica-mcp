@@ -7,7 +7,7 @@ const FEE_CURRENCIES: Record<string, { symbol: string; decimals: number; dollars
 };
 
 const FEE_TYPES: Record<string, string> = {
-  OnRamp: "On-ramp fee (adding the property to Fabrica)",
+  OnRamp: "Setup fee (adding the property to Fabrica)",
 };
 
 /** "500000000" in USDC → "$500"; an unknown currency keeps the raw amount and the contract address. */

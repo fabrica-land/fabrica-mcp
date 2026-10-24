@@ -163,7 +163,7 @@ export function registerKnowledgeResources(server: McpServer): void {
     new ResourceTemplate(PROPERTY_TRUST_AGREEMENT_TEMPLATE, { list: undefined }),
     {
       title: "Trust agreement for one property",
-      description: `The operating agreement (trust instrument) attached to a specific token, as the Fabrica API serves it (${NETWORK_LABEL}). Versions differ by mint date, so read this one rather than the generic agreement when a question is about a particular property.`,
+      description: `The operating agreement (trust instrument) attached to a specific token, as the Fabrica API serves it (${NETWORK_LABEL}). Versions differ by the date the token was issued, so read this one rather than the generic agreement when a question is about a particular property.`,
       mimeType: MARKDOWN,
     },
     async (uri, variables) => {
