@@ -258,6 +258,26 @@ describe("signed-in endpoint with Connect Fabrica on", () => {
     });
   });
 
+  it("lists every personal tool on the signed-in endpoint, in fabrica.land's words", async () => {
+    // Same vocabulary rule as the anonymous endpoint's tools (http.test.ts); scope names
+    // (onramp:read) are identifiers too.
+    const jargon = /\bpre-?mints?\b|\bon-?ramp(s|ed|ing)?\b|\boff-?ramp(s|ed|ing)?\b|\bmint(s|ed|ing)?\b|\bburn(ed|s)?\b|\bNFTs?\b|\bon-chain\b/i;
+    const prose = (text: string) => text.replace(/https?:\/\/\S+/g, "").replace(/'[a-z_]+'/g, "").replace(/\b[a-z]+:(?:read|write)\b/g, "").replace(/\b[a-z]+(?:_[a-z0-9]+)+\b|\b[a-z]+(?:[A-Z][a-z0-9]*)+\b/g, "");
+    enable();
+    await withServer(async (base) => {
+      const signedIn = await connect(`${base}/mcp/account`, await token());
+      const { tools } = await signedIn.listTools();
+      const personal = ["get_my_account", "get_my_properties", "get_my_offers", "get_my_loans", "get_my_onramps", "get_onramp_status", "what_needs_attention"];
+      expect(tools.map((tool) => tool.name)).toEqual(expect.arrayContaining(personal));
+      for (const tool of tools.filter((t) => personal.includes(t.name))) {
+        expect(prose(`${tool.title ?? ""} ${tool.description ?? ""} ${JSON.stringify(tool.inputSchema)}`), tool.name).not.toMatch(jargon);
+        expect(tool.annotations?.readOnlyHint, tool.name).toBe(true);
+      }
+      expect(prose(signedIn.getInstructions() ?? "")).not.toMatch(jargon);
+      await signedIn.close();
+    });
+  });
+
   it("get_my_account reads the profile with the caller's token and never logs it", async () => {
     enable();
     const bearer = await token();
