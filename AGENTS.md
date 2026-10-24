@@ -59,6 +59,7 @@ ui/
     loans.ts          # borrow_against_land, repay_land_loan (sign requests), get_land_loan (GetLoanContext, never cached)
     transactions.ts   # get_transaction_status (JSON-RPC reads only)
     account.ts        # get_my_account, get_my_properties (signed-in endpoint /mcp/account only, the connected user's own token)
+    onramps.ts        # get_my_onramps, get_onramp_status (signed-in endpoint only, onramp:read)
     inputs.ts         # zod pieces shared by the tools' input schemas (property reference, image size)
   knowledge/
     index.ts          # typed, validated loader for generated/index.json (committed)
