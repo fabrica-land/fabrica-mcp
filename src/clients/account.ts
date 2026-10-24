@@ -78,11 +78,14 @@ function refusal(status: number, scope: string): AccountApiError {
   return new AccountApiError(status, `Fabrica API request failed (HTTP ${status}). Try again shortly.`);
 }
 
-/** The connected user's profile; null while the API does not serve it yet (404). */
-export async function getAccountProfile(auth: AccountAuth): Promise<AccountProfile | null> {
+/**
+ * The connected user's profile; null while the API does not serve it yet (404). `scope` names the
+ * grant the calling tool relies on, for the refusal message.
+ */
+export async function getAccountProfile(auth: AccountAuth, scope = "profile:read"): Promise<AccountProfile | null> {
   const response = await accountFetch(auth, "/oauth/account");
   if (response.status === 404) return null;
-  if (!response.ok) throw refusal(response.status, "profile:read");
+  if (!response.ok) throw refusal(response.status, scope);
   const profile = parseProfile(await response.json().catch(() => null));
   if (!profile) throw new AccountApiError(502, "Fabrica API returned an account record this server does not understand. Try again shortly.");
   return profile;

@@ -37,7 +37,7 @@ import { NETWORK_LABEL, IS_MAINNET, MAINNET_LEGAL_NOTICE } from "./config.js";
 import { PROPERTY_CARD_URI, registerPropertyCard } from "./ui/property-card.js";
 import { registerKnowledgeResources } from "./resources/knowledge.js";
 import type { AccountAuth } from "./auth/token.js";
-import { getMyAccount } from "./tools/account.js";
+import { getMyAccount, getMyProperties, getMyPropertiesInput } from "./tools/account.js";
 
 const NETWORK_NOTICE = IS_MAINNET
   ? `\n\n${MAINNET_LEGAL_NOTICE}`
@@ -49,7 +49,7 @@ export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to toke
 export const SIGN_REQUEST_INSTRUCTIONS = " make_land_offer, list_land_for_sale, accept_land_offer, buy_land and cancel_land_order prepare a marketplace action, and borrow_against_land and repay_land_loan a DeFi lending pool loan or its payoff, as a sign request: they check the live data and return a summary, warnings and a sign link to fabrica.land, where the person reviews and signs with their own wallet. The server holds no keys and submits nothing; a prepared request is not sent until the person signs. get_sign_request reports whether it was signed; get_transaction_status follows an onchain transaction.";
 
 /** Added to the instructions on the signed-in endpoint (/mcp/account). */
-export const ACCOUNT_INSTRUCTIONS = " This is the signed-in endpoint: the person connected their Fabrica account to this client. get_my_account reads that person's own account (email, linked accounts, verification status, and what the connection may read); every other tool works exactly as on the anonymous endpoint and reads public data only. Personal data on this endpoint belongs to the connected person and is private to them.";
+export const ACCOUNT_INSTRUCTIONS = " This is the signed-in endpoint: the person connected their Fabrica account to this client. get_my_account reads that person's own account (email, linked accounts, verification status, and what the connection may read) and get_my_properties lists their own properties; every other tool works exactly as on the anonymous endpoint and reads public data only. Personal data on this endpoint belongs to the connected person and is private to them.";
 
 /**
  * Sign requests ship testnet-first: on by default on Sepolia, and on mainnet only
@@ -486,5 +486,15 @@ function registerAccountTools(server: McpServer, account: AccountAuth): void {
       annotations: readOnly("Get my Fabrica account"),
     },
     async () => jsonResult(await getMyAccount(account)),
+  );
+  server.registerTool(
+    "get_my_properties",
+    {
+      title: "Get my properties",
+      description: `List the connected person's own properties on Fabrica (${NETWORK_LABEL}), across every wallet on their account: the properties they are adding to Fabrica first, then their live properties by estimated value. Each row has its stage and status, location, acres, listing price, offers waiting, whether it is under a loan, Property checks encoding, estimated value and the property page link; totals cover the count, acres, listings, offers waiting and the estimated value of the live properties. Needs the connection's portfolio:read grant. get_land_portfolio lists any wallet address instead.`,
+      inputSchema: getMyPropertiesInput,
+      annotations: readOnly("Get my properties"),
+    },
+    async (args) => jsonResult(await getMyProperties(account, args)),
   );
 }
