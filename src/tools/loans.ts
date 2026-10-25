@@ -1,7 +1,7 @@
 // Borrow and repay as sign requests, and one loan's state. borrow_against_land and
-// repay_land_loan check the pool and the token's loans, then return a sign link that opens the
+// repay_loan_against_land check the pool and the token's loans, then return a sign link that opens the
 // borrow or payoff dialog on fabrica.land, prefilled. The person signs there with their own wallet;
-// the server holds no key and submits nothing. get_land_loan reads one loan's state and payoff.
+// the server holds no key and submits nothing. get_loan_against_land reads one loan's state and payoff.
 import { z } from "zod";
 import { MAX_LOANS, loansMayBeIncomplete } from "../clients/budgets.js";
 import { getAllLoans, getLoanContext, isTokenNotFound } from "../clients/graphql.js";
@@ -20,7 +20,7 @@ const DEFAULT_DURATION_DAYS = 30;
 export const LOAN_OBLIGATION = "A loan is a real obligation: the repayment is due at maturity, and a loan not repaid by then lets the lender take the property through the pool's auction. Nothing here is financial advice.";
 
 const walletInput = z.string().regex(/^0x[0-9a-fA-F]{40}$/, "A 0x-prefixed Ethereum address").describe("The wallet that will sign (0x address). The sign page only lets this wallet sign.");
-const loanIdInput = z.string().regex(/^[0-9]{1,100}$/, "A loan id: digits, as get_land_loan or estimate_land_borrowing return it");
+const loanIdInput = z.string().regex(/^[0-9]{1,100}$/, "A loan id: digits, as get_loan_against_land or estimate_land_borrowing return it");
 
 /** Past maturity a pool loan shows Default until its auction starts, and the borrower can still pay it off. */
 function isOpen(loan: LoanContextLoan): boolean {
@@ -62,7 +62,7 @@ export async function prepareBorrow({ tokenId, slug, amountUsd, durationDays, wa
   const context = await loanContext(token.tokenId);
   if ("error" in context) return context;
   if (openLoans(context).length > 0 || context.poolLendingLiquidity?.activeLoan || Number.parseInt(token.supplyUnderLoan || "0", 10) > 0) {
-    return { error: `${label(token)} already backs an active loan; repay_land_loan prepares paying it off before a new loan.` };
+    return { error: `${label(token)} already backs an active loan; repay_loan_against_land prepares paying it off before a new loan.` };
   }
   if (!holds(token, wallet)) return { error: `Wallet ${shorten(wallet)} does not hold ${label(token)}; only its owner can borrow against it.` };
   const pool = context.poolLendingLiquidity;
@@ -97,7 +97,7 @@ export async function prepareBorrow({ tokenId, slug, amountUsd, durationDays, wa
   };
 }
 
-// --- repay_land_loan ---
+// --- repay_loan_against_land ---
 
 export const repayInput = {
   ...propertyRefInputs,
@@ -117,7 +117,7 @@ export async function prepareRepay({ tokenId, slug, loanId, wallet }: RepayArgs)
   if (!loan) {
     const other = loanId ? (context.loans ?? []).find(l => l.loanId === loanId) : undefined;
     if (other) return { error: `Loan ${loanId} on ${label(token)} is ${other.loanStatus.toLowerCase()}, no longer open, so there is nothing to pay off.` };
-    return { error: loanId ? `No loan ${loanId} on ${label(token)}. get_land_loan lists its loans.` : `${label(token)} has no open loan to pay off.` };
+    return { error: loanId ? `No loan ${loanId} on ${label(token)}. get_loan_against_land lists its loans.` : `${label(token)} has no open loan to pay off.` };
   }
   if (!same(loan.borrower.address, wallet)) return { error: `Loan ${loan.loanId} was taken by ${shorten(loan.borrower.address)}; only its borrower can pay it off from the sign page.` };
   if (loan.loanProvider !== "PoolLending") return { error: `Loan ${loan.loanId} is a ${formatLoanProvider(loan.loanProvider) ?? loan.loanProvider} loan; only ${LENDING_POOL_NAME} loans can be paid off from a sign link.` };
@@ -127,7 +127,7 @@ export async function prepareRepay({ tokenId, slug, loanId, wallet }: RepayArgs)
   const maturity = Date.parse(loan.maturityDate);
   if (Number.isFinite(maturity) && maturity < Date.now()) warnings.push({ level: "warning", message: `The loan matured on ${loan.maturityDate.slice(0, 10)}; once the pool starts its auction it can no longer be paid off.` });
   return {
-    action: "repay_land_loan",
+    action: "repay_loan_against_land",
     kind: "transaction",
     wallet,
     property: propertyOf(token),
@@ -146,7 +146,7 @@ export async function prepareRepay({ tokenId, slug, loanId, wallet }: RepayArgs)
 export const borrowAgainstLand = async (args: BorrowArgs) => issue(await prepareBorrow(args));
 export const repayLandLoan = async (args: RepayArgs) => issue(await prepareRepay(args));
 
-// --- get_land_loan ---
+// --- get_loan_against_land ---
 
 export const getLoanInput = {
   ...propertyRefInputs,

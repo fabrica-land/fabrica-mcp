@@ -52,7 +52,7 @@ const NETWORK_NOTICE = IS_MAINNET
 export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to tokenized US land on the Fabrica protocol, including property records, trust documents, US parcel lookup by address or parcel number, Property checks, parcel boundaries and maps, the lending market, borrow quotes, wallet portfolios and activity. Network: ${NETWORK_LABEL}. Company overview: https://about.fabrica.land. For questions about how Fabrica works (the trust, fees, Property checks, lending, taxes, adding and removing a property, the legal framework) call ask_fabrica and cite the URL of the passage you relied on. When ask_fabrica returns no matching passage, say so and call contact_fabrica_support (or point to https://help.fabrica.land or questions@fabrica.land) instead of guessing; contact_fabrica_support sends nothing, so tell the person the email is theirs to send.${NETWORK_NOTICE}`;
 
 /** Added to the instructions where the sign-request tools are on. */
-export const SIGN_REQUEST_INSTRUCTIONS = " make_land_offer, list_land_for_sale, accept_land_offer, buy_land and cancel_land_order prepare a marketplace action, and borrow_against_land and repay_land_loan a DeFi lending pool loan or its payoff, as a sign request: they check the live data and return a summary, warnings and a sign link to fabrica.land, where the person reviews and signs with their own wallet. The server holds no keys and submits nothing; a prepared request is not sent until the person signs. get_sign_request reports whether it was signed; get_transaction_status follows an onchain transaction.";
+export const SIGN_REQUEST_INSTRUCTIONS = " make_land_offer, list_land_for_sale, accept_land_offer, buy_land and cancel_land_order prepare a marketplace action, and borrow_against_land and repay_loan_against_land a DeFi lending pool loan or its payoff, as a sign request: they check the live data and return a summary, warnings and a sign link to fabrica.land, where the person reviews and signs with their own wallet. The server holds no keys and submits nothing; a prepared request is not sent until the person signs. get_sign_request reports whether it was signed; get_transaction_status follows an onchain transaction.";
 
 /** Added to the instructions on the signed-in endpoint (/mcp/account). */
 export const ACCOUNT_INSTRUCTIONS = " This is the signed-in endpoint: the person connected their Fabrica account to this client. get_my_account reads that person's own account (email, linked accounts, verification status, and what the connection may read) get_my_properties lists their own properties, get_my_offers lists the offers they made and the ones waiting on their properties, get_my_loans lists their loans and pool deposits, get_my_properties_being_added and get_adding_status read the properties they are adding to Fabrica (each step, who acts next, and the link to do it), and what_needs_attention ranks everything waiting on them; every other tool reads public data only, as on the anonymous endpoint, except that get_land_portfolio and get_land_portfolio_map_image read the connected person's own wallet when address is left out, and get_land_activity (address) and search_land (ownedBy) take 'me' for it. Personal data on this endpoint belongs to the connected person and is private to them.";
@@ -268,7 +268,7 @@ export function createServer(hooks: ServerHooks = {}): McpServer {
   );
 
   server.registerTool(
-    "get_land_loan",
+    "get_loan_against_land",
     {
       title: "Get a loan against land",
       description: "Get one loan against a property on Fabrica: status (active, repaid, liquidated), provider, principal, APR, start, maturity, the full repayment and, for an active loan, the payoff today, with the borrower and lender wallets shortened and the property link. Give a property (tokenId or slug) for its active or latest loan, add loanId for a specific one, or give loanId alone to look it up across the network. otherLoans lists the property's other loans.",
@@ -468,7 +468,7 @@ function registerSignRequestTools(server: McpServer): void {
     async (args) => jsonResult(await borrowAgainstLand(args)),
   );
   server.registerTool(
-    "repay_land_loan",
+    "repay_loan_against_land",
     {
       title: "Prepare paying off a loan",
       description: `Prepare paying off the open DeFi lending pool loan on a property (${NETWORK_LABEL}), or the one named by loanId, with the payoff amount today. A loan is open while active and, past maturity, in default until the pool's auction starts. Checks first that the loan is open and the wallet is its borrower, and warns when it is past maturity. Paying off returns the token to the wallet, free of the loan. ${SIGN_LINK_NOTE}`,
@@ -481,7 +481,7 @@ function registerSignRequestTools(server: McpServer): void {
     "get_sign_request",
     {
       title: "Get sign request status",
-      description: "Get a sign request a prepare tool returned (make_land_offer, list_land_for_sale, accept_land_offer, buy_land, cancel_land_order, borrow_against_land, repay_land_loan) by its id: pending or completed, with the order hash, transaction hash or loan id once signed. A pending request is also checked against the live order book, or the property's loans for a borrow or payoff. Requests expire 15 minutes after they are prepared; an expired id is reported as unknown.",
+      description: "Get a sign request a prepare tool returned (make_land_offer, list_land_for_sale, accept_land_offer, buy_land, cancel_land_order, borrow_against_land, repay_loan_against_land) by its id: pending or completed, with the order hash, transaction hash or loan id once signed. A pending request is also checked against the live order book, or the property's loans for a borrow or payoff. Requests expire 15 minutes after they are prepared; an expired id is reported as unknown.",
       inputSchema: getSignRequestInput,
       annotations: readOnly("Get sign request status"),
     },

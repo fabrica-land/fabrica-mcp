@@ -528,7 +528,7 @@ export async function getSignContext(
   return data.token;
 }
 
-// --- Loan context: the pool's capacity and the token's loans, for borrow/repay sign requests and get_land_loan ---
+// --- Loan context: the pool's capacity and the token's loans, for borrow/repay sign requests and get_loan_against_land ---
 
 const GET_LOAN_CONTEXT_QUERY = gql`
   query GetLoanContext($tokenId: String, $slug: String, $network: String) {

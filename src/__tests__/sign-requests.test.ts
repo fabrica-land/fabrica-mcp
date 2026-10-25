@@ -176,6 +176,14 @@ describe("the sign-request store", () => {
     expect(await new SignRequestStore(backend, "another secret").get(r.id)).toBeNull();
   });
 
+  it("still reads a repay request stored under the repay tool's previous name", async () => {
+    const r = record({ action: "repay_land_loan", kind: "transaction", order: undefined });
+    await store.create(r);
+    const loaded = await store.get(r.id);
+    expect(loaded?.action).toBe("repay_land_loan");
+    expect(signPageView(loaded as SignRequest).action).toBe("repay");
+  });
+
   it("marks a request expired 15 minutes after it was prepared and forgets it after a day", async () => {
     const r = record();
     await store.create(r);

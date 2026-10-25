@@ -108,7 +108,7 @@ describe("hosted HTTP transport", () => {
       await client.connect(new StreamableHTTPClientTransport(new URL(url)));
       const { tools } = await client.listTools();
       expect(tools).toHaveLength(offTools.length + 9);
-      const prepareTools = ["make_land_offer", "list_land_for_sale", "accept_land_offer", "buy_land", "cancel_land_order", "borrow_against_land", "repay_land_loan"];
+      const prepareTools = ["make_land_offer", "list_land_for_sale", "accept_land_offer", "buy_land", "cancel_land_order", "borrow_against_land", "repay_loan_against_land"];
       for (const tool of tools) {
         expect(tool.title, tool.name).toBeTruthy();
         expect(tool.annotations?.readOnlyHint, tool.name).toBe(!prepareTools.includes(tool.name));

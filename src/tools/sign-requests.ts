@@ -171,7 +171,7 @@ export async function issue(prepared: Prepared | Blocked) {
     },
     nextSteps: [
       `The person opens signLink in a browser, signs in to ${new URL(WEB_BASE).host} with wallet ${record.wallet}, reviews the dialog and signs. The link stays open for ${SIGN_REQUEST_TTL_SECONDS / 60} minutes (until ${record.expiresAt}).`,
-      `get_sign_request with id ${record.id} says whether it was signed; ${isLoanAction(record) ? "get_land_loan shows the loan" : "get_land_order_book shows the order"} once it is.`,
+      `get_sign_request with id ${record.id} says whether it was signed; ${isLoanAction(record) ? "get_loan_against_land shows the loan" : "get_land_order_book shows the order"} once it is.`,
     ],
   };
 }
@@ -416,7 +416,7 @@ export async function observe(record: SignRequest, token: SignContextToken): Pro
   return await transactionFills(record, order.matchTransactionHash) ? { orderHash: order.marketplaceId, transactionHash: order.matchTransactionHash } : null;
 }
 
-const LOAN_ACTIONS: ReadonlySet<SignRequest["action"]> = new Set(["borrow_against_land", "repay_land_loan"]);
+const LOAN_ACTIONS: ReadonlySet<SignRequest["action"]> = new Set(["borrow_against_land", "repay_loan_against_land", "repay_land_loan"]);
 
 /** Borrow and repay are loans, not orders: they complete when the token's loans show them. */
 export function isLoanAction(record: SignRequest): boolean {
@@ -440,7 +440,7 @@ function findLoan(record: SignRequest, token: LoanContextToken): LoanContextLoan
   if (record.action === "borrow_against_land") {
     return loans.find(l => l.loanStatus === "Active" && same(l.borrower.address, record.wallet) && Date.parse(l.startTime) >= createdSecond(record) && hasRequestedTerms(record, l)) ?? null;
   }
-  if (record.action === "repay_land_loan") {
+  if (record.action === "repay_loan_against_land" || record.action === "repay_land_loan") {
     const loan = loans.find(l => l.loanId === record.loan?.loanId);
     return loan?.loanStatus === "Repaid" ? loan : null;
   }
@@ -563,7 +563,7 @@ export async function getSignRequest({ id }: GetSignRequestArgs) {
     ...(record.result ? { result: record.result } : {}),
     note: record.status === "completed"
       ? isLoanAction(record)
-        ? "Signed. get_land_loan shows the loan's state and payoff."
+        ? "Signed. get_loan_against_land shows the loan's state and payoff."
         : "Signed. get_land_order_book shows the order; a transaction hash can be followed with get_transaction_status."
       : expired
         ? `Expired unsigned: links stay open for ${SIGN_REQUEST_TTL_SECONDS / 60} minutes. Prepare a new one to continue.`
@@ -582,6 +582,7 @@ const PAGE_ACTIONS: Record<SignRequest["action"], "offer" | "list" | "accept" | 
   buy_land: "accept",
   cancel_land_order: "cancel",
   borrow_against_land: "borrow",
+  repay_loan_against_land: "repay",
   repay_land_loan: "repay",
 };
 
