@@ -56,7 +56,7 @@ ui/
     coverage.ts       # check_county_coverage (static on-ramp rules table in src/data/onramp-coverage.json, built by scripts/build-coverage.mjs)
     support.ts        # contact_fabrica_support (help center link, support email, prefilled mailto; nothing sent)
     sign-requests.ts  # make_land_offer, list_land_for_sale, accept_land_offer, buy_land, cancel_land_order (prepare a sign request), get_sign_request
-    loans.ts          # borrow_against_land, repay_land_loan (sign requests), get_land_loan (GetLoanContext, never cached)
+    loans.ts          # borrow_against_land, repay_loan_against_land (sign requests), get_loan_against_land (GetLoanContext, never cached)
     transactions.ts   # get_transaction_status (JSON-RPC reads only)
     account.ts        # get_my_account, get_my_properties (signed-in endpoint /mcp/account only, the connected user's own token)
     attention.ts      # what_needs_attention (signed-in endpoint only; ranks items from the other personal reads plus fees and checks on up to 20 live properties)
@@ -293,4 +293,5 @@ Tool descriptions and outputs are read by agents and repeated to people, so they
 - Stablecoins are "digital dollars"; Fabrica counts one USDC as one dollar. Never promise the coin's value ("always equal $1").
 - Write "onchain" as one word. No em dashes in descriptions or output text (`http.test.ts` checks descriptions and instructions).
 - Use the product names people see on fabrica.land, not the API's internal vocabulary. "Property" is the default noun; name the token where the text identifies the asset (token ID, contract, the plain explanation of land, trust and token). A premint is "unclaimed" (no owner yet) or "being added" (claimed); a superseded premint is "replaced". People "add" a property to Fabrica and "remove" it; in prose, not "on-ramp", "off-ramp", "onboard", "mint" or "burn" (a token is "issued"; a burned token is "retired"). The property intake fee is the "setup fee". Values this server defines and people read follow the same names (lifecycle stages `unclaimed` ... `retired`, the borrowing lever `setup`, `replacesTokenId`). Docs URL slugs (`/docs/on-ramp`) and the API's own fields and values (`isPremint`, `offRampStatus`, `claimState`, the `Mint` activity type) keep their names.
+- "Wallet" stays in this server where the input or output is an Ethereum address (tool names, `wallet` arguments, wallet reviews); Soil and the OAuth scope labels say "account" or "linked accounts" for the same thing, and the account tools follow them. Do not add "wallet" to the jargon check in `http.test.ts`.
 - American English ("labeled"). Operations across all 50 states are "with varying degrees of functionality"; never a bare "operates in all 50 states".

@@ -135,7 +135,7 @@ describe("borrow_against_land", () => {
     expect(await prepareBorrow({ tokenId: "123", amountUsd: 1500, wallet: OWNER })).toMatchObject({ error: expect.stringMatching(/above the \$1,000/) });
     expect(await prepareBorrow({ tokenId: "123", amountUsd: 100, wallet: OTHER })).toMatchObject({ error: expect.stringMatching(/does not hold/) });
     vi.mocked(getLoanContext).mockResolvedValue(context({ loans: [loan()] }));
-    expect(await prepareBorrow({ tokenId: "123", amountUsd: 100, wallet: OWNER })).toMatchObject({ error: expect.stringMatching(/already backs an active loan; repay_land_loan/) });
+    expect(await prepareBorrow({ tokenId: "123", amountUsd: 100, wallet: OWNER })).toMatchObject({ error: expect.stringMatching(/already backs an active loan; repay_loan_against_land/) });
   });
 
   it("refuses when the pool shows no capacity or blocks on tax status", async () => {
@@ -200,7 +200,7 @@ describe("borrow_against_land", () => {
   });
 });
 
-describe("repay_land_loan", () => {
+describe("repay_loan_against_land", () => {
   beforeEach(() => {
     vi.mocked(getLoanContext).mockResolvedValue(context({ loans: [loan()] }));
   });
@@ -280,7 +280,7 @@ describe("repay_land_loan", () => {
   });
 });
 
-describe("get_land_loan", () => {
+describe("get_loan_against_land", () => {
   it("returns the property's active loan with the payoff today and lists the others", async () => {
     vi.mocked(getLoanContext).mockResolvedValue(context({ loans: [loan({ loanId: "1", loanStatus: "Repaid", startTime: "2026-01-01T00:00:00Z" }), loan()] }));
     const result = await getLoan({ tokenId: "123" });

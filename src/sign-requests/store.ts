@@ -15,7 +15,10 @@ export const SIGN_REQUEST_RETENTION_SECONDS = 24 * 60 * 60;
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 const HASH = /^0x[0-9a-fA-F]{64}$/;
 
-export const signRequestActions = ["make_land_offer", "list_land_for_sale", "accept_land_offer", "buy_land", "cancel_land_order", "borrow_against_land", "repay_land_loan"] as const;
+export const signRequestActions = ["make_land_offer", "list_land_for_sale", "accept_land_offer", "buy_land", "cancel_land_order", "borrow_against_land", "repay_loan_against_land",
+  // The repay tool's name before the loan tools were renamed. Records stored under it stay readable (and their MAC
+  // valid) through the retention window; no new request uses it. Remove a day after the rename deploys.
+  "repay_land_loan"] as const;
 
 const warningSchema = z.object({
   level: z.enum(["info", "warning"]),

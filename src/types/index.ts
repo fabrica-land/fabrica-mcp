@@ -105,7 +105,7 @@ export type OrderBookOrder = NonNullable<OrderBookToken["marketplaceListings"]>[
 export type SignContextToken = GetSignContextQuery["token"];
 /** An order as the sign-request tools read it: the order book fields plus the transaction that filled it. */
 export type SignContextOrder = NonNullable<SignContextToken["marketplaceListings"]>[number];
-/** A token as the borrow and repay tools and get_land_loan read it: the pool's capacity and every loan on it. */
+/** A token as the borrow and repay tools and get_loan_against_land read it: the pool's capacity and every loan on it. */
 export type LoanContextToken = GetLoanContextQuery["token"];
 export type LoanContextLoan = NonNullable<LoanContextToken["loans"]>[number];
 export type PremintSuccessor = GetPremintSuccessorQuery["premintSuccessor"];
