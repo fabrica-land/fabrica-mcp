@@ -12,7 +12,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - name: ENG-5167 CA trust fix (remove emSign ECC Root CA - G3)
+      - name: CA trust fix (remove emSign ECC Root CA - G3)
         shell: bash
         run: |
           set +e -uo pipefail
