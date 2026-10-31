@@ -56,10 +56,24 @@ jobs:
           # Full history: page dates come from the last commit touching each file.
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 22
+          node-version: 22.23.4
           cache: npm
+      - name: Check Node bundled CA roots
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(node --version)" = v22.23.4
+          node <<'NODE'
+          const { rootCertificates } = require("tls");
+          const { X509Certificate, createHash } = require("crypto");
+          const target = "86a1ecba089c4a8d3bbe2734c612ba341d813e043cf9e8a862cd5c57a36bbe6b";
+          if (!Array.isArray(rootCertificates) || rootCertificates.length === 0) throw new Error("No bundled roots available");
+          const matches = rootCertificates.filter(pem => createHash("sha256").update(new X509Certificate(pem).raw).digest("hex") === target).length;
+          console.log(`node_roots=${rootCertificates.length} g3_sha256_count=${matches}`);
+          process.exit(matches === 0 ? 0 : 1);
+          NODE
 
       - run: npm ci
 
