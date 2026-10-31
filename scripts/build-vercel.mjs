@@ -7,13 +7,15 @@ import { build } from "tsup";
 
 const OUTPUT = ".vercel/output";
 const FUNCTION_DIR = `${OUTPUT}/functions/mcp.func`;
-// Sign requests (ENG-5073): the sign page reads and completes them at /sign-requests/{id}.
+// Sign requests: the sign page reads and completes them at /sign-requests/{id}.
 const SIGN_REQUESTS_DIR = `${OUTPUT}/functions/sign-requests.func`;
+// Discovery documents: /.well-known/mcp.json, /.well-known/mcp/server-card.json, /.well-known/ai-catalog.json, the ChatGPT /.well-known/openai-apps-challenge and the OAuth protected resource metadata.
+const WELL_KNOWN_DIR = `${OUTPUT}/functions/well-known.func`;
 const isSepolia = process.env.FABRICA_NETWORK?.toLowerCase() === "sepolia";
 const networkLabel = isSepolia ? "Sepolia testnet" : "Ethereum mainnet";
 
 await rm(OUTPUT, { recursive: true, force: true });
-for (const [entry, dir] of [["src/vercel.ts", FUNCTION_DIR], ["src/vercel-sign-requests.ts", SIGN_REQUESTS_DIR]]) {
+for (const [entry, dir] of [["src/vercel.ts", FUNCTION_DIR], ["src/vercel-sign-requests.ts", SIGN_REQUESTS_DIR], ["src/vercel-well-known.ts", WELL_KNOWN_DIR]]) {
   await build({
     config: false,
     entry: { index: entry },
@@ -76,8 +78,15 @@ await writeFile(`${OUTPUT}/config.json`, JSON.stringify({
       headers: { "Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=31536000, immutable" },
       continue: true,
     },
+    // Connect Fabrica: the signed-in endpoint runs in the same function as /mcp; it answers 404 while FABRICA_OAUTH is off.
+    { src: "^/mcp/account/?$", dest: "/mcp?endpoint=account" },
     { src: "^/sign-requests/([^/]+)/result/?$", dest: "/sign-requests?id=$1&op=result" },
     { src: "^/sign-requests/([^/]+)/?$", dest: "/sign-requests?id=$1" },
+    { src: "^/\\.well-known/mcp\\.json$", dest: "/well-known?doc=manifest" },
+    { src: "^/\\.well-known/mcp/server-card\\.json$", dest: "/well-known?doc=server-card" },
+    { src: "^/\\.well-known/ai-catalog\\.json$", dest: "/well-known?doc=ai-catalog" },
+    { src: "^/\\.well-known/openai-apps-challenge$", dest: "/well-known?doc=openai-apps-challenge" },
+    { src: "^/\\.well-known/oauth-protected-resource(/mcp/account)?/?$", dest: "/well-known?doc=oauth-protected-resource" },
     { handle: "filesystem" },
   ],
 }, null, 2));

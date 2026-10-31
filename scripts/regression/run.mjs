@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * The ENG-2970 regression list: every tool, happy path and edge case, called over
+ * The regression list: every tool, happy path and edge case, called over
  * JSON-RPC against a hosted server. Prints one line per case and exits 1 on a miss.
  *
  *   node scripts/regression/run.mjs                      # mainnet, https://mcp.fabrica.land/mcp

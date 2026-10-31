@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { tokenListItem } from "./fixtures.js";
 
-/** ENG-4995: search by county, groupBy, and links to the fabrica.land location pages. */
+/** Search by county, groupBy, and links to the fabrica.land location pages. */
 
 const tokens = [
   tokenListItem({ tokenId: "1", name: "Lot 1", region: "Colorado", regionCode: "CO", district: "Costilla County", place: "San Luis", acres: "5", marketplacePrice: "10000", supplyUnderLoan: "0", score: 75342, estimatedValue: "9000", majorityOwnerAddress: null }),

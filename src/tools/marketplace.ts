@@ -8,7 +8,7 @@ import { type ArgsOf, propertyRefInputs } from "./inputs.js";
 const DAY_MS = 86_400_000;
 
 /** Orders that can still be filled or are waiting on the seller's loan payoff: the default view. */
-const LIVE_STATUSES: ReadonlySet<OrderBookOrder["status"]> = new Set(["active", "encumbered", "pending"]);
+export const LIVE_STATUSES: ReadonlySet<OrderBookOrder["status"]> = new Set(["active", "encumbered", "pending"]);
 
 /** Why a listing on a property under a loan cannot be bought right now (API `MarketplaceOrderBlockReason`). */
 const BLOCK_REASONS: Record<NonNullable<NonNullable<OrderBookOrder["encumbrance"]>["blockReason"]>, string> = {
@@ -62,12 +62,12 @@ export function hasEnded(endTime: string | null | undefined, now: number): boole
  * An order whose end time has passed is expired whatever status the API still reports,
  * so a stale "active" row never reads as live.
  */
-function effectiveStatus(order: OrderBookOrder, now: number): OrderBookOrder["status"] {
+export function effectiveStatus(order: OrderBookOrder, now: number): OrderBookOrder["status"] {
   if (LIVE_STATUSES.has(order.status) && hasEnded(order.endTime, now)) return "expired";
   return order.status;
 }
 
-function formatOrder(order: OrderBookOrder, status: OrderBookOrder["status"], now: number) {
+export function formatOrder(order: OrderBookOrder, status: OrderBookOrder["status"], now: number) {
   const feeBps = Number.parseInt(order.feeBps, 10);
   return {
     price: formatUsd(order.usdPrice),
@@ -99,7 +99,7 @@ const usdValue = (order: OrderBookOrder): number | null => {
 };
 
 /** Sort by USD price; an order the API could not price in USD is not comparable and goes last. */
-function byUsd(direction: 1 | -1) {
+export function byUsd(direction: 1 | -1) {
   return (a: { order: OrderBookOrder }, b: { order: OrderBookOrder }): number => {
     const x = usdValue(a.order);
     const y = usdValue(b.order);
@@ -161,7 +161,7 @@ export async function getOrderBook({ tokenId, slug, status, minOfferUsd }: Order
     const underLoan = Number.parseInt(token.supplyUnderLoan || "0", 10) > 0;
     const notes: string[] = [];
     if (replacedPremintTokenId) {
-      notes.push(`Token ${replacedPremintTokenId} was a premint that has been replaced by minted token ${token.tokenId}; this is the minted token's order book.`);
+      notes.push(`Token ${replacedPremintTokenId} was the record of this property before its token was issued; it has been replaced by token ${token.tokenId}, and this is that token's order book.`);
     }
     // Payoff mechanics differ per order (each listing carries its own encumbrance), so the
     // property-level note makes no payoff claim and points at the per-listing detail.
@@ -169,7 +169,7 @@ export async function getOrderBook({ tokenId, slug, status, minOfferUsd }: Order
       notes.push("The property is collateral for an active loan. Each listing's encumbrance says whether it can be bought now and, if not, why.");
     }
     if (token.isPremint) {
-      notes.push("This property is a premint: its token has not been minted yet.");
+      notes.push("This property is still being added to Fabrica: its token is not issued yet.");
     }
     if (listings.length === 0 && offers.length === 0 && selectedOffers.length > 0) {
       notes.push(`No listings, and no offers at or above $${minOfferUsd ?? 0}; ${selectedOffers.length} lower or unpriced offer${selectedOffers.length === 1 ? " was" : "s were"} left out by minOfferUsd.`);
@@ -182,7 +182,7 @@ export async function getOrderBook({ tokenId, slug, status, minOfferUsd }: Order
       tokenId: token.tokenId,
       name: token.name ?? token.vanityName,
       stage: propertyStage(token),
-      ...(replacedPremintTokenId ? { replacesPremintTokenId: replacedPremintTokenId } : {}),
+      ...(replacedPremintTokenId ? { replacesTokenId: replacedPremintTokenId } : {}),
       isPremint: token.isPremint,
       claimState: token.claimState,
       showing: includeAll ? "all orders, every status" : "live orders only (active, encumbered or pending); pass status 'all' for expired, canceled and filled orders",

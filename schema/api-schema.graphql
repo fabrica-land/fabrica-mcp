@@ -147,12 +147,10 @@ input BuildMarketplaceOrderInputModel {
 
 type ClientApiModel {
   baseUrl: String!
-  clientBearerTokens: [String!]!
   version: String!
 }
 
 type ClientBlockchainNetworkModel {
-  alchemyRpcUrl: String!
   blockExplorerBaseUrl: String!
   chainId: Float!
   currencies: [ClientCurrencyModel!]!
@@ -174,13 +172,9 @@ type ClientConfigModel {
   api: ClientApiModel!
   coinflow: ClientCoinflowModel!
   dynamicXyz: ClientDynamicXyzModel!
-  intercom: ClientIntercomModel!
-  mapbox: ClientMapboxModel!
   media: ClientMediaModel!
   networks: [ClientNetworkModel!]!
-  regrid: ClientRegridModel!
   resend: ClientResendModel!
-  soil: ClientSoilModel!
 }
 
 type ClientCurrencyModel {
@@ -193,14 +187,6 @@ type ClientCurrencyModel {
 type ClientDynamicXyzModel {
   cookieAuthDomain: String!
   envId: String!
-}
-
-type ClientIntercomModel {
-  apiKey: String!
-}
-
-type ClientMapboxModel {
-  apiAccessToken: String!
 }
 
 type ClientMarketplaceNetworkModel {
@@ -222,7 +208,6 @@ type ClientNetworkModel {
   openSea: ClientOpenSeaNetworkModel!
   poolLending: ClientPoolLendingNetworkModel!
   resend: ClientResendNetworkModel!
-  seaport: ClientSeaportNetworkModel!
   testnet: Boolean!
   token: ClientTokenNetworkModel!
 }
@@ -253,12 +238,7 @@ type ClientPoolLendingNetworkModel {
   refinanceEnabled: Boolean!
 }
 
-type ClientRegridModel {
-  apiKey: String!
-}
-
 type ClientResendModel {
-  apiKey: String!
   claimFormTo: String!
 }
 
@@ -267,24 +247,11 @@ type ClientResendNetworkModel {
   replyToAddress: String!
 }
 
-type ClientSeaportNetworkModel {
-  versions: [ClientSeaportVersionNetworkModel!]!
-}
-
-type ClientSeaportVersionNetworkModel {
-  contractAddress: String!
-  version: String!
-}
-
 type ClientSendersModel {
   Clerk: String!
   Courier: String!
   Herald: String!
   Steward: String!
-}
-
-type ClientSoilModel {
-  revalidationTokens: [String!]!
 }
 
 type ClientTokenNetworkModel {
@@ -811,6 +778,129 @@ type OnRampStepModel {
   visibility: Boolean!
 }
 
+"""
+Assessor facts from the cached Regrid parcel record. status is "not-checked" when no cached record exists. Owner and mailing fields are never included.
+"""
+type ParcelFactsAssessorModel {
+  """Annual property tax amount, in US dollars."""
+  annualTaxAmount: Float
+
+  """Assessed improvement value, in US dollars."""
+  assessedImprovements: Float
+
+  """Assessed land value, in US dollars."""
+  assessedLand: Float
+
+  """Total assessed parcel value, in US dollars."""
+  assessedTotal: Float
+
+  """Type of the total assessed value (for example MARKET)."""
+  assessmentType: String
+
+  """Year of the assessment. Null until the source records it."""
+  assessmentYear: String
+
+  """US census tract."""
+  censusTract: String
+
+  """
+  ISO timestamp when the source fetched these facts. Null until the cache records it.
+  """
+  fetchedAt: String
+
+  """Land use description."""
+  landUse: String
+
+  """Land use code."""
+  landUseCode: String
+
+  """Last sale date (YYYY-MM-DD)."""
+  lastSaleDate: String
+
+  """Last sale price, in US dollars."""
+  lastSalePrice: Float
+
+  """Legal description."""
+  legalDescription: String
+
+  """Qualified Opportunity Zone flag from the assessor record."""
+  opportunityZone: String
+
+  """Name of the source of these facts."""
+  source: String!
+
+  """"checked" when a cached assessor record exists, else "not-checked"."""
+  status: String!
+
+  """Structures on the parcel. Null when not checked."""
+  structure: ParcelFactsStructureModel
+
+  """Zoning code."""
+  zoning: String
+
+  """Zoning description."""
+  zoningDescription: String
+}
+
+"""
+Parcel facts, one nullable group per source. Each group carries source, fetchedAt and status, so a consumer can tell "checked, no value" from "not checked".
+"""
+type ParcelFactsModel {
+  """Assessor facts."""
+  assessor: ParcelFactsAssessorModel
+
+  """Property tax facts."""
+  taxes: ParcelFactsTaxesModel
+}
+
+"""Structures on the parcel, from the assessor record."""
+type ParcelFactsStructureModel {
+  """Number of structures the assessor records."""
+  count: Float
+
+  """True when the assessor records a structure on the parcel."""
+  present: Boolean
+
+  """Year the main structure was built."""
+  yearBuilt: Float
+}
+
+"""
+Property tax facts from the Fabrica tax research store. status is "not-checked" when no accepted research result exists.
+"""
+type ParcelFactsTaxesModel {
+  """Amount due as a decimal string, in US dollars."""
+  amountDue: String
+
+  """ISO timestamp of the research attempt that gave the result."""
+  checkedAt: String
+
+  """Confidence of the research result, from 0 to 1."""
+  confidence: Float
+
+  """
+  IPFS CID of the stored evidence. Null until the store records evidence.
+  """
+  evidenceCid: String
+
+  """ISO timestamp when the source fetched these facts."""
+  fetchedAt: String
+
+  """Next tax due date (YYYY-MM-DD)."""
+  nextDueDate: String
+
+  """Name of the source of these facts."""
+  source: String!
+
+  """URL of the county page the research result came from."""
+  sourceUrl: String
+
+  """
+  Tax status of the latest accepted research result ("current", "past_due" or "unknown"), or "not-checked" when there is none. Null when the result has no status.
+  """
+  status: String
+}
+
 type PoolLendingCollateralTokenModel {
   address: String!
   name: String!
@@ -1268,6 +1358,7 @@ type TokenModel {
   operatingAgreement: String
   operatingAgreementName: String
   operatingAgreementUrl: String
+  parcelFacts: ParcelFactsModel
   place: String
   poolLendingLiquidity: PoolLendingLiquidityModel
   postCode: String
@@ -1357,6 +1448,7 @@ type UserModel {
   poolLendingDeposits(network: String!, poolAddress: String!): [PoolLendingDepositModel!]!
   profilePath: String
   profileUrl: String
+  username: String
 }
 
 type UserProvidedFieldModel {

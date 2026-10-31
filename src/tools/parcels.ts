@@ -21,7 +21,7 @@ const MAX_CANDIDATES = 5;
 /** Type-ahead scores run roughly 0 to 100; a lead this large means one parcel clearly matches. */
 const CLEAR_LEAD = 10;
 
-export const COVERAGE_NOTE = "Fabrica operates in all 50 states; the on-ramp page shows what this county requires.";
+export const COVERAGE_NOTE = "Fabrica has operations across all 50 states with varying degrees of functionality; the add-property page shows what this county requires.";
 
 const API_BASE = new URL(process.env.FABRICA_API_URL ?? DEFAULT_API_URL).origin;
 
@@ -297,7 +297,7 @@ export function stateRetryText(query: string, state: string | undefined, countyS
 }
 
 /**
- * The type-ahead's upstream search answers 503 to any query with a comma (ENG-5024), so
+ * The type-ahead's upstream search answers 503 to any query with a comma, so
  * commas become spaces before the call. The words and their order are unchanged.
  */
 export function typeAheadText(query: string): string {
@@ -419,7 +419,7 @@ async function indexFallback(query: string, args: FindParcelArgs, failure: strin
     return { error: `${SEARCH_DOWN} (${failure}), and Fabrica's property records could not be read either. Try again shortly.` };
   }
   if (matches.length === 0) {
-    return { error: `${SEARCH_DOWN} (${failure}). No property in Fabrica's own records has this name or parcel number. That does not confirm the parcel is not on Fabrica; try again shortly for the full search and the on-ramp link.` };
+    return { error: `${SEARCH_DOWN} (${failure}). No property in Fabrica's own records has this name or parcel number. That does not confirm the parcel is not on Fabrica; try again shortly for the full search and the link to add it.` };
   }
   // Fabrica's records cannot see parcels that are not on Fabrica (a repeated APN, a neighbour with a similar
   // name), so a match here is a lead to confirm, never a parcel identity.
@@ -569,10 +569,10 @@ async function searchBatch(queries: readonly string[], args: FindParcelArgs) {
       rows,
       unresolved,
       note: [
-        "One row per query that resolved to a single parcel: on Fabrica, tokenId and propertyLink (get_land_property returns the record); not on Fabrica, addToFabrica opens the on-ramp for that parcel, and nothing is created until a person opens it and decides there.",
-        unchecked ? "onFabrica null means Fabrica's records could not be checked for that row, so its on-ramp link is withheld; calling find_us_parcel again shortly retries it." : null,
+        "One row per query that resolved to a single parcel: on Fabrica, tokenId and propertyLink (get_land_property returns the record); not on Fabrica, addToFabrica opens the page to add that parcel to Fabrica, and nothing is created until a person opens it and decides there.",
+        unchecked ? "onFabrica null means Fabrica's records could not be checked for that row, so its link to add it is withheld; calling find_us_parcel again shortly retries it." : null,
         unresolved.length > 0 ? "Unresolved queries: call find_us_parcel again with a fuller address, or with state and county." : null,
-        rows.some((row) => row.coverage !== undefined) ? `coverage is the county's on-ramp status as of ${COVERAGE_AS_OF}; check_county_coverage lists what it asks for.` : null,
+        rows.some((row) => row.coverage !== undefined) ? `coverage is whether property in the county can be added online, as of ${COVERAGE_AS_OF}; check_county_coverage lists what it asks for.` : null,
       ].filter(Boolean).join(" "),
     },
     onFabrica,
@@ -688,14 +688,14 @@ async function searchParcel(args: SingleArgs, loadIndex: IndexLoader) {
     parcel: toCandidate(top.hit, null),
     links: { addToFabrica },
     ...(coverage ? { coverage } : {}),
-    note: `${point ? "The link opens the on-ramp for this parcel. Nothing is created until a person opens it and decides there." : "The parcel's location could not be looked up, so the link opens the on-ramp search page; the address or parcel number can be entered there."} ${coverage ? coverageNote(coverage.status) : COVERAGE_NOTE}`,
+    note: `${point ? "The link opens the page to add this parcel to Fabrica. Nothing is created until a person opens it and decides there." : "The parcel's location could not be looked up, so the link opens the add-property search page; the address or parcel number can be entered there."} ${coverage ? coverageNote(coverage.status) : COVERAGE_NOTE}`,
   };
 }
 
 function coverageNote(status: CoverageStatus): string {
-  if (status === "supported") return `The on-ramp is set up for this county (on-ramp rules as of ${COVERAGE_AS_OF}); check_county_coverage lists the documents and steps it asks for.`;
-  if (status === "notConfigured") return `The on-ramp is not set up for this county yet (on-ramp rules as of ${COVERAGE_AS_OF}), so the owner may not be able to finish online; contact_fabrica_support can ask Fabrica about it.`;
-  return `Fabrica does not take property in this county through the on-ramp (on-ramp rules as of ${COVERAGE_AS_OF}).`;
+  if (status === "supported") return `Adding property is set up for this county (rules as of ${COVERAGE_AS_OF}); check_county_coverage lists the documents and steps it asks for.`;
+  if (status === "notConfigured") return `Adding property is not set up for this county yet (rules as of ${COVERAGE_AS_OF}), so the owner may not be able to finish online; contact_fabrica_support can ask Fabrica about it.`;
+  return `Property in this county cannot be added to Fabrica online (rules as of ${COVERAGE_AS_OF}).`;
 }
 
 /** Per-client limit on find_us_parcel calls, per warm server instance (the type-ahead is metered). */

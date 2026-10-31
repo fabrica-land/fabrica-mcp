@@ -244,7 +244,7 @@ describe("raiseLevers", () => {
 
   it("names the existing loan and the premint stage", () => {
     expect(raiseLevers({ ...base, hasActiveLoan: true, pools: [LIVE_POOL] })[0]).toMatchObject({ lever: "existing_loan" });
-    expect(raiseLevers({ ...base, maxBorrowUsd: 0, isPremint: true, pools: [] })[0]).toMatchObject({ lever: "onramp" });
+    expect(raiseLevers({ ...base, maxBorrowUsd: 0, isPremint: true, pools: [] })[0]).toMatchObject({ lever: "setup" });
   });
 
   it("never reads as advice to borrow, and never calls the pool's liquidity low", () => {

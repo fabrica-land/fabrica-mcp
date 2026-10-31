@@ -171,7 +171,7 @@ export const searchPropertiesInput = {
     lon: z.number().min(-180).max(180),
     radiusMiles: z.number().positive().max(3000).optional().describe("Keep only properties within this many miles of the point (default: no limit, every row gets its distance)."),
   }).optional().describe("A point to measure distance from, in decimal degrees. Each row then carries distanceMiles (straight-line), and the default sort is by distance."),
-  sortBy: z.enum(["price", "pricePerAcre", "acres", "estimatedValue", "score", "newest", "distance"]).optional().describe("Order of the rows. price and pricePerAcre use the listing price and put unlisted properties last; newest is by mint date; distance needs near. Default: the API's order, or distance when near is set."),
+  sortBy: z.enum(["price", "pricePerAcre", "acres", "estimatedValue", "score", "newest", "distance"]).optional().describe("Order of the rows. price and pricePerAcre use the listing price and put unlisted properties last; newest is by the date the property was added; distance needs near. Default: the API's order, or distance when near is set."),
   sortDir: z.enum(["asc", "desc"]).optional().describe("asc (default) or desc. newest is always most recent first."),
   limit: z.number().int().min(1).max(100).optional().describe("Max results (default 20, max 100)"),
   offset: z.number().int().min(0).optional().describe("Pagination offset"),
@@ -360,7 +360,7 @@ function lifecycleOf(token: TokenModel, replacedPremintTokenId: string | null) {
     description: describeStage(stage),
     ...(token.claimState ? { claimState: token.claimState } : {}),
     ...(token.supersededByTokenId ? { successorTokenId: token.supersededByTokenId } : {}),
-    ...(replacedPremintTokenId ? { replacesPremintTokenId: replacedPremintTokenId, note: `Token ${replacedPremintTokenId} was a premint that has been replaced by this minted token.` } : {}),
+    ...(replacedPremintTokenId ? { replacesTokenId: replacedPremintTokenId, note: `Token ${replacedPremintTokenId} was the record of this property before its token was issued; it has been replaced by this token.` } : {}),
     ...(token.offRampStatus ? { offRampStatus: token.offRampStatus } : {}),
   };
 }

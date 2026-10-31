@@ -105,7 +105,7 @@ describe("get_land_order_book", () => {
     const result = await getOrderBook({ tokenId: "3484741603659410548" });
     expect(result).toMatchObject({
       tokenId: "3484741603659410548",
-      stage: "minted",
+      stage: "live",
       isPremint: false,
       offerCount: 2,
       underActiveLoan: false,
@@ -130,12 +130,12 @@ describe("get_land_order_book", () => {
     expect(result).toMatchObject({
       isPremint: true,
       claimState: "CLAIMED",
-      stage: "premint_claimed",
+      stage: "being_added",
       listing: null,
       offerCount: 1,
       offers: [{ price: "$12", amount: "12 USDC", status: "active" }],
     });
-    expect(JSON.stringify(result)).toContain("premint");
+    expect(JSON.stringify(result)).toContain("still being added");
   });
 
   it("returns a compact payload for a token with no orders", async () => {
@@ -250,7 +250,7 @@ describe("get_land_order_book", () => {
     vi.mocked(getPremintSuccessor).mockResolvedValue("222");
     const result = await getOrderBook({ tokenId: "111" });
     expect(fetchOrderBook).toHaveBeenLastCalledWith({ tokenId: "222" });
-    expect(result).toMatchObject({ tokenId: "222", stage: "minted", replacesPremintTokenId: "111" });
+    expect(result).toMatchObject({ tokenId: "222", stage: "live", replacesTokenId: "111" });
   });
 
   it("follows a superseded premint that still loads to its minted successor", async () => {
@@ -258,7 +258,7 @@ describe("get_land_order_book", () => {
       .mockResolvedValueOnce(token({ tokenId: "111", isPremint: true, supersededByTokenId: "222" }))
       .mockResolvedValueOnce(token({ tokenId: "222" }));
     const result = await getOrderBook({ tokenId: "111" });
-    expect(result).toMatchObject({ tokenId: "222", stage: "minted", replacesPremintTokenId: "111" });
+    expect(result).toMatchObject({ tokenId: "222", stage: "live", replacesTokenId: "111" });
   });
 
   it("ranks orders without a USD price after priced ones", async () => {

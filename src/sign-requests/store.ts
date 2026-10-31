@@ -1,4 +1,4 @@
-// Pending sign requests (ENG-5073). A prepare tool writes one record; the Soil sign page reads it
+// Pending sign requests. A prepare tool writes one record; the Soil sign page reads it
 // by id, the person signs there with their own wallet, and the page reports the order hash or
 // transaction hash back. The record never holds a key or a signature. Records live in the MCP's
 // own store (Vercel KV / Upstash Redis over REST), expire 15 minutes after creation, and carry an
@@ -15,7 +15,10 @@ export const SIGN_REQUEST_RETENTION_SECONDS = 24 * 60 * 60;
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 const HASH = /^0x[0-9a-fA-F]{64}$/;
 
-export const signRequestActions = ["make_land_offer", "list_land_for_sale", "accept_land_offer", "buy_land", "cancel_land_order"] as const;
+export const signRequestActions = ["make_land_offer", "list_land_for_sale", "accept_land_offer", "buy_land", "cancel_land_order", "borrow_against_land", "repay_loan_against_land",
+  // The repay tool's name before the loan tools were renamed. Records stored under it stay readable (and their MAC
+  // valid) through the retention window; no new request uses it. Remove a day after the rename deploys.
+  "repay_land_loan"] as const;
 
 const warningSchema = z.object({
   level: z.enum(["info", "warning"]),
@@ -29,7 +32,7 @@ export const signRequestSchema = z.object({
   chainId: z.number().int(),
   action: z.enum(signRequestActions),
   // typedData: an EIP-712 signature (offer, listing, accepting an offer); transaction: an onchain
-  // transaction the signer's client broadcasts (buy_land); offchain: a signed-in confirmation with no
+  // transaction the signer's client broadcasts (buy_land, borrow, repay); offchain: a signed-in confirmation with no
   // signature (cancel, which the API records).
   kind: z.enum(["typedData", "transaction", "offchain"]),
   wallet: z.string().regex(ADDRESS),
@@ -49,17 +52,24 @@ export const signRequestSchema = z.object({
     supply: z.string(),
   }).optional(),
   orderHash: z.string().regex(HASH).optional(),
+  // Borrow and repay: the principal and loan length asked for, or the loan to pay off.
+  loan: z.object({
+    amountUsd: z.number().optional(),
+    durationDays: z.number().int().optional(),
+    loanId: z.string().optional(),
+  }).optional(),
   signLink: z.string(),
   summary: z.array(z.string()),
   warnings: z.array(warningSchema),
   // The EIP-712 typed data or unsigned transaction. Null until the MCP can build orders for a
-  // connected user (Connect Fabrica, ENG-5004); the sign page builds them meanwhile.
+  // connected user (Connect Fabrica); the sign page builds them meanwhile.
   payload: z.null(),
   createdAt: z.string(),
   expiresAt: z.string(),
   result: z.object({
     orderHash: z.string().regex(HASH).optional(),
     transactionHash: z.string().regex(HASH).optional(),
+    loanId: z.string().optional(),
     completedAt: z.string(),
   }).optional(),
 });
@@ -82,6 +92,8 @@ export interface SignRequestBackend {
   /** Store with the given time to live; `keepTtl` keeps the key's remaining time instead. */
   set(key: string, value: string, ttl: { seconds: number } | "keep"): Promise<void>;
   get(key: string): Promise<string | null>;
+  /** Store only when the key is absent; true when this call stored it. */
+  setIfAbsent(key: string, value: string, ttl: { seconds: number }): Promise<boolean>;
 }
 
 export class MemoryBackend implements SignRequestBackend {
@@ -98,6 +110,13 @@ export class MemoryBackend implements SignRequestBackend {
       return null;
     }
     return entry.value;
+  }
+  // Check and insert with no await between them, so concurrent claims cannot both win.
+  async setIfAbsent(key: string, value: string, ttl: { seconds: number }): Promise<boolean> {
+    const current = this.entries.get(key);
+    if (current && current.expiresAt > Date.now()) return false;
+    this.entries.set(key, { value, expiresAt: Date.now() + ttl.seconds * 1000 });
+    return true;
   }
 }
 
@@ -125,6 +144,9 @@ export class RedisRestBackend implements SignRequestBackend {
   async get(key: string): Promise<string | null> {
     const result = await this.command(["GET", key]);
     return typeof result === "string" ? result : null;
+  }
+  async setIfAbsent(key: string, value: string, ttl: { seconds: number }): Promise<boolean> {
+    return await this.command(["SET", key, value, "EX", ttl.seconds, "NX"]) === "OK";
   }
 }
 
@@ -164,8 +186,18 @@ export class SignRequestStore {
     return stored.data.record;
   }
 
+  /**
+   * Tie a loan to one request, so one signed loan never completes two requests made for the same
+   * terms. True when the loan is this request's: claimed now, or by this request before.
+   */
+  async claimLoan(record: SignRequest, loanId: string): Promise<boolean> {
+    const key = `sign-request-loan:${record.action}:${loanId}`;
+    if (await this.backend.setIfAbsent(key, record.id, { seconds: SIGN_REQUEST_RETENTION_SECONDS })) return true;
+    return await this.backend.get(key) === record.id;
+  }
+
   /** Record the signer's result. Keeps the original expiry. */
-  async complete(record: SignRequest, result: { orderHash?: string; transactionHash?: string }): Promise<SignRequest> {
+  async complete(record: SignRequest, result: { orderHash?: string; transactionHash?: string; loanId?: string }): Promise<SignRequest> {
     const updated: SignRequest = {
       ...record,
       status: "completed",

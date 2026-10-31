@@ -57,7 +57,7 @@ export async function getTrustDocuments(args: GetTrustDocumentsArgs) {
     const documents = orderDocuments(token.configuration?.documents);
     const notes: string[] = [];
     if (token.isPremint) {
-      notes.push("This property is a premint: it is not minted onchain yet, so the deed and documents may not be on file.");
+      notes.push("This property is still being added to Fabrica: its token is not issued yet, so the deed and documents may not be on file.");
     }
     if (!proof?.document) notes.push("No deed is on file for this property.");
     if (documents.length === 0) notes.push("The owner has not uploaded other documents.");

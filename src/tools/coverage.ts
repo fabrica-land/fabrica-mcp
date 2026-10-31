@@ -55,9 +55,9 @@ const STATES: ReadonlySet<string> = new Set(US_COUNTY_ROWS.map((row) => row.slic
 const RULE_STATES: ReadonlySet<string> = new Set(Object.values(TABLE.layers).flatMap((byPlace) => Object.keys(byPlace).filter((place) => place !== "" && !place.includes("/"))));
 
 const MEANING: Record<CoverageStatus, string> = {
-  supported: "The on-ramp is set up for this jurisdiction: an owner can start adding a parcel here online.",
-  notConfigured: "The on-ramp is not set up for this jurisdiction yet, so a parcel here cannot be added online today. contact_fabrica_support can ask Fabrica about it.",
-  unsupported: "Fabrica does not take property in this jurisdiction through the on-ramp.",
+  supported: "Adding property is set up for this jurisdiction: an owner can start adding a parcel here online.",
+  notConfigured: "Adding property is not set up for this jurisdiction yet, so a parcel here cannot be added online today. contact_fabrica_support can ask Fabrica about it.",
+  unsupported: "Property in this jurisdiction cannot be added to Fabrica online.",
 };
 
 function mergeRecords<V extends object>(base?: Record<string, V>, over?: Record<string, V>): Record<string, V> | undefined {
@@ -147,10 +147,10 @@ function withNetwork<T extends object>(result: T) {
 }
 
 const SOURCE = {
-  table: "Fabrica on-ramp rules, copied into this server",
+  table: "Fabrica's rules for adding property, copied into this server",
   rulesVersion: TABLE.source.commit.slice(0, 7),
   asOf: COVERAGE_AS_OF,
-  refresh: "The table is refreshed by hand when the rules change, so it can lag them. The on-ramp page is the live answer.",
+  refresh: "The table is refreshed by hand when the rules change, so it can lag them. The add-property page on fabrica.land is the live answer.",
 };
 
 /** check_county_coverage's answer: a county (by FIPS, or state and county), or a whole state. */
@@ -184,7 +184,7 @@ export function checkCoverage(args: CheckCoverageArgs) {
   const stateOnly = !place.includes("/");
   const counties = stateOnly ? countiesWithOwnRules(place, status, ownerType) : [];
   const details = status === "supported" ? describe(rules) : undefined;
-  // On a test network the on-ramp signs and records nothing, so the requirements are labelled as Mainnet's.
+  // On a test network the on-ramp signs and records nothing, so the requirements are labeled as Mainnet's.
   const shown: Partial<ReturnType<typeof describe>> & { mainnetRequirements?: ReturnType<typeof describe> } =
     !details ? {} : IS_MAINNET ? details : { mainnetRequirements: details };
   return withNetwork({
@@ -199,9 +199,9 @@ export function checkCoverage(args: CheckCoverageArgs) {
         ? "This is the state-wide answer. The counties listed have rules of their own; check_county_coverage with one of them gives its answer."
         : "This is the state-wide answer; no county in this state has rules of its own.",
     } : {}),
-    ...(status === "supported" && IS_MAINNET ? { fee: `A one-time setup fee is authorized during the on-ramp. The amount and when it is charged: ask_fabrica or ${FEES_URL}.` } : {}),
+    ...(status === "supported" && IS_MAINNET ? { fee: `A one-time setup fee is authorized when the property is added. The amount and when it is charged: ask_fabrica or ${FEES_URL}.` } : {}),
     links: { addToFabrica: `${WEB_BASE}/go`, fees: FEES_URL },
     source: SOURCE,
-    note: `find_us_parcel gives the on-ramp link for one parcel. Some questions depend on the parcel (onlyForSomeParcels), so the on-ramp may ask fewer.${IS_MAINNET ? "" : " On this test network the on-ramp is a test flow: no trust is created, no deed is signed or recorded and no fee is charged. mainnetRequirements is what the Ethereum Mainnet on-ramp asks for the same place."}`,
+    note: `find_us_parcel gives the link to add one parcel. Some questions depend on the parcel (onlyForSomeParcels), so adding it may ask fewer.${IS_MAINNET ? "" : " On this test network adding a property is a test flow: no trust is created, no deed is signed or recorded and no fee is charged. mainnetRequirements is what adding a property on Ethereum Mainnet asks for the same place."}`,
   });
 }

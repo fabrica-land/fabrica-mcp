@@ -35,7 +35,7 @@ export async function getProtocolStats() {
     return {
       protocol: {
         name: "Fabrica",
-        description: "Tokenized real property (land) as ERC-1155 NFTs on Ethereum",
+        description: IS_MAINNET ? "US land held in trusts, each represented by an ERC-1155 token on Ethereum" : "Test tokens on Sepolia for trying Fabrica; no trust is created and no land is held",
         website: PLATFORM_URL,
         docs: "https://docs.fabrica.land",
         network: NETWORK_LABEL,

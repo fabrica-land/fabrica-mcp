@@ -4,7 +4,7 @@ import { signPageView, signResultSchema, verifyResult } from "../tools/sign-requ
 import { getSignRequestStore, isExpired, isSignRequestId } from "./store.js";
 
 /**
- * The sign page's side of a sign request (contract on ENG-5073):
+ * The sign page's side of a sign request:
  *   GET  /sign-requests/{id}         the request, for the page to prefill and check the wallet (410 once expired)
  *   POST /sign-requests/{id}/result  { orderHash } or { transactionHash }, checked before it is recorded
  * Public by design: ids are 128-bit random, links expire after 15 minutes (records are kept a day
@@ -92,7 +92,12 @@ export async function handleSignRequestHttp(req: McpHttpRequest, res: ServerResp
       send(res, 409, { error: "does_not_match", message: verdict.reason });
       return;
     }
-    send(res, 200, signPageView(await store.complete(record, result.data)));
+    if (verdict.loanId && !(await store.claimLoan(record, verdict.loanId))) {
+      send(res, 409, { error: "does_not_match", message: "That loan is already recorded for another sign request." });
+      return;
+    }
+    // A loan result keeps the loan it was verified against, as the polling path does.
+    send(res, 200, signPageView(await store.complete(record, verdict.loanId ? { ...result.data, loanId: verdict.loanId } : result.data)));
   } catch (error) {
     console.error("Sign request request failed:", error);
     send(res, 502, { error: "upstream_failed", message: "The sign request could not be checked right now. Retry shortly." });

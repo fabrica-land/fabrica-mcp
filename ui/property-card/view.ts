@@ -145,7 +145,7 @@ export type Tab = "Overview" | "Value" | "Lending" | "Documents" | "Activity";
 export const TABS: readonly Tab[] = ["Overview", "Value", "Lending", "Documents", "Activity"];
 
 /**
- * Pricing sources that returned a value, each labelled with its scope (land, parcel, last sale)
+ * Pricing sources that returned a value, each labeled with its scope (land, parcel, last sale)
  * so figures from one source stay distinguishable, and dated. Exact repeats are dropped.
  */
 export function pricingRows(pricing: PricingEntry[]): { label: string; value: string; asOf: string | null }[] {
@@ -201,7 +201,8 @@ const ACTIVITY_LABELS: Record<string, string> = {
   LoanRepaid: "Loan repaid",
   LoanRefinanced: "Loan refinanced",
   LoanLiquidated: "Loan liquidated",
-  Minted: "Minted",
+  Mint: "Added to Fabrica",
+  Minted: "Added to Fabrica",
 };
 
 /** "LoanRepaid" -> "Loan repaid"; unknown types are split from CamelCase. */

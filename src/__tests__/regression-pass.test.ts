@@ -4,7 +4,7 @@ import { getProperty } from "../tools/properties.js";
 import { explainConfidenceScore } from "../tools/scoring.js";
 import { normalizeSlug, stateCode } from "../links.js";
 
-/** ENG-2970 regression pass findings: input forms agents actually send, and the wording of a miss. */
+/** Regression pass findings: input forms agents actually send, and the wording of a miss. */
 
 function stubApi(body: unknown, status = 200): void {
   vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } })));

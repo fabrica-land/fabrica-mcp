@@ -9,7 +9,7 @@ const GROUP_WEIGHTS = [
   { name: "pastTitleAndLoad", weight: 1000, max: 5, title: "Past Title & Load", description: "Level of confidence on title history up to and after tokenization" },
   { name: "ownership", weight: 100, max: 3, title: "Ownership", description: "Level of confidence in the token ownership" },
   { name: "onChainHistory", weight: 10, max: 4, title: "Onchain History", description: "Level of confidence in transactions performed onchain" },
-  { name: "basicValidation", weight: 1, max: 2, title: "Basic Validation", description: "Is the NFT correctly formed?" },
+  { name: "basicValidation", weight: 1, max: 2, title: "Basic Validation", description: "Is the token correctly formed?" },
 ] as const;
 
 /**

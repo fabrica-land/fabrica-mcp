@@ -1,6 +1,6 @@
 {
   "name": "@fabrica-land/mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "MCP server for AI agents to explore tokenized real property on the Fabrica protocol",
   "type": "module",
@@ -34,7 +34,8 @@
     "knowledge:build": "node scripts/build-knowledge.mjs",
     "regression": "node scripts/regression/run.mjs",
     "knowledge:check": "node scripts/build-knowledge.mjs --check",
-    "coverage:build": "node scripts/build-coverage.mjs"
+    "coverage:build": "node scripts/build-coverage.mjs",
+    "registry:publish": "node scripts/registry-publish.mjs"
   },
   "keywords": [
     "mcp",
@@ -64,6 +65,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "graphql": "^16.13.2",
     "graphql-request": "^7.4.0",
+    "jose": "^6.2.13",
     "zod": "^4.3.6"
   },
   "devDependencies": {

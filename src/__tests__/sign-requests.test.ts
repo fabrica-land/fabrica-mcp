@@ -142,7 +142,7 @@ describe("helpers", () => {
     expect(usdToRaw(12.345)).toBe("12350000");
   });
 
-  it("builds the sign link on the property page with the ENG-5071 query and the id", () => {
+  it("builds the sign link on the property page with the sign page's query and the id", () => {
     const link = signLink("123", { action: "offer", amount: "500" }, "sr_x");
     expect(link).toBe("https://fabrica.land/property/ethereum/123?action=offer&amount=500&request=sr_x");
   });
@@ -176,6 +176,14 @@ describe("the sign-request store", () => {
     expect(await new SignRequestStore(backend, "another secret").get(r.id)).toBeNull();
   });
 
+  it("still reads a repay request stored under the repay tool's previous name", async () => {
+    const r = record({ action: "repay_land_loan", kind: "transaction", order: undefined });
+    await store.create(r);
+    const loaded = await store.get(r.id);
+    expect(loaded?.action).toBe("repay_land_loan");
+    expect(signPageView(loaded as SignRequest).action).toBe("repay");
+  });
+
   it("marks a request expired 15 minutes after it was prepared and forgets it after a day", async () => {
     const r = record();
     await store.create(r);
@@ -193,6 +201,14 @@ describe("the sign-request store", () => {
     const done = await store.complete(r, { orderHash: HASH_B });
     expect(done.status).toBe("completed");
     expect(await store.get(r.id)).toEqual(done);
+  });
+
+  it("gives a loan to one request even when two claim it at once", async () => {
+    const first = { ...record(), id: newSignRequestId() };
+    const second = { ...record(), id: newSignRequestId() };
+    const claims = await Promise.all([store.claimLoan(first, "900"), store.claimLoan(second, "900")]);
+    expect(claims.filter(Boolean)).toHaveLength(1);
+    expect(await store.claimLoan(claims[0] ? first : second, "900")).toBe(true);
   });
 });
 
@@ -396,7 +412,7 @@ describe("the sign page endpoints", () => {
     await new Promise<void>((resolve) => httpServer.close(() => resolve()));
   });
 
-  it("serves the ENG-5071 view with CORS, 404s an unknown id and 410s an expired one", async () => {
+  it("serves the sign page's view with CORS, 404s an unknown id and 410s an expired one", async () => {
     const r = record();
     await store.create(r);
     const response = await fetch(`${base}/${r.id}`);

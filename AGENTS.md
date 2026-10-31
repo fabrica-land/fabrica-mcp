@@ -24,8 +24,12 @@ src/
   http.ts             # stateless Streamable HTTP handler (hosted)
   usage-log.ts        # one structured log line per request, no arguments or IPs (docs/usage/)
   vercel.ts           # Vercel function entry, bundled by scripts/build-vercel.mjs
+  auth/
+    config.ts         # Connect Fabrica (OAuth resource server): FABRICA_OAUTH flag, issuer per network, the /mcp/account resource
+    token.ts          # access-token checks (ES256 JWT, issuer, audience, expiry, at+jwt) against the issuer's JWKS; never logged
   ui/property-card.ts # registers the property card MCP App resource (ui://fabrica/property-card)
   ui/generated/       # gitignored: HTML built from /ui by scripts/build-ui.mjs
+server.json, server.testnet.json # MCP Registry entries (land.fabrica/mcp, land.fabrica/mcp-testnet); npm run registry:publish
 skills/fabrica/SKILL.md # Agent Skills file, served at /skill.md by scripts/build-vercel.mjs; keep it in step with the tools
 ui/
   property-card/      # the MCP App view (index.html template + app.ts), bundled with the
@@ -36,7 +40,7 @@ ui/
   tools/
     properties.ts     # search_land, get_land_property, get_land_boundary
     lending.ts        # get_fabrica_lending_market
-    loan-book.ts      # get_fabrica_loan_book (distribution of the loan records; no auction proceeds or per-loan liquidation rows, Fede 2026-10-17)
+    loan-book.ts      # get_fabrica_loan_book (distribution of the loan records; no auction proceeds or per-loan liquidation rows)
     portfolio.ts      # get_land_portfolio
     protocol.ts       # get_fabrica_stats
     scoring.ts        # explain_property_checks
@@ -52,7 +56,14 @@ ui/
     coverage.ts       # check_county_coverage (static on-ramp rules table in src/data/onramp-coverage.json, built by scripts/build-coverage.mjs)
     support.ts        # contact_fabrica_support (help center link, support email, prefilled mailto; nothing sent)
     sign-requests.ts  # make_land_offer, list_land_for_sale, accept_land_offer, buy_land, cancel_land_order (prepare a sign request), get_sign_request
+    loans.ts          # borrow_against_land, repay_loan_against_land (sign requests), get_loan_against_land (GetLoanContext, never cached)
     transactions.ts   # get_transaction_status (JSON-RPC reads only)
+    account.ts        # get_my_account, get_my_properties (signed-in endpoint /mcp/account only, the connected user's own token)
+    attention.ts      # what_needs_attention (signed-in endpoint only; ranks items from the other personal reads plus fees and checks on up to 20 live properties)
+    my-loans.ts       # get_my_loans (signed-in endpoint only, portfolio:read; loans with live payoff, pool deposits valued at tick prices)
+    offers.ts         # get_my_offers (signed-in endpoint only, portfolio:read; public order data for the account's wallets)
+    onramps.ts        # get_my_properties_being_added, get_adding_status (signed-in endpoint only, onramp:read)
+    own-wallet.ts     # On the signed-in endpoint, fills wallet arguments from the account (omitted or "me"; portfolio:read); public reads otherwise unchanged
     inputs.ts         # zod pieces shared by the tools' input schemas (property reference, image size)
   knowledge/
     index.ts          # typed, validated loader for generated/index.json (committed)
@@ -65,6 +76,7 @@ ui/
   # .github/workflows/refresh-knowledge.yml open the daily refresh pull request
   clients/
     graphql.ts        # Fabrica GraphQL API client (primary data source)
+    account.ts        # personal reads with the connected user's token (never cached, never on anonymous calls)
     rpc.ts            # Ethereum JSON-RPC reads (transaction, receipt, block number) for get_transaction_status
     generated/        # operations.ts: one result type per gql document, from scripts/codegen.mjs (committed; npm run codegen)
     subgraph.ts       # Lending pool subgraph client (dynamic pool discovery)
@@ -74,9 +86,11 @@ ui/
     us-counties.ts    # Regrid county paths to FIPS and name (copied from soil-app's /go table)
   sign-requests/
     store.ts          # SignRequestStore: Vercel KV / Upstash REST (or an in-process map locally), HMAC-checked records, 15-minute expiry
-    http.ts           # GET /sign-requests/{id} and POST /sign-requests/{id}/result for the Soil sign page (contract on ENG-5073)
+    http.ts           # GET /sign-requests/{id} and POST /sign-requests/{id}/result for the Soil sign page
   vercel-sign-requests.ts # Vercel function entry for /sign-requests
-  lifecycle.ts        # propertyStage(): premint, minted, off-ramp, burned (get_land_property, search rows)
+  well-known.ts       # /.well-known/mcp.json, /.well-known/mcp/server-card.json, /.well-known/ai-catalog.json (card read from a live in-process server)
+  vercel-well-known.ts # Vercel function entry for /.well-known
+  lifecycle.ts        # propertyStage(): unclaimed, being_added, replaced, live, removal_in_progress, removed, retired
   fees.ts             # fees assessed on a token, by currency address
   types/
     index.ts          # Names for the generated operation types (TokenListItem, TokenDetail, WalletModel...) plus the REST and subgraph shapes
@@ -125,7 +139,7 @@ The Apollo API routes subgraph data internally, so all onchain and offchain prop
 **Mainnet:** `https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-mainnet/3.13.2/gn`
 **Sepolia:** `https://api.goldsky.com/api/public/project_cmgziqwja00105np2g1gy6stc/subgraphs/v2-pools-sepolia/3.13.1/gn`
 
-Used for DeFi lending pool TVL, utilization, and loan count data. Its `loansLiquidated` counter reads 0 on mainnet while 10 pool loans were liquidated (ENG-5029), so `get_fabrica_loan_book` counts from the loan records and shows the pool counters next to them. The subgraph, the env var and some internal identifiers keep the MetaStreet name for historical reasons; public-facing text says DeFi lending pool. **Pools are discovered dynamically** by querying all pools that accept the Fabrica collateral token — no hardcoded pool IDs. Mainnet has 1+ pools, Sepolia has 10 (2026-10). Pool values are in 18-decimal format.
+Used for DeFi lending pool TVL, utilization, and loan count data. Its `loansLiquidated` counter undercounts on mainnet, so `get_fabrica_loan_book` counts from the loan records and shows the pool counters next to them. The subgraph, the env var and some internal identifiers keep the MetaStreet name for historical reasons; public-facing text says DeFi lending pool. **Pools are discovered dynamically** by querying all pools that accept the Fabrica collateral token — no hardcoded pool IDs. Mainnet has 1+ pools, Sepolia has 10 (2026-10). Pool values are in 18-decimal format.
 
 ### 3. Fabrica Media Service (Images)
 
@@ -195,7 +209,7 @@ The feature is called **Property checks** in every description and output. The A
 
 **Max: 75342.** Recovery digit (as the API defines it): 7=Normal, 6=Recovery pending, 5=Reported stolen, 4=Tax sale or foreclosure (Distressed), 1=Void.
 
-Each digit is a category value set by its group's rules, not a count of passing checks: never label a digit "x/y checks pass". Pass counts come from the individual results (`scoringCheckResults`), which `get_land_property` returns as `propertyChecks { passed, total, encoding, results }` and the property card shows as "9 of 12 pass", like fabrica.land. The deprecated `valuation.confidenceScore` and `valuation.scoreBreakdown` aliases were removed in ENG-5028 (payload size); `propertyChecks` is the only copy.
+Each digit is a category value set by its group's rules, not a count of passing checks: never label a digit "x/y checks pass". Pass counts come from the individual results (`scoringCheckResults`), which `get_land_property` returns as `propertyChecks { passed, total, encoding, results }` and the property card shows as "9 of 12 pass", like fabrica.land. The deprecated `valuation.confidenceScore` and `valuation.scoreBreakdown` aliases were removed (payload size); `propertyChecks` is the only copy.
 
 Naming rule: "Property checks" is the name; the number is "the numeric encoding of Property checks". Never call it a score, rating or percentage in user-facing text. Where checks are introduced, say they are a starting point for your own research, not a title search or title insurance.
 
@@ -233,6 +247,9 @@ Naming rule: "Property checks" is the name; the number is "the numeric encoding 
   - `FABRICA_SIGN_REQUESTS` (default: on for Sepolia, off for mainnet): the sign-request tools (make_land_offer, list_land_for_sale, accept_land_offer, buy_land, cancel_land_order, get_sign_request, get_transaction_status)
   - `KV_REST_API_URL` and `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`) with `SIGN_REQUEST_SECRET`: the sign-request store. On Vercel without them the sign-request tools report "not configured"; locally an in-process map is used
   - `FABRICA_RPC_URL` (default: publicnode for the network): JSON-RPC endpoint for get_transaction_status and the sign-request result check
+  - `FABRICA_OAUTH` (default: off on both networks): Connect Fabrica. `enabled` serves the signed-in endpoint `/mcp/account` (401 with an RFC 9728 challenge without a token) and `/.well-known/oauth-protected-resource[/mcp/account]`; off, both answer 404 and `/mcp` is unchanged
+  - `FABRICA_OAUTH_ISSUER` (default: `https://api.fabrica.land`, `https://api-test.fabrica.land` on Sepolia), `FABRICA_OAUTH_JWKS_URL` (default: the issuer's `/.well-known/jwks.json`), `FABRICA_MCP_ORIGIN` (default: `https://mcp.fabrica.land`, `https://mcp-testnet.fabrica.land` on Sepolia; the token audience is `<origin>/mcp/account`)
+  - `FABRICA_OAUTH_JWKS` (Sepolia and local only, ignored on mainnet): inline public JWKS for the mocked issuer; `node scripts/oauth-mock-issuer.mjs` prints one with a matching access token and can serve a mock `GET /oauth/account`
 
 ---
 
@@ -257,7 +274,9 @@ Run tests with `npm test` (vitest). Tests cover config, scoring, spam filtering,
 | https://docs.fabrica.land | User-facing concepts, trust structure, lending mechanics |
 | https://api.fabrica.land/graphql | The public GraphQL API (introspection enabled). `schema/api-schema.graphql` is a checked-in snapshot; refresh with `npm run schema:refresh` |
 | `fabrica-land/fabrica-v3-contracts` | The public Solidity smart contracts (ERC-1155): onchain data structures, view functions, events |
-| `fabrica-land/fabrica-connectors` | The trust agreement: trust structure, beneficiary rights |
+| `fabrica-land/fabrica-connectors` | The trust agreement: trust structure, beneficiary rights. This server serves it as the `fabrica://legal/us-trust-agreement` resource |
+
+This repository is public. Code, comments, docs, tests, commit messages and pull request titles carry no internal tracker ids (Linear `ENG-…`, `ASK-…`), no internal names or decisions, no business numbers and no credentials; describe the behavior instead. `src/__tests__/public-repo.test.ts` fails on a tracker id in a tracked file; commit messages and pull request titles follow the rule by review, and commits made before the rule are left as they are. The API's own schema descriptions (`schema/api-schema.graphql`, `src/clients/generated/`) are copied verbatim and exempt.
 
 ---
 
@@ -273,3 +292,6 @@ Tool descriptions and outputs are read by agents and repeated to people, so they
 - No fixed time unit and no "instantly" for money moving (sale proceeds, loans, payoffs, withdrawals).
 - Stablecoins are "digital dollars"; Fabrica counts one USDC as one dollar. Never promise the coin's value ("always equal $1").
 - Write "onchain" as one word. No em dashes in descriptions or output text (`http.test.ts` checks descriptions and instructions).
+- Use the product names people see on fabrica.land, not the API's internal vocabulary. "Property" is the default noun; name the token where the text identifies the asset (token ID, contract, the plain explanation of land, trust and token). A premint is "unclaimed" (no owner yet) or "being added" (claimed); a superseded premint is "replaced". People "add" a property to Fabrica and "remove" it; in prose, not "on-ramp", "off-ramp", "onboard", "mint" or "burn" (a token is "issued"; a burned token is "retired"). The property intake fee is the "setup fee". Values this server defines and people read follow the same names (lifecycle stages `unclaimed` ... `retired`, the borrowing lever `setup`, `replacesTokenId`). Docs URL slugs (`/docs/on-ramp`) and the API's own fields and values (`isPremint`, `offRampStatus`, `claimState`, the `Mint` activity type) keep their names.
+- "Wallet" stays in this server where the input or output is an Ethereum address (tool names, `wallet` arguments, wallet reviews); Soil and the OAuth scope labels say "account" or "linked accounts" for the same thing, and the account tools follow them. Do not add "wallet" to the jargon check in `http.test.ts`.
+- American English ("labeled"). Operations across all 50 states are "with varying degrees of functionality"; never a bare "operates in all 50 states".
