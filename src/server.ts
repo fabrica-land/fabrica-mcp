@@ -12,7 +12,7 @@ import { getValuation, getValuationInput } from "./tools/valuation.js";
 import { getActivity, getActivityInput } from "./tools/activity.js";
 import { getOrderBook, getOrderBookInput } from "./tools/marketplace.js";
 import { getPropertyImage, getPortfolioImage, getPropertyImageInput, getPortfolioImageInput, type GetPortfolioImageArgs } from "./tools/images.js";
-import { ownWalletArg, walletIfMe, walletOrOwn } from "./tools/own-wallet.js";
+import { ownSignerArg, ownWalletArg, signerFor, walletIfMe, walletOrOwn } from "./tools/own-wallet.js";
 import { getTrustDocuments, getTrustDocumentsInput } from "./tools/documents.js";
 import { getTaxStatus, getTaxStatusInput } from "./tools/tax.js";
 import { askFabrica, askFabricaInput } from "./tools/knowledge.js";
@@ -38,6 +38,7 @@ import { NETWORK_LABEL, IS_MAINNET, MAINNET_LEGAL_NOTICE } from "./config.js";
 import { PROPERTY_CARD_URI, registerPropertyCard } from "./ui/property-card.js";
 import { registerKnowledgeResources } from "./resources/knowledge.js";
 import type { AccountAuth } from "./auth/token.js";
+import type { AccountWallet } from "./clients/account.js";
 import { getMyAccount, getMyProperties, getMyPropertiesInput } from "./tools/account.js";
 import { getMyOnRamps, getOnRampStatus, getOnRampStatusInput } from "./tools/onramps.js";
 import { getMyOffers, getMyOffersInput } from "./tools/offers.js";
@@ -55,7 +56,7 @@ export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to toke
 export const SIGN_REQUEST_INSTRUCTIONS = " make_land_offer, list_land_for_sale, accept_land_offer, buy_land and cancel_land_order prepare a marketplace action, and borrow_against_land and repay_loan_against_land a DeFi lending pool loan or its payoff, as a sign request: they check the live data and return a summary, warnings and a sign link to fabrica.land, where the person reviews and signs with their own wallet. The server holds no keys and submits nothing; a prepared request is not sent until the person signs. get_sign_request reports whether it was signed; get_transaction_status follows an onchain transaction.";
 
 /** Added to the instructions on the signed-in endpoint (/mcp/account). */
-export const ACCOUNT_INSTRUCTIONS = " This is the signed-in endpoint: the person connected their Fabrica account to this client. get_my_account reads that person's own account (email, linked accounts, verification status, and what the connection may read) get_my_properties lists their own properties, get_my_offers lists the offers they made and the ones waiting on their properties, get_my_loans lists their loans and pool deposits, get_my_properties_being_added and get_adding_status read the properties they are adding to Fabrica (each step, who acts next, and the link to do it), and what_needs_attention ranks everything waiting on them; every other tool reads public data only, as on the anonymous endpoint, except that get_land_portfolio and get_land_portfolio_map_image read the connected person's own wallet when address is left out, and get_land_activity (address) and search_land (ownedBy) take 'me' for it. Personal data on this endpoint belongs to the connected person and is private to them.";
+export const ACCOUNT_INSTRUCTIONS = " This is the signed-in endpoint: the person connected their Fabrica account to this client. get_my_account reads that person's own account (email, linked accounts, verification status, and what the connection may read) get_my_properties lists their own properties, get_my_offers lists the offers they made and the ones waiting on their properties, get_my_loans lists their loans and pool deposits, get_my_properties_being_added and get_adding_status read the properties they are adding to Fabrica (each step, who acts next, and the link to do it), and what_needs_attention ranks everything waiting on them; every other tool reads public data only, as on the anonymous endpoint, except that get_land_portfolio and get_land_portfolio_map_image read the connected person's own wallet when address is left out, and get_land_activity (address) and search_land (ownedBy) take 'me' for it; get_land_property and estimate_land_borrowing are read as the connected person (borrowing capacity for them, and on get_land_property their adding status when they are adding that property); and the sign request tools, where on, take the connected account's wallet when wallet is left out. Personal data on this endpoint belongs to the connected person and is private to them.";
 
 /**
  * Sign requests ship testnet-first: on by default on Sepolia, and on mainnet only
@@ -156,7 +157,7 @@ export function createServer(hooks: ServerHooks = {}): McpServer {
     annotations: readOnly("Get land property details"),
   };
   const getPropertyCallback = async (args: GetPropertyArgs): Promise<CallToolResult> => {
-    const result = await getProperty(args);
+    const result = await getProperty(args, account);
     return { ...jsonResult(result), structuredContent: result };
   };
   if (mcpAppsEnabled()) {
@@ -264,7 +265,7 @@ export function createServer(hooks: ServerHooks = {}): McpServer {
       inputSchema: getBorrowQuoteInput,
       annotations: readOnly("Estimate borrowing against land"),
     },
-    async (args) => jsonResult(await getBorrowQuote(args)),
+    async (args) => jsonResult(await getBorrowQuote(args, account)),
   );
 
   server.registerTool(
@@ -397,7 +398,7 @@ export function createServer(hooks: ServerHooks = {}): McpServer {
     },
     async (args) => jsonResult(await contactSupport(args)),
   );
-  if (signRequestsEnabled()) registerSignRequestTools(server);
+  if (signRequestsEnabled()) registerSignRequestTools(server, hooks.account);
   if (hooks.account) registerAccountTools(server, hooks.account);
   registerKnowledgeResources(server);
   registerPrompts(server);
@@ -406,76 +407,92 @@ export function createServer(hooks: ServerHooks = {}): McpServer {
 
 const SIGN_LINK_NOTE = "Prepared, not sent: returns a signRequest (summary, warnings, signLink to fabrica.land, expiresAt 15 minutes out, payload null for now) and stores it so the sign page can load it. The person opens the link, signs in with that wallet and signs; nothing happens until then. The server holds no keys and submits nothing. wallet is the address that will sign.";
 
-function registerSignRequestTools(server: McpServer): void {
+const OWN_SIGNER_NOTE = " On this signed-in endpoint wallet is optional: left out (or \"me\"), the connected account's wallet that fits the action signs, and the warnings say which; when several fit, the answer lists them (accountWallets) so the person can choose.";
+
+function registerSignRequestTools(server: McpServer, account?: AccountAuth): void {
+  // On the signed-in endpoint the wallet argument is optional and defaults to the account's wallets;
+  // on the anonymous endpoint it stays a required address.
+  const input = <S extends { wallet: unknown }>(schema: S) => (account ? { ...schema, wallet: ownSignerArg } : schema);
+  const note = account ? OWN_SIGNER_NOTE : "";
+  const withSigner = <A extends { wallet?: string }, R extends object>(run: (args: Omit<A, "wallet"> & { wallet: string | { own: AccountWallet[] } }) => Promise<R>) =>
+    async (args: A): Promise<CallToolResult> => {
+      if (!account) {
+        if (args.wallet === undefined) return jsonResult({ error: "wallet is required (the 0x address that will sign)" });
+        return jsonResult(await run({ ...args, wallet: args.wallet }));
+      }
+      const signer = await signerFor(account, args.wallet);
+      if (typeof signer === "object" && "error" in signer) return jsonResult(signer);
+      return jsonResult(await run({ ...args, wallet: signer }));
+    };
   server.registerTool(
     "make_land_offer",
     {
       title: "Prepare an offer",
-      description: `Prepare an offer to buy a live property on Fabrica (${NETWORK_LABEL}) at a USD amount paid in USDC, open for expiresDays (default 14). Checks first that the property is live and the wallet does not already hold it, and warns when the amount is far from Fabrica's estimate, when a listing is at or below it, or when the property is collateral for a loan. ${SIGN_LINK_NOTE}`,
-      inputSchema: makeOfferInput,
+      description: `Prepare an offer to buy a live property on Fabrica (${NETWORK_LABEL}) at a USD amount paid in USDC, open for expiresDays (default 14). Checks first that the property is live and the wallet does not already hold it, and warns when the amount is far from Fabrica's estimate, when a listing is at or below it, or when the property is collateral for a loan. ${SIGN_LINK_NOTE}${note}`,
+      inputSchema: input(makeOfferInput),
       annotations: prepares("Prepare an offer"),
     },
-    async (args) => jsonResult(await makeOffer(args)),
+    withSigner(makeOffer),
   );
   server.registerTool(
     "list_land_for_sale",
     {
       title: "Prepare a listing",
-      description: `Prepare a listing of a property the wallet holds on Fabrica (${NETWORK_LABEL}) at a USD price paid in USDC, open for expiresDays (default 180). Checks first that the wallet holds the token, and warns when the price is far from Fabrica's estimate, when the wallet already lists it, when an offer is at or above the price, or when the property is collateral for a loan. ${SIGN_LINK_NOTE}`,
-      inputSchema: listForSaleInput,
+      description: `Prepare a listing of a property the wallet holds on Fabrica (${NETWORK_LABEL}) at a USD price paid in USDC, open for expiresDays (default 180). Checks first that the wallet holds the token, and warns when the price is far from Fabrica's estimate, when the wallet already lists it, when an offer is at or above the price, or when the property is collateral for a loan. ${SIGN_LINK_NOTE}${note}`,
+      inputSchema: input(listForSaleInput),
       annotations: prepares("Prepare a listing"),
     },
-    async (args) => jsonResult(await listForSale(args)),
+    withSigner(listForSale),
   );
   server.registerTool(
     "accept_land_offer",
     {
       title: "Prepare accepting an offer",
-      description: `Prepare accepting an open offer (orderHash: orderId from get_land_order_book) on a property the wallet holds (${NETWORK_LABEL}). Checks first that the offer is open and the wallet holds the token, and warns when it expires within a day, is far from Fabrica's estimate, or the property is collateral for a loan. Signing sells the property. ${SIGN_LINK_NOTE}`,
-      inputSchema: orderActionInput,
+      description: `Prepare accepting an open offer (orderHash: orderId from get_land_order_book) on a property the wallet holds (${NETWORK_LABEL}). Checks first that the offer is open and the wallet holds the token, and warns when it expires within a day, is far from Fabrica's estimate, or the property is collateral for a loan. Signing sells the property. ${SIGN_LINK_NOTE}${note}`,
+      inputSchema: input(orderActionInput),
       annotations: prepares("Prepare accepting an offer"),
     },
-    async (args) => jsonResult(await acceptOffer(args)),
+    withSigner(acceptOffer),
   );
   server.registerTool(
     "buy_land",
     {
       title: "Prepare a purchase",
-      description: `Prepare buying a property at its open listing (orderHash: orderId from get_land_order_book) on ${NETWORK_LABEL}. Checks first that the listing is open, buyable (a listing on a property under a loan may not be yet), not the wallet's own and not reserved for other buyers, and lists the seller's disclosure documents. Signing sends an onchain transaction from the person's wallet; get_transaction_status follows it. ${SIGN_LINK_NOTE}`,
-      inputSchema: orderActionInput,
+      description: `Prepare buying a property at its open listing (orderHash: orderId from get_land_order_book) on ${NETWORK_LABEL}. Checks first that the listing is open, buyable (a listing on a property under a loan may not be yet), not the wallet's own and not reserved for other buyers, and lists the seller's disclosure documents. Signing sends an onchain transaction from the person's wallet; get_transaction_status follows it. ${SIGN_LINK_NOTE}${note}`,
+      inputSchema: input(orderActionInput),
       annotations: prepares("Prepare a purchase"),
     },
-    async (args) => jsonResult(await buy(args)),
+    withSigner(buy),
   );
   server.registerTool(
     "cancel_land_order",
     {
       title: "Prepare canceling a listing or offer",
-      description: `Prepare canceling the wallet's own open listing or offer (orderHash: orderId from get_land_order_book) on ${NETWORK_LABEL}. Checks first that the listing or offer is open and the wallet made it. Canceling is a confirmation on the sign page, with no transaction. ${SIGN_LINK_NOTE}`,
-      inputSchema: orderActionInput,
+      description: `Prepare canceling the wallet's own open listing or offer (orderHash: orderId from get_land_order_book) on ${NETWORK_LABEL}. Checks first that the listing or offer is open and the wallet made it. Canceling is a confirmation on the sign page, with no transaction. ${SIGN_LINK_NOTE}${note}`,
+      inputSchema: input(orderActionInput),
       annotations: prepares("Prepare canceling a listing or offer"),
     },
-    async (args) => jsonResult(await cancelOrder(args)),
+    withSigner(cancelOrder),
   );
   server.registerTool(
     "borrow_against_land",
     {
       title: "Prepare a loan against land",
-      description: `Prepare borrowing USDC from the DeFi lending pool against a property the wallet holds (${NETWORK_LABEL}), for amountUsd over durationDays (the pool's offered length closest to it, default about 30 days). Checks first that the wallet holds the token, the property backs no active loan, the pool lends against it and the amount is within the pool's current maximum (estimate_land_borrowing shows it). The rate and repayment come from the pool's live quote on the sign page.${IS_MAINNET ? " A loan is a real obligation: a loan not repaid by maturity lets the lender take the property through the pool's auction." : " This is a test loan on Sepolia with no real-world effect."} ${SIGN_LINK_NOTE}`,
-      inputSchema: borrowInput,
+      description: `Prepare borrowing USDC from the DeFi lending pool against a property the wallet holds (${NETWORK_LABEL}), for amountUsd over durationDays (the pool's offered length closest to it, default about 30 days). Checks first that the wallet holds the token, the property backs no active loan, the pool lends against it and the amount is within the pool's current maximum (estimate_land_borrowing shows it). The rate and repayment come from the pool's live quote on the sign page.${IS_MAINNET ? " A loan is a real obligation: a loan not repaid by maturity lets the lender take the property through the pool's auction." : " This is a test loan on Sepolia with no real-world effect."} ${SIGN_LINK_NOTE}${note}`,
+      inputSchema: input(borrowInput),
       annotations: prepares("Prepare a loan against land"),
     },
-    async (args) => jsonResult(await borrowAgainstLand(args)),
+    withSigner((args) => borrowAgainstLand(args, account)),
   );
   server.registerTool(
     "repay_loan_against_land",
     {
       title: "Prepare paying off a loan",
-      description: `Prepare paying off the open DeFi lending pool loan on a property (${NETWORK_LABEL}), or the one named by loanId, with the payoff amount today. A loan is open while active and, past maturity, in default until the pool's auction starts. Checks first that the loan is open and the wallet is its borrower, and warns when it is past maturity. Paying off returns the token to the wallet, free of the loan. ${SIGN_LINK_NOTE}`,
-      inputSchema: repayInput,
+      description: `Prepare paying off the open DeFi lending pool loan on a property (${NETWORK_LABEL}), or the one named by loanId, with the payoff amount today. A loan is open while active and, past maturity, in default until the pool's auction starts. Checks first that the loan is open and the wallet is its borrower, and warns when it is past maturity. Paying off returns the token to the wallet, free of the loan. ${SIGN_LINK_NOTE}${note}`,
+      inputSchema: input(repayInput),
       annotations: prepares("Prepare paying off a loan"),
     },
-    async (args) => jsonResult(await repayLandLoan(args)),
+    withSigner(repayLandLoan),
   );
   server.registerTool(
     "get_sign_request",

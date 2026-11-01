@@ -11,7 +11,9 @@ import { formatTokenAmount, shortenAddress } from "../format.js";
 import type { LoanContextLoan, LoanContextToken } from "../types/index.js";
 import type { SignRequestWarning } from "../sign-requests/store.js";
 import { type ArgsOf, propertyRefInputs } from "./inputs.js";
-import { type Blocked, holds, issue, label, lookup, type Prepared, propertyOf, same, shorten, signLink, usd } from "./sign-requests.js";
+import type { AccountAuth } from "../auth/token.js";
+import { readAsViewer } from "./personal-view.js";
+import { type Blocked, holds, issue, label, lookup, pickSigner, type Prepared, propertyOf, same, shorten, signLink, usd, type WithSigner } from "./sign-requests.js";
 
 const DAY_SECONDS = 86_400;
 /** With no loan length asked for, the one offered closest to 30 days. */
@@ -37,8 +39,9 @@ export function closestDuration(offeredSeconds: readonly number[], wantedDays: n
   return days.reduce<number | null>((best, d) => best === null || Math.abs(d - wantedDays) < Math.abs(best - wantedDays) ? d : best, null);
 }
 
-async function loanContext(tokenId: string): Promise<LoanContextToken | { error: string }> {
+async function loanContext(tokenId: string, as?: AccountAuth): Promise<LoanContextToken | { error: string }> {
   try {
+    if (as) return (await readAsViewer(as, (viewer) => (viewer ? getLoanContext({ tokenId }, { as: viewer }) : getLoanContext({ tokenId })))).value;
     return await getLoanContext({ tokenId });
   } catch (e) {
     return { error: `Failed to load the property's loans: ${e instanceof Error ? e.message : String(e)}` };
@@ -55,15 +58,19 @@ export const borrowInput = {
 };
 export type BorrowArgs = ArgsOf<typeof borrowInput>;
 
-export async function prepareBorrow({ tokenId, slug, amountUsd, durationDays, wallet }: BorrowArgs): Promise<Prepared | Blocked> {
+/** `as`: the connected person; the pool capacity is then read for them, as estimate_land_borrowing does. */
+export async function prepareBorrow({ tokenId, slug, amountUsd, durationDays, wallet: signer }: WithSigner<BorrowArgs>, as?: AccountAuth): Promise<Prepared | Blocked> {
   const found = await lookup(tokenId, slug);
   if ("error" in found) return found;
   const { token } = found;
-  const context = await loanContext(token.tokenId);
+  const context = await loanContext(token.tokenId, as);
   if ("error" in context) return context;
   if (openLoans(context).length > 0 || context.poolLendingLiquidity?.activeLoan || Number.parseInt(token.supplyUnderLoan || "0", 10) > 0) {
     return { error: `${label(token)} already backs an active loan; repay_loan_against_land prepares paying it off before a new loan.` };
   }
+  const picked = pickSigner(signer, address => holds(token, address), `holds ${label(token)}`, "only its owner can borrow against it.");
+  if ("error" in picked) return picked;
+  const { wallet } = picked;
   if (!holds(token, wallet)) return { error: `Wallet ${shorten(wallet)} does not hold ${label(token)}; only its owner can borrow against it.` };
   const pool = context.poolLendingLiquidity;
   const blocked = describeAppraisalBlock(pool?.appraisalBlockReason);
@@ -75,7 +82,7 @@ export async function prepareBorrow({ tokenId, slug, amountUsd, durationDays, wa
   const wanted = durationDays ?? DEFAULT_DURATION_DAYS;
   const days = closestDuration(pool.durations, wanted);
   if (days === null) return { error: `The ${LENDING_POOL_NAME} offers no loan length for ${label(token)} right now.` };
-  const warnings: SignRequestWarning[] = [];
+  const warnings: SignRequestWarning[] = [...picked.chosen];
   if (durationDays !== undefined && days !== durationDays) warnings.push({ level: "info", message: `The pool does not offer ${durationDays} days; the closest length it offers is ${days} days, and the sign page uses that.` });
   if (amount > maxBorrow * 0.9) warnings.push({ level: "warning", message: `${usd(amount)} is close to the pool's current maximum of ${usd(Math.floor(maxBorrow * 100) / 100)}; the live quote on the sign page can come out lower.` });
   const maturity = new Date(Date.now() + days * DAY_SECONDS * 1000).toISOString().slice(0, 10);
@@ -106,7 +113,7 @@ export const repayInput = {
 };
 export type RepayArgs = ArgsOf<typeof repayInput>;
 
-export async function prepareRepay({ tokenId, slug, loanId, wallet }: RepayArgs): Promise<Prepared | Blocked> {
+export async function prepareRepay({ tokenId, slug, loanId, wallet: signer }: WithSigner<RepayArgs>): Promise<Prepared | Blocked> {
   const found = await lookup(tokenId, slug);
   if ("error" in found) return found;
   const { token } = found;
@@ -119,11 +126,14 @@ export async function prepareRepay({ tokenId, slug, loanId, wallet }: RepayArgs)
     if (other) return { error: `Loan ${loanId} on ${label(token)} is ${other.loanStatus.toLowerCase()}, no longer open, so there is nothing to pay off.` };
     return { error: loanId ? `No loan ${loanId} on ${label(token)}. get_loan_against_land lists its loans.` : `${label(token)} has no open loan to pay off.` };
   }
+  const picked = pickSigner(signer, address => same(loan.borrower.address, address), `took loan ${loan.loanId}`, `loan ${loan.loanId} was taken by ${shorten(loan.borrower.address)}, and only its borrower can pay it off from the sign page.`);
+  if ("error" in picked) return picked;
+  const { wallet } = picked;
   if (!same(loan.borrower.address, wallet)) return { error: `Loan ${loan.loanId} was taken by ${shorten(loan.borrower.address)}; only its borrower can pay it off from the sign page.` };
   if (loan.loanProvider !== "PoolLending") return { error: `Loan ${loan.loanId} is a ${formatLoanProvider(loan.loanProvider) ?? loan.loanProvider} loan; only ${LENDING_POOL_NAME} loans can be paid off from a sign link.` };
   const payoff = Number.parseFloat(loan.livePayoffScaled ?? loan.maxRepaymentScaled);
   const payoffText = Number.isFinite(payoff) ? `${usd(payoff)} in USDC` : "the payoff the sign page shows";
-  const warnings: SignRequestWarning[] = [];
+  const warnings: SignRequestWarning[] = [...picked.chosen];
   const maturity = Date.parse(loan.maturityDate);
   if (Number.isFinite(maturity) && maturity < Date.now()) warnings.push({ level: "warning", message: `The loan matured on ${loan.maturityDate.slice(0, 10)}; once the pool starts its auction it can no longer be paid off.` });
   return {
@@ -143,8 +153,8 @@ export async function prepareRepay({ tokenId, slug, loanId, wallet }: RepayArgs)
   };
 }
 
-export const borrowAgainstLand = async (args: BorrowArgs) => issue(await prepareBorrow(args));
-export const repayLandLoan = async (args: RepayArgs) => issue(await prepareRepay(args));
+export const borrowAgainstLand = async (args: WithSigner<BorrowArgs>, as?: AccountAuth) => issue(await prepareBorrow(args, as));
+export const repayLandLoan = async (args: WithSigner<RepayArgs>) => issue(await prepareRepay(args));
 
 // --- get_loan_against_land ---
 

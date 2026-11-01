@@ -255,3 +255,20 @@ export async function getOnRampStatus(auth: AccountAuth, args: GetOnRampStatusAr
     throw error;
   }
 }
+
+/**
+ * For get_land_property on the signed-in endpoint: the connected person's adding status for this
+ * token, when they are the one adding it and it is not finished. Null otherwise, including without
+ * onramp:read or when the API cannot answer (get_land_property still answers with the public record).
+ */
+export async function ownAddingStatus(auth: AccountAuth, tokenId: string): Promise<(MyOnRampRow & { more: string }) | null> {
+  if (!hasScope(auth, "onramp:read")) return null;
+  try {
+    const record = await getOnRampRecord(auth, tokenId);
+    if (!record || FINISHED.has(record.status)) return null;
+    return { ...toRow(record, null), more: `get_adding_status with tokenId ${record.tokenId} gives every step and the open actions.` };
+  } catch (error) {
+    if (error instanceof AccountApiError) return null;
+    throw error;
+  }
+}

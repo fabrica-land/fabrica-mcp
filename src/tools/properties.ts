@@ -1,4 +1,7 @@
 import { getTokens, getToken, getCountyBounds, getPremintSuccessor, isTokenNotFound, DEFAULT_MIN_SCORE, filterSpamTokens, propertyLookupError } from "../clients/graphql.js";
+import type { AccountAuth } from "../auth/token.js";
+import { readAsViewer } from "./personal-view.js";
+import { ownAddingStatus } from "./onramps.js";
 import type { TokenListItem, TokenModel } from "../types/index.js";
 import { NETWORK_LABEL, MAINNET_WARNING, IS_MAINNET, CONTRACTS } from "../config.js";
 import { LENDING_POOL_NAME, formatLoanProvider, formatUsdcCeiling } from "../labels.js";
@@ -342,14 +345,19 @@ const MAX_ORDERS = 20;
  * answers "No token or premint found". Follow it to the live successor, as the web app
  * does for an old link.
  */
-async function getTokenOrSuccessor(tokenId: string | undefined, slug: string | undefined): Promise<{ token: TokenModel | null; replacedPremintTokenId: string | null }> {
+/** The token, read as the connected person when `as` is given (uncached), anonymously otherwise. */
+function readToken(params: { tokenId?: string; slug?: string }, as?: AccountAuth) {
+  return as ? getToken(params, { as }) : getToken(params);
+}
+
+async function getTokenOrSuccessor(tokenId: string | undefined, slug: string | undefined, as?: AccountAuth): Promise<{ token: TokenModel | null; replacedPremintTokenId: string | null }> {
   try {
-    return { token: await getToken({ tokenId, slug }), replacedPremintTokenId: null };
+    return { token: await readToken({ tokenId, slug }, as), replacedPremintTokenId: null };
   } catch (e) {
     if (!tokenId || !isTokenNotFound(e)) throw e;
     const successorId = await getPremintSuccessor(tokenId);
     if (!successorId) throw e;
-    return { token: await getToken({ tokenId: successorId }), replacedPremintTokenId: tokenId };
+    return { token: await readToken({ tokenId: successorId }, as), replacedPremintTokenId: tokenId };
   }
 }
 
@@ -407,16 +415,21 @@ export const getPropertyInput = {
 };
 export type GetPropertyArgs = ArgsOf<typeof getPropertyInput>;
 
-export async function getProperty(args: GetPropertyArgs) {
+/**
+ * `as`: the connected person on the signed-in endpoint. The record is then read as them (personalized
+ * borrowing capacity), and a property they are adding to Fabrica carries their adding status.
+ */
+export async function getProperty(args: GetPropertyArgs, as?: AccountAuth) {
   const { tokenId, slug } = args;
   if (!tokenId && !slug) {
     return { error: "Either tokenId or slug is required" };
   }
   try {
-    const { token, replacedPremintTokenId } = await getTokenOrSuccessor(tokenId, slug);
+    const { value: { token, replacedPremintTokenId }, view } = await readAsViewer(as, (viewer) => getTokenOrSuccessor(tokenId, slug, viewer));
     if (!token) {
       return { error: `No property found with ${tokenId ? `token ID ${tokenId}` : `slug ${slug}`}` };
     }
+    const adding = as ? await ownAddingStatus(as, token.tokenId) : null;
     // Live as get_land_order_book counts it: active, encumbered or pending, and not past its end time.
     const now = Date.now();
     // Buyable listings first (stable otherwise), so the cap never hides the one a buyer can act on.
@@ -562,6 +575,8 @@ export async function getProperty(args: GetPropertyArgs) {
       },
       recentActivity: recentActivity(token.activity ?? []),
       mintedAt: token.mintedAt,
+      ...(adding ? { yourAddingStatus: adding } : {}),
+      ...(view ? { viewer: view } : {}),
       ...(args.display ? { card: { displayMode: args.display } } : {}),
     };
   } catch (e) {

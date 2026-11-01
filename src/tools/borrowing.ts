@@ -5,6 +5,8 @@ import { describePoolOracle, zeroCapacityReasons } from "./valuation.js";
 import { bindingConstraint, collateralPriceUsd, describeAppraisalDerivation, raiseLevers } from "./borrow-limits.js";
 import { z } from "zod";
 import { type ArgsOf, propertyRefInputs } from "./inputs.js";
+import type { AccountAuth } from "../auth/token.js";
+import { readAsViewer } from "./personal-view.js";
 
 /** Pool loan amounts are raw USDC units (6 decimals). */
 const POOL_CURRENCY_DECIMALS = 6;
@@ -15,13 +17,14 @@ export const getBorrowQuoteInput = {
 };
 export type GetBorrowQuoteArgs = ArgsOf<typeof getBorrowQuoteInput>;
 
-export async function getBorrowQuote(args: GetBorrowQuoteArgs) {
+/** `as`: the connected person on the signed-in endpoint; the capacity is then read for them. */
+export async function getBorrowQuote(args: GetBorrowQuoteArgs, as?: AccountAuth) {
   const { tokenId, slug, amountUsd } = args;
   if (!tokenId && !slug) {
     return { error: "Either tokenId or slug is required" };
   }
   try {
-    const token = await getToken({ tokenId, slug }, { poolOracle: true });
+    const { value: token, view } = await readAsViewer(as, (viewer) => getToken({ tokenId, slug }, { poolOracle: true, as: viewer }));
     if (!token) {
       return { error: `No property found with ${tokenId ? `token ID ${tokenId}` : `slug ${slug}`}` };
     }
@@ -33,6 +36,7 @@ export async function getBorrowQuote(args: GetBorrowQuoteArgs) {
       name: token.name ?? token.vanityName,
       ...estimateFields(token.estimatedValue, token.pricing),
       hasActiveLoan,
+      ...(view ? { viewer: view } : {}),
     };
     if (hasActiveLoan) {
       result.currentLoans = activeLoans.map(l => ({
