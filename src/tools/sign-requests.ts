@@ -7,6 +7,7 @@ import { getLoanContext, getSignContext, isTokenNotFound } from "../clients/grap
 import { CHAIN_ID, getBlockTimestamp, getTransaction, getTransactionReceipt } from "../clients/rpc.js";
 import { IS_MAINNET, MAINNET_WARNING, NETWORK, NETWORK_LABEL, WEB_BASE } from "../config.js";
 import type { LoanContextLoan, LoanContextToken, SignContextOrder, SignContextToken } from "../types/index.js";
+import type { AccountWallet } from "../clients/account.js";
 import {
   getSignRequestStore,
   isExpired,
@@ -38,7 +39,39 @@ type Lookup = { token: SignContextToken } | { error: string };
 export type Prepared = Omit<SignRequest, "id" | "status" | "network" | "chainId" | "payload" | "createdAt" | "expiresAt" | "signLink" | "result"> & {
   link: (id: string) => string;
 };
-export type Blocked = { error: string; warnings?: SignRequestWarning[] };
+export type Blocked = { error: string; warnings?: SignRequestWarning[]; accountWallets?: string[] };
+
+/**
+ * Who signs: a wallet address the agent gave, or, on the signed-in endpoint with the wallet left
+ * out, the connected account's wallets, from which the prepare step picks the one that fits.
+ */
+export type OwnWallets = { own: readonly AccountWallet[] };
+export type Signer = string | OwnWallets;
+/** A prepare tool's arguments with the signer in place of the wallet address. */
+export type WithSigner<A> = Omit<A, "wallet"> & { wallet: Signer };
+
+/**
+ * The signing wallet. A given address is used as is (the checks that follow still apply). From the
+ * account, the one wallet that fits is used, with an info line saying so; with none that fits the
+ * request is blocked, and with several the agent is asked to have the person choose.
+ */
+export function pickSigner(signer: Signer, fits: (address: string) => boolean, which: string, none: string): { wallet: string; chosen: SignRequestWarning[] } | Blocked {
+  if (typeof signer === "string") return { wallet: signer, chosen: [] };
+  const all = signer.own.map(wallet => wallet.address);
+  const fitting = signer.own.filter(wallet => fits(wallet.address));
+  const [only] = fitting;
+  if (fitting.length === 1 && only) {
+    const kind = only.kind === "embedded" ? "the wallet Fabrica created for this account" : "a wallet linked to this account";
+    return {
+      wallet: only.address,
+      chosen: [{ level: "info", message: `Signing wallet ${only.address} (${kind}), from the connected account${all.length > 1 ? `: the one that ${which}` : ""}.` }],
+    };
+  }
+  if (fitting.length === 0) {
+    return { error: `${all.length === 1 ? `The wallet on the connected account (${shorten(all[0] ?? "")}) does not fit` : `None of the ${all.length} wallets on the connected account (${all.map(shorten).join(", ")}) fits`}: the signing wallet must be one that ${which}; ${none}`, accountWallets: all };
+  }
+  return { error: `${fitting.length} wallets on the connected account could sign this (each ${which}): ${fitting.map(wallet => wallet.address).join(", ")}. Ask the person which one should sign, then call again with it as wallet.`, accountWallets: fitting.map(wallet => wallet.address) };
+}
 
 export const same = (a: string | null | undefined, b: string | null | undefined): boolean => !!a && !!b && a.toLowerCase() === b.toLowerCase();
 
@@ -186,14 +219,17 @@ export const makeOfferInput = {
 };
 export type MakeOfferArgs = ArgsOf<typeof makeOfferInput>;
 
-export async function prepareOffer({ tokenId, slug, amountUsd, expiresDays, wallet }: MakeOfferArgs): Promise<Prepared | Blocked> {
+export async function prepareOffer({ tokenId, slug, amountUsd, expiresDays, wallet: signer }: WithSigner<MakeOfferArgs>): Promise<Prepared | Blocked> {
   const found = await lookup(tokenId, slug);
   if ("error" in found) return found;
   const { token } = found;
+  const picked = pickSigner(signer, address => !holds(token, address), `does not already hold ${label(token)}`, "a wallet that holds the property cannot make an offer on it.");
+  if ("error" in picked) return picked;
+  const { wallet } = picked;
   if (holds(token, wallet)) return { error: `Wallet ${shorten(wallet)} already holds ${label(token)}, so it cannot make an offer on it.` };
   const now = Date.now();
   const days = expiresDays ?? OFFER_DAYS;
-  const warnings: SignRequestWarning[] = [...priceWarning(amountUsd, token, "offer")];
+  const warnings: SignRequestWarning[] = [...picked.chosen, ...priceWarning(amountUsd, token, "offer")];
   const lowest = liveOrders(token.marketplaceListings, now)
     .filter(order => Number.parseFloat(order.usdPrice ?? "") <= amountUsd)
     .sort((a, b) => Number.parseFloat(a.usdPrice ?? "") - Number.parseFloat(b.usdPrice ?? ""))[0];
@@ -226,14 +262,17 @@ export const listForSaleInput = {
 };
 export type ListForSaleArgs = ArgsOf<typeof listForSaleInput>;
 
-export async function prepareListing({ tokenId, slug, priceUsd, expiresDays, wallet }: ListForSaleArgs): Promise<Prepared | Blocked> {
+export async function prepareListing({ tokenId, slug, priceUsd, expiresDays, wallet: signer }: WithSigner<ListForSaleArgs>): Promise<Prepared | Blocked> {
   const found = await lookup(tokenId, slug);
   if ("error" in found) return found;
   const { token } = found;
+  const picked = pickSigner(signer, address => holds(token, address), `holds ${label(token)}`, "only its owner can list it for sale.");
+  if ("error" in picked) return picked;
+  const { wallet } = picked;
   if (!holds(token, wallet)) return { error: `Wallet ${shorten(wallet)} does not hold ${label(token)}; only its owner can list it for sale.` };
   const now = Date.now();
   const days = expiresDays ?? LISTING_DAYS;
-  const warnings: SignRequestWarning[] = [...priceWarning(priceUsd, token, "price")];
+  const warnings: SignRequestWarning[] = [...picked.chosen, ...priceWarning(priceUsd, token, "price")];
   const own = liveOrders(token.marketplaceListings, now).filter(order => same(order.makerAddress, wallet));
   for (const order of own) warnings.push({ level: "warning", message: `This wallet already lists it for ${orderPrice(order)} (order ${order.marketplaceId}); cancel_land_order removes that listing.` });
   const best = liveOrders(token.marketplaceBids, now)
@@ -268,7 +307,7 @@ export const orderActionInput = {
 };
 export type OrderActionArgs = ArgsOf<typeof orderActionInput>;
 
-async function loadOrder({ tokenId, slug, orderHash }: OrderActionArgs): Promise<{ token: SignContextToken; order: SignContextOrder } | { error: string }> {
+async function loadOrder({ tokenId, slug, orderHash }: WithSigner<OrderActionArgs>): Promise<{ token: SignContextToken; order: SignContextOrder } | { error: string }> {
   const found = await lookup(tokenId, slug);
   if ("error" in found) return found;
   const order = findOrder(found.token, orderHash);
@@ -276,21 +315,24 @@ async function loadOrder({ tokenId, slug, orderHash }: OrderActionArgs): Promise
   return { token: found.token, order };
 }
 
-export async function prepareAccept(args: OrderActionArgs): Promise<Prepared | Blocked> {
+export async function prepareAccept(args: WithSigner<OrderActionArgs>): Promise<Prepared | Blocked> {
   const loaded = await loadOrder(args);
   if ("error" in loaded) return loaded;
   const { token, order } = loaded;
   const now = Date.now();
   if (order.side !== "buy") return { error: `Order ${args.orderHash} is a listing, not an offer; buy_land takes a listing.` };
   if (!isLiveOrder(order, now)) return { error: `The offer ${args.orderHash} is no longer open (${order.status}${order.endTime && Date.parse(order.endTime) < now ? `, expired ${relativeExpiry(order.endTime, now)}` : ""}).` };
-  if (!holds(token, args.wallet)) return { error: `Wallet ${shorten(args.wallet)} does not hold ${label(token)}; only its owner can accept an offer on it.` };
+  const picked = pickSigner(args.wallet, address => holds(token, address), `holds ${label(token)}`, "only its owner can accept an offer on it.");
+  if ("error" in picked) return picked;
+  const { wallet } = picked;
+  if (!holds(token, wallet)) return { error: `Wallet ${shorten(wallet)} does not hold ${label(token)}; only its owner can accept an offer on it.` };
   const dollars = Number.parseFloat(order.usdPrice ?? "");
-  const warnings: SignRequestWarning[] = [...expiringSoon(order, now), ...(Number.isFinite(dollars) ? priceWarning(dollars, token, "offer") : [])];
+  const warnings: SignRequestWarning[] = [...picked.chosen, ...expiringSoon(order, now), ...(Number.isFinite(dollars) ? priceWarning(dollars, token, "offer") : [])];
   if (underLoan(token)) warnings.push({ level: "warning", message: "The property is collateral for an active loan: the sale pays the loan off first and the rest comes to the seller." });
   return {
     action: "accept_land_offer",
     kind: "typedData",
-    wallet: args.wallet,
+    wallet,
     property: propertyOf(token),
     orderHash: order.marketplaceId,
     summary: [
@@ -304,21 +346,26 @@ export async function prepareAccept(args: OrderActionArgs): Promise<Prepared | B
   };
 }
 
-export async function prepareBuy(args: OrderActionArgs): Promise<Prepared | Blocked> {
+export async function prepareBuy(args: WithSigner<OrderActionArgs>): Promise<Prepared | Blocked> {
   const loaded = await loadOrder(args);
   if ("error" in loaded) return loaded;
   const { token, order } = loaded;
   const now = Date.now();
   if (order.side !== "sell") return { error: `Order ${args.orderHash} is an offer, not a listing; accept_land_offer takes an offer.` };
   if (!isLiveOrder(order, now)) return { error: `The listing ${args.orderHash} is no longer open (${order.status}).` };
-  if (same(order.makerAddress, args.wallet)) return { error: "This wallet made the listing; it cannot buy its own listing." };
   if (order.encumbrance && !order.encumbrance.buyable) {
     return { error: `This listing cannot be bought right now: the property is collateral for a loan and the payoff is not ready (${order.encumbrance.blockReason ?? "unknown reason"}). get_land_order_book explains each listing's state.` };
   }
-  if (order.restrictedToAddresses?.length && !order.restrictedToAddresses.some(address => same(address, args.wallet))) {
-    return { error: `This listing is reserved for ${order.restrictedToAddresses.map(shorten).join(", ")}; wallet ${shorten(args.wallet)} cannot buy it.` };
+  const reserved = order.restrictedToAddresses?.length ? order.restrictedToAddresses : null;
+  const mayBuy = (address: string) => !same(order.makerAddress, address) && (!reserved || reserved.some(r => same(r, address)));
+  const picked = pickSigner(args.wallet, mayBuy, reserved ? `the listing is reserved for and did not make it` : "did not make the listing", reserved ? `this listing is reserved for ${reserved.map(shorten).join(", ")}.` : "a seller cannot buy their own listing.");
+  if ("error" in picked) return picked;
+  const { wallet } = picked;
+  if (same(order.makerAddress, wallet)) return { error: "This wallet made the listing; it cannot buy its own listing." };
+  if (reserved && !reserved.some(address => same(address, wallet))) {
+    return { error: `This listing is reserved for ${reserved.map(shorten).join(", ")}; wallet ${shorten(wallet)} cannot buy it.` };
   }
-  const warnings: SignRequestWarning[] = [...expiringSoon(order, now)];
+  const warnings: SignRequestWarning[] = [...picked.chosen, ...expiringSoon(order, now)];
   const dollars = Number.parseFloat(order.usdPrice ?? "");
   if (Number.isFinite(dollars)) warnings.push(...priceWarning(dollars, token, "price"));
   if (order.disclosurePackage?.length) warnings.push({ level: "info", message: `The seller attached ${order.disclosurePackage.length} disclosure document${order.disclosurePackage.length === 1 ? "" : "s"}; the sign page shows them before buying: ${order.disclosurePackage.map(d => d.name).join(", ")}.` });
@@ -326,7 +373,7 @@ export async function prepareBuy(args: OrderActionArgs): Promise<Prepared | Bloc
   return {
     action: "buy_land",
     kind: "transaction",
-    wallet: args.wallet,
+    wallet,
     property: propertyOf(token),
     orderHash: order.marketplaceId,
     summary: [
@@ -340,33 +387,36 @@ export async function prepareBuy(args: OrderActionArgs): Promise<Prepared | Bloc
   };
 }
 
-export async function prepareCancel(args: OrderActionArgs): Promise<Prepared | Blocked> {
+export async function prepareCancel(args: WithSigner<OrderActionArgs>): Promise<Prepared | Blocked> {
   const loaded = await loadOrder(args);
   if ("error" in loaded) return loaded;
   const { token, order } = loaded;
   if (!isLiveOrder(order, Date.now()) || order.status === "pending") return { error: `Order ${args.orderHash} is no longer open (${order.status}${hasEnded(order.endTime, Date.now()) ? ", past its end time" : ""}), so there is nothing to cancel.` };
-  if (!same(order.makerAddress, args.wallet)) return { error: `Order ${args.orderHash} was made by ${shorten(order.makerAddress)}; only its maker can cancel it.` };
+  const picked = pickSigner(args.wallet, address => same(order.makerAddress, address), `made this ${order.side === "sell" ? "listing" : "offer"}`, `order ${args.orderHash} was made by ${shorten(order.makerAddress)}, and only its maker can cancel it.`);
+  if ("error" in picked) return picked;
+  const { wallet } = picked;
+  if (!same(order.makerAddress, wallet)) return { error: `Order ${args.orderHash} was made by ${shorten(order.makerAddress)}; only its maker can cancel it.` };
   const what = order.side === "sell" ? "listing" : "offer";
   return {
     action: "cancel_land_order",
     kind: "offchain",
-    wallet: args.wallet,
+    wallet,
     property: propertyOf(token),
     orderHash: order.marketplaceId,
     summary: [
       `Cancel the ${what} of ${orderPrice(order)} on ${label(token)}.`,
       `Confirming on the sign page (signed in with this wallet) takes the ${what} off the marketplace. No transaction and no network fee.`,
     ],
-    warnings: [],
+    warnings: picked.chosen,
     link: id => signLink(token.tokenId, { action: "cancel", order: order.marketplaceId }, id),
   };
 }
 
-export const makeOffer = async (args: MakeOfferArgs) => issue(await prepareOffer(args));
-export const listForSale = async (args: ListForSaleArgs) => issue(await prepareListing(args));
-export const acceptOffer = async (args: OrderActionArgs) => issue(await prepareAccept(args));
-export const buy = async (args: OrderActionArgs) => issue(await prepareBuy(args));
-export const cancelOrder = async (args: OrderActionArgs) => issue(await prepareCancel(args));
+export const makeOffer = async (args: WithSigner<MakeOfferArgs>) => issue(await prepareOffer(args));
+export const listForSale = async (args: WithSigner<ListForSaleArgs>) => issue(await prepareListing(args));
+export const acceptOffer = async (args: WithSigner<OrderActionArgs>) => issue(await prepareAccept(args));
+export const buy = async (args: WithSigner<OrderActionArgs>) => issue(await prepareBuy(args));
+export const cancelOrder = async (args: WithSigner<OrderActionArgs>) => issue(await prepareCancel(args));
 
 // --- results: what the sign page reports, and what the order book shows ---
 

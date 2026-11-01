@@ -50,6 +50,8 @@ import type {
   PoolDeposit,
 } from "../types/index.js";
 import { CONTRACTS, IS_MAINNET, NETWORK } from "../config.js";
+import { oauthIssuer } from "../auth/config.js";
+import type { AccountAuth } from "../auth/token.js";
 import { TtlCache } from "./cache.js";
 import { LOAN_PAGE_BUDGET, LOAN_PAGE_SIZE } from "./budgets.js";
 
@@ -112,6 +114,32 @@ async function request<T>(
       throw new Error(`Fabrica API did not respond within ${API_TIMEOUT_MS / 1000} s. Try again shortly.`);
     }
     throw error;
+  }
+}
+
+/**
+ * `request` as the connected user, for the signed-in endpoint's personalized fields (the borrowing
+ * capacity for the viewer, the owner's on-ramp). The token goes only to the API that issued it,
+ * the result is never cached, and the token never reaches an error message.
+ */
+async function requestAs<T>(
+  auth: AccountAuth,
+  document: string,
+  variables: Record<string, unknown>,
+): Promise<T> {
+  const personal = new GraphQLClient(`${oauthIssuer()}/graphql`, { headers: { Authorization: `Bearer ${auth.token}` } });
+  try {
+    return await personal.request<T>({ document, variables, signal: AbortSignal.timeout(API_TIMEOUT_MS) });
+  } catch (error) {
+    if (error instanceof ClientError) {
+      const messages = error.response.errors?.map(e => e.message) ?? [];
+      if (messages.length > 0) throw new FabricaApiError(messages);
+      throw new Error(`Fabrica API request failed (HTTP ${error.response.status}). Try again shortly.`);
+    }
+    if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
+      throw new Error(`Fabrica API did not respond within ${API_TIMEOUT_MS / 1000} s. Try again shortly.`);
+    }
+    throw new Error("Fabrica API could not be reached. Try again shortly.");
   }
 }
 
@@ -339,19 +367,28 @@ const GET_TOKEN_WITH_POOL_ORACLE_QUERY = gql`
 const tokenCache = new TtlCache<GetTokenQuery>();
 const tokenWithPoolOracleCache = new TtlCache<GetTokenWithPoolOracleQuery>();
 
+/**
+ * One token's full record. With `as` (the connected user on the signed-in endpoint), the read is
+ * made with their token, uncached, so the API personalizes it: the lending pool's capacity reflects
+ * the viewer's credit history. Callers pass `as` only when the connection holds portfolio:read.
+ */
 export async function getToken(
   params: { tokenId?: string; slug?: string; network?: string },
-  options: { poolOracle: true },
+  options: { poolOracle: true; as?: AccountAuth },
 ): Promise<TokenDetailWithPoolOracle | null>;
 export async function getToken(
   params: { tokenId?: string; slug?: string; network?: string },
-  options?: { poolOracle?: false },
+  options?: { poolOracle?: false; as?: AccountAuth },
 ): Promise<TokenDetail | null>;
 export async function getToken(
   params: { tokenId?: string; slug?: string; network?: string },
-  options: { poolOracle?: boolean } = {},
+  options: { poolOracle?: boolean; as?: AccountAuth } = {},
 ): Promise<TokenDetail | TokenDetailWithPoolOracle | null> {
   const variables = { tokenId: params.tokenId, slug: params.slug, network: params.network ?? NETWORK };
+  if (options.as) {
+    const data = await requestAs<GetTokenQuery | GetTokenWithPoolOracleQuery>(options.as, options.poolOracle ? GET_TOKEN_WITH_POOL_ORACLE_QUERY : GET_TOKEN_QUERY, variables);
+    return data.token;
+  }
   const data = options.poolOracle
     ? await cachedRequest(tokenWithPoolOracleCache, GET_TOKEN_WITH_POOL_ORACLE_QUERY, variables)
     : await cachedRequest(tokenCache, GET_TOKEN_QUERY, variables);
@@ -551,12 +588,12 @@ const GET_LOAN_CONTEXT_QUERY = gql`
  * The pool's capacity for a token and every loan on it, with the live payoff of an active loan.
  * Never cached: a borrow or repay sign request must see the live state.
  */
-export async function getLoanContext(params: { tokenId?: string; slug?: string }): Promise<LoanContextToken> {
-  const data = await request<GetLoanContextQuery>(GET_LOAN_CONTEXT_QUERY, {
-    tokenId: params.tokenId,
-    slug: params.slug,
-    network: NETWORK,
-  });
+/** With `as`, read as the connected person (personalized pool capacity, as getToken). */
+export async function getLoanContext(params: { tokenId?: string; slug?: string }, options: { as?: AccountAuth } = {}): Promise<LoanContextToken> {
+  const variables = { tokenId: params.tokenId, slug: params.slug, network: NETWORK };
+  const data = options.as
+    ? await requestAs<GetLoanContextQuery>(options.as, GET_LOAN_CONTEXT_QUERY, variables)
+    : await request<GetLoanContextQuery>(GET_LOAN_CONTEXT_QUERY, variables);
   return data.token;
 }
 
