@@ -4,7 +4,7 @@ Give AI agents access to US land on Fabrica. Search properties, research a parce
 
 ## What is this?
 
-On [Fabrica](https://fabrica.land), a property is held in a trust; once its ERC-1155 token on Ethereum is issued, the token controls the trust, which holds title. This MCP server lets any AI agent query the full property catalog, lending market, and portfolio data, with no API keys required.
+On [Fabrica](https://fabrica.land), a property is held in a trust; once its ERC-1155 token on Ethereum is issued, the token controls the trust, which holds title. This MCP server lets any AI agent query the full property catalog, lending market, and portfolio data, with no API keys required. A person can also connect their own Fabrica account (Connect Fabrica) so the agent reads their properties, offers and loans: the same server URL asks them to sign in and approve read-only access on fabrica.land the first time the agent needs it.
 
 Built on the [Model Context Protocol](https://modelcontextprotocol.io) (MCP).
 
@@ -18,6 +18,8 @@ Point any MCP client at the hosted server:
 |---|---|
 | Ethereum Mainnet (real parcels) | `https://mcp.fabrica.land/mcp` |
 | Sepolia Testnet (test properties) | `https://mcp-testnet.fabrica.land/mcp` |
+
+No sign-in is needed for public data. Ask about your own properties, offers or loans and the client asks you to sign in to Fabrica and approve read-only access, then answers; disconnect any time in Connected apps on fabrica.land.
 
 **Claude (claude.ai and desktop):** Settings → Connectors → Add custom connector → paste the URL.
 

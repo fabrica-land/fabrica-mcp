@@ -257,7 +257,7 @@ export async function getOnRampStatus(auth: AccountAuth, args: GetOnRampStatusAr
 }
 
 /**
- * For get_land_property on the signed-in endpoint: the connected person's adding status for this
+ * For get_land_property once the person has signed in: the connected person's adding status for this
  * token, when they are the one adding it and it is not finished. Null otherwise, including without
  * onramp:read or when the API cannot answer (get_land_property still answers with the public record).
  */

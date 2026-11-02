@@ -78,15 +78,13 @@ await writeFile(`${OUTPUT}/config.json`, JSON.stringify({
       headers: { "Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=31536000, immutable" },
       continue: true,
     },
-    // Connect Fabrica: the signed-in endpoint runs in the same function as /mcp; it answers 404 while FABRICA_OAUTH is off.
-    { src: "^/mcp/account/?$", dest: "/mcp?endpoint=account" },
     { src: "^/sign-requests/([^/]+)/result/?$", dest: "/sign-requests?id=$1&op=result" },
     { src: "^/sign-requests/([^/]+)/?$", dest: "/sign-requests?id=$1" },
     { src: "^/\\.well-known/mcp\\.json$", dest: "/well-known?doc=manifest" },
     { src: "^/\\.well-known/mcp/server-card\\.json$", dest: "/well-known?doc=server-card" },
     { src: "^/\\.well-known/ai-catalog\\.json$", dest: "/well-known?doc=ai-catalog" },
     { src: "^/\\.well-known/openai-apps-challenge$", dest: "/well-known?doc=openai-apps-challenge" },
-    { src: "^/\\.well-known/oauth-protected-resource(/mcp/account)?/?$", dest: "/well-known?doc=oauth-protected-resource" },
+    { src: "^/\\.well-known/oauth-protected-resource(/mcp)?/?$", dest: "/well-known?doc=oauth-protected-resource" },
     { handle: "filesystem" },
   ],
 }, null, 2));

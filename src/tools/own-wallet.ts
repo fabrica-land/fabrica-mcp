@@ -4,7 +4,7 @@ import { hasScope, type AccountAuth } from "../auth/token.js";
 import { AccountApiError, getAccountProfile, type AccountWallet } from "../clients/account.js";
 
 /**
- * On the signed-in endpoint, the wallet-scoped public tools default to the connected person's own
+ * Once the person has signed in, the wallet-scoped public tools default to the connected person's own
  * wallet, so they never have to look up and paste their address. The reads stay public: only the
  * address comes from the account (portfolio:read).
  */
@@ -98,7 +98,7 @@ export const ownSignerArg = z.string()
   .describe(`The wallet that will sign (0x address); the sign page only lets this wallet sign. Leave it out, or pass "${OWN_WALLET}", to use the connected account's wallet: the one that fits the action (holds the property, made the order, took the loan). When more than one fits, the answer lists them; ask the person which one, then pass it.`);
 
 /**
- * Who signs a sign request on the signed-in endpoint: the given address, or the account's wallets
+ * Who signs a sign request once the person has signed in: the given address, or the account's wallets
  * when the argument is left out or "me" (the prepare step picks the one that fits the action).
  */
 export async function signerFor(auth: AccountAuth, value: string | undefined): Promise<string | { own: AccountWallet[] } | { error: string }> {

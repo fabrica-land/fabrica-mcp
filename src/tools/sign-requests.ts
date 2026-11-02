@@ -42,7 +42,7 @@ export type Prepared = Omit<SignRequest, "id" | "status" | "network" | "chainId"
 export type Blocked = { error: string; warnings?: SignRequestWarning[]; accountWallets?: string[] };
 
 /**
- * Who signs: a wallet address the agent gave, or, on the signed-in endpoint with the wallet left
+ * Who signs: a wallet address the agent gave, or, once the person has signed in with the wallet left
  * out, the connected account's wallets, from which the prepare step picks the one that fits.
  */
 export type OwnWallets = { own: readonly AccountWallet[] };

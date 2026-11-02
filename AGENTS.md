@@ -25,7 +25,7 @@ src/
   usage-log.ts        # one structured log line per request, no arguments or IPs (docs/usage/)
   vercel.ts           # Vercel function entry, bundled by scripts/build-vercel.mjs
   auth/
-    config.ts         # Connect Fabrica (OAuth resource server): FABRICA_OAUTH flag, issuer per network, the /mcp/account resource
+    config.ts         # Connect Fabrica (OAuth resource server): FABRICA_OAUTH flag, issuer per network, the /mcp resource
     token.ts          # access-token checks (ES256 JWT, issuer, audience, expiry, at+jwt) against the issuer's JWKS; never logged
   ui/property-card.ts # registers the property card MCP App resource (ui://fabrica/property-card)
   ui/generated/       # gitignored: HTML built from /ui by scripts/build-ui.mjs
@@ -58,13 +58,13 @@ ui/
     sign-requests.ts  # make_land_offer, list_land_for_sale, accept_land_offer, buy_land, cancel_land_order (prepare a sign request), get_sign_request
     loans.ts          # borrow_against_land, repay_loan_against_land (sign requests), get_loan_against_land (GetLoanContext, never cached)
     transactions.ts   # get_transaction_status (JSON-RPC reads only)
-    account.ts        # get_my_account, get_my_properties (signed-in endpoint /mcp/account only, the connected user's own token)
-    attention.ts      # what_needs_attention (signed-in endpoint only; ranks items from the other personal reads plus fees and checks on up to 20 live properties)
-    my-loans.ts       # get_my_loans (signed-in endpoint only, portfolio:read; loans with live payoff, pool deposits valued at tick prices)
-    offers.ts         # get_my_offers (signed-in endpoint only, portfolio:read; public order data for the account's wallets)
-    onramps.ts        # get_my_properties_being_added, get_adding_status (signed-in endpoint only, onramp:read)
-    own-wallet.ts     # On the signed-in endpoint, fills wallet arguments from the account (omitted or "me"; portfolio:read); public reads otherwise unchanged; signerFor gives the sign request tools the account's wallets, and pickSigner (sign-requests.ts) picks the one that fits the action or asks when several do
-    personal-view.ts  # On the signed-in endpoint, get_land_property and estimate_land_borrowing read the token with the user's token (uncached, issuer only) for personalized borrowing capacity; falls back to the public read
+    account.ts        # get_my_account, get_my_properties (listed while Connect Fabrica is on; read with the connected user's own token, sign_in_required without one)
+    attention.ts      # what_needs_attention (signed in only; ranks items from the other personal reads plus fees and checks on up to 20 live properties)
+    my-loans.ts       # get_my_loans (signed in only, portfolio:read; loans with live payoff, pool deposits valued at tick prices)
+    offers.ts         # get_my_offers (signed in only, portfolio:read; public order data for the account's wallets)
+    onramps.ts        # get_my_properties_being_added, get_adding_status (signed in only, onramp:read)
+    own-wallet.ts     # Signed in, fills wallet arguments from the account (omitted or "me"; portfolio:read); public reads otherwise unchanged; signerFor gives the sign request tools the account's wallets, and pickSigner (sign-requests.ts) picks the one that fits the action or asks when several do
+    personal-view.ts  # Signed in, get_land_property and estimate_land_borrowing read the token with the user's token (uncached, issuer only) for personalized borrowing capacity; falls back to the public read
     inputs.ts         # zod pieces shared by the tools' input schemas (property reference, image size)
   knowledge/
     index.ts          # typed, validated loader for generated/index.json (committed)
@@ -248,8 +248,8 @@ Naming rule: "Property checks" is the name; the number is "the numeric encoding 
   - `FABRICA_SIGN_REQUESTS` (default: on for Sepolia, off for mainnet): the sign-request tools (make_land_offer, list_land_for_sale, accept_land_offer, buy_land, cancel_land_order, get_sign_request, get_transaction_status)
   - `KV_REST_API_URL` and `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`) with `SIGN_REQUEST_SECRET`: the sign-request store. On Vercel without them the sign-request tools report "not configured"; locally an in-process map is used
   - `FABRICA_RPC_URL` (default: publicnode for the network): JSON-RPC endpoint for get_transaction_status and the sign-request result check
-  - `FABRICA_OAUTH` (default: off on both networks): Connect Fabrica. `enabled` serves the signed-in endpoint `/mcp/account` (401 with an RFC 9728 challenge without a token) and `/.well-known/oauth-protected-resource[/mcp/account]`; off, both answer 404 and `/mcp` is unchanged
-  - `FABRICA_OAUTH_ISSUER` (default: `https://api.fabrica.land`, `https://api-test.fabrica.land` on Sepolia), `FABRICA_OAUTH_JWKS_URL` (default: the issuer's `/.well-known/jwks.json`), `FABRICA_MCP_ORIGIN` (default: `https://mcp.fabrica.land`, `https://mcp-testnet.fabrica.land` on Sepolia; the token audience is `<origin>/mcp/account`)
+  - `FABRICA_OAUTH` (default: off on both networks): Connect Fabrica. `enabled` lists the personal tools on `/mcp` and refuses a call to one without a token with 401 and an RFC 9728 challenge (lazy sign-in: the client asks the person to sign in and retries); a valid token on any request makes the session the person's own; `/.well-known/oauth-protected-resource[/mcp]` serves the metadata. Off, tokens are ignored, the metadata answers 404 and `/mcp` lists public tools only
+  - `FABRICA_OAUTH_ISSUER` (default: `https://api.fabrica.land`, `https://api-test.fabrica.land` on Sepolia), `FABRICA_OAUTH_JWKS_URL` (default: the issuer's `/.well-known/jwks.json`), `FABRICA_MCP_ORIGIN` (default: `https://mcp.fabrica.land`, `https://mcp-testnet.fabrica.land` on Sepolia; the token audience is `<origin>/mcp`)
   - `FABRICA_OAUTH_JWKS` (Sepolia and local only, ignored on mainnet): inline public JWKS for the mocked issuer; `node scripts/oauth-mock-issuer.mjs` prints one with a matching access token and can serve a mock `GET /oauth/account`
 
 ---

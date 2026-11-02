@@ -416,7 +416,7 @@ export const getPropertyInput = {
 export type GetPropertyArgs = ArgsOf<typeof getPropertyInput>;
 
 /**
- * `as`: the connected person on the signed-in endpoint. The record is then read as them (personalized
+ * `as`: the connected person once the person has signed in. The record is then read as them (personalized
  * borrowing capacity), and a property they are adding to Fabrica carries their adding status.
  */
 export async function getProperty(args: GetPropertyArgs, as?: AccountAuth) {
