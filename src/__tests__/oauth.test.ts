@@ -5,11 +5,11 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
 /**
- * Connect Fabrica on the hosted server: the signed-in endpoint as an OAuth resource server, against
+ * Connect Fabrica on the hosted server: /mcp as an OAuth resource server with lazy sign-in, against
  * a mocked issuer (a local JWKS) and a mocked API (GET /oauth/account). Mainnet network (the test default).
  */
 
-const RESOURCE = "https://mcp.fabrica.land/mcp/account";
+const RESOURCE = "https://mcp.fabrica.land/mcp";
 const KID = "test-key";
 
 let signingKey: CryptoKey;
@@ -125,10 +125,11 @@ describe("access-token checks", () => {
     return checkAccessToken(header);
   }
 
-  it("accepts a token issued for this endpoint and reads its scopes", async () => {
+  it("accepts a token issued for this server and reads its scopes", async () => {
     const result = await check(`Bearer ${await token({ scope: "profile:read onramp:read" })}`);
     expect(result).toMatchObject({ ok: true, auth: { subject: "5f0c4f1e-1111-4222-8333-944455556666", clientId: "client-123", scopes: ["profile:read", "onramp:read"] } });
   });
+
 
   it("reports a missing header as missing, and a non-bearer header as invalid", async () => {
     expect(await check(undefined)).toEqual({ ok: false, reason: "missing" });
@@ -136,8 +137,9 @@ describe("access-token checks", () => {
   });
 
   it.each([
-    ["the testnet endpoint's audience", { aud: "https://mcp-testnet.fabrica.land/mcp/account" }],
-    ["the anonymous endpoint's audience", { aud: "https://mcp.fabrica.land/mcp" }],
+    ["the testnet server's audience", { aud: "https://mcp-testnet.fabrica.land/mcp" }],
+    ["the former signed-in URL as audience", { aud: "https://mcp.fabrica.land/mcp/account" }],
+    ["the bare origin as audience", { aud: "https://mcp.fabrica.land" }],
     ["another issuer", { iss: "https://api-test.fabrica.land" }],
     ["a key the issuer does not publish", { otherKey: true }],
     ["a plain JWT type", { typ: "JWT" }],
@@ -175,41 +177,104 @@ describe("access-token checks", () => {
   });
 });
 
-describe("signed-in endpoint while Connect Fabrica is off", () => {
-  it("answers 404 on /mcp/account and on the protected resource metadata", async () => {
+describe("while Connect Fabrica is off", () => {
+  it("answers 404 on the protected resource metadata", async () => {
     await withServer(async (base) => {
-      expect((await post(`${base}/mcp/account`, { Authorization: `Bearer ${await token()}` })).status).toBe(404);
-      expect((await fetch(`${base}/.well-known/oauth-protected-resource/mcp/account`)).status).toBe(404);
-      expect((await fetch(`${base}/.well-known/oauth-protected-resource`)).status).toBe(404);
+      for (const path of ["/.well-known/oauth-protected-resource/mcp", "/.well-known/oauth-protected-resource"]) {
+        expect((await fetch(`${base}${path}`)).status, path).toBe(404);
+      }
     });
   });
 
-  it("leaves the anonymous endpoint as it is", async () => {
+  it("leaves /mcp as it is: no personal tools, tokens ignored", async () => {
     await withServer(async (base) => {
-      const response = await post(`${base}/mcp`);
-      expect(response.status).toBe(200);
+      expect((await post(`${base}/mcp`)).status).toBe(200);
+      expect((await post(`${base}/mcp`, { Authorization: "Bearer not-a-token" })).status).toBe(200);
+      const client = new Client({ name: "oauth-test", version: "0.0.0" });
+      await client.connect(new StreamableHTTPClientTransport(new URL(`${base}/mcp`)));
+      expect((await client.listTools()).tools.map((tool) => tool.name)).not.toContain("get_my_account");
+      expect(client.getInstructions() ?? "").not.toContain("connected their Fabrica account");
+      await client.close();
     });
   });
 });
 
-describe("signed-in endpoint with Connect Fabrica on", () => {
-  it("challenges a request without a token, pointing at the resource metadata", async () => {
+async function needsAccountOf(body: string): Promise<boolean> {
+  const { needsAccount } = await import("../http.js");
+  return needsAccount(JSON.parse(body));
+}
+
+const CALL = (name: string, args: object = {}) => JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/call", params: { name, arguments: args } });
+
+function postRaw(url: string, body: string, headers: Record<string, string> = {}): Promise<Response> {
+  return fetch(url, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream", ...headers }, body });
+}
+
+describe("lazy sign-in on /mcp with Connect Fabrica on", () => {
+  const CHALLENGE = 'Bearer resource_metadata="https://mcp.fabrica.land/.well-known/oauth-protected-resource/mcp", scope="profile:read portfolio:read onramp:read"';
+
+  it("lets a client connect and list every tool, personal ones included, without a token", async () => {
     enable();
     await withServer(async (base) => {
-      const response = await post(`${base}/mcp/account`);
-      expect(response.status).toBe(401);
-      expect(response.headers.get("www-authenticate")).toBe('Bearer resource_metadata="https://mcp.fabrica.land/.well-known/oauth-protected-resource/mcp/account"');
-      expect(response.headers.get("access-control-expose-headers")).toContain("WWW-Authenticate");
-      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect((await post(`${base}/mcp`)).status).toBe(200);
+      const client = new Client({ name: "oauth-test", version: "0.0.0" });
+      await client.connect(new StreamableHTTPClientTransport(new URL(`${base}/mcp`)));
+      const names = (await client.listTools()).tools.map((tool) => tool.name);
+      expect(names).toEqual(expect.arrayContaining(["get_my_account", "get_my_properties", "what_needs_attention", "search_land"]));
+      const instructions = client.getInstructions() ?? "";
+      expect(instructions).toContain("has not connected their Fabrica account");
+      expect(instructions).not.toContain("/mcp/account");
+      await client.close();
     });
   });
 
-  it("challenges an invalid token with invalid_token, including a testnet token on mainnet", async () => {
+  it("refuses a personal tool call without a token with 401 and the challenge, before the SDK runs", async () => {
     enable();
     await withServer(async (base) => {
-      const response = await post(`${base}/mcp/account`, { Authorization: `Bearer ${await token({ aud: "https://mcp-testnet.fabrica.land/mcp/account" })}` });
+      const response = await postRaw(`${base}/mcp`, CALL("get_my_account"));
       expect(response.status).toBe(401);
-      expect(response.headers.get("www-authenticate")).toMatch(/^Bearer error="invalid_token", error_description="[^"]+", resource_metadata="https:\/\/mcp\.fabrica\.land\/\.well-known\/oauth-protected-resource\/mcp\/account"$/);
+      expect(response.headers.get("www-authenticate")).toBe(CHALLENGE);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(response.headers.get("access-control-expose-headers")).toContain("WWW-Authenticate");
+      const body = await response.json();
+      expect(body.error.message).toContain("connect Fabrica");
+      expect(accountCalls).toEqual([]);
+    });
+  });
+
+  it("treats 'me' as the wallet on a public tool as a personal call", async () => {
+    enable();
+    await withServer(async (base) => {
+      for (const body of [CALL("get_land_portfolio", { address: "me" }), CALL("search_land", { ownedBy: " ME " }), JSON.stringify([JSON.parse(CALL("check_county_coverage", { state: "TX" })), JSON.parse(CALL("get_land_activity", { address: "me" }))])]) {
+        const response = await postRaw(`${base}/mcp`, body);
+        expect(response.status, body).toBe(401);
+        expect(response.headers.get("www-authenticate")).toBe(CHALLENGE);
+      }
+      // A real address is a public read.
+      expect(await needsAccountOf(CALL("get_land_portfolio", { address: "0x1111111111111111111111111111111111111111" }))).toBe(false);
+    });
+  });
+
+  it("refuses an invalid token on /mcp with invalid_token, even for a public read", async () => {
+    enable();
+    await withServer(async (base) => {
+      const response = await post(`${base}/mcp`, { Authorization: `Bearer ${await token({ aud: "https://mcp-testnet.fabrica.land/mcp" })}` });
+      expect(response.status).toBe(401);
+      expect(response.headers.get("www-authenticate")).toMatch(/^Bearer error="invalid_token", error_description="[^"]+", resource_metadata="https:\/\/mcp\.fabrica\.land\/\.well-known\/oauth-protected-resource\/mcp", scope="profile:read portfolio:read onramp:read"$/);
+    });
+  });
+
+  it("runs the personal tools with a token for the server URL", async () => {
+    enable();
+    await withServer(async (base) => {
+      const bearer = await token();
+      const client = await connect(`${base}/mcp`, bearer);
+      expect(client.getInstructions()).toContain("connected their Fabrica account");
+      const result = await client.callTool({ name: "get_my_account", arguments: {} });
+      expect(result.isError).toBeFalsy();
+      expect(JSON.parse(textOf(result)).email).toBe("owner@example.com");
+      expect(accountCalls).toEqual([`Bearer ${bearer}`]);
+      await client.close();
     });
   });
 
@@ -218,17 +283,17 @@ describe("signed-in endpoint with Connect Fabrica on", () => {
     enable();
     vi.stubEnv("FABRICA_OAUTH_JWKS_URL", "http://127.0.0.1:1/.well-known/jwks.json");
     await withServer(async (base) => {
-      expect((await post(`${base}/mcp/account`, { Authorization: `Bearer ${await token()}` })).status).toBe(503);
+      expect((await post(`${base}/mcp`, { Authorization: `Bearer ${await token()}` })).status).toBe(503);
     });
   });
 
   it("serves RFC 9728 metadata at both locations", async () => {
     enable();
     await withServer(async (base) => {
-      for (const path of ["/.well-known/oauth-protected-resource/mcp/account", "/.well-known/oauth-protected-resource"]) {
+      for (const path of ["/.well-known/oauth-protected-resource/mcp", "/.well-known/oauth-protected-resource"]) {
         const response = await fetch(`${base}${path}`);
-        expect(response.status).toBe(200);
-        expect(await response.json()).toEqual({
+        expect(response.status, path).toBe(200);
+        expect(await response.json(), path).toEqual({
           resource: RESOURCE,
           authorization_servers: [mockBase],
           scopes_supported: ["profile:read", "portfolio:read", "onramp:read"],
@@ -240,32 +305,31 @@ describe("signed-in endpoint with Connect Fabrica on", () => {
     });
   });
 
-  it("adds get_my_account only on the signed-in endpoint", async () => {
+  it("answers sign_in_required from a personal tool reached without a token on a transport with no HTTP gate", async () => {
     enable();
-    await withServer(async (base) => {
-      const signedIn = await connect(`${base}/mcp/account`, await token());
-      const names = (await signedIn.listTools()).tools.map((tool) => tool.name);
-      expect(names).toContain("get_my_account");
-      expect(names).toContain("search_land");
-      expect(signedIn.getInstructions()).toContain("signed-in endpoint");
-      await signedIn.close();
-
-      const anonymous = new Client({ name: "oauth-test", version: "0.0.0" });
-      await anonymous.connect(new StreamableHTTPClientTransport(new URL(`${base}/mcp`)));
-      expect((await anonymous.listTools()).tools.map((tool) => tool.name)).not.toContain("get_my_account");
-      expect(anonymous.getInstructions()).not.toContain("signed-in endpoint");
-      await anonymous.close();
-    });
+    const { createServer } = await import("../server.js");
+    const { InMemoryTransport } = await import("@modelcontextprotocol/sdk/inMemory.js");
+    const server = createServer();
+    const client = new Client({ name: "oauth-test", version: "0.0.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    const result = await client.callTool({ name: "get_my_loans", arguments: {} });
+    expect(result.isError).toBe(true);
+    expect(JSON.parse(textOf(result)).error).toBe("sign_in_required");
+    await client.close();
+    await server.close();
   });
+});
 
-  it("lists every personal tool on the signed-in endpoint, in fabrica.land's words", async () => {
+describe("signed in with Connect Fabrica on", () => {
+  it("lists every personal tool, in fabrica.land's words", async () => {
     // Same vocabulary rule as the anonymous endpoint's tools (http.test.ts); scope names
     // (onramp:read) are identifiers too.
     const jargon = /\bpre-?mints?\b|\bon-?ramp(s|ed|ing)?\b|\boff-?ramp(s|ed|ing)?\b|\bmint(s|ed|ing)?\b|\bburn(ed|s)?\b|\bNFTs?\b|\bon-chain\b/i;
     const prose = (text: string) => text.replace(/https?:\/\/\S+/g, "").replace(/'[a-z_]+'/g, "").replace(/\b[a-z]+:(?:read|write)\b/g, "").replace(/\b[a-z]+(?:_[a-z0-9]+)+\b|\b[a-z]+(?:[A-Z][a-z0-9]*)+\b/g, "");
     enable();
     await withServer(async (base) => {
-      const signedIn = await connect(`${base}/mcp/account`, await token());
+      const signedIn = await connect(`${base}/mcp`, await token());
       const { tools } = await signedIn.listTools();
       const personal = ["get_my_account", "get_my_properties", "get_my_offers", "get_my_loans", "get_my_properties_being_added", "get_adding_status", "what_needs_attention"];
       expect(tools.map((tool) => tool.name)).toEqual(expect.arrayContaining(personal));
@@ -278,11 +342,11 @@ describe("signed-in endpoint with Connect Fabrica on", () => {
     });
   });
 
-  it("makes the wallet argument optional on the signed-in endpoint only", async () => {
+  it("makes the wallet argument optional once signed in only", async () => {
     enable();
     await withServer(async (base) => {
       const required = (tools: Array<{ name: string; inputSchema: { required?: string[] } }>, name: string) => tools.find((tool) => tool.name === name)?.inputSchema.required ?? [];
-      const signedIn = await connect(`${base}/mcp/account`, await token());
+      const signedIn = await connect(`${base}/mcp`, await token());
       const mine = (await signedIn.listTools()).tools;
       expect(required(mine, "get_land_portfolio")).not.toContain("address");
       expect(required(mine, "get_land_portfolio_map_image")).not.toContain("address");
@@ -305,7 +369,7 @@ describe("signed-in endpoint with Connect Fabrica on", () => {
       vi.spyOn(console, method).mockImplementation((...args: unknown[]) => void lines.push(args.map(String).join(" ")));
     }
     const result = await withServer(async (base) => {
-      const client = await connect(`${base}/mcp/account`, bearer);
+      const client = await connect(`${base}/mcp`, bearer);
       const response = await client.callTool({ name: "get_my_account", arguments: {} });
       await client.close();
       return response;
@@ -329,7 +393,7 @@ describe("signed-in endpoint with Connect Fabrica on", () => {
     enable();
     accountStatus = 401;
     const result = await withServer(async (base) => {
-      const client = await connect(`${base}/mcp/account`, await token());
+      const client = await connect(`${base}/mcp`, await token());
       const response = await client.callTool({ name: "get_my_account", arguments: {} });
       await client.close();
       return response;

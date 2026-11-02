@@ -2,7 +2,7 @@ import { hasScope, type AccountAuth } from "../auth/token.js";
 import { isTokenNotFound } from "../clients/graphql.js";
 
 /**
- * On the signed-in endpoint, get_land_property and estimate_land_borrowing read the token as the
+ * Once the person has signed in, get_land_property and estimate_land_borrowing read the token as the
  * connected person, so the API personalizes it (the lending pool's capacity for that viewer). The
  * public record is the same; only the viewer-dependent fields can differ.
  */

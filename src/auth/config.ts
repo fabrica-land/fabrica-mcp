@@ -3,16 +3,19 @@ import { IS_MAINNET } from "../config.js";
 /**
  * Connect Fabrica: the hosted server as an OAuth 2.1 resource server (RFC 9728, RFC 8707).
  *
- * The anonymous /mcp endpoint never changes. The signed-in endpoint /mcp/account accepts
- * access tokens issued by the Fabrica API for this deployment only: the mainnet API issues
- * tokens for mcp.fabrica.land, the staging API for mcp-testnet.fabrica.land, and the token's
- * audience is the signed-in endpoint's URL, so a testnet token never works on mainnet.
+ * One URL, /mcp, with sign-in only where it is needed (lazy authentication): public reads need
+ * no token; a call to a personal tool without one is refused with 401 and an RFC 6750 challenge,
+ * which makes the client ask the person to sign in and retry the call. A valid token on any
+ * request makes the whole session the person's own. The server accepts access tokens issued by
+ * the Fabrica API for this deployment only: the mainnet API issues tokens for mcp.fabrica.land,
+ * the staging API for mcp-testnet.fabrica.land, and the token's audience is this server's URL,
+ * so a testnet token never works on mainnet.
  *
  * Off until the authorization server is live: FABRICA_OAUTH=enabled turns it on per deployment.
- * While off, /mcp/account and the protected resource metadata answer 404.
+ * While off, tokens are ignored and the protected resource metadata answers 404.
  */
 
-export const ACCOUNT_PATH = "/mcp/account";
+export const MCP_PATH = "/mcp";
 
 /** The scopes the authorization server issues (read-only). A tool names the one it needs. */
 export const OAUTH_SCOPES = ["profile:read", "portfolio:read", "onramp:read"] as const;
@@ -51,12 +54,12 @@ export function mcpOrigin(): string {
   return trimSlash(process.env.FABRICA_MCP_ORIGIN ?? (IS_MAINNET ? "https://mcp.fabrica.land" : "https://mcp-testnet.fabrica.land"));
 }
 
-/** The resource identifier (token audience): the signed-in endpoint's URL. */
-export function accountResource(): string {
-  return `${mcpOrigin()}${ACCOUNT_PATH}`;
+/** The resource identifier (token audience): this server's URL. */
+export function mcpResource(): string {
+  return `${mcpOrigin()}${MCP_PATH}`;
 }
 
 /** Where clients read the protected resource metadata (RFC 9728 path-inserted form). */
 export function resourceMetadataUrl(): string {
-  return `${mcpOrigin()}/.well-known/oauth-protected-resource${ACCOUNT_PATH}`;
+  return `${mcpOrigin()}/.well-known/oauth-protected-resource${MCP_PATH}`;
 }

@@ -1,17 +1,17 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { createServer } from "./server.js";
+import { ACCOUNT_TOOL_NAMES, createServer } from "./server.js";
 import { describeRequest, trackUsage } from "./usage-log.js";
 import { allowFindParcel, FIND_PARCEL_LIMIT_PER_MINUTE, MAX_BATCH_QUERIES } from "./tools/parcels.js";
-import { ACCOUNT_PATH, oauthEnabled, resourceMetadataUrl } from "./auth/config.js";
+import { OAUTH_SCOPES, oauthEnabled, resourceMetadataUrl } from "./auth/config.js";
 import { checkAccessToken, type AccountAuth } from "./auth/token.js";
 
 /**
- * Origin policy: the anonymous endpoint serves only public, read-only data and holds no
+ * Origin policy: without a token the server serves only public, read-only data and holds no
  * credentials or session state, so any browser origin may call it (wildcard CORS below).
- * DNS rebinding targets local servers with privileged access, which this is not. The
- * signed-in endpoint (/mcp/account) takes a bearer token in the Authorization header, never
- * a cookie, so a browser cannot attach it on a cross-site request: wildcard CORS stays safe.
+ * DNS rebinding targets local servers with privileged access, which this is not. Sign-in is a
+ * bearer token in the Authorization header, never a cookie, so a browser cannot attach it on a
+ * cross-site request: wildcard CORS stays safe.
  *
  * Stateless Streamable HTTP entrypoint. Every POST gets a fresh server and
  * transport, so the same handler runs on serverless platforms (Vercel) and
@@ -90,38 +90,62 @@ export function countFindParcelCalls(body: unknown): number {
   }, 0);
 }
 
-/** Whether the request is for the signed-in endpoint: its path, or the query the Vercel rewrite adds. */
-export function isAccountRequest(url: string | undefined): boolean {
-  const parsed = new URL(url ?? "/", "http://localhost");
-  return parsed.pathname.replace(/\/+$/, "") === ACCOUNT_PATH || parsed.searchParams.get("endpoint") === "account";
-}
-
-/** The RFC 6750 challenge that points the client at the protected resource metadata (RFC 9728). */
+/** The RFC 6750 challenge: the protected resource metadata (RFC 9728) and the scopes the server accepts. */
 function challenge(error?: { code: string; description: string }): string {
-  const parts = [`resource_metadata="${resourceMetadataUrl()}"`];
+  const parts = [`resource_metadata="${resourceMetadataUrl()}"`, `scope="${OAUTH_SCOPES.join(" ")}"`];
   if (error) parts.unshift(`error="${error.code}"`, `error_description="${error.description.replace(/["\\]/g, "")}"`);
   return `Bearer ${parts.join(", ")}`;
 }
 
+/** The wallet arguments that take "me" for the connected person's own wallet once signed in. */
+const OWN_WALLET_KEYS = ["address", "wallet", "ownedBy"];
+
+/** Whether a message or batch calls a tool that reads the person's own account: a personal tool, or a wallet-scoped tool with "me" as the wallet. */
+export function needsAccount(body: unknown): boolean {
+  const messages: unknown[] = Array.isArray(body) ? body : [body];
+  return messages.some((message) => {
+    if (typeof message !== "object" || message === null
+      || !("method" in message) || message.method !== "tools/call"
+      || !("params" in message) || typeof message.params !== "object" || message.params === null) return false;
+    const params = message.params as Record<string, unknown>;
+    if (typeof params.name === "string" && (ACCOUNT_TOOL_NAMES as readonly string[]).includes(params.name)) return true;
+    const args = (typeof params.arguments === "object" && params.arguments !== null ? params.arguments : {}) as Record<string, unknown>;
+    return OWN_WALLET_KEYS.some((key) => {
+      const value = args[key];
+      return typeof value === "string" && value.trim().toLowerCase() === "me";
+    });
+  });
+}
+
+type Gate = { ok: true; account?: AccountAuth } | { ok: false };
+
 /**
- * The signed-in endpoint's gate: the verified caller, or a response already sent (404 while
- * Connect Fabrica is off, 401 with the challenge without a valid token, 503 when the issuer's
- * keys cannot be read).
+ * Sign-in, lazily: a valid token makes the session the person's own. Without one, public reads
+ * go through, and a call that needs the person's account (needsAccount) is refused with 401 and
+ * the challenge, which makes the client ask the person to sign in and retry the same call. An
+ * invalid token is refused the same way with invalid_token, and 503 says the issuer's keys could
+ * not be read. While Connect Fabrica is off, tokens are ignored. The refusal is sent here, before
+ * the MCP SDK runs: a tool error inside a 200 would not start a sign-in.
  */
-async function authenticate(req: McpHttpRequest, res: ServerResponse): Promise<AccountAuth | null> {
-  if (!oauthEnabled()) {
-    sendJsonRpcError(res, 404, -32000, "Not found. The anonymous Fabrica MCP endpoint is /mcp.");
-    return null;
-  }
+async function gate(req: McpHttpRequest, res: ServerResponse, body: unknown): Promise<Gate> {
+  if (!oauthEnabled()) return { ok: true };
   const check = await checkAccessToken(req.headers.authorization);
-  if (check.ok) return check.auth;
+  if (check.ok) return { ok: true, account: check.auth };
+  // A refusal depends on the Authorization header, so no cache may keep it.
+  res.setHeader("Cache-Control", "no-store");
   if (check.reason === "unavailable") {
-    sendJsonRpcError(res, 503, -32000, "Fabrica sign-in is temporarily unavailable. Retry shortly; the anonymous endpoint /mcp keeps working.");
-    return null;
+    sendJsonRpcError(res, 503, -32000, "Fabrica sign-in is temporarily unavailable. Retry shortly; public reads keep working without it.");
+    return { ok: false };
+  }
+  if (check.reason === "missing" && !needsAccount(body)) {
+    res.removeHeader("Cache-Control");
+    return { ok: true };
   }
   res.setHeader("WWW-Authenticate", challenge(check.reason === "invalid" ? { code: "invalid_token", description: check.description } : undefined));
-  sendJsonRpcError(res, 401, -32001, check.reason === "invalid" ? `${check.description} Reconnect Fabrica to get a new one.` : "This endpoint needs a Fabrica connection: authorize this client with Fabrica (OAuth), or use the anonymous endpoint /mcp.");
-  return null;
+  sendJsonRpcError(res, 401, -32001, check.reason === "invalid"
+    ? `${check.description} Reconnect Fabrica to get a new one.`
+    : "This call reads the person's own Fabrica account: have the person connect Fabrica in this client (sign in on fabrica.land and approve read-only access), then call it again. Public reads need no sign-in.");
+  return { ok: false };
 }
 
 export async function handleMcpHttpRequest(req: McpHttpRequest, res: ServerResponse): Promise<void> {
@@ -130,14 +154,6 @@ export async function handleMcpHttpRequest(req: McpHttpRequest, res: ServerRespo
     res.writeHead(204);
     res.end();
     return;
-  }
-  let account: AccountAuth | undefined;
-  if (isAccountRequest(req.url)) {
-    // Personal responses must never be shared by a cache.
-    res.setHeader("Cache-Control", "no-store");
-    const auth = await authenticate(req, res);
-    if (!auth) return;
-    account = auth;
   }
   if (req.method !== "POST") {
     sendJsonRpcError(res, 405, -32000, "Method not allowed. This server is stateless: send MCP JSON-RPC messages with POST.");
@@ -155,6 +171,11 @@ export async function handleMcpHttpRequest(req: McpHttpRequest, res: ServerRespo
     }
     return;
   }
+  const signIn = await gate(req, res, body);
+  if (!signIn.ok) return;
+  const account = signIn.account;
+  // Personal responses must never be shared by a cache.
+  if (account) res.setHeader("Cache-Control", "no-store");
   usage.recordCalls(describeRequest(body));
   if (!allowFindParcel(clientKey(req), countFindParcelCalls(body))) {
     sendJsonRpcError(res, 429, -32000, `find_us_parcel is limited to ${FIND_PARCEL_LIMIT_PER_MINUTE} lookups per minute per client. Wait a minute and retry.`);

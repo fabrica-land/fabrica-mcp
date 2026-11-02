@@ -118,7 +118,7 @@ async function request<T>(
 }
 
 /**
- * `request` as the connected user, for the signed-in endpoint's personalized fields (the borrowing
+ * `request` as the connected user, for the signed-in person's personalized fields (the borrowing
  * capacity for the viewer, the owner's on-ramp). The token goes only to the API that issued it,
  * the result is never cached, and the token never reaches an error message.
  */
@@ -368,7 +368,7 @@ const tokenCache = new TtlCache<GetTokenQuery>();
 const tokenWithPoolOracleCache = new TtlCache<GetTokenWithPoolOracleQuery>();
 
 /**
- * One token's full record. With `as` (the connected user on the signed-in endpoint), the read is
+ * One token's full record. With `as` (the connected user once the person has signed in), the read is
  * made with their token, uncached, so the API personalizes it: the lending pool's capacity reflects
  * the viewer's credit history. Callers pass `as` only when the connection holds portfolio:read.
  */

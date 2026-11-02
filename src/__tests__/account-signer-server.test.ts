@@ -25,7 +25,7 @@ async function tools(account?: AccountAuth) {
 }
 
 describe("sign request wallet on each endpoint", () => {
-  it("is required on the anonymous endpoint and optional on the signed-in one", async () => {
+  it("is required without a token and optional once signed in", async () => {
     const anonymous = await tools();
     const signedIn = await tools(AUTH);
     for (const name of SIGN_TOOLS) {
@@ -33,8 +33,8 @@ describe("sign request wallet on each endpoint", () => {
       const mine = signedIn.find(tool => tool.name === name);
       expect(open?.inputSchema.required, name).toContain("wallet");
       expect(mine?.inputSchema.required ?? [], name).not.toContain("wallet");
-      expect(mine?.description, name).toContain("signed-in endpoint wallet is optional");
-      expect(open?.description, name).not.toContain("signed-in endpoint");
+      expect(mine?.description, name).toContain("Signed in, wallet is optional");
+      expect(open?.description, name).not.toContain("wallet is optional");
     }
   });
 });

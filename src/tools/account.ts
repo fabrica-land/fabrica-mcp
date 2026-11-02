@@ -10,7 +10,7 @@ import type { ArgsOf } from "./inputs.js";
 import { isLiveOrder } from "./marketplace.js";
 
 /**
- * Personal tools: registered only on the signed-in endpoint (/mcp/account), where every request
+ * Personal tools: listed while Connect Fabrica is on and read with a token, where every request
  * carries a verified access token. They read the connected user's own data with that token.
  */
 

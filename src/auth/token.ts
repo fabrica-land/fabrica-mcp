@@ -1,10 +1,10 @@
 import { createLocalJWKSet, createRemoteJWKSet, errors, jwtVerify, type JWTVerifyGetKey } from "jose";
-import { accountResource, inlineJwks, oauthIssuer, oauthJwksUrl, type OAuthScope } from "./config.js";
+import { inlineJwks, mcpResource, oauthIssuer, oauthJwksUrl, type OAuthScope } from "./config.js";
 
 /**
- * Access-token checks for the signed-in endpoint. Tokens are JWTs (RFC 9068) signed ES256 by the
- * Fabrica API; they are verified here before any tool runs: signature against the issuer's JWKS,
- * issuer, audience (this endpoint), expiry, and the at+jwt type. A token is never logged, never
+ * Access-token checks. Tokens are JWTs (RFC 9068) signed ES256 by the Fabrica API; they are
+ * verified here before any tool runs: signature against the issuer's JWKS, issuer, audience
+ * (this server), expiry, and the at+jwt type. A token is never logged, never
  * cached and only ever sent back to the Fabrica API that issued it.
  *
  * Revocation is enforced by the API: a revoked grant's token stops working on the next personal
@@ -68,7 +68,7 @@ export async function checkAccessToken(header: string | string[] | undefined, ke
     // Inside the try: a bad key configuration (malformed inline JWKS, invalid URL) is "unavailable", not a crash.
     const { payload } = await jwtVerify(token, keys ?? issuerKeys(), {
       issuer: oauthIssuer(),
-      audience: accountResource(),
+      audience: mcpResource(),
       algorithms: ["ES256"],
       typ: "at+jwt",
       clockTolerance: CLOCK_TOLERANCE_SECONDS,

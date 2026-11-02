@@ -5,7 +5,8 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { IS_MAINNET, NETWORK, NETWORK_LABEL } from "./config.js";
 import type { McpHttpRequest } from "./http.js";
 import { createServer } from "./server.js";
-import { accountResource, OAUTH_SCOPES, oauthEnabled, oauthIssuer } from "./auth/config.js";
+import { mcpResource, OAUTH_SCOPES, oauthEnabled, oauthIssuer, resourceMetadataUrl } from "./auth/config.js";
+import { ACCOUNT_TOOL_NAMES } from "./server.js";
 
 /**
  * Discovery documents for clients that start from the domain:
@@ -13,7 +14,7 @@ import { accountResource, OAUTH_SCOPES, oauthEnabled, oauthIssuer } from "./auth
  *   GET /.well-known/mcp/server-card.json  the same plus the tools, prompts and resource templates
  *   GET /.well-known/ai-catalog.json       the AI Catalog that domain-level discovery fetches first: both servers' cards
  *   GET /.well-known/openai-apps-challenge the ChatGPT plugin domain-verification token, plain text, from OPENAI_APPS_CHALLENGE
- *   GET /.well-known/oauth-protected-resource[/mcp/account]  RFC 9728 metadata for the signed-in endpoint (404 while Connect Fabrica is off)
+ *   GET /.well-known/oauth-protected-resource[/mcp]  RFC 9728 metadata for sign-in (404 while Connect Fabrica is off)
  * The card is read from a live in-process server, so it lists exactly what this deployment
  * registers (sign-request tools appear only where the store is configured) and cannot drift.
  * On Vercel the routes rewrite to /well-known?doc=…; a plain Node server passes the path.
@@ -56,6 +57,10 @@ export function mcpManifest(): object {
     url: thisUrl(),
     transport: "streamable-http",
     authentication: { required: false, type: "none" },
+    // Sign-in is optional, on the same URL: the personal tools ask for it (OAuth 2.1 against the Fabrica API) when called.
+    ...(oauthEnabled()
+      ? { signIn: { optional: true, type: "oauth2", issuer: oauthIssuer(), scopes: [...OAUTH_SCOPES], resourceMetadata: resourceMetadataUrl(), tools: [...ACCOUNT_TOOL_NAMES] } }
+      : {}),
     documentation: DOCS_URL,
     serverCard: new URL("/.well-known/mcp/server-card.json", thisUrl()).toString(),
     skill: new URL("/skill.md", thisUrl()).toString(),
@@ -132,13 +137,13 @@ const MEDIA_TYPES: Record<WellKnownDoc, string> = {
 };
 
 /**
- * RFC 9728 protected resource metadata for the signed-in endpoint: the resource (the token
- * audience), the one authorization server that issues tokens for it, and the scopes. Served at
- * both the path-inserted and the root location, since clients try either.
+ * RFC 9728 protected resource metadata: the resource (the token audience: the server URL), the one
+ * authorization server that issues tokens for it, and the scopes. Served at the path-inserted and
+ * the root location, since clients try either.
  */
 export function protectedResourceMetadata(): object {
   return {
-    resource: accountResource(),
+    resource: mcpResource(),
     authorization_servers: [oauthIssuer()],
     scopes_supported: [...OAUTH_SCOPES],
     bearer_methods_supported: ["header"],
@@ -159,7 +164,7 @@ export function parseWellKnownUrl(url: string | undefined): WellKnownDoc | null 
   if (/^\/\.well-known\/mcp\/server-card\.json$/.test(parsed.pathname)) return "server-card";
   if (/^\/\.well-known\/ai-catalog\.json$/.test(parsed.pathname)) return "ai-catalog";
   if (/^\/\.well-known\/openai-apps-challenge$/.test(parsed.pathname)) return "openai-apps-challenge";
-  if (/^\/\.well-known\/oauth-protected-resource(\/mcp\/account)?\/?$/.test(parsed.pathname)) return "oauth-protected-resource";
+  if (/^\/\.well-known\/oauth-protected-resource(\/mcp)?\/?$/.test(parsed.pathname)) return "oauth-protected-resource";
   const doc = parsed.searchParams.get("doc");
   return DOCS.find((name) => name === doc) ?? null;
 }

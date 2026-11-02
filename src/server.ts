@@ -38,6 +38,7 @@ import { NETWORK_LABEL, IS_MAINNET, MAINNET_LEGAL_NOTICE } from "./config.js";
 import { PROPERTY_CARD_URI, registerPropertyCard } from "./ui/property-card.js";
 import { registerKnowledgeResources } from "./resources/knowledge.js";
 import type { AccountAuth } from "./auth/token.js";
+import { oauthEnabled } from "./auth/config.js";
 import type { AccountWallet } from "./clients/account.js";
 import { getMyAccount, getMyProperties, getMyPropertiesInput } from "./tools/account.js";
 import { getMyOnRamps, getOnRampStatus, getOnRampStatusInput } from "./tools/onramps.js";
@@ -55,8 +56,14 @@ export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to toke
 /** Added to the instructions where the sign-request tools are on. */
 export const SIGN_REQUEST_INSTRUCTIONS = " make_land_offer, list_land_for_sale, accept_land_offer, buy_land and cancel_land_order prepare a marketplace action, and borrow_against_land and repay_loan_against_land a DeFi lending pool loan or its payoff, as a sign request: they check the live data and return a summary, warnings and a sign link to fabrica.land, where the person reviews and signs with their own wallet. The server holds no keys and submits nothing; a prepared request is not sent until the person signs. get_sign_request reports whether it was signed; get_transaction_status follows an onchain transaction.";
 
-/** Added to the instructions on the signed-in endpoint (/mcp/account). */
-export const ACCOUNT_INSTRUCTIONS = " This is the signed-in endpoint: the person connected their Fabrica account to this client. get_my_account reads that person's own account (email, linked accounts, verification status, and what the connection may read) get_my_properties lists their own properties, get_my_offers lists the offers they made and the ones waiting on their properties, get_my_loans lists their loans and pool deposits, get_my_properties_being_added and get_adding_status read the properties they are adding to Fabrica (each step, who acts next, and the link to do it), and what_needs_attention ranks everything waiting on them; every other tool reads public data only, as on the anonymous endpoint, except that get_land_portfolio and get_land_portfolio_map_image read the connected person's own wallet when address is left out, and get_land_activity (address) and search_land (ownedBy) take 'me' for it; get_land_property and estimate_land_borrowing are read as the connected person (borrowing capacity for them, and on get_land_property their adding status when they are adding that property); and the sign request tools, where on, take the connected account's wallet when wallet is left out. Personal data on this endpoint belongs to the connected person and is private to them.";
+/** The tools that read the connected person's own account. A call to one without a token is answered with the sign-in challenge (http.ts). */
+export const ACCOUNT_TOOL_NAMES = ["get_my_account", "get_my_properties", "get_my_offers", "get_my_loans", "what_needs_attention", "get_my_properties_being_added", "get_adding_status"] as const;
+
+/** Added to the instructions while Connect Fabrica is on and the person has not signed in: the personal tools are listed, and calling one starts the sign-in. */
+export const SIGN_IN_INSTRUCTIONS = " The person has not connected their Fabrica account to this client yet, so every tool reads public data only and knows nothing about them. The personal tools (get_my_account, get_my_properties, get_my_offers, get_my_loans, get_my_properties_being_added, get_adding_status, what_needs_attention) read the connected person's own account: when the person asks about their own holdings, offers, loans or the properties they are adding, call the personal tool for it. The server then asks the client to have the person sign in to Fabrica and approve read-only access, and the call runs once they have. The same happens when get_land_portfolio, get_land_portfolio_map_image, get_land_activity or search_land (ownedBy) is called with 'me' as the wallet. Never guess a wallet address for the person: ask them for one, or call a personal tool.";
+
+/** Added to the instructions once the person has signed in. */
+export const ACCOUNT_INSTRUCTIONS = " The person connected their Fabrica account to this client. get_my_account reads that person's own account (email, linked accounts, verification status, and what the connection may read) get_my_properties lists their own properties, get_my_offers lists the offers they made and the ones waiting on their properties, get_my_loans lists their loans and pool deposits, get_my_properties_being_added and get_adding_status read the properties they are adding to Fabrica (each step, who acts next, and the link to do it), and what_needs_attention ranks everything waiting on them; every other tool reads public data only, except that get_land_portfolio and get_land_portfolio_map_image read the connected person's own wallet when address is left out, and get_land_activity (address) and search_land (ownedBy) take 'me' for it; get_land_property and estimate_land_borrowing are read as the connected person (borrowing capacity for them, and on get_land_property their adding status when they are adding that property); and the sign request tools, where on, take the connected account's wallet when wallet is left out. Personal data belongs to the connected person and is private to them.";
 
 /**
  * Sign requests ship testnet-first: on by default on Sepolia, and on mainnet only
@@ -101,11 +108,11 @@ function jsonResult(result: object): CallToolResult {
 export interface ServerHooks {
   /** Receives, per find_us_parcel call, whether each settled query named a parcel on Fabrica (the usage log's split). */
   onFindParcel?: (onFabrica: readonly boolean[]) => void;
-  /** The connected user on the signed-in endpoint; adds the personal tools. Absent on the anonymous endpoint. */
+  /** The connected user, once signed in: the personal tools read as them and the wallet-scoped tools default to their wallets. */
   account?: AccountAuth;
 }
 
-/** A tool's arguments with its wallet argument optional, as on the signed-in endpoint. */
+/** A tool's arguments with its wallet argument optional, as once the person has signed in. */
 type OwnWalletArgs<A, K extends keyof A> = Omit<A, K> & { [P in K]?: string };
 
 export function createServer(hooks: ServerHooks = {}): McpServer {
@@ -122,12 +129,12 @@ export function createServer(hooks: ServerHooks = {}): McpServer {
     {
       instructions: SERVER_INSTRUCTIONS
         + (signRequestsEnabled() ? SIGN_REQUEST_INSTRUCTIONS : "")
-        + (hooks.account ? ACCOUNT_INSTRUCTIONS : ""),
+        + (hooks.account ? ACCOUNT_INSTRUCTIONS : oauthEnabled() ? SIGN_IN_INSTRUCTIONS : ""),
     },
   );
 
-  // On the signed-in endpoint the wallet-scoped tools default to the person's own wallet
-  // (own-wallet.ts); on the anonymous endpoint they are unchanged.
+  // Once signed in, the wallet-scoped tools default to the person's own wallet (own-wallet.ts);
+  // without a token they are unchanged, and "me" is answered with the sign-in challenge (http.ts).
   const account = hooks.account;
   const ownOrGiven = <R extends object>(value: string | undefined, run: (address: string) => Promise<R>) => {
     if (account) return walletOrOwn(account, value, run);
@@ -136,7 +143,7 @@ export function createServer(hooks: ServerHooks = {}): McpServer {
   const meOrGiven = <R extends object>(value: string | undefined, run: (address: string | undefined) => Promise<R>) =>
     (account ? walletIfMe(account, value, run) : run(value));
   const ownNote = (omittedMeansOwn: boolean, key: string) => (account
-    ? ` On this signed-in endpoint, ${omittedMeansOwn ? `leave ${key} out` : `pass ${key} "me"`} to read the connected person's own wallet; walletUsed says which one.`
+    ? ` Signed in, ${omittedMeansOwn ? `leave ${key} out` : `pass ${key} "me"`} to read the connected person's own wallet; walletUsed says which one.`
     : "");
 
   server.registerTool(
@@ -399,7 +406,8 @@ export function createServer(hooks: ServerHooks = {}): McpServer {
     async (args) => jsonResult(await contactSupport(args)),
   );
   if (signRequestsEnabled()) registerSignRequestTools(server, hooks.account);
-  if (hooks.account) registerAccountTools(server, hooks.account);
+  // The personal tools are listed whenever Connect Fabrica is on, so an agent can call one and start the sign-in.
+  if (hooks.account || oauthEnabled()) registerAccountTools(server, hooks.account);
   registerKnowledgeResources(server);
   registerPrompts(server);
   return server;
@@ -407,11 +415,11 @@ export function createServer(hooks: ServerHooks = {}): McpServer {
 
 const SIGN_LINK_NOTE = "Prepared, not sent: returns a signRequest (summary, warnings, signLink to fabrica.land, expiresAt 15 minutes out, payload null for now) and stores it so the sign page can load it. The person opens the link, signs in with that wallet and signs; nothing happens until then. The server holds no keys and submits nothing. wallet is the address that will sign.";
 
-const OWN_SIGNER_NOTE = " On this signed-in endpoint wallet is optional: left out (or \"me\"), the connected account's wallet that fits the action signs, and the warnings say which; when several fit, the answer lists them (accountWallets) so the person can choose.";
+const OWN_SIGNER_NOTE = " Signed in, wallet is optional: left out (or \"me\"), the connected account's wallet that fits the action signs, and the warnings say which; when several fit, the answer lists them (accountWallets) so the person can choose.";
 
 function registerSignRequestTools(server: McpServer, account?: AccountAuth): void {
-  // On the signed-in endpoint the wallet argument is optional and defaults to the account's wallets;
-  // on the anonymous endpoint it stays a required address.
+  // Signed in, the wallet argument is optional and defaults to the account's wallets;
+  // without a token it stays a required address.
   const input = <S extends { wallet: unknown }>(schema: S) => (account ? { ...schema, wallet: ownSignerArg } : schema);
   const note = account ? OWN_SIGNER_NOTE : "";
   const withSigner = <A extends { wallet?: string }, R extends object>(run: (args: Omit<A, "wallet"> & { wallet: string | { own: AccountWallet[] } }) => Promise<R>) =>
@@ -516,8 +524,17 @@ function registerSignRequestTools(server: McpServer, account?: AccountAuth): voi
   );
 }
 
-/** Personal reads for the connected user: only on the signed-in endpoint, each with the user's token. */
-function registerAccountTools(server: McpServer, account: AccountAuth): void {
+/** The answer a personal tool gives without a token. The HTTP gate (http.ts) normally refuses the call with the sign-in challenge before this runs; this is the fallback for a transport without one. */
+function signInRequired(): CallToolResult {
+  return jsonResult({
+    error: "sign_in_required",
+    message: "This tool reads the connected person's own Fabrica account, and nobody is signed in on this connection. Have the person connect Fabrica in this client (sign in on fabrica.land and approve read-only access), then call the tool again.",
+  });
+}
+
+/** Personal reads for the connected user, each with the user's token. Listed while Connect Fabrica is on; without a token they answer sign_in_required. */
+function registerAccountTools(server: McpServer, account?: AccountAuth): void {
+  const asUser = <A>(read: (user: AccountAuth, args: A) => Promise<object>) => async (args: A) => (account ? jsonResult(await read(account, args)) : signInRequired());
   server.registerTool(
     "get_my_account",
     {
@@ -526,7 +543,7 @@ function registerAccountTools(server: McpServer, account: AccountAuth): void {
       inputSchema: {},
       annotations: readOnly("Get my Fabrica account"),
     },
-    async () => jsonResult(await getMyAccount(account)),
+    asUser((user) => getMyAccount(user)),
   );
   server.registerTool(
     "get_my_properties",
@@ -536,7 +553,7 @@ function registerAccountTools(server: McpServer, account: AccountAuth): void {
       inputSchema: getMyPropertiesInput,
       annotations: readOnly("Get my properties"),
     },
-    async (args) => jsonResult(await getMyProperties(account, args)),
+    asUser((user, args) => getMyProperties(user, args)),
   );
   server.registerTool(
     "get_my_offers",
@@ -546,7 +563,7 @@ function registerAccountTools(server: McpServer, account: AccountAuth): void {
       inputSchema: getMyOffersInput,
       annotations: readOnly("Get my offers"),
     },
-    async (args) => jsonResult(await getMyOffers(account, args)),
+    asUser((user, args) => getMyOffers(user, args)),
   );
   server.registerTool(
     "get_my_loans",
@@ -556,7 +573,7 @@ function registerAccountTools(server: McpServer, account: AccountAuth): void {
       inputSchema: {},
       annotations: readOnly("Get my loans"),
     },
-    async () => jsonResult(await getMyLoans(account)),
+    asUser((user) => getMyLoans(user)),
   );
   server.registerTool(
     "what_needs_attention",
@@ -566,7 +583,7 @@ function registerAccountTools(server: McpServer, account: AccountAuth): void {
       inputSchema: {},
       annotations: readOnly("What needs my attention on Fabrica"),
     },
-    async () => jsonResult(await whatNeedsAttention(account)),
+    asUser((user) => whatNeedsAttention(user)),
   );
   server.registerTool(
     "get_my_properties_being_added",
@@ -576,7 +593,7 @@ function registerAccountTools(server: McpServer, account: AccountAuth): void {
       inputSchema: {},
       annotations: readOnly("Get the properties I'm adding"),
     },
-    async () => jsonResult(await getMyOnRamps(account)),
+    asUser((user) => getMyOnRamps(user)),
   );
   server.registerTool(
     "get_adding_status",
@@ -586,6 +603,6 @@ function registerAccountTools(server: McpServer, account: AccountAuth): void {
       inputSchema: getOnRampStatusInput,
       annotations: readOnly("Get where a property I'm adding stands"),
     },
-    async (args) => jsonResult(await getOnRampStatus(account, args)),
+    asUser((user, args) => getOnRampStatus(user, args)),
   );
 }

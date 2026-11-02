@@ -17,7 +17,7 @@ export const getBorrowQuoteInput = {
 };
 export type GetBorrowQuoteArgs = ArgsOf<typeof getBorrowQuoteInput>;
 
-/** `as`: the connected person on the signed-in endpoint; the capacity is then read for them. */
+/** `as`: the connected person once the person has signed in; the capacity is then read for them. */
 export async function getBorrowQuote(args: GetBorrowQuoteArgs, as?: AccountAuth) {
   const { tokenId, slug, amountUsd } = args;
   if (!tokenId && !slug) {

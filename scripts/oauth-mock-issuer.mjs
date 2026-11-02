@@ -1,5 +1,5 @@
-// Mocked Connect Fabrica issuer, for running the signed-in endpoint (/mcp/account) before the
-// Fabrica API's authorization server is live. Generates a throwaway ES256 key, prints the env
+// Mocked Connect Fabrica issuer, for running the signed-in tools locally without the Fabrica
+// API's authorization server. Generates a throwaway ES256 key, prints the env
 // for a local or testnet server and an access token for MCP Inspector, and optionally serves a
 // mock of the API's GET /oauth/account and on-ramp reads so the personal tools have something to read.
 //
@@ -7,7 +7,7 @@
 //     [--origin http://localhost:3000] [--sub <account id>] [--hours 1] [--serve 8787]
 //
 // Then start the server with the printed env (FABRICA_NETWORK=sepolia: mainnet ignores an
-// inline JWKS) and call <origin>/mcp/account with "Authorization: Bearer <token>".
+// inline JWKS) and call <origin>/mcp with "Authorization: Bearer <token>".
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
@@ -32,7 +32,7 @@ const jwks = { keys: [{ ...(await exportJWK(publicKey)), kid, alg: "ES256", use:
 const token = await new SignJWT({ scope, client_id: "mock-client" })
   .setProtectedHeader({ alg: "ES256", typ: "at+jwt", kid })
   .setIssuer(issuer)
-  .setAudience(`${origin}/mcp/account`)
+  .setAudience(`${origin}/mcp`)
   .setSubject(sub)
   .setIssuedAt()
   .setJti(randomUUID())
