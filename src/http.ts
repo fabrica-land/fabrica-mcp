@@ -101,15 +101,19 @@ function challenge(error?: { code: string; description: string }): string {
 const OWN_WALLET_KEYS = ["address", "wallet", "ownedBy"];
 
 /** Whether a message or batch calls a tool that reads the person's own account: a personal tool, or a wallet-scoped tool with "me" as the wallet. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+const ACCOUNT_TOOLS: ReadonlySet<string> = new Set(ACCOUNT_TOOL_NAMES);
+
 export function needsAccount(body: unknown): boolean {
   const messages: unknown[] = Array.isArray(body) ? body : [body];
   return messages.some((message) => {
-    if (typeof message !== "object" || message === null
-      || !("method" in message) || message.method !== "tools/call"
-      || !("params" in message) || typeof message.params !== "object" || message.params === null) return false;
-    const params = message.params as Record<string, unknown>;
-    if (typeof params.name === "string" && (ACCOUNT_TOOL_NAMES as readonly string[]).includes(params.name)) return true;
-    const args = (typeof params.arguments === "object" && params.arguments !== null ? params.arguments : {}) as Record<string, unknown>;
+    if (!isRecord(message) || message.method !== "tools/call" || !isRecord(message.params)) return false;
+    const { name, arguments: args } = message.params;
+    if (typeof name === "string" && ACCOUNT_TOOLS.has(name)) return true;
+    if (!isRecord(args)) return false;
     return OWN_WALLET_KEYS.some((key) => {
       const value = args[key];
       return typeof value === "string" && value.trim().toLowerCase() === "me";
