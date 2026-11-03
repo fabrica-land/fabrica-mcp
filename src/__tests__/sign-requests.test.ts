@@ -281,6 +281,44 @@ describe("list_land_for_sale", () => {
     expect(result.signRequest.signLink).toContain("action=list&price=12000&expires=180");
     expect(result.signRequest.warnings.some(w => w.message.includes("collateral for an active loan"))).toBe(true);
   });
+
+  describe("a property still being added", () => {
+    const beingAdded = (claimState: "CLAIMED" | "UNCLAIMED") => token({
+      isPremint: true,
+      claimState,
+      majorityOwnerAddress: claimState === "CLAIMED" ? OWNER : null,
+      balances: claimState === "CLAIMED" ? [{ balance: "1", holder: { address: OWNER }, owner: { address: OWNER } }] : [],
+    });
+
+    afterEach(() => vi.unstubAllEnvs());
+
+    it("lists it for its owner when the flag is on, with the being-added note", async () => {
+      vi.stubEnv("FABRICA_LIST_WHILE_ADDING", "enabled");
+      vi.mocked(getSignContext).mockResolvedValue(beingAdded("CLAIMED"));
+      const result = await listForSale({ tokenId: "123", priceUsd: 12000, wallet: OWNER });
+      if (!("signRequest" in result)) throw new Error(JSON.stringify(result));
+      expect(result.signRequest.signLink).toContain("action=list&price=12000&expires=180");
+      expect(result.signRequest.summary[1]).toContain("Buyers can send offers now");
+      expect(result.signRequest.warnings.some(w => w.message.includes("until its token is issued"))).toBe(true);
+    });
+
+    it("refuses it when the flag is off, when nobody has claimed it, and for a wallet that is not its owner", async () => {
+      vi.stubEnv("FABRICA_LIST_WHILE_ADDING", "disabled");
+      vi.mocked(getSignContext).mockResolvedValue(beingAdded("CLAIMED"));
+      expect(await listForSale({ tokenId: "123", priceUsd: 12000, wallet: OWNER })).toMatchObject({ error: expect.stringContaining("still being added") });
+      vi.stubEnv("FABRICA_LIST_WHILE_ADDING", "enabled");
+      vi.mocked(getSignContext).mockResolvedValue(beingAdded("UNCLAIMED"));
+      expect(await listForSale({ tokenId: "123", priceUsd: 12000, wallet: OWNER })).toMatchObject({ error: expect.stringContaining("nobody has claimed it") });
+      vi.mocked(getSignContext).mockResolvedValue(beingAdded("CLAIMED"));
+      expect(await listForSale({ tokenId: "123", priceUsd: 12000, wallet: BUYER })).toMatchObject({ error: expect.stringContaining("does not hold") });
+    });
+
+    it("still refuses offers on it: only listing opens while a property is being added", async () => {
+      vi.stubEnv("FABRICA_LIST_WHILE_ADDING", "enabled");
+      vi.mocked(getSignContext).mockResolvedValue(beingAdded("CLAIMED"));
+      expect(await makeOffer({ tokenId: "123", amountUsd: 9000, wallet: BUYER })).toMatchObject({ error: expect.stringContaining("still being added") });
+    });
+  });
 });
 
 describe("accept_land_offer, buy_land and cancel_land_order", () => {

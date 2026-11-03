@@ -28,6 +28,7 @@ import {
   getSignRequestInput,
   listForSale,
   listForSaleInput,
+  listWhileAddingEnabled,
   makeOffer,
   makeOfferInput,
   orderActionInput,
@@ -446,7 +447,7 @@ function registerSignRequestTools(server: McpServer, account?: AccountAuth): voi
     "list_land_for_sale",
     {
       title: "Prepare a listing",
-      description: `Prepare a listing of a property the wallet holds on Fabrica (${NETWORK_LABEL}) at a USD price paid in USDC, open for expiresDays (default 180). Checks first that the wallet holds the token, and warns when the price is far from Fabrica's estimate, when the wallet already lists it, when an offer is at or above the price, or when the property is collateral for a loan. ${SIGN_LINK_NOTE}${note}`,
+      description: `Prepare a listing of a property the wallet holds on Fabrica (${NETWORK_LABEL}) at a USD price paid in USDC, open for expiresDays (default 180). Checks first that the wallet holds the token, and warns when the price is far from Fabrica's estimate, when the wallet already lists it, when an offer is at or above the price, or when the property is collateral for a loan.${listWhileAddingEnabled() ? " A property its owner is still adding to Fabrica can be listed too: buyers can send offers at once, and the listing becomes buyable once its token is issued." : ""} ${SIGN_LINK_NOTE}${note}`,
       inputSchema: input(listForSaleInput),
       annotations: prepares("Prepare a listing"),
     },
