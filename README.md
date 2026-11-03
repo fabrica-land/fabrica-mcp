@@ -1,5 +1,7 @@
 # Fabrica MCP Server
 
+[![Add to Claude](https://img.shields.io/badge/Add_to-Claude-D97757)](https://claude.ai/directory/fabrica-land)
+
 Give AI agents access to US land on Fabrica. Search properties, research a parcel, check what it could borrow, and explore portfolios across the US land held on the Fabrica protocol.
 
 ## What is this?
@@ -21,7 +23,9 @@ Point any MCP client at the hosted server:
 
 No sign-in is needed for public data. Ask about your own properties, offers or loans and the client asks you to sign in to Fabrica and approve read-only access, then answers; disconnect any time in Connected apps on fabrica.land.
 
-**Claude (claude.ai and desktop):** Settings → Connectors → Add custom connector → paste the URL.
+**Claude (claude.ai, desktop and mobile):** Fabrica is listed in the Claude directory. Open [claude.ai/directory/fabrica-land](https://claude.ai/directory/fabrica-land) and select Connect. Or add it by hand: Settings → Connectors → Add custom connector → paste the URL (this is also how to add the testnet server).
+
+Signing in to Fabrica (only for your own account data) opens fabrica.land. On iPhone and iPad, start the connection from claude.ai in Safari: the Claude iOS app's in-app browser can't complete the sign-in.
 
 **Claude Code:**
 
@@ -87,6 +91,20 @@ Set `FABRICA_NETWORK=sepolia` in the server's environment for the testnet.
 | `find_us_parcel` | Any US address or parcel number (APN) to a parcel: on Fabrica or not, and the link to add it; `queries` takes a list of up to 10 and returns a table. No owner names from parcel data; 30 lookups per minute per client, each query in a list counting as one |
 | `check_county_coverage` | Whether property in a US county (or state) can be added online, and what it asks the owner for. From a table of Fabrica's rules for adding property, dated and refreshed by hand (`npm run coverage:build`) |
 | `contact_fabrica_support` | Hand a question to Fabrica support: help center section, support email, and a prefilled mailto with the summary and property link. Sends nothing itself |
+
+### Your account (sign-in)
+
+These tools read the connected person's own account, across every wallet on it, on mainnet. The first call asks the person to sign in to Fabrica and approve read-only access; disconnect any time in Connected apps on fabrica.land.
+
+| Tool | Description |
+|---|---|
+| `get_my_account` | Email, linked accounts, verification status, and what this connection may read |
+| `get_my_properties` | Properties being added first, then live properties by estimated value, with stage, status, listing price and offers waiting |
+| `get_my_offers` | Offers received on the person's properties and offers they made |
+| `get_my_loans` | Loans against the person's properties, with maturity and payoff today, and loans they funded |
+| `what_needs_attention` | One ranked list of what waits on the person: loans near maturity, offers, steps of properties being added, fees to approve, property checks |
+| `get_my_properties_being_added` | Properties the person is adding to Fabrica, with the next step and who acts |
+| `get_adding_status` | One property being added in full: every step, the next one, and the open actions |
 
 ### Sign requests (testnet host first)
 
