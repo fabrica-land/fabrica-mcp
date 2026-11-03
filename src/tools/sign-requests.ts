@@ -36,6 +36,20 @@ const walletInput = z.string().regex(/^0x[0-9a-fA-F]{40}$/, "A 0x-prefixed Ether
 const orderHashInput = z.string().regex(/^0x[0-9a-fA-F]{64}$/, "A 0x-prefixed 32-byte order hash").describe("The order's hash: orderId in get_land_order_book");
 
 type Lookup = { token: SignContextToken } | { error: string };
+
+/**
+ * Listing a property that is still being added to Fabrica ships testnet-first, like the sign
+ * requests themselves: on by default on Sepolia, and on mainnet only when
+ * FABRICA_LIST_WHILE_ADDING=enabled. The web app's own list-for-sale dialog takes such a property
+ * (buyers can send offers at once; the listing becomes buyable once the token is issued), so the
+ * sign page handles the request as it does today; this flag only decides whether the tool prepares one.
+ */
+export function listWhileAddingEnabled(): boolean {
+  const flag = process.env.FABRICA_LIST_WHILE_ADDING?.toLowerCase();
+  if (flag === "enabled") return true;
+  if (flag === "disabled") return false;
+  return !IS_MAINNET;
+}
 export type Prepared = Omit<SignRequest, "id" | "status" | "network" | "chainId" | "payload" | "createdAt" | "expiresAt" | "signLink" | "result"> & {
   link: (id: string) => string;
 };
@@ -97,7 +111,11 @@ export function signLink(tokenId: string, params: Record<string, string>, id: st
   return url.toString();
 }
 
-export async function lookup(tokenId: string | undefined, slug: string | undefined): Promise<Lookup> {
+/**
+ * The property a prepare tool acts on. A property still being added (its token not issued yet) is
+ * refused unless the caller allows it (`whileAdding`), and then only once it has an owner on record.
+ */
+export async function lookup(tokenId: string | undefined, slug: string | undefined, options: { whileAdding?: boolean } = {}): Promise<Lookup> {
   if (!tokenId && !slug) return { error: "Either tokenId or slug is required" };
   const name = tokenId ? `token ID ${tokenId}` : `slug ${slug}`;
   let token: SignContextToken;
@@ -110,7 +128,8 @@ export async function lookup(tokenId: string | undefined, slug: string | undefin
   if (token.isPremint && token.supersededByTokenId) {
     return { error: `Token ${token.tokenId} was the record of this property before its token was issued; it has been replaced by token ${token.supersededByTokenId}. Prepare the action on ${token.supersededByTokenId}.` };
   }
-  if (token.isPremint) return { error: "This property is still being added to Fabrica (its token is not issued yet). Sign requests cover live properties only for now; offers on it are made on its property page." };
+  if (token.isPremint && !options.whileAdding) return { error: "This property is still being added to Fabrica (its token is not issued yet). Sign requests cover live properties only for now; offers on it are made on its property page." };
+  if (token.isPremint && token.claimState === "UNCLAIMED") return { error: "This property is being added to Fabrica but nobody has claimed it yet, so it has no owner who could list it. Its owner claims it on its property page first." };
   if (token.isBurned) return { error: "This property's token has been retired: it is no longer on Fabrica, so it cannot be bought, sold or offered on." };
   if (token.offRampStatus) return { error: "This property is being removed from Fabrica, so marketplace actions are closed on it." };
   return { token };
@@ -263,7 +282,7 @@ export const listForSaleInput = {
 export type ListForSaleArgs = ArgsOf<typeof listForSaleInput>;
 
 export async function prepareListing({ tokenId, slug, priceUsd, expiresDays, wallet: signer }: WithSigner<ListForSaleArgs>): Promise<Prepared | Blocked> {
-  const found = await lookup(tokenId, slug);
+  const found = await lookup(tokenId, slug, { whileAdding: listWhileAddingEnabled() });
   if ("error" in found) return found;
   const { token } = found;
   const picked = pickSigner(signer, address => holds(token, address), `holds ${label(token)}`, "only its owner can list it for sale.");
@@ -280,6 +299,7 @@ export async function prepareListing({ tokenId, slug, priceUsd, expiresDays, wal
     .sort((a, b) => Number.parseFloat(b.usdPrice ?? "") - Number.parseFloat(a.usdPrice ?? ""))[0];
   if (best) warnings.push({ level: "info", message: `There is an offer of ${orderPrice(best)}, at or above this price: accept_land_offer (order ${best.marketplaceId}) takes it.` });
   if (underLoan(token)) warnings.push({ level: "warning", message: "The property is collateral for an active loan: the sale pays the loan off first, so the price has to cover the payoff, and the listing can only be bought once the payoff is approved." });
+  if (token.isPremint) warnings.push({ level: "info", message: "This property is still being added to Fabrica: the listing goes on the marketplace now and buyers can send offers, but nobody can buy at this price, and no offer can be accepted, until its token is issued. get_adding_status says what is left to do." });
   return {
     action: "list_land_for_sale",
     kind: "typedData",
@@ -288,7 +308,9 @@ export async function prepareListing({ tokenId, slug, priceUsd, expiresDays, wal
     order: { side: "sell", priceUsd: String(priceUsd), price: usdToRaw(priceUsd), symbol: CURRENCY.symbol, decimals: CURRENCY.decimals, durationDays: days, supply: "1" },
     summary: [
       `List ${label(token)} for sale at ${usd(priceUsd)} (${formatTokenAmount(usdToRaw(priceUsd), CURRENCY.decimals, CURRENCY.symbol)}) on ${NETWORK_LABEL}.`,
-      `The listing stays open for ${days} day${days === 1 ? "" : "s"} unless canceled. Anyone can buy at this price while it is open.`,
+      token.isPremint
+        ? `The listing stays open for ${days} day${days === 1 ? "" : "s"} unless canceled. Buyers can send offers now; once the property is set up, its owner can accept one or let buyers buy at this price.`
+        : `The listing stays open for ${days} day${days === 1 ? "" : "s"} unless canceled. Anyone can buy at this price while it is open.`,
       "The marketplace fee is shown on the sign page before signing and is taken from the proceeds.",
       "If the wallet has not yet allowed the marketplace to transfer its Fabrica tokens, the sign page asks for that approval first.",
       ...(IS_MAINNET ? ["A sale transfers the beneficial interest in the trust that holds the land and can trigger tax events."] : []),
