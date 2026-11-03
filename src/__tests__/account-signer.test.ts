@@ -104,9 +104,9 @@ describe("pickSigner", () => {
     expect(picked).toMatchObject({ wallet: LINKED, chosen: [{ level: "info", message: expect.stringContaining("the one that holds it") }] });
   });
 
-  it("blocks when none fits and asks when several do", () => {
+  it("blocks when none fits and lists them when several do", () => {
     expect(pickSigner({ own: OWN }, () => false, "holds it", "only its owner can list it.")).toMatchObject({ error: expect.stringMatching(/None of the 2 wallets .* holds it; only its owner can list it\./), accountWallets: [EMBEDDED, LINKED] });
-    expect(pickSigner({ own: OWN }, () => true, "holds it", "no.")).toMatchObject({ error: expect.stringContaining("Ask the person which one"), accountWallets: [EMBEDDED, LINKED] });
+    expect(pickSigner({ own: OWN }, () => true, "holds it", "no.")).toMatchObject({ error: expect.stringContaining("The call runs once wallet names one of them"), accountWallets: [EMBEDDED, LINKED] });
   });
 });
 

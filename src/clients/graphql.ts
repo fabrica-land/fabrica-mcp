@@ -171,6 +171,7 @@ interface TokenFilters {
   hasListings?: boolean;
   ownedBy?: string;
   burned?: boolean;
+  /** true = premints only, false = minted tokens only, unset = both (API semantics). */
   premints?: boolean;
   testnets?: boolean;
   contractAddress?: string;

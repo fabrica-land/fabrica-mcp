@@ -43,7 +43,6 @@ export interface MyDepositRow {
   pool: string;
   /** What the shares are worth at the pool's current tick values. */
   positionValue: string | null;
-  deposited: string | null;
   /** Value of the shares waiting in the redemption queue. */
   pendingRedemption: string | null;
   links: { pool: string };
@@ -55,7 +54,7 @@ export interface MyLoansResult {
   taken: MyLoanRow[];
   made: MyLoanRow[];
   deposits: MyDepositRow[];
-  /** Loan counts across the account's wallets. */
+  /** Counts of the loans the account's wallets took (as borrower); loans made are listed under made. */
   history: { total: number; active: number; repaid: number; defaulted: number; liquidated: number };
   notes: string[];
   error?: string;
@@ -123,7 +122,6 @@ function depositRow(pool: DepositPool, deposits: PoolDeposit[]): MyDepositRow {
   const ticks = new Map(pool.ticks.map((tick) => [tick.raw, tick]));
   let value = 0n;
   let pending = 0n;
-  let deposited = 0n;
   let priced = true;
   for (const deposit of deposits) {
     const tick = ticks.get(deposit.tickRaw);
@@ -132,12 +130,10 @@ function depositRow(pool: DepositPool, deposits: PoolDeposit[]): MyDepositRow {
     if (held === null) priced = false;
     value += held ?? 0n;
     pending += queued ?? 0n;
-    deposited += /^-?\d+$/.test(deposit.depositedAmount) ? BigInt(deposit.depositedAmount) : 0n;
   }
   return {
     pool: LENDING_POOL_NAME,
     positionValue: priced ? wadUsd(value) : null,
-    deposited: wadUsd(deposited < 0n ? 0n : deposited),
     pendingRedemption: pending > 0n ? wadUsd(pending) : null,
     links: { pool: `${WEB_BASE}/pools/${NETWORK}/${pool.address}` },
   };
@@ -207,6 +203,8 @@ export async function getMyLoans(auth: AccountAuth): Promise<MyLoansResult> {
     history.liquidated += count(credit.liquidatedLoans.loanCount);
   }
   const notes: string[] = [];
+  const selfFunded = taken.filter((row) => made.some((other) => other.loanId === row.loanId)).length;
+  if (selfFunded > 0) notes.push(`${selfFunded} loan${selfFunded === 1 ? " was" : "s were"} made between two wallets on this account, so ${selfFunded === 1 ? "it appears" : "they appear"} under both taken and made.`);
   if (deposits === null) notes.push(`Deposits in the ${LENDING_POOL_NAME} could not be read right now; loans are complete. Try again shortly.`);
   if (taken.some((row) => row.status === "Default")) notes.push("A loan with status Default is past maturity and its auction has not started: it can still be paid off from the property page (links.property), and until it is the property is at risk.");
   if (taken.some((row) => row.maturingSoon)) notes.push(`A loan marked maturingSoon is due within ${MATURING_SOON_DAYS} days. It is repaid from the property page (links.property); nothing is prepared here.`);

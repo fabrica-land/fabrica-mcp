@@ -61,8 +61,8 @@ function suggestedToolsFor(question: string): string[] {
 }
 
 const SOURCE_NOTE =
-  "Passages are quoted from Fabrica's published documents. Cite the URL when relaying an answer. " +
-  "When no passage answers the question, say so; the help center at https://help.fabrica.land and questions@fabrica.land reach Fabrica support. " +
+  "Passages are quoted from Fabrica's published documents; each url is the passage's source. " +
+  "Fabrica support is reached through the help center at https://help.fabrica.land and at questions@fabrica.land. " +
   "These documents are informational and are not legal, tax or financial advice.";
 
 export async function askFabrica(args: AskFabricaArgs): Promise<AskFabricaResult | AskFabricaError> {
