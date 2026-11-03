@@ -38,17 +38,13 @@ const orderHashInput = z.string().regex(/^0x[0-9a-fA-F]{64}$/, "A 0x-prefixed 32
 type Lookup = { token: SignContextToken } | { error: string };
 
 /**
- * Listing a property that is still being added to Fabrica ships testnet-first, like the sign
- * requests themselves: on by default on Sepolia, and on mainnet only when
- * FABRICA_LIST_WHILE_ADDING=enabled. The web app's own list-for-sale dialog takes such a property
+ * Listing a property that is still being added to Fabrica is on on both networks unless
+ * FABRICA_LIST_WHILE_ADDING=disabled. The web app's own list-for-sale dialog takes such a property
  * (buyers can send offers at once; the listing becomes buyable once the token is issued), so the
  * sign page handles the request as it does today; this flag only decides whether the tool prepares one.
  */
 export function listWhileAddingEnabled(): boolean {
-  const flag = process.env.FABRICA_LIST_WHILE_ADDING?.toLowerCase();
-  if (flag === "enabled") return true;
-  if (flag === "disabled") return false;
-  return !IS_MAINNET;
+  return process.env.FABRICA_LIST_WHILE_ADDING?.toLowerCase() !== "disabled";
 }
 export type Prepared = Omit<SignRequest, "id" | "status" | "network" | "chainId" | "payload" | "createdAt" | "expiresAt" | "signLink" | "result"> & {
   link: (id: string) => string;
