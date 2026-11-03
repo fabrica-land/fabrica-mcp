@@ -32,8 +32,11 @@ export const RECONNECT_MESSAGE = "Fabrica no longer accepts this connection: it 
 
 export interface AccountWallet {
   address: string;
-  /** "embedded": the wallet Fabrica created at sign-up; "external": one the user connected (MetaMask and others). */
-  kind: "embedded" | "external";
+  /**
+   * "embedded": the wallet Fabrica created at sign-up; "external": one the user connected (MetaMask
+   * and others). Present only when the API says which; it does not yet, so it is usually absent.
+   */
+  kind?: "embedded" | "external";
 }
 
 /** The user's profile as the API serves it under profile:read (GET /oauth/account). */
@@ -51,9 +54,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function parseProfile(body: unknown): AccountProfile | null {
   if (!isRecord(body) || !Array.isArray(body.wallets)) return null;
   const wallets: AccountWallet[] = [];
+  const seen = new Set<string>();
   for (const wallet of body.wallets) {
     if (!isRecord(wallet) || typeof wallet.address !== "string" || !/^0x[0-9a-fA-F]{40}$/.test(wallet.address)) return null;
-    wallets.push({ address: wallet.address, kind: wallet.kind === "embedded" ? "embedded" : "external" });
+    // The account can hold one address under two sign-in methods; it is one wallet.
+    const key = wallet.address.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const kind = wallet.kind === "embedded" || wallet.kind === "external" ? wallet.kind : undefined;
+    wallets.push({ address: wallet.address, ...(kind ? { kind } : {}) });
   }
   const kyc = isRecord(body.kyc) && typeof body.kyc.status === "string" ? body.kyc.status : null;
   return { email: typeof body.email === "string" ? body.email : null, wallets, kycStatus: kyc };

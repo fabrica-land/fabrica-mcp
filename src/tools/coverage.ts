@@ -165,7 +165,7 @@ export function checkCoverage(args: CheckCoverageArgs) {
     jurisdiction = { state: county.key.slice(0, 2).toUpperCase(), county: county.name, fips: args.fips };
   } else if (args.state) {
     const state = args.state.toLowerCase();
-    if (!STATES.has(state)) return { error: `"${args.state}" is not a US state code. Use the two-letter code, for example "CA".` };
+    if (!STATES.has(state)) return { error: `"${args.state}" is not a US state code. State codes are two letters, for example "CA".` };
     if (args.county) {
       const scope = resolveCounty(args.county, state);
       if (!scope) return { error: `No single county in ${state.toUpperCase()} matches "${args.county}". The county name as the state writes it (for example "Riverside"), or its 5-digit FIPS code, identifies it.` };

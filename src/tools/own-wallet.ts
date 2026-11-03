@@ -95,7 +95,7 @@ export function walletIfMe<R extends object>(auth: AccountAuth, value: string | 
 export const ownSignerArg = z.string()
   .regex(/^(0x[0-9a-fA-F]{40}|\s*me\s*)$/i, `A 0x-prefixed Ethereum address, or "${OWN_WALLET}"`)
   .optional()
-  .describe(`The wallet that will sign (0x address); the sign page only lets this wallet sign. Leave it out, or pass "${OWN_WALLET}", to use the connected account's wallet: the one that fits the action (holds the property, made the order, took the loan). When more than one fits, the answer lists them; ask the person which one, then pass it.`);
+  .describe(`The wallet that will sign (0x address); the sign page only lets this wallet sign. Leave it out, or pass "${OWN_WALLET}", to use the connected account's wallet: the one that fits the action (holds the property, made the order, took the loan). When more than one fits, the answer lists them, and wallet takes the chosen one.`);
 
 /**
  * Who signs a sign request once the person has signed in: the given address, or the account's wallets

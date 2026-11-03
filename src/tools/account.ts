@@ -192,9 +192,11 @@ export async function getMyProperties(auth: AccountAuth, args: GetMyPropertiesAr
   if (wallets.length === 0) return emptyProperties(["No linked account (wallet address) is on this Fabrica account yet, so it holds no properties."]);
 
   const includePremints = args.includePremints ?? true;
+  // The tokens query reads premints: true as "premints only" and leaves premints out on false;
+  // left unset it returns minted tokens and premints together.
   const lists = await Promise.all(wallets.map((ownedBy) => getTokens({
     ownedBy,
-    premints: includePremints,
+    premints: includePremints ? undefined : false,
     burned: false,
     testnets: !IS_MAINNET,
     contractAddress: CONTRACTS.fabricaToken,

@@ -63,7 +63,9 @@ describe("get_my_properties", () => {
     ]);
     expect(result.properties[1]).toMatchObject({ listingPrice: "$95,000", offersWaiting: 2, underLoan: true, links: { property: "https://fabrica.land/p/202" } });
     expect(result.totals).toEqual({ properties: 3, beingAdded: 1, live: 2, listed: 1, offersWaiting: 2, underLoan: 1, totalAcres: 46.25, estimatedValueOfLive: "$100,000" });
-    expect(vi.mocked(getTokens)).toHaveBeenCalledWith(expect.objectContaining({ ownedBy: WALLET_A.toLowerCase(), premints: true, burned: false }));
+    expect(vi.mocked(getTokens)).toHaveBeenCalledWith(expect.objectContaining({ ownedBy: WALLET_A.toLowerCase(), burned: false }));
+    // premints: true would mean "premints only" to the API and drop every minted token.
+    expect(vi.mocked(getTokens).mock.calls[0][0].premints).toBeUndefined();
   });
 
   it("merges two wallets and lists a shared token once", async () => {

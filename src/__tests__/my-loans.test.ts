@@ -61,7 +61,7 @@ describe("get_my_loans", () => {
       links: { property: "https://fabrica.land/property/ethereum/7" },
     });
     expect(result.taken[1].payoffToday).toBeUndefined();
-    expect(result.deposits).toEqual([{ pool: "DeFi lending pool", positionValue: "$110", deposited: "$100", pendingRedemption: "$11", links: { pool: expect.stringContaining(`/pools/`) } }]);
+    expect(result.deposits).toEqual([{ pool: "DeFi lending pool", positionValue: "$110", pendingRedemption: "$11", links: { pool: expect.stringContaining(`/pools/`) } }]);
     expect(result.totals).toEqual({ activeTaken: 1, maturingSoon: 1, activeMade: 0, deposits: 1 });
     expect(result.notes.join(" ")).toContain("maturingSoon");
   });

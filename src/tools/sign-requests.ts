@@ -70,7 +70,7 @@ export function pickSigner(signer: Signer, fits: (address: string) => boolean, w
   if (fitting.length === 0) {
     return { error: `${all.length === 1 ? `The wallet on the connected account (${shorten(all[0] ?? "")}) does not fit` : `None of the ${all.length} wallets on the connected account (${all.map(shorten).join(", ")}) fits`}: the signing wallet must be one that ${which}; ${none}`, accountWallets: all };
   }
-  return { error: `${fitting.length} wallets on the connected account could sign this (each ${which}): ${fitting.map(wallet => wallet.address).join(", ")}. Ask the person which one should sign, then call again with it as wallet.`, accountWallets: fitting.map(wallet => wallet.address) };
+  return { error: `${fitting.length} wallets on the connected account could sign this (each ${which}): ${fitting.map(wallet => wallet.address).join(", ")}. The call runs once wallet names one of them.`, accountWallets: fitting.map(wallet => wallet.address) };
 }
 
 export const same = (a: string | null | undefined, b: string | null | undefined): boolean => !!a && !!b && a.toLowerCase() === b.toLowerCase();
