@@ -283,7 +283,7 @@ function provesAction(record: SignRequest, contract: string, log: { address: str
   const topics = log.topics ?? [];
   if (!same(log.address, contract) || topics[0]?.toLowerCase() !== ACTION_EVENTS[record.action]) return false;
   // TransferSingle carries the token ID in data word 0 (after the indexed operator, from, to); the update events do too.
-  if (dataWord(log.data, 0) !== BigInt(record.property.tokenId)) return false;
+  if (!record.property || dataWord(log.data, 0) !== BigInt(record.property.tokenId)) return false;
   if (record.action !== "transfer_land") return true;
   return same(topicAddress(topics[2]), record.wallet) && !!record.owner?.recipient && same(topicAddress(topics[3]), record.owner.recipient);
 }
@@ -297,10 +297,12 @@ export async function verifyOwnerResult(record: SignRequest, result: { transacti
   if (!("transactionHash" in result)) return { ok: false, reason: `A ${record.action} sign request completes with a transaction, not an order hash.` };
   const receipt = await getTransactionReceipt(result.transactionHash);
   if (receipt?.status !== "0x1") return { ok: false, reason: "The transaction did not succeed (yet)." };
-  const contract = record.property.contractAddress || CONTRACTS.fabricaToken;
+  const property = record.property;
+  if (!property) return { ok: false, reason: "The sign request names no property." };
+  const contract = property.contractAddress || CONTRACTS.fabricaToken;
   if (!(receipt.logs ?? []).some(log => provesAction(record, contract, log))) return { ok: false, reason: "The transaction does not make this change to this property." };
   const minedAt = await getBlockTimestamp(receipt.blockNumber);
   if (minedAt === null || minedAt < Math.floor(Date.parse(record.createdAt) / 1000) * 1000) return { ok: false, reason: "The transaction was mined before this sign request was made." };
-  const token = await getSignContext({ tokenId: record.property.tokenId });
+  const token = await getSignContext({ tokenId: property.tokenId });
   return observeOwner(record, token) ? { ok: true } : { ok: false, reason: "The property does not show this change (yet)." };
 }

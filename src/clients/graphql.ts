@@ -876,10 +876,12 @@ export async function getWalletLoans(walletAddress: string): Promise<WalletLoans
 const GET_DEPOSIT_POOLS_QUERY = gql`
   query GetDepositPools($network: String!) {
     poolLendingPools(network: $network) {
+      blockTimestamp
       pools {
         address
         currencyToken { symbol decimals }
-        ticks { raw value shares redemptionPending }
+        durations
+        ticks { raw value shares available redemptionPending accrued accrualRate accrualTimestamp }
       }
     }
   }
@@ -887,8 +889,13 @@ const GET_DEPOSIT_POOLS_QUERY = gql`
 
 /** This network's lending pools with each tick's value and shares, to price a deposit. */
 export async function getDepositPools(): Promise<DepositPool[]> {
+  return (await getDepositPoolsWithTime()).pools;
+}
+
+/** The pools and the chain time of the pool data, which a tick's accrued interest is projected from. */
+export async function getDepositPoolsWithTime(): Promise<{ pools: DepositPool[]; blockTimestamp: number | null }> {
   const data = await request<GetDepositPoolsQuery>(GET_DEPOSIT_POOLS_QUERY, { network: NETWORK });
-  return data.poolLendingPools.pools;
+  return { pools: data.poolLendingPools.pools, blockTimestamp: data.poolLendingPools.blockTimestamp ? Number(data.poolLendingPools.blockTimestamp) : null };
 }
 
 const GET_POOL_DEPOSITS_QUERY = gql`

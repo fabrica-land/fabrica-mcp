@@ -1,4 +1,5 @@
-// Minimal Ethereum JSON-RPC reads for get_transaction_status and the sign-request result check.
+// Minimal Ethereum JSON-RPC reads for get_transaction_status, the sign-request result check and
+// a lending pool position (eth_call).
 // Reads only: the server never signs or broadcasts. FABRICA_RPC_URL overrides the public node.
 import { z } from "zod";
 import { IS_MAINNET } from "../config.js";
@@ -73,4 +74,18 @@ export async function getBlockTimestamp(blockNumber: string): Promise<number | n
 export async function getBlockNumber(): Promise<number> {
   const result = z.string().parse(await call("eth_blockNumber", []));
   return Number.parseInt(result, 16);
+}
+
+const logSchema = z.object({ address: z.string(), topics: z.array(z.string()), data: z.string(), transactionHash: z.string() });
+export type RpcLog = z.infer<typeof logSchema>;
+
+/** Logs from one contract matching the topics (null matches any), from a block to the latest. */
+export async function getLogs(address: string, topics: readonly (string | null)[], fromBlock: number): Promise<RpcLog[]> {
+  const result = await call("eth_getLogs", [{ address, topics, fromBlock: `0x${fromBlock.toString(16)}`, toBlock: "latest" }]);
+  return z.array(logSchema).parse(result ?? []);
+}
+
+/** eth_call against the latest block; the raw return data. */
+export async function ethCall(to: string, data: string): Promise<string> {
+  return z.string().parse(await call("eth_call", [{ to, data }, "latest"]));
 }

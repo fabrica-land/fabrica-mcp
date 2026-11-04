@@ -18,6 +18,7 @@ const HASH = /^0x[0-9a-fA-F]{64}$/;
 export const signRequestActions = ["make_land_offer", "list_land_for_sale", "accept_land_offer", "buy_land", "cancel_land_order", "borrow_against_land", "repay_loan_against_land",
   // Owner actions: each one an onchain transaction on the property's token, signed by its holder.
   "transfer_land", "update_trust_agreement", "update_land_description", "update_land_photos",
+  "deposit_to_lending_pool", "withdraw_from_lending_pool",
   // The repay tool's name before the loan tools were renamed. Records stored under it stay readable (and their MAC
   // valid) through the retention window; no new request uses it. Remove a day after the rename deploys.
   "repay_land_loan"] as const;
@@ -34,16 +35,37 @@ export const signRequestSchema = z.object({
   chainId: z.number().int(),
   action: z.enum(signRequestActions),
   // typedData: an EIP-712 signature (offer, listing, accepting an offer); transaction: an onchain
-  // transaction the signer's client broadcasts (buy_land, borrow, repay); offchain: a signed-in confirmation with no
+  // transaction the signer's client broadcasts (buy_land, borrow, repay, deposit, withdraw); offchain: a signed-in confirmation with no
   // signature (cancel, which the API records).
   kind: z.enum(["typedData", "transaction", "offchain"]),
   wallet: z.string().regex(ADDRESS),
+  // Every action but the lending pool's is about one property.
   property: z.object({
     tokenId: z.string(),
     contractAddress: z.string(),
     name: z.string().nullable(),
     link: z.string(),
-  }),
+  }).optional(),
+  // Deposit and withdraw: the pool, the tick and the amount, and the wallet's position at that tick
+  // when the request was made (onchain shares and next redemption id), which a completed request moves.
+  pool: z.object({
+    address: z.string().regex(ADDRESS),
+    tick: z.string().regex(/^\d{1,40}$/),
+    ltvPercent: z.number().nullable(),
+    maxLoanDays: z.number().nullable(),
+    amountUsd: z.number(),
+    wholePosition: z.boolean(),
+    link: z.string(),
+    before: z.object({ shares: z.string().regex(/^\d+$/), redemptionId: z.string().regex(/^\d+$/) }),
+    // The block the request was made at, and what the pool's event must carry to be this request's:
+    // a deposit's amount (in token units or the pool's 18-decimal scale), or a redemption's share range.
+    fromBlock: z.number().int().nonnegative(),
+    expect: z.object({
+      amounts: z.array(z.string().regex(/^\d+$/)).optional(),
+      minShares: z.string().regex(/^\d+$/).optional(),
+      maxShares: z.string().regex(/^\d+$/).optional(),
+    }),
+  }).optional(),
   order: z.object({
     side: z.enum(["buy", "sell"]),
     priceUsd: z.string(),
