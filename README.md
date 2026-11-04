@@ -104,7 +104,18 @@ These tools read the connected person's own account, across every wallet on it, 
 | `get_my_loans` | Loans against the person's properties, with maturity and payoff today, and loans they funded |
 | `what_needs_attention` | One ranked list of what waits on the person: loans near maturity, offers, steps of properties being added, fees to approve, property checks |
 | `get_my_properties_being_added` | Properties the person is adding to Fabrica, with the next step and who acts |
-| `get_adding_status` | One property being added in full: every step, the next one, and the open actions |
+| `get_adding_status` | One property being added in full: every step, the next one, the open actions, and the county's questions with the answers so far |
+
+### Adding a property
+
+Two tools add a property as the connected person. They need the Fabrica API's add-property grants (`onramp:write`, `premint:write`, asked for at sign-in) and, for listing links, the web app's listing import key (`FABRICA_LISTING_IMPORT_KEY`).
+
+| Tool | Description |
+|---|---|
+| `add_land` | Start adding a property from a listing link on another website, a parcel number with its state and county, or an address. Finds the parcel (a listing is read by the web app: title, price, acres, the seller's description, photos, and the parcel it names) and, signed in with the add-property grant, creates the property's record as the connected person with that description and those photos, held by their linked account. Returns where it stands and the questions the county asks for it. Not signed in, returns the fabrica.land link that adds the parcel; a listing link is read for signed-in people only, since it spends this server's import budget. A parcel number or an address counts as one lookup against the same 30-per-minute limit as `find_us_parcel` |
+| `answer_adding_questions` | Save the owner named on the deed (one person, an entity with the person who signs for it, or several people with how they hold title) and the answers to the county's questions, and return what is still open |
+
+The questions are Fabrica's own rules for that county, state and kind of owner, read from the property's record each time (the same ones the web app's owner form shows), never a list kept here. The fee approval and the notarized signing session stay on fabrica.land; nothing is signed, paid or recorded by these tools.
 
 ### Sign requests (testnet host first)
 

@@ -5,8 +5,8 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { IS_MAINNET, NETWORK, NETWORK_LABEL } from "./config.js";
 import type { McpHttpRequest } from "./http.js";
 import { createServer } from "./server.js";
-import { mcpResource, OAUTH_SCOPES, oauthEnabled, oauthIssuer, resourceMetadataUrl } from "./auth/config.js";
-import { ACCOUNT_TOOL_NAMES } from "./server.js";
+import { mcpResource, oauthScopes, oauthEnabled, oauthIssuer, resourceMetadataUrl } from "./auth/config.js";
+import { accountToolNames } from "./server.js";
 
 /**
  * Discovery documents for clients that start from the domain:
@@ -59,7 +59,7 @@ export function mcpManifest(): object {
     authentication: { required: false, type: "none" },
     // Sign-in is optional, on the same URL: the personal tools ask for it (OAuth 2.1 against the Fabrica API) when called.
     ...(oauthEnabled()
-      ? { signIn: { optional: true, type: "oauth2", issuer: oauthIssuer(), scopes: [...OAUTH_SCOPES], resourceMetadata: resourceMetadataUrl(), tools: [...ACCOUNT_TOOL_NAMES] } }
+      ? { signIn: { optional: true, type: "oauth2", issuer: oauthIssuer(), scopes: [...oauthScopes()], resourceMetadata: resourceMetadataUrl(), tools: [...accountToolNames()] } }
       : {}),
     documentation: DOCS_URL,
     serverCard: new URL("/.well-known/mcp/server-card.json", thisUrl()).toString(),
@@ -145,7 +145,7 @@ export function protectedResourceMetadata(): object {
   return {
     resource: mcpResource(),
     authorization_servers: [oauthIssuer()],
-    scopes_supported: [...OAUTH_SCOPES],
+    scopes_supported: [...oauthScopes()],
     bearer_methods_supported: ["header"],
     resource_name: IS_MAINNET ? "Fabrica" : "Fabrica (Sepolia testnet)",
     resource_documentation: DOCS_URL,

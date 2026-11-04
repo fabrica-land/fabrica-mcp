@@ -32,6 +32,7 @@ function record(tokenId: string, steps: OnRampStep[], extra: Partial<OnRampRecor
     state: "CO",
     parcelNumber: "70310050",
     missingRequiredFields: [],
+    questions: [],
     steps,
     collectedFields: { deedBook: "12" },
     grantors: [{ name: "Sam Owner", kind: "individual", role: null }],

@@ -17,9 +17,15 @@ import { IS_MAINNET } from "../config.js";
 
 export const MCP_PATH = "/mcp";
 
-/** The scopes the authorization server issues (read-only). A tool names the one it needs. */
-export const OAUTH_SCOPES = ["profile:read", "portfolio:read", "onramp:read"] as const;
-export type OAuthScope = (typeof OAUTH_SCOPES)[number];
+/** The read scopes the authorization server issues. A tool names the one it needs. */
+export const OAUTH_READ_SCOPES = ["profile:read", "portfolio:read", "onramp:read"] as const;
+/** The write scopes adding a property needs (add_land, answer_adding_questions). */
+export const OAUTH_WRITE_SCOPES = ["onramp:write", "premint:write"] as const;
+export type OAuthScope = (typeof OAUTH_READ_SCOPES)[number] | (typeof OAUTH_WRITE_SCOPES)[number];
+/** The scopes this server asks for at sign-in: the reads and the add-property writes. */
+export function oauthScopes(): readonly OAuthScope[] {
+  return [...OAUTH_READ_SCOPES, ...OAUTH_WRITE_SCOPES];
+}
 
 export function oauthEnabled(): boolean {
   return process.env.FABRICA_OAUTH?.toLowerCase() === "enabled";

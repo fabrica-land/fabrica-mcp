@@ -211,7 +211,7 @@ function postRaw(url: string, body: string, headers: Record<string, string> = {}
 }
 
 describe("lazy sign-in on /mcp with Connect Fabrica on", () => {
-  const CHALLENGE = 'Bearer resource_metadata="https://mcp.fabrica.land/.well-known/oauth-protected-resource/mcp", scope="profile:read portfolio:read onramp:read"';
+  const CHALLENGE = 'Bearer resource_metadata="https://mcp.fabrica.land/.well-known/oauth-protected-resource/mcp", scope="profile:read portfolio:read onramp:read onramp:write premint:write"';
 
   it("lets a client connect and list every tool, personal ones included, without a token", async () => {
     enable();
@@ -260,7 +260,7 @@ describe("lazy sign-in on /mcp with Connect Fabrica on", () => {
     await withServer(async (base) => {
       const response = await post(`${base}/mcp`, { Authorization: `Bearer ${await token({ aud: "https://mcp-testnet.fabrica.land/mcp" })}` });
       expect(response.status).toBe(401);
-      expect(response.headers.get("www-authenticate")).toMatch(/^Bearer error="invalid_token", error_description="[^"]+", resource_metadata="https:\/\/mcp\.fabrica\.land\/\.well-known\/oauth-protected-resource\/mcp", scope="profile:read portfolio:read onramp:read"$/);
+      expect(response.headers.get("www-authenticate")).toMatch(/^Bearer error="invalid_token", error_description="[^"]+", resource_metadata="https:\/\/mcp\.fabrica\.land\/\.well-known\/oauth-protected-resource\/mcp", scope="profile:read portfolio:read onramp:read onramp:write premint:write"$/);
     });
   });
 
@@ -296,7 +296,7 @@ describe("lazy sign-in on /mcp with Connect Fabrica on", () => {
         expect(await response.json(), path).toEqual({
           resource: RESOURCE,
           authorization_servers: [mockBase],
-          scopes_supported: ["profile:read", "portfolio:read", "onramp:read"],
+          scopes_supported: ["profile:read", "portfolio:read", "onramp:read", "onramp:write", "premint:write"],
           bearer_methods_supported: ["header"],
           resource_name: "Fabrica",
           resource_documentation: "https://docs.fabrica.land/docs/ai-agents",
