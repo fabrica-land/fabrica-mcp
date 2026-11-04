@@ -62,7 +62,8 @@ ui/
     attention.ts      # what_needs_attention (signed in only; ranks items from the other personal reads plus fees and checks on up to 20 live properties)
     my-loans.ts       # get_my_loans (signed in only, portfolio:read; loans with live payoff, pool deposits valued at tick prices)
     offers.ts         # get_my_offers (signed in only, portfolio:read; public order data for the account's wallets)
-    onramps.ts        # get_my_properties_being_added, get_adding_status (signed in only, onramp:read)
+    onramps.ts        # get_my_properties_being_added, get_adding_status (signed in only, onramp:read); describeOnRamp and the county's questions with their answers
+    add-land.ts       # add_land, answer_adding_questions: start a property from a listing link, a parcel number or an address as the connected person (onramp:write), then the owner and the county's questions read from the record
     own-wallet.ts     # Signed in, fills wallet arguments from the account (omitted or "me"; portfolio:read); public reads otherwise unchanged; signerFor gives the sign request tools the account's wallets, and pickSigner (sign-requests.ts) picks the one that fits the action or asks when several do
     personal-view.ts  # Signed in, get_land_property and estimate_land_borrowing read the token with the user's token (uncached, issuer only) for personalized borrowing capacity; falls back to the public read
     inputs.ts         # zod pieces shared by the tools' input schemas (property reference, image size)
@@ -77,7 +78,8 @@ ui/
   # .github/workflows/refresh-knowledge.yml open the daily refresh pull request
   clients/
     graphql.ts        # Fabrica GraphQL API client (primary data source)
-    account.ts        # personal reads with the connected user's token (never cached, never on anonymous calls)
+    account.ts        # personal reads with the connected user's token (never cached, never on anonymous calls); the on-ramp start and patch writes (onramp:write)
+    listing-import.ts # the web app's listing import (POST /api/import-listing on fabrica.land), called with this server's key (FABRICA_LISTING_IMPORT_KEY)
     rpc.ts            # Ethereum JSON-RPC reads (transaction, receipt, block number) for get_transaction_status
     generated/        # operations.ts: one result type per gql document, from scripts/codegen.mjs (committed; yarn codegen)
     subgraph.ts       # Lending pool subgraph client (dynamic pool discovery)
@@ -247,6 +249,7 @@ Naming rule: "Property checks" is the name; the number is "the numeric encoding 
   - `FABRICA_MCP_APPS` (default: on for Sepolia, off for mainnet): the property card MCP App
   - `FABRICA_SIGN_REQUESTS` (default: on for Sepolia, off for mainnet): the sign-request tools (make_land_offer, list_land_for_sale, accept_land_offer, buy_land, cancel_land_order, get_sign_request, get_transaction_status)
   - `FABRICA_LIST_WHILE_ADDING` (default: on for both networks; `disabled` turns it off): lets list_land_for_sale prepare a listing of a property its owner is still adding to Fabrica (claimed, token not issued yet), as the web app's own list-for-sale dialog does; every other sign-request tool keeps refusing such a property. Separate from `FABRICA_SIGN_REQUESTS`, which still gates the sign-request tools as a whole
+  - `FABRICA_LISTING_IMPORT_KEY`: this server's key for the web app's listing import (`x-listing-import-key`), so listing reads are counted on the server's own hourly budget; without it the import is called as an ordinary caller
   - `KV_REST_API_URL` and `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`) with `SIGN_REQUEST_SECRET`: the sign-request store. On Vercel without them the sign-request tools report "not configured"; locally an in-process map is used
   - `FABRICA_RPC_URL` (default: publicnode for the network): JSON-RPC endpoint for get_transaction_status and the sign-request result check
   - `FABRICA_OAUTH` (default: off on both networks): Connect Fabrica. `enabled` lists the personal tools on `/mcp` and refuses a call to one without a token with 401 and an RFC 9728 challenge (lazy sign-in: the client asks the person to sign in and retries); a valid token on any request makes the session the person's own; `/.well-known/oauth-protected-resource[/mcp]` serves the metadata. Off, tokens are ignored, the metadata answers 404 and `/mcp` lists public tools only

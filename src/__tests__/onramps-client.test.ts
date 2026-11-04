@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getOnRampRecord, getOnRampsForWallet } from "../clients/account.js";
+import { getOnRampRecord, getOnRampsForWallet, patchOnRamp, startOnRamp } from "../clients/account.js";
 import type { AccountAuth } from "../auth/token.js";
 
 const AUTH: AccountAuth = { token: "secret-token", subject: "s", clientId: "c", scopes: ["onramp:read"], expiresAt: 4102444800 };
@@ -12,6 +12,11 @@ const OWNER_VIEW = {
   propertyId: "70310050",
   recipients: { "0x000000000000000000000000000000000000dEaD": "1" },
   collectedFields: { deedBook: "12", bad: 3 },
+  userProvidedFields: {
+    "Is the parcel improved?": { type: "select", options: ["Yes", "No"], required: true },
+    "Describe the improvements": { type: "textarea", requiredIf: { field: "Is the parcel improved?", value: "Yes" }, placeholder: "House, well..." },
+    broken: { options: [] },
+  },
   grantors: [
     { signerType: "entity", name: "Owner LLC", type: "LLC", signers: [] },
     { signerType: "concurrent", qualifier: "joint", signers: [{ signerType: "individual", firstName: "A", lastName: "B", fullName: "A B" }] },
@@ -56,5 +61,54 @@ describe("on-ramp reads", () => {
   it("maps a 403 to the missing grant", async () => {
     respond(403, { error: "insufficient_scope" });
     await expect(getOnRampRecord(AUTH, "11")).rejects.toThrow("onramp:read");
+  });
+
+  it("reads the county's questions in order, with their options and conditions", async () => {
+    respond(200, OWNER_VIEW);
+    const record = await getOnRampRecord(AUTH, "11");
+    expect(record?.questions).toEqual([
+      { key: "Is the parcel improved?", type: "select", options: ["Yes", "No"], required: true, requiredIf: null, placeholder: null },
+      { key: "Describe the improvements", type: "textarea", options: null, required: false, requiredIf: { field: "Is the parcel improved?", value: "Yes" }, placeholder: "House, well..." },
+    ]);
+  });
+});
+
+describe("on-ramp writes", () => {
+  const WRITE = { ...AUTH, scopes: ["onramp:write"] };
+  const start = { vendor: "regrid" as const, vendorId: "u", clientInput: "q", country: "US" as const, adminId: "08023", propertyId: "1", walletAddress: "0x000000000000000000000000000000000000dEaD" };
+
+  it("posts the start with the token and returns the owner's view", async () => {
+    respond(200, OWNER_VIEW);
+    const record = await startOnRamp(WRITE, start);
+    expect(record?.tokenId).toBe("11");
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toMatch(/\/on-ramp\/(ethereum|sepolia)\/0x[0-9a-fA-F]{40}$/);
+    expect(init?.method).toBe("POST");
+    expect(JSON.parse(String(init?.body))).toEqual(start);
+    expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer secret-token");
+  });
+
+  it("answers null for the non-owner view, and passes the API's refusal on", async () => {
+    respond(200, REDACTED_VIEW);
+    expect(await startOnRamp(WRITE, start)).toBeNull();
+    respond(429, { statusCode: 429, code: "oauth_onramp_daily_limit", message: "OAuth on-ramp starts are limited to 3 per account per UTC day" });
+    await expect(startOnRamp(WRITE, start)).rejects.toThrow(/limited to 3 per account/);
+    respond(403, { message: "verify this wallet on Fabrica first" });
+    await expect(startOnRamp(WRITE, start)).rejects.toThrow(/verify this wallet on Fabrica first/);
+    respond(403, {});
+    await expect(startOnRamp(WRITE, start)).rejects.toThrow(/onramp:write/);
+    respond(400, { message: ["media.0.source must be a URL"] });
+    await expect(startOnRamp(WRITE, start)).rejects.toThrow(/media\.0\.source/);
+  });
+
+  it("patches the record and reads the saved view back", async () => {
+    respond(200, OWNER_VIEW);
+    const record = await patchOnRamp(WRITE, "11", { collectedFields: { deedBook: "13" } });
+    expect(record.tokenId).toBe("11");
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toMatch(/\/on-ramp\/(ethereum|sepolia)\/0x[0-9a-fA-F]{40}\/11$/);
+    expect(init?.method).toBe("PATCH");
+    respond(200, REDACTED_VIEW);
+    await expect(patchOnRamp(WRITE, "11", { email: "a@b.co" })).rejects.toThrow(/does not understand/);
   });
 });

@@ -51,6 +51,12 @@ describe("find_us_parcel per-client limit", () => {
     expect(countFindParcelCalls({ ...call, params: { name: "find_us_parcel", arguments: { queries: ["a", "b", "c"] } } })).toBe(3);
     expect(countFindParcelCalls({ ...call, params: { name: "find_us_parcel", arguments: { queries: Array.from({ length: 50 }, () => "a") } } })).toBe(10);
     expect(countFindParcelCalls({ ...call, params: { name: "find_us_parcel", arguments: { queries: [] } } })).toBe(1);
+    // add_land runs the same lookup for a parcel number or an address, so it is metered the same way; a listing link is not.
+    expect(countFindParcelCalls({ ...call, params: { name: "add_land", arguments: { parcelNumber: "70310050", state: "CO", county: "Costilla" } } })).toBe(1);
+    expect(countFindParcelCalls({ ...call, params: { name: "add_land", arguments: { address: "1 Main St, Fort Garland, CO" } } })).toBe(1);
+    expect(countFindParcelCalls({ ...call, params: { name: "add_land", arguments: { listingUrl: "https://www.landwatch.com/lot/1" } } })).toBe(0);
+    expect(countFindParcelCalls({ ...call, params: { name: "add_land", arguments: { listingUrl: "https://www.landwatch.com/lot/1", address: "1 Main St" } } })).toBe(0);
+    expect(countFindParcelCalls({ ...call, params: { name: "add_land", arguments: {} } })).toBe(0);
   });
 
   it("answers 429 with a clear JSON-RPC error once the limit is spent", async () => {

@@ -51,19 +51,19 @@ describe("hosted HTTP transport", () => {
       "check_county_coverage",
       "get_fabrica_loan_book",
     ]));
-    expect(tools).toHaveLength(21);
+    expect(tools).toHaveLength(22);
     expect(client.getInstructions()).toContain("Network:");
     await client.close();
   });
 
-  it("marks every tool read-only with a title, as the Claude connectors directory requires", async () => {
+  it("marks every tool read-only with a title, as the Claude connectors directory requires (add_land writes)", async () => {
     const client = new Client({ name: "http-test", version: "0.0.0" });
     await client.connect(new StreamableHTTPClientTransport(new URL(url)));
     const { tools } = await client.listTools();
     for (const tool of tools) {
       expect(tool.title, tool.name).toBeTruthy();
       expect(tool.annotations?.title, tool.name).toBeTruthy();
-      expect(tool.annotations?.readOnlyHint, tool.name).toBe(true);
+      expect(tool.annotations?.readOnlyHint, tool.name).toBe(tool.name !== "add_land");
       expect(tool.annotations?.destructiveHint, tool.name).toBe(false);
       expect(tool.description ?? "", tool.name).not.toMatch(/\bMUST\b|—/);
     }
@@ -108,7 +108,7 @@ describe("hosted HTTP transport", () => {
       await client.connect(new StreamableHTTPClientTransport(new URL(url)));
       const { tools } = await client.listTools();
       expect(tools).toHaveLength(offTools.length + 9);
-      const prepareTools = ["make_land_offer", "list_land_for_sale", "accept_land_offer", "buy_land", "cancel_land_order", "borrow_against_land", "repay_loan_against_land"];
+      const prepareTools = ["make_land_offer", "list_land_for_sale", "accept_land_offer", "buy_land", "cancel_land_order", "borrow_against_land", "repay_loan_against_land", "add_land"];
       for (const tool of tools) {
         expect(tool.title, tool.name).toBeTruthy();
         expect(tool.annotations?.readOnlyHint, tool.name).toBe(!prepareTools.includes(tool.name));

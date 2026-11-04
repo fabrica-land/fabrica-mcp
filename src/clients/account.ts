@@ -82,6 +82,51 @@ async function accountFetch(auth: AccountAuth, path: string): Promise<Response> 
   }
 }
 
+/** The API's own message for a refused write (400, 403, 409, 429), when it gave one. */
+function apiMessage(body: unknown): string | null {
+  if (!isRecord(body)) return null;
+  const message = body.message;
+  if (typeof message === "string") return message.length > 0 && message.length <= 400 ? message : null;
+  if (Array.isArray(message)) {
+    const lines = message.filter((m): m is string => typeof m === "string").join("; ");
+    return lines.length > 0 && lines.length <= 400 ? lines : null;
+  }
+  return null;
+}
+
+/**
+ * A write to the Fabrica API as the connected person (the on-ramp routes under onramp:write). The
+ * API's refusal message is passed on when it gave one: it says what the person must do (verify the
+ * wallet, the daily limit, a record someone else is adding).
+ */
+async function accountSend(auth: AccountAuth, method: "POST" | "PATCH", path: string, body: unknown, scope: string): Promise<unknown> {
+  let response: Response;
+  try {
+    response = await fetch(`${apiBase()}${path}`, {
+      method,
+      headers: { Authorization: `Bearer ${auth.token}`, Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(ACCOUNT_TIMEOUT_MS),
+    });
+  } catch (error) {
+    if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
+      throw new AccountApiError(504, `Fabrica API did not respond within ${ACCOUNT_TIMEOUT_MS / 1000} s. Try again shortly.`);
+    }
+    throw new AccountApiError(502, "Fabrica API could not be reached. Try again shortly.");
+  }
+  const json: unknown = await response.json().catch(() => null);
+  if (response.ok) return json;
+  if (response.status === 401) throw refusal(401, scope);
+  const message = apiMessage(json);
+  if (response.status === 403) {
+    throw new AccountApiError(403, message ? `Fabrica refused this: ${message}.` : `This connection was not granted ${scope}. Reconnect Fabrica and approve it to do this.`);
+  }
+  if (response.status === 429) throw new AccountApiError(429, message ? `Fabrica refused this for now: ${message}.` : "Fabrica limits how many properties a connection can start adding per day. Try again tomorrow, or add it on fabrica.land.");
+  if (response.status === 409) throw new AccountApiError(409, message ? `Fabrica refused this: ${message}.` : "Someone else is already adding this property.");
+  if (response.status === 400 || response.status === 422) throw new AccountApiError(response.status, message ? `Fabrica did not accept this: ${message}.` : "Fabrica did not accept this request.");
+  throw refusal(response.status, scope);
+}
+
 function refusal(status: number, scope: string): AccountApiError {
   if (status === 401) return new AccountApiError(401, RECONNECT_MESSAGE);
   if (status === 403) return new AccountApiError(403, `This connection was not granted ${scope}. Reconnect Fabrica and approve it to read this.`);
@@ -122,6 +167,21 @@ export interface OnRampStep {
   userActions: OnRampUserAction[];
 }
 
+/**
+ * One question the county's rules ask the owner, as the API defines it for this property
+ * (userProvidedFields): the key is the question as shown, the type is an HTML input type.
+ */
+export interface OnRampQuestion {
+  key: string;
+  type: string;
+  /** For a select: the only answers accepted, verbatim. */
+  options: string[] | null;
+  required: boolean;
+  /** Required only when another question has this answer. */
+  requiredIf: { field: string; value: string } | null;
+  placeholder: string | null;
+}
+
 export interface OnRampGrantor {
   /** The individual's full name or the entity's legal name, as the owner entered it. */
   name: string;
@@ -143,6 +203,8 @@ export interface OnRampRecord {
   steps: OnRampStep[];
   collectedFields: Record<string, string>;
   grantors: OnRampGrantor[];
+  /** The county's own questions for this property, in the API's order. */
+  questions: OnRampQuestion[];
 }
 
 const STEP_STATUSES: ReadonlySet<string> = new Set(["not-started", "in-progress", "complete", "failed"]);
@@ -176,6 +238,20 @@ function parseStep(step: unknown): OnRampStep | null {
     completed: text(step.completed),
     userActions: actions,
   };
+}
+
+function parseQuestions(value: unknown): OnRampQuestion[] {
+  if (!isRecord(value)) return [];
+  const questions: OnRampQuestion[] = [];
+  for (const [key, field] of Object.entries(value)) {
+    if (!isRecord(field) || typeof field.type !== "string") continue;
+    const options = Array.isArray(field.options) ? field.options.filter((o): o is string => typeof o === "string") : null;
+    const requiredIf = isRecord(field.requiredIf) && typeof field.requiredIf.field === "string" && typeof field.requiredIf.value === "string"
+      ? { field: field.requiredIf.field, value: field.requiredIf.value }
+      : null;
+    questions.push({ key, type: field.type, options: field.type === "select" ? options ?? [] : null, required: field.required === true, requiredIf, placeholder: text(field.placeholder) });
+  }
+  return questions;
 }
 
 function parseGrantors(value: unknown): OnRampGrantor[] {
@@ -220,6 +296,7 @@ function parseOnRamp(body: unknown): OnRampRecord | null {
     steps: steps.sort((a, b) => a.order - b.order),
     collectedFields: collected,
     grantors: parseGrantors(body.grantors),
+    questions: parseQuestions(body.userProvidedFields),
   };
 }
 
@@ -247,4 +324,51 @@ export async function getOnRampRecord(auth: AccountAuth, tokenId: string): Promi
   if (response.status === 404) return null;
   if (!response.ok) throw refusal(response.status, "onramp:read");
   return parseOnRamp(await response.json().catch(() => null));
+}
+
+/** What a start sends: the parcel as the parcel service names it, and what the owner already has to say about it. */
+export interface OnRampStartBody {
+  vendor: "regrid";
+  vendorId: string;
+  clientInput: string;
+  country: "US";
+  /** The county's 5-digit FIPS. */
+  adminId: string;
+  /** The parcel number (APN). */
+  propertyId: string;
+  lat?: number;
+  lon?: number;
+  userDescription?: string;
+  media?: Array<{ source: string; type: "image" | "video"; order: string }>;
+  /** The connected person's verified wallet that will hold the property; the API checks it is theirs. */
+  walletAddress: string;
+  email?: string;
+}
+
+/** A refusal over a photo entry (the API names the media field in a 4xx): the start is retried without photos. */
+export function isMediaRefusal(error: unknown): boolean {
+  return error instanceof AccountApiError && error.status >= 400 && error.status < 500 && /\bmedia\b/i.test(error.message);
+}
+
+/**
+ * Start adding a property as the connected person (onramp:write). Null when the API answered with
+ * the non-owner view: the parcel is already being added by someone else.
+ */
+export async function startOnRamp(auth: AccountAuth, body: OnRampStartBody): Promise<OnRampRecord | null> {
+  const answer = await accountSend(auth, "POST", onRampPath(), body, "onramp:write");
+  return parseOnRamp(answer);
+}
+
+export interface OnRampPatchBody {
+  grantors?: unknown[];
+  collectedFields?: Record<string, string | null>;
+  email?: string;
+}
+
+/** Save the owner's details and answers on a property they are adding (onramp:write). */
+export async function patchOnRamp(auth: AccountAuth, tokenId: string, body: OnRampPatchBody): Promise<OnRampRecord> {
+  const answer = await accountSend(auth, "PATCH", `${onRampPath()}/${encodeURIComponent(tokenId)}`, body, "onramp:write");
+  const record = parseOnRamp(answer);
+  if (!record) throw new AccountApiError(502, UNREADABLE_ONRAMP);
+  return record;
 }

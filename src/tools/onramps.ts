@@ -7,6 +7,7 @@ import {
   getOnRampRecord,
   getOnRampsForWallet,
   type OnRampGrantor,
+  type OnRampQuestion,
   type OnRampRecord,
   type OnRampStep,
 } from "../clients/account.js";
@@ -91,6 +92,13 @@ export interface OnRampActionDetail {
   link: string | null;
 }
 
+/** One of the county's questions for this property, with the owner's answer so far. */
+export interface OnRampQuestionRow extends OnRampQuestion {
+  answer: string | null;
+  /** Required now: marked required, or its condition on another answer holds. */
+  requiredNow: boolean;
+}
+
 export interface OnRampStatusResult extends Partial<MyOnRampRow> {
   network: string;
   steps?: OnRampStepDetail[];
@@ -98,8 +106,40 @@ export interface OnRampStatusResult extends Partial<MyOnRampRow> {
   actions?: OnRampActionDetail[];
   /** What the owner entered so far: the owners named on the deed and the details asked by the county. */
   provided?: { owners: OnRampGrantor[]; details: Record<string, string> };
+  /** The questions the county's rules ask for this property, in order, with the answers so far. */
+  questions?: OnRampQuestionRow[];
   notes: string[];
   error?: string;
+}
+
+/** The county's questions with the answers so far; a dependent question is required once its condition holds. */
+export function questionRows(record: OnRampRecord): OnRampQuestionRow[] {
+  const answers = record.collectedFields;
+  return record.questions.map((question) => ({
+    ...question,
+    answer: answers[question.key]?.trim() ? answers[question.key] : null,
+    requiredNow: question.required || (question.requiredIf !== null && answers[question.requiredIf.field] === question.requiredIf.value),
+  }));
+}
+
+/** One record in full, as get_adding_status shows it, from a record already read. */
+export function describeOnRamp(record: OnRampRecord, liveTokenId: string | null): OnRampStatusResult {
+  const row = toRow(record, liveTokenId);
+  const current = currentStep(record, liveTokenId);
+  return {
+    network: NETWORK_LABEL,
+    ...row,
+    steps: visibleSteps(record).map((step) => ({
+      step: step.status === "complete" ? step.textCompleted : step.text,
+      status: step.status,
+      completedAt: step.completed,
+      expectedBy: step.expectedCompletion,
+    })),
+    actions: (current?.userActions ?? []).map((action) => ({ label: action.label, prompt: action.prompt, detail: action.detail, link: action.url })),
+    provided: { owners: record.grantors, details: record.collectedFields },
+    questions: questionRows(record),
+    notes: [],
+  };
 }
 
 export const getOnRampStatusInput = {
@@ -234,22 +274,7 @@ export async function getOnRampStatus(auth: AccountAuth, args: GetOnRampStatusAr
     if (!record) {
       return { network: NETWORK_LABEL, notes: [`Token ${args.tokenId} is not a property this account is adding to Fabrica. get_my_properties_being_added lists the ones it is.`] };
     }
-    const liveTokenId = await liveTokenOf(record);
-    const row = toRow(record, liveTokenId);
-    const current = currentStep(record, liveTokenId);
-    return {
-      network: NETWORK_LABEL,
-      ...row,
-      steps: visibleSteps(record).map((step) => ({
-        step: step.status === "complete" ? step.textCompleted : step.text,
-        status: step.status,
-        completedAt: step.completed,
-        expectedBy: step.expectedCompletion,
-      })),
-      actions: (current?.userActions ?? []).map((action) => ({ label: action.label, prompt: action.prompt, detail: action.detail, link: action.url })),
-      provided: { owners: record.grantors, details: record.collectedFields },
-      notes: [],
-    };
+    return describeOnRamp(record, await liveTokenOf(record));
   } catch (error) {
     if (error instanceof AccountApiError) return { network: NETWORK_LABEL, notes: [], error: error.message };
     throw error;

@@ -1,9 +1,9 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { ACCOUNT_TOOL_NAMES, createServer } from "./server.js";
+import { accountToolNames, createServer } from "./server.js";
 import { describeRequest, trackUsage } from "./usage-log.js";
 import { allowFindParcel, FIND_PARCEL_LIMIT_PER_MINUTE, MAX_BATCH_QUERIES } from "./tools/parcels.js";
-import { OAUTH_SCOPES, oauthEnabled, resourceMetadataUrl } from "./auth/config.js";
+import { oauthScopes, oauthEnabled, resourceMetadataUrl } from "./auth/config.js";
 import { checkAccessToken, type AccountAuth } from "./auth/token.js";
 
 /**
@@ -75,15 +75,25 @@ export function clientKey(req: IncomingMessage): string {
   return first || req.socket.remoteAddress || "unknown";
 }
 
-/** How many find_us_parcel lookups a JSON-RPC message or batch carries: one per call, or one per query in a list. */
+/**
+ * How many metered parcel lookups a JSON-RPC message or batch carries: one per find_us_parcel call,
+ * or one per query in a list, and one per add_land call that names a parcel number or an address
+ * (those run the same lookup; a listing link is read by the web app instead).
+ */
 export function countFindParcelCalls(body: unknown): number {
   const messages: unknown[] = Array.isArray(body) ? body : [body];
   return messages.reduce<number>((total, message) => {
     if (typeof message !== "object" || message === null
       || !("method" in message) || message.method !== "tools/call"
       || !("params" in message) || typeof message.params !== "object" || message.params === null
-      || !("name" in message.params) || message.params.name !== "find_us_parcel") return total;
+      || !("name" in message.params)) return total;
     const args = "arguments" in message.params ? message.params.arguments : undefined;
+    if (message.params.name === "add_land") {
+      const looksUp = typeof args === "object" && args !== null && !("listingUrl" in args && typeof args.listingUrl === "string")
+        && (("parcelNumber" in args && typeof args.parcelNumber === "string") || ("address" in args && typeof args.address === "string"));
+      return total + (looksUp ? 1 : 0);
+    }
+    if (message.params.name !== "find_us_parcel") return total;
     const queries = typeof args === "object" && args !== null && "queries" in args && Array.isArray(args.queries) ? args.queries.length : 0;
     // A list longer than the cap is refused by the input check, so it is counted at the cap.
     return total + Math.max(1, Math.min(queries, MAX_BATCH_QUERIES));
@@ -92,7 +102,7 @@ export function countFindParcelCalls(body: unknown): number {
 
 /** The RFC 6750 challenge: the protected resource metadata (RFC 9728) and the scopes the server accepts. */
 function challenge(error?: { code: string; description: string }): string {
-  const parts = [`resource_metadata="${resourceMetadataUrl()}"`, `scope="${OAUTH_SCOPES.join(" ")}"`];
+  const parts = [`resource_metadata="${resourceMetadataUrl()}"`, `scope="${oauthScopes().join(" ")}"`];
   if (error) parts.unshift(`error="${error.code}"`, `error_description="${error.description.replace(/["\\]/g, "")}"`);
   return `Bearer ${parts.join(", ")}`;
 }
@@ -105,15 +115,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-const ACCOUNT_TOOLS: ReadonlySet<string> = new Set(ACCOUNT_TOOL_NAMES);
+const accountTools = (): ReadonlySet<string> => new Set(accountToolNames());
 
 export function needsAccount(body: unknown): boolean {
   const messages: unknown[] = Array.isArray(body) ? body : [body];
   return messages.some((message) => {
     if (!isRecord(message) || message.method !== "tools/call" || !isRecord(message.params)) return false;
     const { name, arguments: args } = message.params;
-    if (typeof name === "string" && ACCOUNT_TOOLS.has(name)) return true;
+    if (typeof name === "string" && accountTools().has(name)) return true;
     if (!isRecord(args)) return false;
+    // Reading a listing spends the server's own import budget, so it is for signed-in people only.
+    if (name === "add_land" && typeof args.listingUrl === "string") return true;
     return OWN_WALLET_KEYS.some((key) => {
       const value = args[key];
       return typeof value === "string" && value.trim().toLowerCase() === "me";

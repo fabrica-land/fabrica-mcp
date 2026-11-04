@@ -45,6 +45,7 @@ import { oauthEnabled } from "./auth/config.js";
 import type { AccountWallet } from "./clients/account.js";
 import { getMyAccount, getMyProperties, getMyPropertiesInput } from "./tools/account.js";
 import { getMyOnRamps, getOnRampStatus, getOnRampStatusInput } from "./tools/onramps.js";
+import { addLand, addLandInput, answerAddingQuestions, answerQuestionsInput } from "./tools/add-land.js";
 import { getMyOffers, getMyOffersInput } from "./tools/offers.js";
 import { getMyLoans } from "./tools/my-loans.js";
 import { ATTENTION_TOKEN_BUDGET, whatNeedsAttention } from "./tools/attention.js";
@@ -64,6 +65,12 @@ export const POOL_SIGN_REQUEST_INSTRUCTIONS = " deposit_to_lending_pool and with
 
 /** The tools that read the connected person's own account. A call to one without a token is answered with the sign-in challenge (http.ts). */
 export const ACCOUNT_TOOL_NAMES = ["get_my_account", "get_my_properties", "get_my_offers", "get_my_loans", "what_needs_attention", "get_my_properties_being_added", "get_adding_status"] as const;
+/** The tools that only answer for the connected person: the personal reads, plus answer_adding_questions. */
+export function accountToolNames(): readonly string[] {
+  return [...ACCOUNT_TOOL_NAMES, "answer_adding_questions"];
+}
+
+export const ADD_LAND_INSTRUCTIONS = " add_land starts adding a property to Fabrica from a listing link on another website, a parcel number with its state and county, or a street address: it finds the parcel, and signed in with the add-property grant it creates the property's record as the connected person (with the listing's description and photos) and returns the questions the county asks for it; answer_adding_questions saves the owner named on the deed and the answers, and returns what is still open. The questions come from Fabrica's rules for that county and kind of owner, read from the record each time, so they are asked as returned, never assumed. Not signed in, add_land returns the link that opens the parcel on fabrica.land.";
 
 /** Added to the instructions while Connect Fabrica is on and the person has not signed in: the personal tools are listed, and calling one starts the sign-in. */
 export const SIGN_IN_INSTRUCTIONS = " The person has not connected their Fabrica account to this client yet, so every tool reads public data only and knows nothing about them. The personal tools (get_my_account, get_my_properties, get_my_offers, get_my_loans, get_my_properties_being_added, get_adding_status, what_needs_attention) read the connected person's own holdings, offers, loans and the properties they are adding. A call to one of them, or to get_land_portfolio, get_land_portfolio_map_image, get_land_activity or search_land (ownedBy) with 'me' as the wallet, is answered with a sign-in request: the client has the person sign in to Fabrica and approve read-only access, and the same call then runs. The server holds no wallet address for a person who has not signed in; the person's own wallet is known only through a personal tool or an address they give.";
@@ -163,7 +170,8 @@ export function createServer(hooks: ServerHooks = {}): McpServer {
       instructions: SERVER_INSTRUCTIONS
         + (signRequestsEnabled() ? SIGN_REQUEST_INSTRUCTIONS + (poolSignRequestsEnabled() ? POOL_SIGN_REQUEST_INSTRUCTIONS : "") : "")
         + (ownerActionsEnabled() ? OWNER_ACTION_INSTRUCTIONS : "")
-        + (hooks.account ? ACCOUNT_INSTRUCTIONS : oauthEnabled() ? SIGN_IN_INSTRUCTIONS : ""),
+        + (hooks.account ? ACCOUNT_INSTRUCTIONS : oauthEnabled() ? SIGN_IN_INSTRUCTIONS : "")
+        + ADD_LAND_INSTRUCTIONS,
     },
   );
 
@@ -442,6 +450,7 @@ export function createServer(hooks: ServerHooks = {}): McpServer {
   if (signRequestsEnabled()) registerSignRequestTools(server, hooks.account);
   // The personal tools are listed whenever Connect Fabrica is on, so an agent can call one and start the sign-in.
   if (hooks.account || oauthEnabled()) registerAccountTools(server, hooks.account);
+  registerAddLandTools(server, hooks.account);
   registerKnowledgeResources(server);
   registerPrompts(server);
   return server;
@@ -702,5 +711,34 @@ function registerAccountTools(server: McpServer, account?: AccountAuth): void {
       annotations: readOnly("Get where a property I'm adding stands"),
     },
     asUser((user, args) => getOnRampStatus(user, args)),
+  );
+}
+
+/** Acts as the connected person on their own record in the Fabrica API: creates or updates it, deletes nothing. */
+function actsForOwner(title: string, idempotent: boolean): ToolAnnotations {
+  return { title, readOnlyHint: false, destructiveHint: false, idempotentHint: idempotent, openWorldHint: true };
+}
+
+function registerAddLandTools(server: McpServer, account?: AccountAuth): void {
+  server.registerTool(
+    "add_land",
+    {
+      title: "Add a property to Fabrica",
+      description: `Start adding a property to Fabrica (${NETWORK_LABEL}) from one of: listingUrl, a listing page on another website (the web app reads it: title, price, acres, the seller's description, photos, parcel number, county and state, and names the parcel); parcelNumber with state and county; or address. Finds the parcel and whether it is already on Fabrica. Signed in with the add-property grant, it then creates the property's record as the connected person, held by their linked account (wallet picks one when several are linked), with the listing's description and photos, and returns where it stands: the steps, and the questions the county asks for this property. Next the owner is asked who holds title on the deed and those questions, and answer_adding_questions saves them. Starting the same parcel again returns the existing record. Not signed in, or without the grant, it returns links.addToFabrica, the fabrica.land page that adds the parcel. Nothing is signed, paid or recorded by this tool: the fee approval and the notarized signature happen on fabrica.land.`,
+      inputSchema: addLandInput,
+      annotations: actsForOwner("Add a property to Fabrica", true),
+    },
+    async (args) => jsonResult(await addLand(args, account)),
+  );
+  if (!account && !oauthEnabled()) return;
+  server.registerTool(
+    "answer_adding_questions",
+    {
+      title: "Answer the questions for a property I'm adding",
+      description: `Save, on a property the connected person is adding to Fabrica (${NETWORK_LABEL}), the owner named on the deed (owner: one person, an entity with the person who signs for it, or several people with how they hold title) and the answers to the county's questions (answers, keyed by the question exactly as add_land or get_adding_status lists it; a select takes one of its options verbatim). Returns the record as get_adding_status does, with the questions still open: the county's questions depend on the kind of owner, so after saving the owner they are read again from the answer. Needs the connection's add-property grant.`,
+      inputSchema: answerQuestionsInput,
+      annotations: actsForOwner("Answer the questions for a property I'm adding", false),
+    },
+    async (args) => (account ? jsonResult(await answerAddingQuestions(account, args)) : signInRequired()),
   );
 }
