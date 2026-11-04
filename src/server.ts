@@ -36,6 +36,7 @@ import {
 import { getTransactionStatus, getTransactionStatusInput } from "./tools/transactions.js";
 import { descriptionInput, DESCRIPTION_MAX, photosInput, transferInput, transferLand, trustInput, updateDescription, updatePhotos, updateTrustAgreement } from "./tools/owner-actions.js";
 import { borrowAgainstLand, borrowInput, getLoan, getLoanInput, repayInput, repayLandLoan } from "./tools/loans.js";
+import { depositInput, depositToPool, withdrawFromPool, withdrawInput } from "./tools/pool-lending.js";
 import { NETWORK_LABEL, IS_MAINNET, MAINNET_LEGAL_NOTICE } from "./config.js";
 import { PROPERTY_CARD_URI, registerPropertyCard } from "./ui/property-card.js";
 import { registerKnowledgeResources } from "./resources/knowledge.js";
@@ -57,6 +58,9 @@ export const SERVER_INSTRUCTIONS = `Fabrica MCP server: read-only access to toke
 
 /** Added to the instructions where the sign-request tools are on. */
 export const SIGN_REQUEST_INSTRUCTIONS = " make_land_offer, list_land_for_sale, accept_land_offer, buy_land and cancel_land_order prepare a marketplace action, and borrow_against_land and repay_loan_against_land a DeFi lending pool loan or its payoff, as a sign request: they check the live data and return a summary, warnings and a sign link to fabrica.land, where the person reviews and signs with their own wallet. The server holds no keys and submits nothing; a prepared request is not sent until the person signs. get_sign_request reports whether it was signed; get_transaction_status follows an onchain transaction.";
+
+/** Added after SIGN_REQUEST_INSTRUCTIONS where the lending pool's deposit and withdraw sign requests are on. */
+export const POOL_SIGN_REQUEST_INSTRUCTIONS = " deposit_to_lending_pool and withdraw_from_lending_pool prepare a deposit into, or a withdrawal from, a tick of the DeFi lending pool the same way, signed on the pool page of fabrica.land.";
 
 /** The tools that read the connected person's own account. A call to one without a token is answered with the sign-in challenge (http.ts). */
 export const ACCOUNT_TOOL_NAMES = ["get_my_account", "get_my_properties", "get_my_offers", "get_my_loans", "what_needs_attention", "get_my_properties_being_added", "get_adding_status"] as const;
@@ -88,6 +92,18 @@ export function ownerActionsEnabled(): boolean {
  */
 export function signRequestsEnabled(): boolean {
   const flag = process.env.FABRICA_SIGN_REQUESTS?.toLowerCase();
+  if (flag === "enabled") return true;
+  if (flag === "disabled") return false;
+  return !IS_MAINNET;
+}
+
+/**
+ * Deposit and withdraw sign requests ship testnet-first on top of the sign requests: on with them on
+ * Sepolia, and on mainnet only when FABRICA_POOL_SIGN_REQUESTS=enabled as well.
+ */
+export function poolSignRequestsEnabled(): boolean {
+  if (!signRequestsEnabled()) return false;
+  const flag = process.env.FABRICA_POOL_SIGN_REQUESTS?.toLowerCase();
   if (flag === "enabled") return true;
   if (flag === "disabled") return false;
   return !IS_MAINNET;
@@ -145,7 +161,7 @@ export function createServer(hooks: ServerHooks = {}): McpServer {
     },
     {
       instructions: SERVER_INSTRUCTIONS
-        + (signRequestsEnabled() ? SIGN_REQUEST_INSTRUCTIONS : "")
+        + (signRequestsEnabled() ? SIGN_REQUEST_INSTRUCTIONS + (poolSignRequestsEnabled() ? POOL_SIGN_REQUEST_INSTRUCTIONS : "") : "")
         + (ownerActionsEnabled() ? OWNER_ACTION_INSTRUCTIONS : "")
         + (hooks.account ? ACCOUNT_INSTRUCTIONS : oauthEnabled() ? SIGN_IN_INSTRUCTIONS : ""),
     },
@@ -562,11 +578,33 @@ function registerSignRequestTools(server: McpServer, account?: AccountAuth): voi
       withSigner(updatePhotos),
     );
   }
+  if (poolSignRequestsEnabled()) {
+    server.registerTool(
+      "deposit_to_lending_pool",
+      {
+        title: "Prepare a deposit into the lending pool",
+        description: `Prepare depositing amountUsd in USDC into one tick of the DeFi lending pool (${NETWORK_LABEL}). A tick sets the largest loan it funds (a share of a property's value, or a fixed dollar amount) and the longest loan length; with tick left out and several open, the answer lists them (ticks) so the person can choose. Interest is set by the pool, variable and not guaranteed, and deposits are at risk: a loan a borrower does not repay, and whose auction falls short, reduces the tick's value. A withdrawal is paid from funds the tick has not lent out; the rest waits until loans are repaid. ${SIGN_LINK_NOTE}${note}`,
+        inputSchema: input(depositInput),
+        annotations: prepares("Prepare a deposit into the lending pool"),
+      },
+      withSigner(depositToPool),
+    );
+    server.registerTool(
+      "withdraw_from_lending_pool",
+      {
+        title: "Prepare a withdrawal from the lending pool",
+        description: `Prepare withdrawing amountUsd (default: the whole position) from the wallet's deposit at one tick of the DeFi lending pool (${NETWORK_LABEL}). Checks first that the wallet has a deposit at the tick, read from the pool contract, and that the amount is within it, and warns when the tick has too few funds not lent out to pay all of it when signed: that part waits in the pool's withdrawal queue and is claimed later from the pool page. ${SIGN_LINK_NOTE}${note}`,
+        inputSchema: input(withdrawInput),
+        annotations: prepares("Prepare a withdrawal from the lending pool"),
+      },
+      withSigner(withdrawFromPool),
+    );
+  }
   server.registerTool(
     "get_sign_request",
     {
       title: "Get sign request status",
-      description: `Get a sign request a prepare tool returned (make_land_offer, list_land_for_sale, accept_land_offer, buy_land, cancel_land_order, borrow_against_land, repay_loan_against_land${ownerActionsEnabled() ? ", transfer_land, update_trust_agreement, update_land_description, update_land_photos" : ""}) by its id: pending or completed, with the order hash, transaction hash or loan id once signed. A pending request is also checked against the live order book, the property's loans for a borrow or payoff, or the property itself for an owner change. Requests expire 15 minutes after they are prepared; an expired id is reported as unknown.`,
+      description: `Get a sign request a prepare tool returned (make_land_offer, list_land_for_sale, accept_land_offer, buy_land, cancel_land_order, borrow_against_land, repay_loan_against_land${ownerActionsEnabled() ? ", transfer_land, update_trust_agreement, update_land_description, update_land_photos" : ""}${poolSignRequestsEnabled() ? ", deposit_to_lending_pool, withdraw_from_lending_pool" : ""}) by its id: pending or completed, with the order hash, transaction hash or loan id once signed. A pending request is also checked against the live order book, the property's loans for a borrow or payoff, the property itself for an owner change, or the pool's log for a deposit or withdrawal. Requests expire 15 minutes after they are prepared; an expired id is reported as unknown.`,
       inputSchema: getSignRequestInput,
       annotations: readOnly("Get sign request status"),
     },

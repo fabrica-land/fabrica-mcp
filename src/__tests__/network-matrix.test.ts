@@ -143,3 +143,26 @@ describe.each([
     await client.close();
   });
 });
+
+/** Deposit and withdraw sit behind their own flag on mainnet, on top of the sign requests' flag. */
+describe.each([
+  { network: "ethereum", signRequests: "enabled", pool: undefined, expected: false },
+  { network: "ethereum", signRequests: "enabled", pool: "enabled", expected: true },
+  { network: "ethereum", signRequests: undefined, pool: "enabled", expected: false },
+  { network: "sepolia", signRequests: undefined, pool: undefined, expected: true },
+  { network: "sepolia", signRequests: undefined, pool: "disabled", expected: false },
+])("lending pool sign requests on $network (sign requests $signRequests, pool $pool)", ({ network, signRequests, pool, expected }) => {
+  it(expected ? "lists deposit_to_lending_pool and withdraw_from_lending_pool" : "lists neither", async () => {
+    vi.stubEnv("FABRICA_NETWORK", network);
+    vi.stubEnv("FABRICA_SIGN_REQUESTS", signRequests);
+    vi.stubEnv("FABRICA_POOL_SIGN_REQUESTS", pool);
+    vi.resetModules();
+    const { createServer } = await import("../server.js");
+    const client = await connectedClient(createServer());
+    const names = (await client.listTools()).tools.map((tool) => tool.name);
+    expect(names.includes("deposit_to_lending_pool")).toBe(expected);
+    expect(names.includes("withdraw_from_lending_pool")).toBe(expected);
+    expect((client.getInstructions() ?? "").includes("deposit_to_lending_pool")).toBe(expected);
+    await client.close();
+  });
+});

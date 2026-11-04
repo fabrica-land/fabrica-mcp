@@ -244,7 +244,7 @@ export type GetDepositPoolsQueryVariables = Exact<{
 }>;
 
 
-export type GetDepositPoolsQuery = { poolLendingPools: { pools: Array<{ address: string, currencyToken: { symbol: string | null, decimals: number | null }, ticks: Array<{ raw: string, value: string, shares: string, redemptionPending: string }> }> } };
+export type GetDepositPoolsQuery = { poolLendingPools: { blockTimestamp: string | null, pools: Array<{ address: string, durations: Array<number>, currencyToken: { symbol: string | null, decimals: number | null }, ticks: Array<{ raw: string, value: string, shares: string, available: string, redemptionPending: string, accrued: string | null, accrualRate: string | null, accrualTimestamp: number | null }> }> } };
 
 export type GetPoolDepositsQueryVariables = Exact<{
   walletAddress: string;

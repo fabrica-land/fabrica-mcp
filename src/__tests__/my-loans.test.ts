@@ -43,7 +43,7 @@ beforeEach(() => {
   });
   vi.mocked(getWallet).mockReset().mockResolvedValue(wallet({ creditHistory: walletCreditHistory() }));
   vi.mocked(getDepositPools).mockReset().mockResolvedValue([
-    { address: POOL, currencyToken: { symbol: "USDC", decimals: 6 }, ticks: [{ raw: "42", value: String(1100n * E18), shares: String(1000n * E18), redemptionPending: "0" }] },
+    { address: POOL, currencyToken: { symbol: "USDC", decimals: 6 }, durations: [2592000], ticks: [{ raw: "42", value: String(1100n * E18), shares: String(1000n * E18), available: "0", redemptionPending: "0", accrued: null, accrualRate: null, accrualTimestamp: null }] },
   ]);
   vi.mocked(getPoolDeposits).mockReset().mockResolvedValue([
     { id: "0xd", tickRaw: "42", shares: String(100n * E18), depositedAmount: String(100n * E18), redemptions: [{ redemptionId: "1", shares: String(10n * E18) }] },
