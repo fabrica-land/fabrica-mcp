@@ -124,6 +124,43 @@ describe("hosted HTTP transport", () => {
     }
   });
 
+  it("keeps the owner actions off on mainnet with sign requests on, until FABRICA_OWNER_ACTIONS=enabled", async () => {
+    const owner = ["transfer_land", "update_trust_agreement", "update_land_description", "update_land_photos"];
+    const saved = { sign: process.env.FABRICA_SIGN_REQUESTS, owner: process.env.FABRICA_OWNER_ACTIONS };
+    const jargon = /\bpre-?mints?\b|\bmint(s|ed|ing)?\b|\bNFTs?\b|\btokenized\b|\bon-chain\b/i;
+    const names = async () => {
+      const client = new Client({ name: "http-test", version: "0.0.0" });
+      await client.connect(new StreamableHTTPClientTransport(new URL(url)));
+      const { tools } = await client.listTools();
+      const instructions = client.getInstructions() ?? "";
+      await client.close();
+      return { tools, instructions };
+    };
+    process.env.FABRICA_SIGN_REQUESTS = "enabled";
+    try {
+      const signOnly = await names();
+      expect(signOnly.tools.map((tool) => tool.name)).not.toEqual(expect.arrayContaining([owner[0]]));
+      process.env.FABRICA_OWNER_ACTIONS = "enabled";
+      const both = await names();
+      expect(both.tools).toHaveLength(signOnly.tools.length + 4);
+      for (const name of owner) {
+        const tool = both.tools.find((t) => t.name === name);
+        expect(tool, name).toBeDefined();
+        expect(tool?.annotations?.readOnlyHint, name).toBe(false);
+        expect(`${tool?.title} ${tool?.description}`, name).not.toMatch(jargon);
+        expect(tool?.description ?? "", name).not.toMatch(/\bMUST\b|—/);
+      }
+      expect(both.instructions).toContain("transfer_land");
+      process.env.FABRICA_SIGN_REQUESTS = "disabled";
+      expect((await names()).tools.map((tool) => tool.name)).not.toContain("transfer_land");
+    } finally {
+      for (const [key, value] of [["FABRICA_SIGN_REQUESTS", saved.sign], ["FABRICA_OWNER_ACTIONS", saved.owner]] as const) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
+  });
+
   it("keeps the property card off on mainnet unless FABRICA_MCP_APPS=enabled", async () => {
     const client = new Client({ name: "http-test", version: "0.0.0" });
     await client.connect(new StreamableHTTPClientTransport(new URL(url)));

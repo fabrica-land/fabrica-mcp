@@ -61,7 +61,7 @@ function token(holder: string, overrides: Partial<SignContextToken> = {}): SignC
   return {
     tokenId: "123", name: "1 Test Road", vanityName: null, propertyLink: "https://fabrica.land/property/ethereum/123",
     contractAddress: "0x5cbeb7A0df7Ed85D82a472FD56d81ed550f3Ea95", network: "ethereum", isPremint: false, claimState: null,
-    supersededByTokenId: null, offRampStatus: null, isBurned: false, supply: "1", supplyUnderLoan: "0", estimatedValue: "10000",
+    supersededByTokenId: null, offRampStatus: null, isBurned: false, supply: "1", supplyUnderLoan: "0", operatingAgreementName: "Trust v4.3", configurationUrl: "ipfs://QmConfigBefore", configuration: { userDescription: "Old text", media: [{ source: "ipfs://QmPhoto" }] }, estimatedValue: "10000",
     majorityOwnerAddress: holder, balances: [{ balance: "1", holder: { address: holder }, owner: { address: holder } }],
     marketplaceListings: [], marketplaceBids: [], ...overrides,
   };

@@ -16,6 +16,8 @@ const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 const HASH = /^0x[0-9a-fA-F]{64}$/;
 
 export const signRequestActions = ["make_land_offer", "list_land_for_sale", "accept_land_offer", "buy_land", "cancel_land_order", "borrow_against_land", "repay_loan_against_land",
+  // Owner actions: each one an onchain transaction on the property's token, signed by its holder.
+  "transfer_land", "update_trust_agreement", "update_land_description", "update_land_photos",
   // The repay tool's name before the loan tools were renamed. Records stored under it stay readable (and their MAC
   // valid) through the retention window; no new request uses it. Remove a day after the rename deploys.
   "repay_land_loan"] as const;
@@ -57,6 +59,20 @@ export const signRequestSchema = z.object({
     amountUsd: z.number().optional(),
     durationDays: z.number().int().optional(),
     loanId: z.string().optional(),
+  }).optional(),
+  // Owner actions: what changes, and the property's state when the request was made, so the
+  // change can be recognized once it lands. recipient: the transfer's destination wallet;
+  // description: the prepared text; before: the trust agreement name, configuration URL, description
+  // and photo sources beforehand.
+  owner: z.object({
+    recipient: z.string().regex(ADDRESS).optional(),
+    description: z.string().optional(),
+    before: z.object({
+      operatingAgreementName: z.string().nullable(),
+      configurationUrl: z.string().nullable(),
+      userDescription: z.string().nullable().optional(),
+      media: z.array(z.string()).optional(),
+    }),
   }).optional(),
   signLink: z.string(),
   summary: z.array(z.string()),

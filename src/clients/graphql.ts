@@ -544,6 +544,8 @@ const GET_SIGN_CONTEXT_QUERY = gql`
       tokenId name vanityName propertyLink contractAddress network
       isPremint claimState supersededByTokenId offRampStatus isBurned
       supply supplyUnderLoan estimatedValue majorityOwnerAddress
+      operatingAgreementName configurationUrl
+      configuration { userDescription media { source } }
       balances { balance holder { address } owner { address } }
       marketplaceListings { ...OrderBookOrderFields matchTransactionHash }
       marketplaceBids { ...OrderBookOrderFields matchTransactionHash }
