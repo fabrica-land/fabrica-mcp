@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
  * schema descriptions are copied verbatim from the live API and stay as they are.
  */
 
-const EXEMPT = [/^schema\//, /^src\/clients\/generated\//, /^package-lock\.json$/, /\.(png|jpe?g|ttf|woff2?)$/];
+const EXEMPT = [/^schema\//, /^src\/clients\/generated\//, /^yarn\.lock$/, /^\.yarn\/releases\//, /\.(png|jpe?g|ttf|woff2?)$/];
 const TRACKER_ID = /\b(?:P-)?(?:ENG|ASK)-\d+\b/;
 
 describe("public repository", () => {

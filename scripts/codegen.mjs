@@ -1,6 +1,6 @@
 // Operation result types for every document the client sends, generated from the schema
 // snapshot (schema/api-schema.graphql) and the gql documents in src/clients/graphql.ts.
-// Output: src/clients/generated/operations.ts (committed). Run `npm run codegen` after
+// Output: src/clients/generated/operations.ts (committed). Run `yarn codegen` after
 // changing a query or refreshing the schema; CI fails when the committed file is stale.
 //
 // This drives @graphql-codegen/core directly instead of @graphql-codegen/cli: the CLI's

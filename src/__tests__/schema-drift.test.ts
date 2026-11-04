@@ -12,7 +12,7 @@ import { API_DOCUMENTS } from "../clients/graphql.js";
  * a live API at run time fails whenever that API is down, CI has no egress, or the runner
  * sits behind a proxy — and a red suite for those reasons trains people to ignore it. A
  * snapshot also makes an upstream schema change show up as a reviewable diff in the PR
- * that accepts it. Refresh it with `npm run schema:refresh` (see scripts/refresh-api-schema.mjs).
+ * that accepts it. Refresh it with `yarn schema:refresh` (see scripts/refresh-api-schema.mjs).
  */
 const schema = buildSchema(
   readFileSync(new URL("../../schema/api-schema.graphql", import.meta.url), "utf8"),
