@@ -46,7 +46,7 @@ function makeDetailToken(overrides: Partial<TokenModel> = {}): TokenModel {
       holdingEntity: "Test Ranch Trust LLC",
       coordinates: { lat: 30.267, lon: -97.743 },
       geoJson: null,
-      offchainRegistrar: { admin: "Travis County", country: "US", propertyId: "0123456789" },
+      offchainRegistrar: { admin: "Travis County", adminId: "", country: "US", propertyId: "0123456789" },
     },
     ...overrides,
   });

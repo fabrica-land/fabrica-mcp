@@ -193,6 +193,7 @@ const TOKENS_LIST_FIELDS = gql`
     place
     country
     countryCode
+    definition { offchainRegistrar { admin adminId } }
     score
     estimatedValue
     cardDisplayValuation
@@ -324,7 +325,7 @@ const TOKEN_DETAIL_FIELDS = gql`
     balances { balance holder { address user { displayName } } tokenId }
     pricing { source scope currency value confidence timestamp }
     configuration { holdingEntityDate propertyNickName userDescription proofOfTitle { document documentName source } media { source type description order } }
-    definition { claim holdingEntity coordinates { lat lon } geoJson offchainRegistrar { admin country propertyId } }
+    definition { claim holdingEntity coordinates { lat lon } geoJson offchainRegistrar { admin adminId country propertyId } }
     loans {
       loanId loanStatus loanProvider loanType
       principalScaled currencySymbol
@@ -695,6 +696,7 @@ const GET_TAX_STATUS_QUERY = gql`
       isPremint
       district
       regionCode
+      definition { offchainRegistrar { admin adminId } }
       poolLendingLiquidity { appraisalBlockReason }
     }
   }
@@ -778,6 +780,7 @@ const WALLET_FIELDS = gql`
     }
     tokens {
       tokenId name vanityName acres region regionCode district
+      definition { offchainRegistrar { admin adminId } }
       estimatedValue score marketplacePrice
       supplyUnderLoan
     }
@@ -926,7 +929,7 @@ const LOAN_FIELDS = gql`
     maxRepaymentScaled
     borrower { address user { displayName } }
     lender { address user { displayName } }
-    token { tokenId name acres region regionCode district estimatedValue }
+    token { tokenId name acres region regionCode district definition { offchainRegistrar { admin adminId } } estimatedValue }
     collateralId collateralContract
     networkName
     amountPaidToLenderScaled loanRepaidDate loanLiquidationDate
@@ -1063,7 +1066,7 @@ const GET_PARCEL_INDEX_QUERY = gql`
       district
       place
       coordinates { lat lon }
-      definition { offchainRegistrar { admin propertyId } }
+      definition { offchainRegistrar { admin adminId propertyId } }
     }
   }
 `;

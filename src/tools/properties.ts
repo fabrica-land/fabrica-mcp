@@ -18,6 +18,7 @@ import { formatActivity, previousScores } from "./activity.js";
 import type { ActivityModel } from "../types/index.js";
 import { z } from "zod";
 import { type ArgsOf, propertyRefInputs } from "./inputs.js";
+import { tokenCounty } from "../county.js";
 
 /** USD when the API supplies a USD price; otherwise the native amount and currency, never a guessed "$". */
 function formatOrderPrice(usdPrice: string | null, price: string | null, symbol: string | null): string | null {
@@ -76,7 +77,7 @@ function tokenToSummary(token: TokenListItem, near?: { lat: number; lon: number 
     name: token.name ?? token.vanityName,
     location: {
       state: token.regionCode,
-      county: token.district,
+      county: tokenCounty(token),
       place: token.place,
       coordinates: token.coordinates ? [token.coordinates.lat, token.coordinates.lon] : null,
     },
@@ -120,7 +121,7 @@ function groupKey(t: TokenListItem, groupBy: GroupBy): string | null {
   const state = t.regionCode?.trim().toUpperCase() ?? "";
   if (!state) return null;
   if (groupBy === "state") return state;
-  const county = normalizeCounty(t.district);
+  const county = normalizeCounty(tokenCounty(t));
   return county ? `${state}|${county}` : null;
 }
 
@@ -142,7 +143,7 @@ export function groupTokens(tokens: ReadonlyArray<TokenListItem>, groupBy: Group
   }
   return [...groups.values()].map(members => {
     const fullState = mostCommon(members.map(t => t.region)) ?? stateName(members[0].regionCode);
-    const county = groupBy === "county" ? mostCommon(members.map(t => t.district)) : null;
+    const county = groupBy === "county" ? mostCommon(members.map(t => tokenCounty(t))) : null;
     const acres = members.reduce((sum, t) => sum + (Number.parseFloat(t.acres ?? "") || 0), 0);
     return {
       state: members[0].regionCode,
@@ -243,7 +244,7 @@ export async function searchProperties(args: SearchPropertiesArgs) {
     }
     if (county) {
       const wanted = normalizeCounty(county);
-      tokens = tokens.filter(t => normalizeCounty(t.district) === wanted);
+      tokens = tokens.filter(t => normalizeCounty(tokenCounty(t)) === wanted);
     }
     // The location page is named from the region/county matches, before other filters can empty the list.
     const locationTokens = tokens;
@@ -278,9 +279,9 @@ export async function searchProperties(args: SearchPropertiesArgs) {
     const total = tokens.length;
     // The page for the location asked about: names as the matches spell them, else from the filter.
     const states = new Set(locationTokens.map(t => t.regionCode?.toUpperCase()));
-    const counties = new Set(locationTokens.map(t => normalizeCounty(t.district)));
+    const counties = new Set(locationTokens.map(t => normalizeCounty(tokenCounty(t))));
     const linkState = region ? stateName(regionCode ?? region) ?? mostCommon(locationTokens.map(t => t.region)) : states.size === 1 ? mostCommon(locationTokens.map(t => t.region)) ?? stateName([...states][0]) : null;
-    const linkCounty = county ? mostCommon(locationTokens.map(t => t.district)) ?? `${county.trim().replace(/\s+county$/i, "")} County` : null;
+    const linkCounty = county ? mostCommon(locationTokens.map(t => tokenCounty(t))) ?? `${county.trim().replace(/\s+county$/i, "")} County` : null;
     const link = (region || county) && linkState && (!county || counties.size <= 1)
       ? { locationLink: locationLink({ state: linkState, county: linkCounty }) }
       : {};
@@ -475,7 +476,7 @@ export async function getProperty(args: GetPropertyArgs, as?: AccountAuth) {
         address: token.address,
         street: token.street,
         place: token.place,
-        district: token.district,
+        district: tokenCounty(token),
         region: token.region,
         regionCode: token.regionCode,
         postCode: token.postCode,
@@ -643,7 +644,7 @@ export async function getPropertyMap(args: GetPropertyMapArgs) {
               type: "Feature",
               properties: {
                 type: "county",
-                name: token.district,
+                name: tokenCounty(token),
                 fips,
               },
               geometry: countyData.geoJson,

@@ -6,6 +6,7 @@ import { US_COUNTY_ROWS } from "../data/us-counties.js";
 import { z } from "zod";
 import type { ArgsOf } from "./inputs.js";
 import { COVERAGE_AS_OF, coverageStatus, type CoverageStatus } from "./coverage.js";
+import { tokenCounty } from "../county.js";
 
 /**
  * find_us_parcel: any US address or parcel number to a parcel identity, whether it is
@@ -402,7 +403,7 @@ function indexCandidate(token: ParcelIndexToken): ParcelCandidate {
     place: [token.place, token.regionCode].filter(Boolean).join(", "),
     apn: registrar?.propertyId ?? null,
     state: token.regionCode?.toUpperCase() ?? null,
-    county: token.district ?? registrar?.admin ?? null,
+    county: tokenCounty(token),
     regridPath: null,
     onFabrica: toOnFabrica(token),
   };

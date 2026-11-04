@@ -3,6 +3,7 @@ import { formatLoanProvider } from "../labels.js";
 import { capList, estimateFields, formatTokenAmount, sortLoans, formatUsd, shortenAddress } from "../format.js";
 import { z } from "zod";
 import type { ArgsOf } from "./inputs.js";
+import { tokenCounty } from "../county.js";
 
 const DEFAULT_PROPERTY_LIMIT = 50;
 const MAX_PROPERTY_LIMIT = 200;
@@ -43,7 +44,7 @@ export async function getPortfolio(args: GetPortfolioArgs) {
     const properties = allTokens.slice(offset, offset + limit).map(t => ({
       tokenId: t.tokenId,
       name: t.name ?? t.vanityName,
-      location: { state: t.regionCode, county: t.district },
+      location: { state: t.regionCode, county: tokenCounty(t) },
       acres: t.acres ? parseFloat(t.acres) : null,
       ...estimateFields(t.estimatedValue),
       confidenceScore: t.score ?? null,
