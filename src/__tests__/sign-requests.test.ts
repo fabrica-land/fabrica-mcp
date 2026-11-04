@@ -343,6 +343,7 @@ describe("accept_land_offer, buy_land and cancel_land_order", () => {
     const result = await buy({ tokenId: "123", orderHash: HASH_A, wallet: BUYER });
     if (!("signRequest" in result)) throw new Error(JSON.stringify(result));
     expect(result.signRequest.kind).toBe("transaction");
+    expect(result.signRequest.signLink).toContain(`action=buy&order=${HASH_A}`);
     expect(result.signRequest.warnings.some(w => w.message.includes("Survey"))).toBe(true);
   });
 
@@ -472,7 +473,10 @@ describe("the sign page endpoints", () => {
 
   it("names the order for accept and cancel as orderId", () => {
     expect(signPageView(record({ action: "cancel_land_order", kind: "offchain", order: undefined, orderHash: HASH_A })).params).toEqual({ orderId: HASH_A });
-    expect(signPageView(record({ action: "buy_land", kind: "transaction", order: undefined, orderHash: HASH_A })).action).toBe("accept");
+    const buy = { action: "buy_land", kind: "transaction", order: undefined, orderHash: HASH_A } as const;
+    expect(signPageView(record({ ...buy, signLink: `https://fabrica.land/property/ethereum/123?action=buy&order=${HASH_A}` })).action).toBe("buy");
+    // A request made before buy links existed keeps the action its link carries.
+    expect(signPageView(record({ ...buy, signLink: `https://fabrica.land/property/ethereum/123?action=accept&order=${HASH_A}` })).action).toBe("accept");
   });
 
   it("records a checked result and refuses one that does not match", async () => {

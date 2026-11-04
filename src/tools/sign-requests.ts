@@ -418,7 +418,7 @@ export async function prepareBuy(args: WithSigner<OrderActionArgs>): Promise<Pre
       ...(IS_MAINNET ? ["The buyer becomes the holder of the beneficial interest in the trust that holds the land, with the obligations tied to it (property taxes among them)."] : []),
     ],
     warnings,
-    link: id => signLink(token.tokenId, { action: "accept", order: order.marketplaceId }, id),
+    link: id => signLink(token.tokenId, { action: "buy", order: order.marketplaceId }, id),
   };
 }
 
@@ -684,11 +684,13 @@ export async function getSignRequest({ id }: GetSignRequestArgs) {
 
 // --- the sign page's view (contract agreed with the sign page) ---
 
-const PAGE_ACTIONS: Record<SignRequest["action"], "offer" | "list" | "accept" | "cancel" | "borrow" | "repay" | "transfer" | "trust" | "describe" | "media" | "deposit" | "withdraw"> = {
+type PageAction = "offer" | "list" | "accept" | "buy" | "cancel" | "borrow" | "repay" | "transfer" | "trust" | "describe" | "media" | "deposit" | "withdraw";
+
+const PAGE_ACTIONS: Record<SignRequest["action"], PageAction> = {
   make_land_offer: "offer",
   list_land_for_sale: "list",
   accept_land_offer: "accept",
-  buy_land: "accept",
+  buy_land: "buy",
   cancel_land_order: "cancel",
   borrow_against_land: "borrow",
   repay_loan_against_land: "repay",
@@ -701,13 +703,22 @@ const PAGE_ACTIONS: Record<SignRequest["action"], "offer" | "list" | "accept" | 
   withdraw_from_lending_pool: "withdraw",
 };
 
+/**
+ * The Soil page action for a record. buy_land links used "accept" before Soil had "buy"; a record
+ * made then keeps "accept" so it still matches the link it was sent with. Remove a day after deploy.
+ */
+function pageAction(record: SignRequest): PageAction {
+  if (record.action === "buy_land" && /[?&]action=accept(&|$)/.test(record.signLink)) return "accept";
+  return PAGE_ACTIONS[record.action];
+}
+
 /** What GET /sign-requests/{id} returns: the sign page's shape, plus the tool name, kind, warnings, status and result. */
 export function signPageView(record: SignRequest) {
   const order = record.order;
   const orderExpiry = order ? new Date(Date.parse(record.createdAt) + order.durationDays * DAY_MS).toISOString() : undefined;
   return {
     id: record.id,
-    action: PAGE_ACTIONS[record.action],
+    action: pageAction(record),
     tool: record.action,
     kind: record.kind,
     network: record.network,
