@@ -34,6 +34,7 @@ import {
   orderActionInput,
 } from "./tools/sign-requests.js";
 import { getTransactionStatus, getTransactionStatusInput } from "./tools/transactions.js";
+import { descriptionInput, DESCRIPTION_MAX, photosInput, transferInput, transferLand, trustInput, updateDescription, updatePhotos, updateTrustAgreement } from "./tools/owner-actions.js";
 import { borrowAgainstLand, borrowInput, getLoan, getLoanInput, repayInput, repayLandLoan } from "./tools/loans.js";
 import { NETWORK_LABEL, IS_MAINNET, MAINNET_LEGAL_NOTICE } from "./config.js";
 import { PROPERTY_CARD_URI, registerPropertyCard } from "./ui/property-card.js";
@@ -65,6 +66,21 @@ export const SIGN_IN_INSTRUCTIONS = " The person has not connected their Fabrica
 
 /** Added to the instructions once the person has signed in. */
 export const ACCOUNT_INSTRUCTIONS = " The person connected their Fabrica account to this client. get_my_account reads that person's own account (email, linked accounts, verification status, and what the connection may read) get_my_properties lists their own properties, get_my_offers lists the offers they made and the ones waiting on their properties, get_my_loans lists their loans and pool deposits, get_my_properties_being_added and get_adding_status read the properties they are adding to Fabrica (each step, who acts next, and the link to do it), and what_needs_attention ranks everything waiting on them; every other tool reads public data only, except that get_land_portfolio and get_land_portfolio_map_image read the connected person's own wallet when address is left out, and get_land_activity (address) and search_land (ownedBy) take 'me' for it; get_land_property and estimate_land_borrowing are read as the connected person (borrowing capacity for them, and on get_land_property their adding status when they are adding that property); and the sign request tools, where on, take the connected account's wallet when wallet is left out. Personal data belongs to the connected person and is private to them.";
+
+export const OWNER_ACTION_INSTRUCTIONS = " transfer_land, update_trust_agreement, update_land_description and update_land_photos prepare an owner's change to a property they hold, as a sign request in the same way: moving it to another account linked to the owner's own login (final once confirmed), moving it to the latest trust agreement version, replacing its description, or opening its photo editor on the property page.";
+
+/**
+ * Owner actions (transfer, trust agreement, description, photos) ship testnet-first on their own
+ * flag, after sign requests: on by default on Sepolia, and on mainnet only when
+ * FABRICA_OWNER_ACTIONS=enabled. Off whenever sign requests are off.
+ */
+export function ownerActionsEnabled(): boolean {
+  if (!signRequestsEnabled()) return false;
+  const flag = process.env.FABRICA_OWNER_ACTIONS?.toLowerCase();
+  if (flag === "enabled") return true;
+  if (flag === "disabled") return false;
+  return !IS_MAINNET;
+}
 
 /**
  * Sign requests ship testnet-first: on by default on Sepolia, and on mainnet only
@@ -130,6 +146,7 @@ export function createServer(hooks: ServerHooks = {}): McpServer {
     {
       instructions: SERVER_INSTRUCTIONS
         + (signRequestsEnabled() ? SIGN_REQUEST_INSTRUCTIONS : "")
+        + (ownerActionsEnabled() ? OWNER_ACTION_INSTRUCTIONS : "")
         + (hooks.account ? ACCOUNT_INSTRUCTIONS : oauthEnabled() ? SIGN_IN_INSTRUCTIONS : ""),
     },
   );
@@ -503,11 +520,53 @@ function registerSignRequestTools(server: McpServer, account?: AccountAuth): voi
     },
     withSigner(repayLandLoan),
   );
+  if (ownerActionsEnabled()) {
+    server.registerTool(
+      "transfer_land",
+      {
+        title: "Prepare a property transfer",
+        description: `Prepare moving a whole property the wallet holds to another account of the same person on Fabrica (${NETWORK_LABEL}): recipient is the destination address, which must be an account linked to the owner's own Fabrica login (the sign page offers only those; a sale to someone else is list_land_for_sale or accept_land_offer). Checks first that the wallet holds the property outright, that it backs no loan, and that the recipient differs from the sender and, when signed in, is one of the account's linked wallets; warns about the wallet's open listings. A transfer is final once the transaction confirms. ${SIGN_LINK_NOTE}${note}`,
+        inputSchema: input(transferInput),
+        annotations: prepares("Prepare a property transfer"),
+      },
+      withSigner(transferLand),
+    );
+    server.registerTool(
+      "update_trust_agreement",
+      {
+        title: "Prepare a trust agreement update",
+        description: `Prepare moving a property to the latest version of the Fabrica trust agreement (${NETWORK_LABEL}). The trust agreement governs the trust that holds the land; the contract lets only a wallet holding at least 70% of the property change it. Checks first that the wallet holds that share and that the property backs no loan, and reports the version it is on now (get_land_trust_documents shows the text). The sign page shows the latest version's name and text and says when the property already uses it. Earlier versions are not offered. ${SIGN_LINK_NOTE}${note}`,
+        inputSchema: input(trustInput),
+        annotations: prepares("Prepare a trust agreement update"),
+      },
+      withSigner(updateTrustAgreement),
+    );
+    server.registerTool(
+      "update_land_description",
+      {
+        title: "Prepare a new property description",
+        description: `Prepare replacing a property's description with new plain text, up to ${DESCRIPTION_MAX} characters (${NETWORK_LABEL}). Checks first that the wallet holds at least 50% of the property (the contract's rule for this change), that the property backs no loan and that the text differs from the current one. The sign page opens the description editor with the text filled in, editable before saving; saving stores it and records it onchain. ${SIGN_LINK_NOTE}${note}`,
+        inputSchema: input(descriptionInput),
+        annotations: prepares("Prepare a new property description"),
+      },
+      withSigner(updateDescription),
+    );
+    server.registerTool(
+      "update_land_photos",
+      {
+        title: "Prepare a photo update",
+        description: `Prepare a link that opens a property's photo editor on its page (${NETWORK_LABEL}), where the owner adds, removes or reorders photos and videos from their own device and saves; files are not passed through this server. Checks first that the wallet holds at least 50% of the property and that it backs no loan, and reports how many photos it has now. ${SIGN_LINK_NOTE}${note}`,
+        inputSchema: input(photosInput),
+        annotations: prepares("Prepare a photo update"),
+      },
+      withSigner(updatePhotos),
+    );
+  }
   server.registerTool(
     "get_sign_request",
     {
       title: "Get sign request status",
-      description: "Get a sign request a prepare tool returned (make_land_offer, list_land_for_sale, accept_land_offer, buy_land, cancel_land_order, borrow_against_land, repay_loan_against_land) by its id: pending or completed, with the order hash, transaction hash or loan id once signed. A pending request is also checked against the live order book, or the property's loans for a borrow or payoff. Requests expire 15 minutes after they are prepared; an expired id is reported as unknown.",
+      description: `Get a sign request a prepare tool returned (make_land_offer, list_land_for_sale, accept_land_offer, buy_land, cancel_land_order, borrow_against_land, repay_loan_against_land${ownerActionsEnabled() ? ", transfer_land, update_trust_agreement, update_land_description, update_land_photos" : ""}) by its id: pending or completed, with the order hash, transaction hash or loan id once signed. A pending request is also checked against the live order book, the property's loans for a borrow or payoff, or the property itself for an owner change. Requests expire 15 minutes after they are prepared; an expired id is reported as unknown.`,
       inputSchema: getSignRequestInput,
       annotations: readOnly("Get sign request status"),
     },

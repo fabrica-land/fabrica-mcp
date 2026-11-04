@@ -112,6 +112,8 @@ On `mcp-testnet.fabrica.land` (and on mainnet only with `FABRICA_SIGN_REQUESTS=e
 
 Where the sign-request tools are on, `list_land_for_sale` also takes a property its owner is still adding to Fabrica (claimed, token not issued yet): the listing goes on the marketplace at once, buyers can send offers, and it becomes buyable when the token is issued, as the web app's own list-for-sale dialog does. The other sign-request tools keep refusing a property that is still being added.
 
+Owner actions follow the same pattern, on testnet first (on mainnet only with `FABRICA_OWNER_ACTIONS=enabled` as well): `transfer_land` moves a property the wallet holds outright to another account linked to the same Fabrica login (final once confirmed), `update_trust_agreement` moves it to the latest trust agreement version (the contract requires 70% of the property), `update_land_description` replaces its description with the prepared text, and `update_land_photos` opens its photo editor, where the owner picks files from their own device. Each checks that the wallet holds the share the contract requires and that the property backs no loan.
+
 Pending requests live in the server's own store (Vercel KV / Upstash Redis: `KV_REST_API_URL` and `KV_REST_API_TOKEN`, plus `SIGN_REQUEST_SECRET` for the records' HMAC). The sign link is `{web}/property/{network}/{tokenId}?action=…&request={id}`. The sign page reads the request at `GET /sign-requests/{id}` (410 once expired) and reports the outcome at `POST /sign-requests/{id}/result` with `{ orderHash }` or `{ transactionHash }`, which the server checks against the API or the chain before recording. Without a store the tools say they are not configured; locally (stdio) an in-process map is used.
 
 ### Knowledge layer

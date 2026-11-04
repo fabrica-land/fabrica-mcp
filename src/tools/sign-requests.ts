@@ -18,6 +18,7 @@ import {
 } from "../sign-requests/store.js";
 import { formatTokenAmount, hasEnded, isLiveOrder, relativeExpiry } from "./marketplace.js";
 import { type ArgsOf, propertyRefInputs } from "./inputs.js";
+import { isOwnerAction, observeOwner, verifyOwnerResult } from "./owner-actions.js";
 
 /** Orders are priced in USDC, which Fabrica counts one for one as dollars, with 6 decimals (as the web app builds them). */
 const CURRENCY = { symbol: "USDC", decimals: 6 } as const;
@@ -219,7 +220,7 @@ export async function issue(prepared: Prepared | Blocked) {
     },
     nextSteps: [
       `The person opens signLink in a browser, signs in to ${new URL(WEB_BASE).host} with wallet ${record.wallet}, reviews the dialog and signs. The link stays open for ${SIGN_REQUEST_TTL_SECONDS / 60} minutes (until ${record.expiresAt}).`,
-      `get_sign_request with id ${record.id} says whether it was signed; ${isLoanAction(record) ? "get_loan_against_land shows the loan" : "get_land_order_book shows the order"} once it is.`,
+      `get_sign_request with id ${record.id} says whether it was signed; ${isOwnerAction(record) ? "get_land_property shows the property" : isLoanAction(record) ? "get_loan_against_land shows the loan" : "get_land_order_book shows the order"} once it is.`,
     ],
   };
 }
@@ -566,6 +567,7 @@ export type SignResult = z.infer<typeof signResultSchema>;
  */
 export async function verifyResult(record: SignRequest, result: SignResult): Promise<{ ok: true; loanId?: string } | { ok: false; reason: string }> {
   if (isLoanAction(record)) return verifyLoanResult(record, result);
+  if (isOwnerAction(record)) return verifyOwnerResult(record, result);
   const token = await getSignContext({ tokenId: record.property.tokenId });
   if ("transactionHash" in result) {
     if (record.action !== "buy_land" && record.action !== "accept_land_offer") return { ok: false, reason: `A ${record.action} sign request completes with an order hash, not a transaction.` };
@@ -610,10 +612,14 @@ export async function getSignRequest({ id }: GetSignRequestArgs) {
   // An expired link can no longer be signed, so nothing that happens after it is this request's.
   if (record.status === "pending" && !expired) {
     try {
-      const seen = isLoanAction(record)
-        ? observeLoan(record, await getLoanContext({ tokenId: record.property.tokenId }))
-        : await observe(record, await getSignContext({ tokenId: record.property.tokenId }));
-      if (seen && (!("loanId" in seen) || await store.claimLoan(record, seen.loanId))) record = await store.complete(record, seen);
+      if (isOwnerAction(record)) {
+        if (observeOwner(record, await getSignContext({ tokenId: record.property.tokenId }))) record = await store.complete(record, {});
+      } else {
+        const seen = isLoanAction(record)
+          ? observeLoan(record, await getLoanContext({ tokenId: record.property.tokenId }))
+          : await observe(record, await getSignContext({ tokenId: record.property.tokenId }));
+        if (seen && (!("loanId" in seen) || await store.claimLoan(record, seen.loanId))) record = await store.complete(record, seen);
+      }
     } catch {
       // The order book check is best effort; the stored state still answers.
     }
@@ -630,12 +636,16 @@ export async function getSignRequest({ id }: GetSignRequestArgs) {
     expiresAt: record.expiresAt,
     ...(record.result ? { result: record.result } : {}),
     note: record.status === "completed"
-      ? isLoanAction(record)
+      ? isOwnerAction(record)
+        ? "Signed. get_land_property shows the property as it is now."
+        : isLoanAction(record)
         ? "Signed. get_loan_against_land shows the loan's state and payoff."
         : "Signed. get_land_order_book shows the order; a transaction hash can be followed with get_transaction_status."
       : expired
         ? `Expired unsigned: links stay open for ${SIGN_REQUEST_TTL_SECONDS / 60} minutes. Prepare a new one to continue.`
-        : isLoanAction(record)
+        : isOwnerAction(record)
+          ? "Not signed yet. The person has not finished on the sign page, or the change has not reached the API yet."
+          : isLoanAction(record)
           ? "Not signed yet. The person has not finished on the sign page, or the loan has not reached the API yet."
           : "Not signed yet. The person has not finished on the sign page, or the order has not reached the order book.",
   };
@@ -643,7 +653,7 @@ export async function getSignRequest({ id }: GetSignRequestArgs) {
 
 // --- the sign page's view (contract agreed with the sign page) ---
 
-const PAGE_ACTIONS: Record<SignRequest["action"], "offer" | "list" | "accept" | "cancel" | "borrow" | "repay"> = {
+const PAGE_ACTIONS: Record<SignRequest["action"], "offer" | "list" | "accept" | "cancel" | "borrow" | "repay" | "transfer" | "trust" | "describe" | "media"> = {
   make_land_offer: "offer",
   list_land_for_sale: "list",
   accept_land_offer: "accept",
@@ -652,6 +662,10 @@ const PAGE_ACTIONS: Record<SignRequest["action"], "offer" | "list" | "accept" | 
   borrow_against_land: "borrow",
   repay_loan_against_land: "repay",
   repay_land_loan: "repay",
+  transfer_land: "transfer",
+  update_trust_agreement: "trust",
+  update_land_description: "describe",
+  update_land_photos: "media",
 };
 
 /** What GET /sign-requests/{id} returns: the sign page's shape, plus the tool name, kind, warnings, status and result. */
@@ -676,6 +690,8 @@ export function signPageView(record: SignRequest) {
       ...(record.loan?.amountUsd !== undefined ? { amountUsd: record.loan.amountUsd } : {}),
       ...(record.loan?.durationDays !== undefined ? { durationDays: record.loan.durationDays } : {}),
       ...(record.loan?.loanId !== undefined ? { loanId: record.loan.loanId } : {}),
+      ...(record.owner?.recipient ? { recipient: record.owner.recipient } : {}),
+      ...(record.owner?.description !== undefined ? { description: record.owner.description } : {}),
     },
     summary: record.summary.join(" "),
     summaryLines: record.summary,
