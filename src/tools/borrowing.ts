@@ -48,7 +48,9 @@ export async function getBorrowQuote(args: GetBorrowQuoteArgs, as?: AccountAuth)
         borrower: shortenAddress(l.borrower?.address),
       }));
     }
-    const capacity = pool ? Number.parseFloat(pool.maxPrincipalScaled ?? "0") : 0;
+    // Rounded down to whole USDC, the amount the text and the card show, so a ceiling under 1 USDC
+    // reads as no capacity rather than "Up to 0 USDC".
+    const capacity = pool ? Math.floor(Number.parseFloat(pool.maxPrincipalScaled ?? "0")) : 0;
     const hasCapacity = pool !== null && pool !== undefined && Number.isFinite(capacity) && capacity > 0;
     if (pool && hasCapacity) {
       result.lendingPool = {

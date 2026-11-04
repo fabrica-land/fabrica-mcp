@@ -94,6 +94,7 @@ describe("sorting", () => {
   it("by price per acre reads the listing only", async () => {
     const result = await search({ sortBy: "pricePerAcre" });
     expect(ids(result)).toEqual(["williams", "kingman", "phoenix", "sedona"]);
+    expect(result).toMatchObject({ sortNote: expect.stringContaining("listing price per acre") });
   });
 
   it("by acres, estimated value and score", async () => {

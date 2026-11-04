@@ -176,6 +176,15 @@ describe("5. county polygon is opt-in", () => {
   });
 });
 
+describe("borrow capacity under 1 USDC", () => {
+  it("reads as no capacity, not as up to 0 USDC", async () => {
+    vi.mocked(getToken).mockResolvedValueOnce({ ...token, poolLendingLiquidity: poolLendingLiquidityWithOracle({ maxPrincipalScaled: "0.5", maxPrincipalUsdc: "500000", durations: [2592000], activeLoan: null }) });
+    const result = await getBorrowQuote({ tokenId: token.tokenId });
+    expect(JSON.stringify(result)).not.toContain("Up to 0 USDC");
+    expect(result).not.toMatchObject({ lendingPool: { available: true } });
+  });
+});
+
 describe("6. amounts with symbols, durations in days", () => {
   it("formats the borrow quote's pool durations and existing loan", async () => {
     const result = await getBorrowQuote({ tokenId: token.tokenId }) as { lendingPool: Record<string, unknown> };
