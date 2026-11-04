@@ -4,7 +4,7 @@
 // comes from MCP_REGISTRY_PRIVATE_KEY (PEM text, for CI) or the file at MCP_REGISTRY_KEY_PATH
 // (default ~/.config/mcp-registry/fabrica-land-ed25519.pem). It is never printed or committed.
 // Bump "version" in package.json and both server files first: the registry keeps every version
-// and refuses a version it already has. Usage: npm run registry:publish [-- --dry-run]
+// and refuses a version it already has. Usage: yarn registry:publish [--dry-run]
 import { createPrivateKey, sign } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";

@@ -36,7 +36,7 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22.23.4
-          cache: npm
+          cache: yarn
       - name: Check Node bundled CA roots
         shell: bash
         run: |
@@ -51,9 +51,9 @@ jobs:
           console.log(`node_roots=${rootCertificates.length} g3_sha256_count=${matches}`);
           process.exit(matches === 0 ? 0 : 1);
           NODE
-      - run: npm ci
-      - run: npm run codegen:check
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run build
-      - run: npm run build:vercel
+      - run: yarn install --immutable
+      - run: yarn codegen:check
+      - run: yarn typecheck
+      - run: yarn test
+      - run: yarn build
+      - run: yarn build:vercel

@@ -11,7 +11,7 @@
 //
 // Refreshed by hand when the rules change:
 //   git clone --depth 1 https://github.com/fabrica-land/fabrica-v3-rules ../fabrica-v3-rules
-//   npm run coverage:build -- --rules-dir ../fabrica-v3-rules
+//   yarn coverage:build --rules-dir ../fabrica-v3-rules
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -28,7 +28,7 @@ const PUBLIC_DOCUMENT = /^(proof-of-title|trust-certificate|jurisdiction-tax-for
 const args = process.argv.slice(2);
 const rulesDir = args.includes("--rules-dir") ? args[args.indexOf("--rules-dir") + 1] : process.env.ONRAMP_RULES_DIR;
 if (!rulesDir) {
-  console.error("Usage: npm run coverage:build -- --rules-dir <path to a fabrica-v3-rules checkout>");
+  console.error("Usage: yarn coverage:build --rules-dir <path to a fabrica-v3-rules checkout>");
   process.exit(1);
 }
 const usDir = path.join(rulesDir, "dist", "rules", "us");

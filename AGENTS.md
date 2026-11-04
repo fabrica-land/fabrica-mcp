@@ -29,7 +29,7 @@ src/
     token.ts          # access-token checks (ES256 JWT, issuer, audience, expiry, at+jwt) against the issuer's JWKS; never logged
   ui/property-card.ts # registers the property card MCP App resource (ui://fabrica/property-card)
   ui/generated/       # gitignored: HTML built from /ui by scripts/build-ui.mjs
-server.json, server.testnet.json # MCP Registry entries (land.fabrica/mcp, land.fabrica/mcp-testnet); npm run registry:publish
+server.json, server.testnet.json # MCP Registry entries (land.fabrica/mcp, land.fabrica/mcp-testnet); yarn registry:publish
 skills/fabrica/SKILL.md # Agent Skills file, served at /skill.md by scripts/build-vercel.mjs; keep it in step with the tools
 ui/
   property-card/      # the MCP App view (index.html template + app.ts), bundled with the
@@ -79,7 +79,7 @@ ui/
     graphql.ts        # Fabrica GraphQL API client (primary data source)
     account.ts        # personal reads with the connected user's token (never cached, never on anonymous calls)
     rpc.ts            # Ethereum JSON-RPC reads (transaction, receipt, block number) for get_transaction_status
-    generated/        # operations.ts: one result type per gql document, from scripts/codegen.mjs (committed; npm run codegen)
+    generated/        # operations.ts: one result type per gql document, from scripts/codegen.mjs (committed; yarn codegen)
     subgraph.ts       # Lending pool subgraph client (dynamic pool discovery)
     cache.ts          # Short-TTL read cache with in-flight de-duplication (TtlCache)
     budgets.ts        # Read budgets (loan page budget, MAX_LOANS)
@@ -233,7 +233,7 @@ Naming rule: "Property checks" is the name; the number is "the numeric encoding 
 
 - Strict TypeScript. No `any`. No `as` casts (tests included: a fixture is built by a typed helper, never `as never`).
 - Each tool exports its zod input shape next to its function (`searchPropertiesInput`) and takes `ArgsOf<typeof thatShape>` (`src/tools/inputs.ts`); `server.ts` registers the exported shape. The handler's parameter type and the schema the client sees come from one definition, so a tool never reads `args` as `Record<string, unknown>`.
-- API result types come from the queries: `npm run codegen` (`scripts/codegen.mjs`, driving `@graphql-codegen/core` directly so the toolchain stays on Node 20) regenerates `src/clients/generated/operations.ts` from `schema/api-schema.graphql` and the `gql` documents in `src/clients/graphql.ts`. Run it after changing a query or refreshing the schema and commit the result; CI fails on a stale file (`npm run codegen:check`). A field is in a type exactly when the query selects it, so a new field means adding it to the query, not to a hand-written interface.
+- API result types come from the queries: `yarn codegen` (`scripts/codegen.mjs`, driving `@graphql-codegen/core` directly so the toolchain stays on Node 20) regenerates `src/clients/generated/operations.ts` from `schema/api-schema.graphql` and the `gql` documents in `src/clients/graphql.ts`. Run it after changing a query or refreshing the schema and commit the result; CI fails on a stale file (`yarn codegen:check`). A field is in a type exactly when the query selects it, so a new field means adding it to the query, not to a hand-written interface.
 - Prefer `const` and immutable patterns.
 - Keep functions concise. No blank lines between statements inside functions.
 - Error handling: catch errors, return helpful messages, never throw raw errors.
@@ -257,15 +257,15 @@ Naming rule: "Property checks" is the name; the number is "the numeric encoding 
 
 ## Testing
 
-Run tests with `npm test` (vitest). Tests cover config, scoring, spam filtering, pool aggregation, legal notices, formatting, and input validation. Tests mock the GraphQL clients — no live API calls. `src/__tests__/schema-drift.test.ts` validates every document against the schema snapshot, and `npm run codegen:check` keeps the generated result types in step with them.
+Run tests with `yarn test` (vitest). Tests cover config, scoring, spam filtering, pool aggregation, legal notices, formatting, and input validation. Tests mock the GraphQL clients — no live API calls. `src/__tests__/schema-drift.test.ts` validates every document against the schema snapshot, and `yarn codegen:check` keeps the generated result types in step with them.
 
 ---
 
 ## Distribution
 
-**Hosted:** `https://mcp.fabrica.land/mcp` (mainnet) and `https://mcp-testnet.fabrica.land/mcp` (Sepolia). Two Vercel projects on this repo, each with `FABRICA_NETWORK` set in its environment; `npm run build:vercel` writes a Build Output API bundle (`.vercel/output`). Stateless: a fresh server and transport per POST, JSON responses, no sessions. Keep it that way unless a feature truly needs sessions.
+**Hosted:** `https://mcp.fabrica.land/mcp` (mainnet) and `https://mcp-testnet.fabrica.land/mcp` (Sepolia). Two Vercel projects on this repo, each with `FABRICA_NETWORK` set in its environment; `yarn build:vercel` writes a Build Output API bundle (`.vercel/output`). Stateless: a fresh server and transport per POST, JSON responses, no sessions. Keep it that way unless a feature truly needs sessions.
 
-**Local (unsupported, for development):** `npm install && npm run build`, then `node dist/index.js` (stdio). The package is not published to npm.
+**Local (unsupported, for development):** `yarn install && yarn build`, then `node dist/index.js` (stdio). The package is not published to npm.
 
 ---
 
@@ -274,7 +274,7 @@ Run tests with `npm test` (vitest). Tests cover config, scoring, spam filtering,
 | Source | What's There |
 |---|---|
 | https://docs.fabrica.land | User-facing concepts, trust structure, lending mechanics |
-| https://api.fabrica.land/graphql | The public GraphQL API (introspection enabled). `schema/api-schema.graphql` is a checked-in snapshot; refresh with `npm run schema:refresh` |
+| https://api.fabrica.land/graphql | The public GraphQL API (introspection enabled). `schema/api-schema.graphql` is a checked-in snapshot; refresh with `yarn schema:refresh` |
 | `fabrica-land/fabrica-v3-contracts` | The public Solidity smart contracts (ERC-1155): onchain data structures, view functions, events |
 | `fabrica-land/fabrica-connectors` | The trust agreement: trust structure, beneficiary rights. This server serves it as the `fabrica://legal/us-trust-agreement` resource |
 

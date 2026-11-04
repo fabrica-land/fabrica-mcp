@@ -4,3 +4,6 @@ dist/
 *.tgz
 .vercel/
 src/ui/generated/
+.yarn/*
+!.yarn/releases
+!.yarn/patches

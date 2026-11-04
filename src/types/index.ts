@@ -1,7 +1,7 @@
 // Types of what the Fabrica API returns to this server.
 //
 // Everything the GraphQL client reads is typed by the operation that fetches it: the types in
-// src/clients/generated/operations.ts are generated (npm run codegen) from the schema snapshot
+// src/clients/generated/operations.ts are generated (yarn codegen) from the schema snapshot
 // and the documents in src/clients/graphql.ts, so a field is in a type exactly when the query
 // selects it, with the schema's own nullability. The aliases below name those shapes the way
 // the tools talk about them. The hand-written types at the end cover the REST and subgraph

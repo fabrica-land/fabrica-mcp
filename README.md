@@ -54,13 +54,13 @@ Any other client that supports remote MCP servers (Streamable HTTP) works the sa
 
 ### Run locally (stdio)
 
-The hosted URLs above are the supported way to use the server; it is not published to npm. To run it on your own machine from source (Node 20 or later):
+The hosted URLs above are the supported way to use the server; it is not published to npm. To run it on your own machine from source (Node 20 or later; Yarn 4 is pinned in `.yarn/releases`, so any `yarn` on your PATH runs the right version):
 
 ```bash
 git clone https://github.com/fabrica-land/fabrica-mcp.git
 cd fabrica-mcp
-npm install
-npm run build
+yarn install
+yarn build
 claude mcp add fabrica -- node /absolute/path/to/fabrica-mcp/dist/index.js
 ```
 
@@ -89,7 +89,7 @@ Set `FABRICA_NETWORK=sepolia` in the server's environment for the testnet.
 | `get_land_portfolio_map_image` | Map image showing all properties owned by a wallet (inline, dark/light themes) |
 | `ask_fabrica` | Cited passages from Fabrica's docs, help center and the US trust agreement that answer a question about how Fabrica works |
 | `find_us_parcel` | Any US address or parcel number (APN) to a parcel: on Fabrica or not, and the link to add it; `queries` takes a list of up to 10 and returns a table. No owner names from parcel data; 30 lookups per minute per client, each query in a list counting as one |
-| `check_county_coverage` | Whether property in a US county (or state) can be added online, and what it asks the owner for. From a table of Fabrica's rules for adding property, dated and refreshed by hand (`npm run coverage:build`) |
+| `check_county_coverage` | Whether property in a US county (or state) can be added online, and what it asks the owner for. From a table of Fabrica's rules for adding property, dated and refreshed by hand (`yarn coverage:build`) |
 | `contact_fabrica_support` | Hand a question to Fabrica support: help center section, support email, and a prefilled mailto with the summary and property link. Sends nothing itself |
 
 ### Your account (sign-in)
@@ -125,9 +125,9 @@ Pending requests live in the server's own store (Vercel KV / Upstash Redis: `KV_
 The index lives at `src/knowledge/generated/index.json` and is committed, so deploys and tests never fetch the sources at runtime. Retrieval is BM25 over passage text with titles weighted in and a small synonym list for Fabrica's vocabulary; there is no model call and no external service. To rebuild after the sources change:
 
 ```bash
-npm run knowledge:build -- --docs-dir ../docs   # docs from a local checkout of fabrica-land/docs
-GITHUB_TOKEN=... npm run knowledge:build        # or read the docs repo through the GitHub API
-npm run knowledge:check                         # exit 1 when a source moved past its pin
+yarn knowledge:build --docs-dir ../docs  # docs from a local checkout of fabrica-land/docs
+GITHUB_TOKEN=... yarn knowledge:build   # or read the docs repo through the GitHub API
+yarn knowledge:check                    # exit 1 when a source moved past its pin
 ```
 
 Source pins (docs commit, help center sitemap fingerprint, trust agreement commit) are recorded in `knowledge/sources.json`. The build takes about 30 seconds and the index is under 1 MB.
@@ -232,17 +232,17 @@ All optional; sensible defaults are built in:
 
 ## Regression list
 
-`npm run regression` (mainnet) or `npm run regression -- sepolia` calls every tool on a hosted server with the case list in `scripts/regression/cases.json`: happy paths, edge cases and the wording of a miss. One line per case, exit code 1 on a failure. Run it after each release and before a directory submission.
+`yarn regression` (mainnet) or `yarn regression sepolia` calls every tool on a hosted server with the case list in `scripts/regression/cases.json`: happy paths, edge cases and the wording of a miss. One line per case, exit code 1 on a failure. Run it after each release and before a directory submission.
 
 ## Hosting
 
-The hosted servers run on Vercel from this repository: one Vercel project per network, both built with `npm run build:vercel` (see `vercel.json`), which emits a stateless Streamable HTTP function at `/mcp`, the sign-request endpoints at `/sign-requests`, the discovery documents at `/.well-known/`, and a landing page at `/`. Set `FABRICA_NETWORK` in each project's environment (`ethereum` or `sepolia`). The same handler (`src/http.ts`) can run behind any Node HTTP server.
+The hosted servers run on Vercel from this repository: one Vercel project per network, both built with `yarn build:vercel` (see `vercel.json`), which emits a stateless Streamable HTTP function at `/mcp`, the sign-request endpoints at `/sign-requests`, the discovery documents at `/.well-known/`, and a landing page at `/`. Set `FABRICA_NETWORK` in each project's environment (`ethereum` or `sepolia`). The same handler (`src/http.ts`) can run behind any Node HTTP server.
 
 ## MCP Registry
 
 Both hosts are listed in the official [MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=land.fabrica) as `land.fabrica/mcp` and `land.fabrica/mcp-testnet` (remote servers, no package). PulseMCP, Glama, the GitHub MCP registry and VS Code read from it. The entries live in `server.json` and `server.testnet.json`.
 
-To republish after a release: bump `version` in `package.json`, `src/server.ts` and both server files (a test keeps them equal), then run `npm run registry:publish` (`-- --dry-run` prints the entries). Before writing anything it checks both entries against the registry: a version already there with the same content is skipped, so a rerun after a partial publish finishes the job, and one with different content stops the run. The namespace is proven by the `v=MCPv1` TXT record on fabrica.land; the script reads the matching Ed25519 private key from `MCP_REGISTRY_PRIVATE_KEY` or `~/.config/mcp-registry/fabrica-land-ed25519.pem`.
+To republish after a release: bump `version` in `package.json`, `src/server.ts` and both server files (a test keeps them equal), then run `yarn registry:publish` (`--dry-run` prints the entries). Before writing anything it checks both entries against the registry: a version already there with the same content is skipped, so a rerun after a partial publish finishes the job, and one with different content stops the run. The namespace is proven by the `v=MCPv1` TXT record on fabrica.land; the script reads the matching Ed25519 private key from `MCP_REGISTRY_PRIVATE_KEY` or `~/.config/mcp-registry/fabrica-land-ed25519.pem`.
 
 ## Links
 

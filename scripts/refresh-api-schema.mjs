@@ -7,8 +7,8 @@
  * change: run this, then run the tests and fix whatever the diff broke.
  *
  * Usage:
- *   npm run schema:refresh                       # api.fabrica.land (public API)
- *   FABRICA_API_URL=<url> npm run schema:refresh
+ *   yarn schema:refresh                       # api.fabrica.land (public API)
+ *   FABRICA_API_URL=<url> yarn schema:refresh
  */
 import { writeFileSync } from "node:fs";
 import { buildClientSchema, getIntrospectionQuery, printSchema } from "graphql";

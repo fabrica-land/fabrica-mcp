@@ -94,7 +94,7 @@ No authentication. All data is public.
 > 7. "Is 1707 Jones St, San Francisco, CA on Fabrica, and can I add land in Coconino County, Arizona?" (find_us_parcel, check_county_coverage)
 > 8. "How does the Fabrica trust work? Then draft an email to Fabrica support asking for help adding my property." (ask_fabrica, contact_fabrica_support)
 
-Confirm you have run every tool yourself. Our record: `npm run regression` against the hosted mainnet server, 47/47 cases on 2026-10-19 after the tool renames, plus the card seen rendering in Claude on 2026-10-17.
+Confirm you have run every tool yourself. Our record: `yarn regression` against the hosted mainnet server, 47/47 cases on 2026-10-19 after the tool renames, plus the card seen rendering in Claude on 2026-10-17.
 
 ## Compliance (7 acknowledgments)
 

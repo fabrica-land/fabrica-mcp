@@ -59,7 +59,7 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22.23.4
-          cache: npm
+          cache: yarn
       - name: Check Node bundled CA roots
         shell: bash
         run: |
@@ -75,7 +75,7 @@ jobs:
           process.exit(matches === 0 ? 0 : 1);
           NODE
 
-      - run: npm ci
+      - run: yarn install --immutable
 
       - name: Keep the current index for the diff
         run: cp src/knowledge/generated/index.json /tmp/index-before.json
@@ -96,7 +96,7 @@ jobs:
 
       - name: Run the tests against the new index
         if: steps.changes.outputs.changed == 'true'
-        run: npm test
+        run: yarn test
 
       - name: Describe the change
         if: steps.changes.outputs.changed == 'true'
