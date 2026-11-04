@@ -16,12 +16,12 @@ vi.mock("../clients/rpc.js", () => ({
 }));
 
 import { getSignContext } from "../clients/graphql.js";
-import { getBlockTimestamp, getTransaction, getTransactionReceipt } from "../clients/rpc.js";
+import { getBlockTimestamp, getTransactionReceipt } from "../clients/rpc.js";
 import { holdsShare, observeOwner, transferLand, updateDescription, updatePhotos, updateTrustAgreement } from "../tools/owner-actions.js";
 import { getSignRequest, signPageView, verifyResult } from "../tools/sign-requests.js";
 import { MemoryBackend, setSignRequestStore, SignRequestStore, type SignRequest } from "../sign-requests/store.js";
 import type { AccountWallet } from "../clients/account.js";
-import type { RpcReceipt, RpcTransaction } from "../clients/rpc.js";
+import type { RpcReceipt } from "../clients/rpc.js";
 
 const NOW = Date.parse("2026-11-03T00:00:00Z");
 const OWNER = "0x2222222222222222222222222222222222222222";
@@ -46,7 +46,6 @@ function token(overrides: Partial<SignContextToken> = {}): SignContextToken {
 
 const wallet = (address: string): AccountWallet => ({ address, kind: "external" });
 const own = (...addresses: string[]): { own: AccountWallet[] } => ({ own: addresses.map(wallet) });
-const transaction = (overrides: Partial<RpcTransaction> = {}): RpcTransaction => ({ hash: TX, from: OWNER, to: CONTRACT, value: "0x0", blockNumber: "0x1", ...overrides });
 const receipt = (overrides: Partial<RpcReceipt> = {}): RpcReceipt => ({ status: "0x1", blockNumber: "0x1", gasUsed: "0x1", logs: [], ...overrides });
 
 let store: SignRequestStore;
@@ -171,24 +170,49 @@ describe("update_land_photos", () => {
   });
 });
 
+const CONFIG_EVENT = "0xb56c2e2e610c525cd60429993be20aab298f5bc84e28ad1a0b8eb2c2ca855920";
+const TRANSFER_EVENT = "0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62";
+const word = (value: bigint | number) => BigInt(value).toString(16).padStart(64, "0");
+const topic = (address: string) => `0x${address.slice(2).toLowerCase().padStart(64, "0")}`;
+const configLog = (tokenId = 123) => ({ address: CONTRACT, topics: [CONFIG_EVENT], data: `0x${word(tokenId)}${word(64)}` });
+const transferLog = (from: string, to: string, tokenId = 123) => ({ address: CONTRACT, topics: [TRANSFER_EVENT, topic(SECOND), topic(from), topic(to)], data: `0x${word(tokenId)}${word(1)}` });
+
 describe("verifyResult for owner actions", () => {
-  it("accepts a successful transaction to the token contract that made the change", async () => {
+  it("accepts a successful transaction whose receipt carries the change for this property", async () => {
     vi.mocked(getSignContext).mockResolvedValue(token());
     const record = await stored(await updatePhotos({ tokenId: "123", wallet: OWNER }));
-    vi.mocked(getTransaction).mockResolvedValue(transaction());
-    vi.mocked(getTransactionReceipt).mockResolvedValue(receipt());
+    vi.mocked(getTransactionReceipt).mockResolvedValue(receipt({ logs: [configLog()] }));
     vi.mocked(getBlockTimestamp).mockResolvedValue(NOW + 5_000);
     vi.mocked(getSignContext).mockResolvedValue(token({ configurationUrl: "ipfs://QmNew", configuration: { userDescription: "Old text", media: [] } }));
+    expect(await verifyResult(record, { transactionHash: TX })).toEqual({ ok: true });
+  });
+  it("refuses a transaction on the same contract for another property, or with no matching event", async () => {
+    vi.mocked(getSignContext).mockResolvedValue(token());
+    const record = await stored(await updatePhotos({ tokenId: "123", wallet: OWNER }));
+    vi.mocked(getBlockTimestamp).mockResolvedValue(NOW + 5_000);
+    vi.mocked(getSignContext).mockResolvedValue(token({ configurationUrl: "ipfs://QmNew", configuration: { userDescription: "Old text", media: [] } }));
+    vi.mocked(getTransactionReceipt).mockResolvedValue(receipt({ logs: [configLog(456)] }));
+    expect(await verifyResult(record, { transactionHash: TX })).toMatchObject({ ok: false });
+    vi.mocked(getTransactionReceipt).mockResolvedValue(receipt({ logs: [{ address: CONTRACT, topics: [TRANSFER_EVENT] }] }));
+    expect(await verifyResult(record, { transactionHash: TX })).toMatchObject({ ok: false });
+  });
+  it("matches a transfer's sender and recipient", async () => {
+    vi.mocked(getSignContext).mockResolvedValue(token());
+    const record = await stored(await transferLand({ tokenId: "123", recipient: SECOND, wallet: OWNER }));
+    vi.mocked(getBlockTimestamp).mockResolvedValue(NOW + 5_000);
+    vi.mocked(getSignContext).mockResolvedValue(token({ balances: [{ balance: "1", holder: { address: SECOND }, owner: { address: SECOND } }] }));
+    vi.mocked(getTransactionReceipt).mockResolvedValue(receipt({ logs: [transferLog(OWNER, STRANGER)] }));
+    expect(await verifyResult(record, { transactionHash: TX })).toMatchObject({ ok: false });
+    vi.mocked(getTransactionReceipt).mockResolvedValue(receipt({ logs: [transferLog(OWNER, SECOND)] }));
     expect(await verifyResult(record, { transactionHash: TX })).toEqual({ ok: true });
   });
   it("refuses an order hash, a failed transaction and one mined before the request", async () => {
     vi.mocked(getSignContext).mockResolvedValue(token());
     const record = await stored(await updatePhotos({ tokenId: "123", wallet: OWNER }));
     expect(await verifyResult(record, { orderHash: TX })).toMatchObject({ ok: false });
-    vi.mocked(getTransaction).mockResolvedValue(transaction());
-    vi.mocked(getTransactionReceipt).mockResolvedValue(receipt({ status: "0x0" }));
+    vi.mocked(getTransactionReceipt).mockResolvedValue(receipt({ status: "0x0", logs: [configLog()] }));
     expect(await verifyResult(record, { transactionHash: TX })).toMatchObject({ ok: false });
-    vi.mocked(getTransactionReceipt).mockResolvedValue(receipt());
+    vi.mocked(getTransactionReceipt).mockResolvedValue(receipt({ logs: [configLog()] }));
     vi.mocked(getBlockTimestamp).mockResolvedValue(NOW - 60_000);
     expect(await verifyResult(record, { transactionHash: TX })).toMatchObject({ ok: false });
   });

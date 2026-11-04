@@ -33,6 +33,7 @@ import { getAccountProfile, type AccountWallet } from "../clients/account.js";
 import type { AccountAuth } from "../auth/token.js";
 import { pickSigner, prepareAccept, prepareBuy, prepareCancel, prepareListing, prepareOffer } from "../tools/sign-requests.js";
 import { prepareBorrow, prepareRepay } from "../tools/loans.js";
+import { prepareTransfer } from "../tools/owner-actions.js";
 import { signerFor } from "../tools/own-wallet.js";
 import { PERSONALIZED_NOTE, readAsViewer } from "../tools/personal-view.js";
 
@@ -154,6 +155,20 @@ describe("sign requests from the connected account's wallets", () => {
   it("still checks a given address as before", async () => {
     vi.mocked(getSignContext).mockResolvedValue(token(EMBEDDED));
     expect(await prepareListing({ tokenId: "123", priceUsd: 12000, wallet: LINKED })).toMatchObject({ error: expect.stringContaining("does not hold") });
+  });
+});
+
+describe("transfers with an explicit signing wallet", () => {
+  it("still checks the recipient against the signed-in account's linked wallets", async () => {
+    vi.mocked(getSignContext).mockResolvedValue(token(EMBEDDED));
+    expect(await prepareTransfer({ tokenId: "123", recipient: STRANGER, wallet: EMBEDDED }, auth())).toMatchObject({ error: expect.stringContaining("not one of the accounts linked") });
+    expect(await prepareTransfer({ tokenId: "123", recipient: LINKED, wallet: EMBEDDED }, auth())).toMatchObject({ wallet: EMBEDDED, owner: { recipient: LINKED } });
+  });
+  it("falls back to a warning when the linked wallets cannot be read", async () => {
+    vi.mocked(getSignContext).mockResolvedValue(token(EMBEDDED));
+    const prepared = await prepareTransfer({ tokenId: "123", recipient: STRANGER, wallet: EMBEDDED }, auth([]));
+    expect(prepared).toMatchObject({ wallet: EMBEDDED, owner: { recipient: STRANGER } });
+    expect(prepared).toHaveProperty("warnings", expect.arrayContaining([expect.objectContaining({ message: expect.stringContaining("only offers accounts linked") })]));
   });
 });
 

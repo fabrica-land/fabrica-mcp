@@ -529,7 +529,7 @@ function registerSignRequestTools(server: McpServer, account?: AccountAuth): voi
         inputSchema: input(transferInput),
         annotations: prepares("Prepare a property transfer"),
       },
-      withSigner(transferLand),
+      withSigner(args => transferLand(args, account)),
     );
     server.registerTool(
       "update_trust_agreement",

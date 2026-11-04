@@ -3,13 +3,15 @@
 // dialog on fabrica.land. Each one ends in an onchain transaction on the property's token that the
 // holder signs with their own wallet. The server holds no key, signs nothing and submits nothing.
 import { z } from "zod";
+import type { AccountAuth } from "../auth/token.js";
 import { getSignContext } from "../clients/graphql.js";
-import { getBlockTimestamp, getTransaction, getTransactionReceipt } from "../clients/rpc.js";
+import { getBlockTimestamp, getTransactionReceipt } from "../clients/rpc.js";
 import { CONTRACTS, IS_MAINNET, NETWORK_LABEL } from "../config.js";
 import type { SignContextToken } from "../types/index.js";
 import type { SignRequest, SignRequestWarning } from "../sign-requests/store.js";
 import { type ArgsOf, propertyRefInputs } from "./inputs.js";
 import { isLiveOrder } from "./marketplace.js";
+import { getOwnWallets } from "./own-wallet.js";
 import {
   type Blocked,
   issue,
@@ -101,9 +103,21 @@ export const transferInput = {
 };
 export type TransferArgs = ArgsOf<typeof transferInput>;
 
-export async function prepareTransfer(args: WithSigner<TransferArgs>): Promise<Prepared | Blocked> {
-  const own = typeof args.wallet === "object" ? args.wallet.own : null;
-  const signer = own ? { own: own.filter(w => !same(w.address, args.recipient)) } : args.wallet;
+/**
+ * The signed-in account's linked wallets, which the sign page offers as recipients. Read even when
+ * the caller names the signing wallet itself; null when there is no account or they cannot be read,
+ * and then the request carries a warning instead of a check.
+ */
+async function linkedWallets(wallet: WithSigner<TransferArgs>["wallet"], account: AccountAuth | undefined): Promise<OwnWallets["own"] | null> {
+  if (typeof wallet === "object") return wallet.own;
+  if (!account) return null;
+  const own = await getOwnWallets(account);
+  return "error" in own ? null : own;
+}
+
+export async function prepareTransfer(args: WithSigner<TransferArgs>, account?: AccountAuth): Promise<Prepared | Blocked> {
+  const own = await linkedWallets(args.wallet, account);
+  const signer = typeof args.wallet === "object" ? { own: args.wallet.own.filter(w => !same(w.address, args.recipient)) } : args.wallet;
   const context = await ownerContext({ ...args, wallet: signer }, 100, "transfer it");
   if ("error" in context) return context;
   const { token, wallet, chosen } = context;
@@ -216,7 +230,7 @@ export async function preparePhotos(args: WithSigner<PhotosArgs>): Promise<Prepa
   };
 }
 
-export const transferLand = async (args: WithSigner<TransferArgs>) => issue(await prepareTransfer(args));
+export const transferLand = async (args: WithSigner<TransferArgs>, account?: AccountAuth) => issue(await prepareTransfer(args, account));
 export const updateTrustAgreement = async (args: WithSigner<TrustArgs>) => issue(await prepareTrustUpdate(args));
 export const updateDescription = async (args: WithSigner<DescriptionArgs>) => issue(await prepareDescription(args));
 export const updatePhotos = async (args: WithSigner<PhotosArgs>) => issue(await preparePhotos(args));
@@ -243,19 +257,48 @@ export function observeOwner(record: SignRequest, token: SignContextToken): bool
   }
 }
 
+/** The event each owner action's transaction emits from the token contract (FabricaToken.sol). */
+const ACTION_EVENTS: Partial<Record<SignRequest["action"], string>> = {
+  transfer_land: "0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62", // TransferSingle(address,address,address,uint256,uint256)
+  update_trust_agreement: "0x6b491e3cbe1a3d27a215d960a465834cf22a7e3e87ffe8be5724ab67f72583fb", // UpdateOperatingAgreement(uint256,string)
+  update_land_description: "0xb56c2e2e610c525cd60429993be20aab298f5bc84e28ad1a0b8eb2c2ca855920", // UpdateConfiguration(uint256,string)
+  update_land_photos: "0xb56c2e2e610c525cd60429993be20aab298f5bc84e28ad1a0b8eb2c2ca855920",
+};
+
+/** The 32-byte word at `index` of a log's data, as a number; null when the data is shorter. */
+function dataWord(data: string | undefined, index: number): bigint | null {
+  const word = (data ?? "").slice(2 + index * 64, 2 + (index + 1) * 64);
+  return /^[0-9a-fA-F]{64}$/.test(word) ? BigInt(`0x${word}`) : null;
+}
+
+function topicAddress(topic: string | undefined): string {
+  return `0x${(topic ?? "").slice(-40)}`;
+}
+
 /**
- * An owner result holds when the transaction succeeded, was sent by the request's wallet to the
- * property's token contract after the request was made, and the token shows the change.
+ * Whether a receipt log is this request's change: the action's event from the property's token
+ * contract, for its token ID, and for a transfer from the request's wallet to its recipient.
+ */
+function provesAction(record: SignRequest, contract: string, log: { address: string; topics?: string[]; data?: string }): boolean {
+  const topics = log.topics ?? [];
+  if (!same(log.address, contract) || topics[0]?.toLowerCase() !== ACTION_EVENTS[record.action]) return false;
+  // TransferSingle carries the token ID in data word 0 (after the indexed operator, from, to); the update events do too.
+  if (dataWord(log.data, 0) !== BigInt(record.property.tokenId)) return false;
+  if (record.action !== "transfer_land") return true;
+  return same(topicAddress(topics[2]), record.wallet) && !!record.owner?.recipient && same(topicAddress(topics[3]), record.owner.recipient);
+}
+
+/**
+ * An owner result holds when the transaction succeeded after the request was made, its receipt
+ * carries the action's event for this property (so a smart account sending through its entry point
+ * still counts, and an unrelated transaction on the same contract does not), and the token shows the change.
  */
 export async function verifyOwnerResult(record: SignRequest, result: { transactionHash: string } | { orderHash: string }): Promise<{ ok: true } | { ok: false; reason: string }> {
   if (!("transactionHash" in result)) return { ok: false, reason: `A ${record.action} sign request completes with a transaction, not an order hash.` };
-  const [transaction, receipt] = await Promise.all([getTransaction(result.transactionHash), getTransactionReceipt(result.transactionHash)]);
-  if (!transaction || receipt?.status !== "0x1") return { ok: false, reason: "The transaction did not succeed (yet)." };
-  // A smart account sends through its entry point, so the sender is checked by the token's state, not tx.from, when they differ.
+  const receipt = await getTransactionReceipt(result.transactionHash);
+  if (receipt?.status !== "0x1") return { ok: false, reason: "The transaction did not succeed (yet)." };
   const contract = record.property.contractAddress || CONTRACTS.fabricaToken;
-  const direct = same(transaction.from, record.wallet) && same(transaction.to, contract);
-  const touchesToken = (receipt.logs ?? []).some(log => same(log.address, contract));
-  if (!direct && !touchesToken) return { ok: false, reason: "The transaction was not sent to the property's token contract." };
+  if (!(receipt.logs ?? []).some(log => provesAction(record, contract, log))) return { ok: false, reason: "The transaction does not make this change to this property." };
   const minedAt = await getBlockTimestamp(receipt.blockNumber);
   if (minedAt === null || minedAt < Math.floor(Date.parse(record.createdAt) / 1000) * 1000) return { ok: false, reason: "The transaction was mined before this sign request was made." };
   const token = await getSignContext({ tokenId: record.property.tokenId });
