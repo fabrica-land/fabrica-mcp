@@ -3,6 +3,7 @@ import { MAINNET_WARNING } from "../config.js";
 import type { AppraisalBlockReason, ScoreRecord } from "../types/index.js";
 import { LENDING_POOL_NAME } from "../labels.js";
 import { type ArgsOf, propertyRefInputs } from "./inputs.js";
+import { tokenCounty } from "../county.js";
 
 const TAX_CHECK = "propertyTaxesCurrent";
 
@@ -125,7 +126,7 @@ export async function getTaxStatus(args: GetTaxStatusArgs) {
       ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
       tokenId: token.tokenId,
       name: token.name ?? token.vanityName,
-      county: token.district,
+      county: tokenCounty(token),
       state: token.regionCode,
       status: signals.status,
       basis: signals.basis,

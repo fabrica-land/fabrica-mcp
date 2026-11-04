@@ -78,7 +78,7 @@ const token = tokenDetailWithPoolOracle({
   supplyInDefault: "0",
   coordinates: { lat: 37.05, lon: -122.07 },
   geoJson: { type: "Point", coordinates: [-122.07, 37.05] },
-  definition: { claim: "Lot 1", holdingEntity: "Madrone Trust", geoJson: null, coordinates: { lat: 37.05, lon: -122.07 }, offchainRegistrar: { admin: "Santa Cruz County", country: "US", propertyId: "06087-123" } },
+  definition: { claim: "Lot 1", holdingEntity: "Madrone Trust", geoJson: null, coordinates: { lat: 37.05, lon: -122.07 }, offchainRegistrar: { admin: "Santa Cruz County", adminId: "", country: "US", propertyId: "06087-123" } },
   district: "Santa Cruz County",
   loans: [],
   poolLendingLiquidity: poolLendingLiquidityWithOracle({

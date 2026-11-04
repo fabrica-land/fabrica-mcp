@@ -22,6 +22,7 @@ function makeToken(blockReason: AppraisalBlockReason | null = null, overrides: P
     isPremint: false,
     district: "Taos County",
     regionCode: "NM",
+    definition: null,
     poolLendingLiquidity: { appraisalBlockReason: blockReason },
     ...overrides,
   };

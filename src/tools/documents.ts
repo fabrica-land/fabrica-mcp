@@ -4,6 +4,7 @@ import { IS_MAINNET, MAINNET_WARNING } from "../config.js";
 import { toGatewayUrl } from "./media.js";
 import { z } from "zod";
 import { type ArgsOf, propertyRefInputs } from "./inputs.js";
+import { tokenCounty } from "../county.js";
 
 const TRUST_NOTE = IS_MAINNET
   ? "The token represents the beneficial interest in this trust. The trustee is designated by the token holder and is, by default, the holder."
@@ -81,7 +82,7 @@ export async function getTrustDocuments(args: GetTrustDocumentsArgs) {
       parcel: {
         fips: registrar?.adminId || null,
         apn: registrar?.propertyId || null,
-        county: token.district ?? registrar?.admin ?? null,
+        county: tokenCounty(token),
         state: token.regionCode,
       },
       deed: proof ? {

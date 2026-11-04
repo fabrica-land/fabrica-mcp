@@ -10,14 +10,14 @@ vi.mock("../clients/graphql.js", () => ({
       propertyLink: "https://fabrica.land/us/california/san-francisco/russian-hill/1707-jones-st",
       regionCode: "CA",
       coordinates: { lat: 37.79697, lon: -122.415428 },
-      definition: { offchainRegistrar: { admin: "San Francisco", propertyId: "015-1010" } },
+      definition: { offchainRegistrar: { admin: "San Francisco", adminId: "", propertyId: "015-1010" } },
     },
     {
       tokenId: "42",
       name: "Somewhere in Hunt",
       regionCode: "TX",
       coordinates: { lat: 33.5, lon: -96.5 },
-      definition: { offchainRegistrar: { admin: "Hunt", propertyId: "99999" } },
+      definition: { offchainRegistrar: { admin: "Hunt", adminId: "", propertyId: "99999" } },
     },
   ]),
 }));
@@ -74,24 +74,24 @@ describe("find_us_parcel helpers", () => {
   it("matches a token by state, county and APN, ignoring punctuation", () => {
     const [hit] = parseTypeAhead([SF_HIT]);
     if (!hit) throw new Error("no hit");
-    const token = parcelToken({ tokenId: "1", regionCode: "CA", definition: { offchainRegistrar: { admin: "San Francisco", propertyId: "015-1010" } } });
+    const token = parcelToken({ tokenId: "1", regionCode: "CA", definition: { offchainRegistrar: { admin: "San Francisco", adminId: "", propertyId: "015-1010" } } });
     expect(matchByApn(hit, [token])?.tokenId).toBe("1");
     expect(matchByApn(hit, [{ ...token, regionCode: "NV" }])).toBeNull();
-    expect(matchByApn(hit, [{ ...token, definition: { offchainRegistrar: { admin: "Kern", propertyId: "0151010" } } }])).toBeNull();
+    expect(matchByApn(hit, [{ ...token, definition: { offchainRegistrar: { admin: "Kern", adminId: "", propertyId: "0151010" } } }])).toBeNull();
   });
 
   it("matches a FIPS-prefixed registrar parcel number, and never confuses a county with a same-named city", () => {
     const stLouisCity = { headline: "1 Main St", context: "St. Louis, MO", apn: "12-345", path: "/us/mo/st-louis/downtown/1", score: 90 };
     const stLouisCounty = { ...stLouisCity, path: "/us/mo/st-louis-county/clayton/1" };
-    const countyToken = parcelToken({ tokenId: "7", regionCode: "MO", definition: { offchainRegistrar: { admin: "St. Louis", propertyId: "29189-12-345" } } });
+    const countyToken = parcelToken({ tokenId: "7", regionCode: "MO", definition: { offchainRegistrar: { admin: "St. Louis", adminId: "", propertyId: "29189-12-345" } } });
     expect(matchByApn(stLouisCounty, [countyToken])?.tokenId).toBe("7");
     expect(matchByApn(stLouisCity, [countyToken])).toBeNull();
-    expect(matchByApn(stLouisCity, [{ ...countyToken, definition: { offchainRegistrar: { admin: "St. Louis City", propertyId: "12-345" } } }])?.tokenId).toBe("7");
+    expect(matchByApn(stLouisCity, [{ ...countyToken, definition: { offchainRegistrar: { admin: "St. Louis City", adminId: "", propertyId: "12-345" } } }])?.tokenId).toBe("7");
   });
 
   it("strips a five-digit prefix only when it is the parcel's county FIPS", () => {
     const hit = { headline: "1 Main St", context: "Clayton, MO", apn: "678", path: "/us/mo/st-louis-county/clayton/1", score: 90 };
-    const bare = parcelToken({ tokenId: "8", regionCode: "MO", definition: { offchainRegistrar: { admin: "St. Louis", propertyId: "12345-678" } } });
+    const bare = parcelToken({ tokenId: "8", regionCode: "MO", definition: { offchainRegistrar: { admin: "St. Louis", adminId: "", propertyId: "12345-678" } } });
     expect(matchByApn(hit, [bare])).toBeNull();
   });
 
@@ -367,7 +367,7 @@ describe("type-ahead fallback helpers", () => {
   });
 
   it("matches a registrar APN with or without its own county FIPS prefix", () => {
-    const tokens = [parcelToken({ tokenId: "la", name: "1 Elm St, Los Angeles, CA", regionCode: "CA", definition: { offchainRegistrar: { admin: "06037", propertyId: "06037-018-007" } } })];
+    const tokens = [parcelToken({ tokenId: "la", name: "1 Elm St, Los Angeles, CA", regionCode: "CA", definition: { offchainRegistrar: { admin: "06037", adminId: "", propertyId: "06037-018-007" } } })];
     expect(matchIndexByQuery("018-007", {}, tokens).map((t) => t.tokenId)).toEqual(["la"]);
     expect(matchIndexByQuery("06037-018-007", {}, tokens).map((t) => t.tokenId)).toEqual(["la"]);
     expect(matchIndexByQuery("018-007", { state: "CA", county: "Los Angeles" }, tokens).map((t) => t.tokenId)).toEqual(["la"]);

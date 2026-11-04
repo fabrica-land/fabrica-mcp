@@ -8,6 +8,7 @@ import { propertyStage, type PropertyStage } from "../lifecycle.js";
 import type { TokenListItem } from "../types/index.js";
 import type { ArgsOf } from "./inputs.js";
 import { isLiveOrder } from "./marketplace.js";
+import { tokenCounty } from "../county.js";
 
 /**
  * Personal tools: listed while Connect Fabrica is on and read with a token, where every request
@@ -135,7 +136,7 @@ function toRow(token: TokenListItem, offersWaiting: number | null): MyPropertyRo
   return {
     tokenId: token.tokenId,
     name: token.name ?? token.vanityName ?? null,
-    location: { state: token.regionCode ?? null, county: token.district ?? null },
+    location: { state: token.regionCode ?? null, county: tokenCounty(token) },
     acres: token.acres ? parseFloat(token.acres) : null,
     stage,
     status: OWNER_STATUS[stage],

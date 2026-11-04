@@ -7,6 +7,7 @@ import { formatTokenAmount, formatUsdOrNull, shortenAddress } from "../format.js
 import type { LoanModel, SubgraphPool } from "../types/index.js";
 import { z } from "zod";
 import type { ArgsOf } from "./inputs.js";
+import { tokenCounty } from "../county.js";
 
 const STABLECOINS = new Set(["USDC", "USDT", "DAI"]);
 const MONTHS_SHOWN = 12;
@@ -169,7 +170,7 @@ function collateral(loan: LoanModel) {
     tokenId: loan.collateralId,
     name: loan.token?.name ?? null,
     state: loan.token?.regionCode ?? null,
-    county: loan.token?.district ?? null,
+    county: tokenCounty(loan.token),
     acres: amount(loan.token?.acres),
     estimatedValueToday: formatUsdOrNull(loan.token?.estimatedValue),
     propertyLink: propertyLink(loan.collateralId),
