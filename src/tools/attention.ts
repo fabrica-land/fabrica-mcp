@@ -135,7 +135,8 @@ async function tokenItems(row: MyPropertyRow, token: TokenDetail, items: Attenti
   const tax = await loadTaxSignals(token);
   const taxWhy = taxSummary(tax.status, tax.checkedAt, token.isPremint, tax);
   if (tax.status === "delinquent") items.push({ ...base, kind: "check", title: `Property taxes on ${name} look past due`, why: `${taxWhy} The county treasurer holds the official record and takes payment.`, whoActs: "You" });
-  else if (tax.status === "unknown" && !tax.recordUnavailable && tax.basis !== "conflicting") items.push({ ...base, kind: "check", title: `Property taxes on ${name} are not verified`, why: taxWhy, whoActs: "Fabrica" });
+  // Conflicting signals are an item too: suppressing them would let the result read as an all-clear.
+  else if (tax.status === "unknown" && !tax.recordUnavailable) items.push({ ...base, kind: "check", title: tax.basis === "conflicting" ? `Property taxes on ${name} could not be confirmed right now` : `Property taxes on ${name} are not verified`, why: taxWhy, whoActs: "Fabrica" });
   // Cached from the tax read above; a failed read flags nothing.
   const record = tax.recordUnavailable ? null : await getScoreRecord(token.contractAddress, token.tokenId).catch(() => null);
   if (recordCheck(record, "feesInGoodStanding") === false) items.push({ ...base, kind: "check", title: `Fees on ${name} are not in good standing`, why: "A Fabrica fee on this property is unpaid.", whoActs: "You" });

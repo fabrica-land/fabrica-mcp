@@ -88,7 +88,10 @@ jobs:
       - name: Detect changes
         id: changes
         run: |
-          if git diff --quiet -- knowledge/sources.json src/knowledge/generated/index.json; then
+          # builtAt moves every day, so compare the index without it: an unchanged source
+          # must not open a refresh pull request.
+          same_index=$(node -e 'const fs=require("fs");const strip=(f)=>{const j=JSON.parse(fs.readFileSync(f,"utf8"));delete j.builtAt;return JSON.stringify(j)};process.stdout.write(String(strip(process.argv[1])===strip(process.argv[2])))' /tmp/index-before.json src/knowledge/generated/index.json)
+          if git diff --quiet -- knowledge/sources.json && [ "$same_index" = "true" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"

@@ -100,6 +100,13 @@ describe("what_needs_attention", () => {
     expect(titles).toEqual(["Property taxes on Lot 1 are not verified"]);
   });
 
+  it("lists taxes as unconfirmed, not an all-clear, when the tax check and the pool disagree", async () => {
+    vi.mocked(getToken).mockResolvedValue(tokenDetail({ tokenId: "1", score: 73242, scoringCheckResults: CHECKS_OK, poolLendingLiquidity: { appraisalBlockReason: "TAX_DELINQUENT", maxPrincipalScaled: "0", maxPrincipalUsdc: "0", durations: [], activeLoan: null } }));
+    const result = await whatNeedsAttention(AUTH);
+    expect(result.items.map((item) => item.title)).toEqual(["Property taxes on Lot 1 could not be confirmed right now"]);
+    expect(result.notes.join(" ")).not.toContain("Nothing is waiting");
+  });
+
   it("never gives an all-clear when the Property checks record cannot be read", async () => {
     vi.mocked(getScoreRecord).mockRejectedValue(new Error("API down"));
     const result = await whatNeedsAttention(AUTH);

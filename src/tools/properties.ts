@@ -290,7 +290,7 @@ export async function searchProperties(args: SearchPropertiesArgs) {
       : null;
     const sortDistanceWithoutNear = sortBy === "distance" && !near;
     const ordering: { sortedBy?: SortKey; sortDir?: "asc" | "desc"; distanceFrom?: { lat: number; lon: number; radiusMiles?: number }; distanceNote?: string; sortNote?: string } = sortBy && !groupBy && !sortDistanceWithoutNear
-      ? { sortedBy: sortBy, sortDir, ...(near ? { distanceFrom: { lat: near.lat, lon: near.lon, ...(near.radiusMiles !== undefined ? { radiusMiles: near.radiusMiles } : {}) }, distanceNote: "distanceMiles is the straight-line distance from the point, not driving distance." } : {}), ...(sortBy === "price" || sortBy === "pricePerAcre" ? { sortNote: "Sorted by the listing price; properties with no listing come last." } : {}) }
+      ? { sortedBy: sortBy, sortDir, ...(near ? { distanceFrom: { lat: near.lat, lon: near.lon, ...(near.radiusMiles !== undefined ? { radiusMiles: near.radiusMiles } : {}) }, distanceNote: "distanceMiles is the straight-line distance from the point, not driving distance." } : {}), ...(sortBy === "price" ? { sortNote: "Sorted by the listing price; properties with no listing come last." } : sortBy === "pricePerAcre" ? { sortNote: "Sorted by the listing price per acre (listing price over acres); properties with no listing come last." } : {}) }
       : sortDistanceWithoutNear ? { sortNote: "sortBy: distance needs near; rows are in the API's order." } : {};
     if (groupBy) {
       const groups = groupTokens(tokens, groupBy);

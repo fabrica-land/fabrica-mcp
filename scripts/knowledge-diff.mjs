@@ -22,6 +22,7 @@ function documents(index) {
   const byUrl = new Map();
   for (const passage of index.passages) {
     const entry = byUrl.get(passage.url) ?? { title: passage.title, source: passage.source, hash: createHash("sha256") };
+    if (!byUrl.has(passage.url)) entry.hash.update(passage.title ?? "").update("\n");
     entry.hash.update(passage.sectionTitle).update("\n").update(passage.text).update("\n");
     byUrl.set(passage.url, entry);
   }
