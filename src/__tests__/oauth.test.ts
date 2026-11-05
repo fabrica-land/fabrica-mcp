@@ -255,6 +255,33 @@ describe("lazy sign-in on /mcp with Connect Fabrica on", () => {
     });
   });
 
+  it("steps up a read-only token on a write tool with insufficient_scope, and lets one with the grant through", async () => {
+    enable();
+    await withServer(async (base) => {
+      const readOnly = { Authorization: `Bearer ${await token()}` };
+      for (const body of [CALL("answer_adding_questions", { tokenId: "1" }), CALL("add_land", { address: "1 Main St" }), JSON.stringify([JSON.parse(CALL("get_fabrica_stats")), JSON.parse(CALL("add_land", { listingUrl: "https://x.example/1" }))])]) {
+        const response = await postRaw(`${base}/mcp`, body, readOnly);
+        expect(response.status, body).toBe(403);
+        expect(response.headers.get("www-authenticate")).toBe(`Bearer error="insufficient_scope", error_description="This call needs the onramp:write grant.", resource_metadata="https://mcp.fabrica.land/.well-known/oauth-protected-resource/mcp", scope="profile:read portfolio:read onramp:read onramp:write premint:write"`);
+        expect(response.headers.get("cache-control")).toBe("no-store");
+        const json = await response.json();
+        expect(json.error.message).toContain("onramp:write");
+      }
+      // A read with the same token is not stepped up, and a token with the grant reaches the tool.
+      const read = await postRaw(`${base}/mcp`, CALL("get_fabrica_stats"), readOnly);
+      expect(read.status).toBe(200);
+      // A tool named after an Object.prototype member is an unknown tool, not a crash.
+      for (const name of ["toString", "constructor", "__proto__", "hasOwnProperty"]) {
+        const unknown = await postRaw(`${base}/mcp`, CALL(name), readOnly);
+        expect(unknown.status, name).toBe(200);
+        expect(unknown.headers.get("www-authenticate")).toBeNull();
+      }
+      const granted = await postRaw(`${base}/mcp`, CALL("answer_adding_questions", { tokenId: "1" }), { Authorization: `Bearer ${await token({ scope: "profile:read onramp:read onramp:write" })}` });
+      expect(granted.status).toBe(200);
+      expect(granted.headers.get("www-authenticate")).toBeNull();
+    });
+  });
+
   it("refuses an invalid token on /mcp with invalid_token, even for a public read", async () => {
     enable();
     await withServer(async (base) => {

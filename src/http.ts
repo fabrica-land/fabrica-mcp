@@ -3,7 +3,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { accountToolNames, createServer } from "./server.js";
 import { describeRequest, trackUsage } from "./usage-log.js";
 import { allowFindParcel, FIND_PARCEL_LIMIT_PER_MINUTE, MAX_BATCH_QUERIES } from "./tools/parcels.js";
-import { oauthScopes, oauthEnabled, resourceMetadataUrl } from "./auth/config.js";
+import { oauthScopes, oauthEnabled, resourceMetadataUrl, type OAuthScope } from "./auth/config.js";
 import { checkAccessToken, type AccountAuth } from "./auth/token.js";
 
 /**
@@ -133,6 +133,23 @@ export function needsAccount(body: unknown): boolean {
   });
 }
 
+/** The grant each write tool needs. A signed-in call without it is refused with 403 insufficient_scope (RFC 6750), which MCP clients answer by asking the person to approve the wider grant; a 401 would make them treat the token as invalid and sign in again instead. */
+const WRITE_TOOL_SCOPES: ReadonlyMap<string, readonly OAuthScope[]> = new Map([
+  ["add_land", ["onramp:write"]],
+  ["answer_adding_questions", ["onramp:write"]],
+]);
+
+/** The scopes a message or batch needs that the token does not carry, in the server's scope order. */
+export function missingScopes(body: unknown, auth: AccountAuth): OAuthScope[] {
+  const messages: unknown[] = Array.isArray(body) ? body : [body];
+  const needed = new Set<OAuthScope>();
+  for (const message of messages) {
+    if (!isRecord(message) || message.method !== "tools/call" || !isRecord(message.params) || typeof message.params.name !== "string") continue;
+    for (const scope of WRITE_TOOL_SCOPES.get(message.params.name) ?? []) if (!auth.scopes.includes(scope)) needed.add(scope);
+  }
+  return oauthScopes().filter((scope) => needed.has(scope));
+}
+
 type Gate = { ok: true; account?: AccountAuth } | { ok: false };
 
 /**
@@ -146,9 +163,19 @@ type Gate = { ok: true; account?: AccountAuth } | { ok: false };
 async function gate(req: McpHttpRequest, res: ServerResponse, body: unknown): Promise<Gate> {
   if (!oauthEnabled()) return { ok: true };
   const check = await checkAccessToken(req.headers.authorization);
-  if (check.ok) return { ok: true, account: check.auth };
   // A refusal depends on the Authorization header, so no cache may keep it.
   res.setHeader("Cache-Control", "no-store");
+  if (check.ok) {
+    const missing = missingScopes(body, check.auth);
+    if (missing.length === 0) {
+      res.removeHeader("Cache-Control");
+      return { ok: true, account: check.auth };
+    }
+    // RFC 6750 step-up: the grant is real but too narrow, so the client asks the person to approve the rest.
+    res.setHeader("WWW-Authenticate", challenge({ code: "insufficient_scope", description: `This call needs the ${missing.join(" ")} grant.` }));
+    sendJsonRpcError(res, 403, -32001, `This call needs a grant the connected Fabrica account has not approved (${missing.join(", ")}): have the person reconnect Fabrica in this client and approve adding a property, then call it again.`);
+    return { ok: false };
+  }
   if (check.reason === "unavailable") {
     sendJsonRpcError(res, 503, -32000, "Fabrica sign-in is temporarily unavailable. Retry shortly; public reads keep working without it.");
     return { ok: false };
