@@ -81,26 +81,48 @@ function htmlToText(html) {
     .trim();
 }
 
-/** Minimal YAML frontmatter reader: top-level scalar keys plus a few nested ones we use. */
+/**
+ * Minimal YAML frontmatter reader: top-level scalar keys plus one level of nesting, stored
+ * as "section.key". Folded (>, >-) and literal (|, |-) block scalars are read for any key,
+ * so `excerpt: >-` followed by indented lines yields the indented text, never ">-".
+ */
 function parseFrontmatter(markdown) {
   const match = markdown.match(/^---\n([\s\S]*?)\n---\n?/);
   if (!match) return { attributes: {}, body: markdown };
   const attributes = {};
   let section = null;
+  let block = null; // { key, indent, literal, lines }
+  const closeBlock = () => {
+    if (!block) return;
+    attributes[block.key] = (block.literal ? block.lines.join("\n") : block.lines.join(" ")).trim();
+    block = null;
+  };
+  const assign = (key, value, indent) => {
+    if (/^[>|][+-]?$/.test(value)) {
+      block = { key, indent, literal: value.startsWith("|"), lines: [] };
+      return;
+    }
+    if (value !== "") attributes[key] = value.replace(/^['"]|['"]$/g, "");
+  };
   for (const line of match[1].split("\n")) {
+    const indent = line.length - line.trimStart().length;
+    if (block) {
+      if (line.trim() === "" || indent > block.indent) {
+        block.lines.push(line.trim());
+        continue;
+      }
+      closeBlock();
+    }
     const top = line.match(/^([a-zA-Z_]+):\s*(.*)$/);
     if (top) {
       section = top[1];
-      if (top[2] !== "") attributes[top[1]] = top[2].replace(/^['"]|['"]$/g, "");
+      assign(top[1], top[2].trim(), 0);
       continue;
     }
-    const nested = line.match(/^\s+([a-zA-Z_]+):\s*(.*)$/);
-    if (nested && section) attributes[`${section}.${nested[1]}`] = nested[2].replace(/^['"]|['"]$/g, "");
-    const folded = line.match(/^\s+(\S.*)$/);
-    if (folded && !nested && section === "content" && attributes["content.excerpt"] !== undefined) {
-      attributes["content.excerpt"] = `${attributes["content.excerpt"]} ${folded[1]}`.trim();
-    }
+    const nested = line.match(/^(\s+)([a-zA-Z_]+):\s*(.*)$/);
+    if (nested && section) assign(`${section}.${nested[2]}`, nested[3].trim(), nested[1].length);
   }
+  closeBlock();
   return { attributes, body: markdown.slice(match[0].length) };
 }
 
@@ -176,18 +198,37 @@ function splitIntoPassages(text, pageTitle) {
     }
     if (chunk.trim()) passages.push({ sectionTitle: section.heading, text: chunk.trim() });
   }
-  // A fragment too short to retrieve on its own (a one-line clause, a signature block)
-  // is folded into its neighbour rather than dropped, so a document rebuilt from its
-  // passages is complete.
+  // A fragment too short to retrieve on its own (a one-line clause, a signature block, a
+  // page excerpt ahead of the first heading) is folded into its neighbour rather than
+  // dropped, so a document rebuilt from its passages is complete: into the passage before
+  // it, or, when it opens the document, into the passage after it.
+  const isFragment = (passage) => passage.text.replace(/\W/g, "").length < 40;
+  // Appends a passage to a running text, with its heading when the section changes from
+  // the last one appended.
+  const append = (text, lastTitle, passage) =>
+    `${text}\n\n${passage.sectionTitle !== lastTitle ? `## ${passage.sectionTitle}\n\n` : ""}${passage.text}`;
   const merged = [];
+  let leading = null; // { sectionTitle, lastTitle, text }
   for (const passage of passages) {
     const previous = merged[merged.length - 1];
-    if (passage.text.replace(/\W/g, "").length < 40 && previous) {
-      previous.text = `${previous.text}\n\n${passage.sectionTitle !== previous.sectionTitle ? `## ${passage.sectionTitle}\n\n` : ""}${passage.text}`;
+    if (isFragment(passage) && previous) {
+      previous.text = append(previous.text, previous.sectionTitle, passage);
+      continue;
+    }
+    if (!previous && isFragment(passage)) {
+      leading = leading
+        ? { ...leading, lastTitle: passage.sectionTitle, text: append(leading.text, leading.lastTitle, passage) }
+        : { sectionTitle: passage.sectionTitle, lastTitle: passage.sectionTitle, text: passage.text };
+      continue;
+    }
+    if (!previous && leading) {
+      merged.push({ sectionTitle: leading.sectionTitle, text: append(leading.text, leading.lastTitle, passage) });
+      leading = null;
       continue;
     }
     merged.push({ ...passage });
   }
+  if (leading) merged.push({ sectionTitle: leading.sectionTitle, text: leading.text });
   return merged;
 }
 
