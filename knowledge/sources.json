@@ -2,11 +2,11 @@
   "docs": {
     "repo": "fabrica-land/docs",
     "ref": "v3.0",
-    "pinned": "96463aac76064690867cc524b2f49ee3211aa969"
+    "pinned": "b6349f5fb90ae4a04a8e22e7ce88f71336e949e1"
   },
   "help": {
     "sitemap": "https://help.fabrica.land/sitemap.xml",
-    "pinned": "3aa1b76c6fd15e7797265afccf32c14b4679a31fd7922a189da26e4a59a78f0a"
+    "pinned": "eca10226c088310899140b98a0b64d203e5bddad1232688217bc80b1e99b7e46"
   },
   "trust-agreement": {
     "repo": "fabrica-land/fabrica-connectors",
