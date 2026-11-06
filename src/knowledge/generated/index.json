@@ -1,5 +1,5 @@
 {
- "builtAt": "2026-11-05",
+ "builtAt": "2026-11-06",
  "sources": {
   "docs": {
    "url": "https://docs.fabrica.land",
@@ -4871,7 +4871,7 @@
    "sectionTitle": "What does Fabrica cost?",
    "url": "https://help.fabrica.land/en/articles/3305355-what-does-fabrica-cost",
    "text": "Fabrica's fees are simple, and you will always see them in the app before you commit to anything. Here is the complete list.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:d0cd11c266e4",
@@ -4880,7 +4880,7 @@
    "sectionTitle": "Adding a property",
    "url": "https://help.fabrica.land/en/articles/3305355-what-does-fabrica-cost",
    "text": "There is no charge to add a property. You authorize a one-time setup fee (currently $500 for most areas, shown in the app before you authorize) that is collected only when you first sell the property, borrow against it, or use it in another app. It is waived if you remove the property without using it.\n\nThe fee covers what it takes to set your property up: online notarization, county recording, identity verification, and creating your digital ownership record. Authorizing it costs nothing today. You will see the full breakdown in the Setup fee dialog before you agree.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:93fbc2dcc317",
@@ -4889,7 +4889,7 @@
    "sectionTitle": "Selling",
    "url": "https://help.fabrica.land/en/articles/3305355-what-does-fabrica-cost",
    "text": "Fabrica charges 1% of the sale price, paid from the seller's proceeds. The buyer pays exactly the listed price.\n\nFor example: you list your property for $100,000. A buyer pays $100,000. Fabrica keeps $1,000 (1%), and you receive $99,000. The listing screen shows this exact breakdown, including \"On sale you'll receive:\", before you list.\n\nIf you have not yet sold the property, borrowed against it, or used it in another app, the deferred setup fee is collected at the same time.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:3e4d9f2b6f05",
@@ -4898,7 +4898,7 @@
    "sectionTitle": "Borrowing",
    "url": "https://help.fabrica.land/en/articles/3305355-what-does-fabrica-cost",
    "text": "Fabrica charges no origination fee on loans. Interest is set by the lending pool and shown before you confirm. The interest rate (\"Interest at X% APR\") and the You repay by amount on the borrow screen are exactly what you will owe. If you have not yet sold the property, borrowed against it, or used it in another app, the deferred setup fee is collected with your first loan.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:e932807c182c",
@@ -4907,7 +4907,7 @@
    "sectionTitle": "Removing a property",
    "url": "https://help.fabrica.land/en/articles/3305355-what-does-fabrica-cost",
    "text": "There is no platform fee to remove a property. Recording costs are handled through the process, and Fabrica guides you through it. If you never sold the property, borrowed against it, or used it in another app, the setup fee you authorized is waived.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:a2f38d9b4e9e",
@@ -4916,7 +4916,7 @@
    "sectionTitle": "Bank payments and cash outs",
    "url": "https://help.fabrica.land/en/articles/3305355-what-does-fabrica-cost",
    "text": "If you pay by bank transfer, card or wire, or cash out to your bank, the payment processor's fee is shown on the option before you confirm. Fabrica does not set it, and paying with the funds in your account has no processing fee.\n\nIf you have a question about a specific fee, message us through the chat bubble in the corner.\n\nLearn more: Fees in depth (https://docs.fabrica.land/docs/fees)",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:3f67f1610e95",
@@ -4925,7 +4925,7 @@
    "sectionTitle": "What is Fabrica?",
    "url": "https://help.fabrica.land/en/articles/8542384-what-is-fabrica",
    "text": "Fabrica lets you sell your land, or borrow against it, online. No months of paperwork, no waiting on closings. Once your property is set up on Fabrica, you can list it for sale, accept offers, or borrow against it, all online and without waiting on traditional processes.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:59df3fb88b68",
@@ -4934,7 +4934,7 @@
    "sectionTitle": "How it works, in one paragraph",
    "url": "https://help.fabrica.land/en/articles/8542384-what-is-fabrica",
    "text": "When you add a property, Fabrica helps you place it in its own legal trust. The trust holds the record title at the county, and a digital Property Token represents ownership of that trust. Transfer the token, and you transfer the property. You own your property through your own trust. You are the beneficiary, and by default you are also your own trustee. Fabrica never holds title to your property and cannot control it. Everything, including transfer, recovery, and removal, works even if Fabrica disappears.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:e0f6a40a5a40",
@@ -4943,7 +4943,7 @@
    "sectionTitle": "Is this legally real?",
    "url": "https://help.fabrica.land/en/articles/8542384-what-is-fabrica",
    "text": "Yes. Your deed is drafted, notarized, and recorded at the county, the same way any property transfer works. The trust structure is open source, so anyone can read exactly how it works. In California, Board of Equalization tax counsel stated in a 2022 informational analysis that \"a transfer of the digital Token is, in substance, a transfer of the underlying real property itself.\" That is a California property-tax view, not a legal ruling or a rule for every state, but it shows regulators taking the structure at face value.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:5b72d4bd4910",
@@ -4952,7 +4952,7 @@
    "sectionTitle": "What about the crypto part?",
    "url": "https://help.fabrica.land/en/articles/8542384-what-is-fabrica",
    "text": "You do not need to know anything about crypto to use Fabrica. You sign in with your email, and payments can go through your bank account. Behind the scenes, the Property Token lives on Ethereum, a public digital ledger, which is what makes it possible to sell right away or borrow against it.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:6edd7f59c695",
@@ -4961,7 +4961,7 @@
    "sectionTitle": "The track record",
    "url": "https://help.fabrica.land/en/articles/8542384-what-is-fabrica",
    "text": "Fabrica has been doing this for over 7 years. More than 580 property tokens have been minted onchain. Fabrica holds 20+ regulatory licenses. Fabrica has operations across all 50 states with varying degrees of functionality, with 3,000+ counties covered.\n\nFor an overview of Fabrica, the protocol and live properties, see about.fabrica.land (https://about.fabrica.land).",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:7038779aa62c",
@@ -4970,7 +4970,7 @@
    "sectionTitle": "What you can do on Fabrica",
    "url": "https://help.fabrica.land/en/articles/8542384-what-is-fabrica",
    "text": "- Sell. List your property for sale in US dollars and get paid when it sells.\n\n- Borrow. Take a loan against your property, funded by a DeFi lending pool, with the terms shown before you confirm.\n\n- Buy. Browse listed properties at fabrica.land (https://fabrica.land) and buy with your bank account or a crypto account.\n\n- Keep full ownership. Your rights, and your obligations like property taxes, stay exactly yours.\n\nOne thing to know before you start: Fabrica focuses on land, meaning vacant or raw parcels. If your property has structures on it, message us in the chat and tell us about your case.\n\nReady to try it? Go to fabrica.land/go (https://fabrica.land/go) and look up your parcel.\n\nIf you get stuck, message us any time through the chat bubble in the corner.\n\nLearn more: How Fabrica works, in depth (https://docs.fabrica.land/docs/getting-started) · The rise of onchain land (https://blog.fabrica.land/the-rise-of-onchain-land)",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:4abc0c22be41",
@@ -5132,7 +5132,7 @@
    "sectionTitle": "How do I verify a property before buying?",
    "url": "https://help.fabrica.land/en/articles/8542447-how-do-i-verify-a-property-before-buying",
    "text": "Every property page gives you tools to check what you are buying. Use them. Here is what each one tells you, and what it doesn't.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:5251055b2c96",
@@ -5141,7 +5141,7 @@
    "sectionTitle": "Property checks",
    "url": "https://help.fabrica.land/en/articles/8542447-how-do-i-verify-a-property-before-buying",
    "text": "The Property checks card lists what the checks found, grouped as \"Key checks\", \"Claims on the property\" and \"Good to know\". Among them: whether the deed is on file and recorded with the county, whether the county shows property taxes as paid, whether a lien records search found an open mortgage, whether anyone has reported the property as stolen, and whether the people who have held it verified their identity. Each check is titled by its result and names its source. A mortgage the owner took out shows as \"Mortgage on record\", a fact to know rather than a failure. A chip next to the property name sums up the result, and if the checks pause sales and loans, a banner at the top of the page says why. Property checks are a starting point for your own research, not a title search or title insurance. \"What are property checks?\" (https://help.fabrica.land/en/articles/16280935) explains every check.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:9e8a430b93ae",
@@ -5150,7 +5150,7 @@
    "sectionTitle": "The records",
    "url": "https://help.fabrica.land/en/articles/8542447-how-do-i-verify-a-property-before-buying",
    "text": "The Records card holds the property's legal record, one row each:\n\n- Legal description, the formal text that defines exactly which land is included. Open the row to read it in full.\n\n- Deed into the trust, the recorded deed that put the property into its trust, with its source. The deed's row opens the document itself.\n\n- The trust agreement, named after the property's trust, which sets out the owner's rights. The row opens the agreement, and you can download it.\n\n- The token's ID, with a link to view it on Etherscan, a public record of Ethereum activity.\n\nBelow the rows, the chips Property, Trust and Token point at how the three fit together: the deed puts the property into the trust, and ownership of the property goes with the token, through the trust.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:9938410ba87a",
@@ -5159,7 +5159,7 @@
    "sectionTitle": "Warning banners",
    "url": "https://help.fabrica.land/en/articles/8542447-how-do-i-verify-a-property-before-buying",
    "text": "If more than one Fabrica property makes a genuine claim on the same parcel (the same county parcel number and holding trust), you will see a clear warning card titled \"Important: 1 other claim on this parcel\" (or \"N other claims\"). It names the shared parcel number, says how many claims point at that piece of land, and reminds you that only one can hold the deed: as it puts it, \"Buy the wrong one and you may not own the land\". Its links take you to the legal description and to the Records card, so you can check the deed and the owner before you buy.\n\nYou will see this flag in more than one place: on the property page, as a \"Duplicate claim\" ribbon on the property's card in the marketplace, as a marker on the map, and again inside the Buy property window before you pay. Wherever it appears, take it seriously and confirm the deed and ownership before going further.\n\nA verified property is not flagged just because look-alike copies exist elsewhere. The warning is reserved for real competing claims, so when you do see it, it is worth your attention.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:3c2d06bad248",
@@ -5168,7 +5168,7 @@
    "sectionTitle": "Do I need a title company or title insurance?",
    "url": "https://help.fabrica.land/en/articles/8542447-how-do-i-verify-a-property-before-buying",
    "text": "Title insurance is not included by default, and there is no traditional closing with a title company when you buy on Fabrica. Property checks are a starting point for your own research, not a title search or title insurance. You decide what additional title research or insurance you need for your purchase.\n\nThe trust structure itself has been cleared for title insurance by First American (https://blog.fabrica.land/title-insurance-after-tokenization), one of the largest title insurers in the country, but that is not the same as a policy on a specific parcel. If you want title insurance for a specific purchase, message us in the chat and we will help you look into it.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:4c306720d9a9",
@@ -5177,7 +5177,7 @@
    "sectionTitle": "Do your own diligence",
    "url": "https://help.fabrica.land/en/articles/8542447-how-do-i-verify-a-property-before-buying",
    "text": "Fabrica is not a real-estate broker and does not advise on whether a price is fair. The estimated value shown in the Marketplace card is a starting point, not an appraisal. Check the county records, look at the land, and get professional advice where it matters to you.\n\nIf you have questions about a specific property, message us through the chat bubble in the corner.\n\nLearn more:\n\n- How Property checks are encoded (developer docs) (https://docs.fabrica.land/docs/confidence-scoring-system)\n\n- Title insurance after tokenization (blog) (https://blog.fabrica.land/title-insurance-after-tokenization)",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:eb039a402e0c",
@@ -5474,7 +5474,7 @@
    "sectionTitle": "Lending on Fabrica: how it works",
    "url": "https://help.fabrica.land/en/articles/8602894-lending-on-fabrica-how-it-works",
    "text": "You can fund land-backed loans on Fabrica. Pool deposits are available in the app for signed-in users holding USDC. Bank funding is not yet available. Email [email protected] or open the chat bubble in the corner if you want to talk it through first. Here is the model in plain terms.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:abd765e44994",
@@ -5483,7 +5483,7 @@
    "sectionTitle": "The model",
    "url": "https://help.fabrica.land/en/articles/8602894-lending-on-fabrica-how-it-works",
    "text": "Landowners on Fabrica borrow against their properties through a DeFi lending pool. A pool is a shared fund with its own automated rules: depositors put in USDC, a stablecoin (a digital dollar), and the pool lends it out against tokenized properties. Borrowers pay interest, and that interest goes to the pool's depositors. Fabrica is the platform, not the lender.\n\nEvery property backing a loan has been through Fabrica's onboarding: the deed sits in a recorded trust, title has been checked, fees must be in good standing, and property taxes must be verifiably current before the pool will lend. Loans are conservative by design, sized against the minimum of two independent valuation models.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:31eda012c7e3",
@@ -5492,7 +5492,7 @@
    "sectionTitle": "Why land",
    "url": "https://help.fabrica.land/en/articles/8602894-lending-on-fabrica-how-it-works",
    "text": "Land is one of the oldest forms of collateral there is. What Fabrica adds is speed and enforceability: loans are funded and settled onchain without a traditional closing, collateral custody is handled automatically by the pool, and if a borrower defaults there is a defined legal path to recovery (see \"What happens when a loan defaults?\" (https://help.fabrica.land/en/articles/8673843-i-m-a-lender-and-i-received-a-token-from-a-defaulted-loan-what-do-i-do-with-it) in this collection). This is a new way to access an old asset class. As with any lending, capital is at risk, and you should do your own diligence.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:148b84eefc0c",
@@ -5501,7 +5501,7 @@
    "sectionTitle": "How to get started",
    "url": "https://help.fabrica.land/en/articles/8602894-lending-on-fabrica-how-it-works",
    "text": "Sign in to the app with a wallet holding USDC and deposit into a pool. Bank funding is not yet available. If you want to talk it through first, email [email protected] or open the chat bubble in the corner, and we will walk you through current options and requirements.\n\nLearn more: For capital providers (https://docs.fabrica.land/docs/for-capital-providers) · How the lending pool works (https://docs.fabrica.land/docs/lending-pool) · Lending guide (https://blog.fabrica.land/lending-guide)",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:7137ceb1b07b",
@@ -5510,7 +5510,7 @@
    "sectionTitle": "Who is the lender?",
    "url": "https://help.fabrica.land/en/articles/8602895-who-is-the-lender",
    "text": "Your loan does not come from Fabrica, and it does not come from a person reviewing your file. It comes from a DeFi lending pool.\n\nA DeFi lending pool is a shared fund that runs on its own rules, on open software rather than at a bank (DeFi is short for decentralized finance). People and institutions deposit stablecoins (digital dollars) into the pool, and the pool lends that money out against properties like yours, automatically. The depositors earn the interest borrowers pay; that is why they fund the pool.\n\nBecause the pool is autonomous, there is no negotiation and nobody to persuade. The Amount, Duration, interest rate (\"Interest at X% APR\") and You repay by figures you see on the Instant Liquidity card come from the pool's own math: how much money it currently holds, its offered terms, and a conservative valuation of your property. Rates move with pool conditions, so the same property can see different offers on different days.\n\nFabrica's role is the platform: we run the checks (title, fees, taxes) and display the pool's terms clearly before you confirm. While the loan is open, the pool holds your property token as collateral, and you remain the beneficial owner of your property throughout. Fabrica is not the custodian, not the lender, and does not set your interest rate. Fabrica also has no control over whether a property can be used as collateral, or over the terms or amounts that can be borrowed against it. Those are determined by the lending pool.\n\nIf you get stuck, open the chat bubble in the corner and we'll help.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:aaf76008ee42",
@@ -5519,7 +5519,7 @@
    "sectionTitle": "Who is the lender?",
    "url": "https://help.fabrica.land/en/articles/8602895-who-is-the-lender",
    "text": "Learn more: How the lending pool works (https://docs.fabrica.land/docs/lending-pool) · How pool lending launched (https://blog.fabrica.land/instant-loans-with-metastreet)",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:bf34daf0685e",
@@ -5591,7 +5591,7 @@
    "sectionTitle": "What can I do with my property while it's under a loan?",
    "url": "https://help.fabrica.land/en/articles/8602905-what-can-i-do-with-my-property-while-it-s-under-a-loan",
    "text": "While a loan is open, your property token is held by the lending pool as collateral. You are still the beneficial owner, but some actions are paused until the loan is repaid. Here is the honest list.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:04b3c0829755",
@@ -5600,7 +5600,7 @@
    "sectionTitle": "What's blocked under a loan",
    "url": "https://help.fabrica.land/en/articles/8602905-what-can-i-do-with-my-property-while-it-s-under-a-loan",
    "text": "- Transfers between your wallets. The Transfer Property button is disabled and shows: \"Please pay off the loan to enable property transfer.\"\n\n- Removing the property (off-ramp). Remove Property is disabled until the loan is paid off.\n\n- Editing photos and the description. Updating your property page is paused until the loan is repaid.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:5f64c166a634",
@@ -5609,7 +5609,7 @@
    "sectionTitle": "What still works",
    "url": "https://help.fabrica.land/en/articles/8602905-what-can-i-do-with-my-property-while-it-s-under-a-loan",
    "text": "- Selling. You CAN list your property for sale while it is under a loan. Click Put for sale as usual. The listing form shows your loan payoff math, and your price must at least cover the payoff (you will see a warning if it does not). If the property sells, the sale pays off your loan automatically at closing and you receive the rest. One limit: you can't accept an offer while the loan is open; the offers list says \"Pay off your loan to accept an offer.\"\n\n- Your taxes. Not really an \"action\", but worth repeating: property taxes remain your responsibility during the loan, and unpaid taxes will block future borrowing.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:4762aa117ecc",
@@ -5618,7 +5618,7 @@
    "sectionTitle": "The quickest way to unblock everything",
    "url": "https://help.fabrica.land/en/articles/8602905-what-can-i-do-with-my-property-while-it-s-under-a-loan",
    "text": "Pay off the loan. Use Pay off loan on the Your loan card, and the token returns to your account with all actions restored. See \"Repaying your loan\" (https://help.fabrica.land/en/articles/16280911-repaying-your-loan) in this collection.\n\nIf you get stuck, open the chat bubble in the corner and we'll help.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:24aefaae9c28",
@@ -5987,7 +5987,7 @@
    "sectionTitle": "Does Fabrica control my property?",
    "url": "https://help.fabrica.land/en/articles/8848856-does-fabrica-control-my-property",
    "text": "No. You own your property through your own trust. You are the beneficiary, and by default you are also your own trustee. Fabrica never holds title to your property and cannot control it.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:e765df136845",
@@ -5996,7 +5996,7 @@
    "sectionTitle": "How that works in practice",
    "url": "https://help.fabrica.land/en/articles/8848856-does-fabrica-control-my-property",
    "text": "Each property sits in its own trust, and the trust holds the record title at the county. Your Property Token represents ownership of that trust: transfer the token, and you transfer the property. Fabrica is not a party to your trust. We cannot change it, act for it, or touch the title it holds.\n\nThe same is true onchain. There are no admin keys that let Fabrica move your token, take your property, or override your ownership. We cannot transfer your token, and we also cannot reverse a transfer you make, so double-check addresses before sending anything.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:2248f8aee690",
@@ -6005,7 +6005,7 @@
    "sectionTitle": "Don't take our word for it",
    "url": "https://help.fabrica.land/en/articles/8848856-does-fabrica-control-my-property",
    "text": "The trust agreement is open source, so you or your lawyer can read exactly what it says. And because your deed is recorded at the county, your ownership is anchored in the public record, not in our database. Everything, including transfer, recovery, and removing the property, works even if Fabrica disappears.\n\nIf you have questions about your specific trust, open the Records card on your property page and read the trust agreement there, or message us through the chat bubble in the corner.\n\nLearn more: The Fabrica Trust (https://docs.fabrica.land/docs/fabrica-trust) · The Fabrica trust is open source (https://blog.fabrica.land/copy-from-us-the-fabrica-trust-is-open-source)",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:3b2450da748a",
@@ -6014,7 +6014,7 @@
    "sectionTitle": "Who sets the price of a property for sale?",
    "url": "https://help.fabrica.land/en/articles/8855691-who-sets-the-price-of-a-property-for-sale",
    "text": "You do. When you list a property with Put for sale, you enter the price you want, and buyers can purchase at that price.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:a8e0d245850c",
@@ -6023,7 +6023,7 @@
    "sectionTitle": "What about the estimated value?",
    "url": "https://help.fabrica.land/en/articles/8855691-who-sets-the-price-of-a-property-for-sale",
    "text": "Most property pages show an estimated value. Treat it as a starting point, not an appraisal. It can help you pick a number, but it is not a promise of what your land is worth or what it will sell for.\n\nIf you list below the estimated value, the listing flow asks you to check an extra box confirming you understand. That's just a guardrail so nobody underprices by accident.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:aae469ba92c2",
@@ -6032,7 +6032,7 @@
    "sectionTitle": "Does Fabrica advise on pricing?",
    "url": "https://help.fabrica.land/en/articles/8855691-who-sets-the-price-of-a-property-for-sale",
    "text": "No. Fabrica is the platform, not a real estate broker, and we don't recommend prices or provide valuations for your sale. If you want a professional opinion, talk to a local appraiser or land agent.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:f2666925f11f",
@@ -6041,7 +6041,7 @@
    "sectionTitle": "What if a buyer thinks the price is off?",
    "url": "https://help.fabrica.land/en/articles/8855691-who-sets-the-price-of-a-property-for-sale",
    "text": "Buyers can use Send offer on any property, listed or not. You'll be notified and can accept an offer you like, so the market can meet you in the middle.\n\nIf you get stuck, message us through the chat bubble in the corner.\n\nLearn more: how estimated values work (https://docs.fabrica.land/docs/property-valuation) in our docs.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:231805a3db6b",
@@ -6050,7 +6050,7 @@
    "sectionTitle": "Where does the estimated value come from?",
    "url": "https://help.fabrica.land/en/articles/8855700-where-does-the-estimated-value-come-from",
    "text": "Many property pages show an Estimated value. On a property page it sits as a row inside the Marketplace card, right under the asking price when the property is listed. Here is what that number is, where it comes from, and how much weight to give it.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:90268fb4a9fc",
@@ -6059,7 +6059,7 @@
    "sectionTitle": "The data behind the number",
    "url": "https://help.fabrica.land/en/articles/8855700-where-does-the-estimated-value-come-from",
    "text": "The estimate is based on third-party data. Click the Estimated value row (View details) and it expands to one line per source, with its value and, where the source reports one, its confidence level, which reflects how much data was available to compute the estimate. You will typically see two kinds of figures:\n\n- Estimated values come from third-party providers whose algorithms estimate market value from comparable prices in the area, adjusted for the size of the property.\n\n- Assessed values come straight from the county tax assessor: the value of the parcel at its latest county assessment.\n\nThe headline number is the highest value among the sources, leaving out any source whose confidence is under 50%. A source below that line stays in the list, marked \"Not used\". County assessed values carry no confidence figure, so they always count, and a property's last sale price is listed but never used as the headline. When no source qualifies, the row shows \"Not available\". When the number that leads is the county's figure, the row is labeled Tax-assessed value instead of Estimated value.\n\nWhere a detailed report is available, the expanded row also offers a Download valuation report link, so you can save the full breakdown for your own records.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:d74c639b4deb",
@@ -6068,7 +6068,7 @@
    "sectionTitle": "Why the county's assessed value looks so different",
    "url": "https://help.fabrica.land/en/articles/8855700-where-does-the-estimated-value-come-from",
    "text": "It is common for the two groups to diverge a lot. Assessed values are set for property-tax purposes, not to track the market. Counties often update them infrequently, and for land they commonly sit far below what parcels actually trade for. Algorithmic estimates try to track the market but work with limited data, especially for rural land where comparable sales are scarce. In some states, sale prices are not even public record, so the data behind any land estimate is structurally thin.\n\nThat is why the assessed value, market listings, and estimates can all disagree about the same parcel. None of them is \"the\" price. Treat every number, ours included, as a starting point.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:7fcd5be01006",
@@ -6077,7 +6077,7 @@
    "sectionTitle": "Why don't I see an estimated value?",
    "url": "https://help.fabrica.land/en/articles/8855700-where-does-the-estimated-value-come-from",
    "text": "Not every property page shows an estimate. The estimate depends on third-party data, and whether a value appears can differ from property to property. On a property listed for sale, the price that matters is the one the seller has set.\n\nIf you don't see an estimate, that says nothing about what the property is worth. You can always research the area yourself, and buyers can send an offer at whatever price they think is right. If you have a question about a specific property, message us through the chat bubble in the corner.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:a3084e387f2c",
@@ -6086,7 +6086,7 @@
    "sectionTitle": "A starting point, not an appraisal",
    "url": "https://help.fabrica.land/en/articles/8855700-where-does-the-estimated-value-come-from",
    "text": "Treat the estimated value as a starting point, not an appraisal. As the page itself puts it, \"These values are a starting point, not an appraisal.\" It is one signal among many, not a promise of what the property is worth or what it would sell for. Fabrica is not a real-estate broker and does not advise on pricing. If you need a defensible number, talk to a licensed appraiser, and always do your own diligence on location, access, and features before buying or setting a price.\n\nLearn more: Property valuation (https://docs.fabrica.land/docs/property-valuation)",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:cd2e29ee0b6d",
@@ -6419,7 +6419,7 @@
    "sectionTitle": "Can I refinance or extend my loan?",
    "url": "https://help.fabrica.land/en/articles/16280910-can-i-refinance-or-extend-my-loan",
    "text": "Often, yes. When the lending pool can support it, your property page shows a Refinance button in place of (or alongside) Borrow.\n\nRefinancing replaces your current loan with a new one at the terms the pool offers today. You set the new amount and duration with the same sliders, and the new terms are shown before you confirm: You receive today (or You pay today, if the new loan is smaller than what you owe), the interest rate (\"Interest at X% APR\") and You repay by with the due date and the full repayment. The durations you can pick on the Duration slider are whatever terms the pool currently offers. Nothing changes until you accept the new terms in the Refinance loan window and approve its steps; when you see \"Great news: your loan is refinanced\", the new loan has replaced the old one.\n\nThere is no set limit on how many times you can refinance: you can typically do it again and again, as long as the pool will fund a new loan each time.\n\nTwo things to know:\n\n- Availability is not guaranteed. The Refinance option depends on the same checks as a new loan: pool funds, your property's Property checks, current property taxes and the other loan requirements. If it is not showing, see \"Why is my loan amount low or zero?\" in this collection.\n\n- Watch your email near the due date. As your loan approaches maturity, our reminder emails will offer an extension when one is available. That is often the easiest way to get more time.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:eb6467fc7623",
@@ -6428,7 +6428,7 @@
    "sectionTitle": "Can I refinance or extend my loan?",
    "url": "https://help.fabrica.land/en/articles/16280910-can-i-refinance-or-extend-my-loan",
    "text": "If you cannot refinance and cannot repay by the due date, read \"What if I can't repay my loan?\" in this collection now rather than later. Acting before the due date gives you the most options.\n\nIf you get stuck, open the chat bubble in the corner and we'll help.\n\nLearn more: Pool lending (https://docs.fabrica.land/docs/lending-pool)",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:173601496a8f",
@@ -6437,7 +6437,7 @@
    "sectionTitle": "Repaying your loan",
    "url": "https://help.fabrica.land/en/articles/16280911-repaying-your-loan",
    "text": "You can pay off your loan at any time before the due date. Here is how, and exactly what you will pay.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:e2bacd5c2b81",
@@ -6446,7 +6446,7 @@
    "sectionTitle": "How to pay off your loan",
    "url": "https://help.fabrica.land/en/articles/16280911-repaying-your-loan",
    "text": "- Open your property page. While the loan is open you will see a Your loan card. It shows Payoff today (on loans that charge interest only for the time elapsed), the full amount next to Due and the due date, and the APR.\n\n- Click Pay off loan. The Repay loan window opens with the breakdown: Amount borrowed, Interest and Total today.\n\n- Under Pay by, choose how to pay. Account funds uses the stablecoins (digital dollars) in your Fabrica account, with no processing fee, and your property comes back right away. Some loans also offer Card, which pays the whole payoff by debit or credit card for a processing fee; if your loan doesn't support it, the option says \"Card isn't available for this payoff.\" If your account is short, the window tells you by how much; add funds to your account, then click Check account funds again.\n\n- Click Repay $X (or Pay by card) and approve the steps as they appear: Allow the payment, then Repay the loan. When it goes through you'll see \"Great news: your loan is paid off\".\n\nOne important timing note: loan due dates have no grace period. If your due date is close, don't wait on money that is still on its way to your account; pay from your balance, or message us through the chat bubble and we will help you pick the fastest path.\n\nWhen the payment completes, your property is back in your account. As the window puts it, \"The token is back in your account and nothing is held as collateral anymore.\" You can transfer, remove, or borrow against the property again.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:3996cc132878",
@@ -6455,7 +6455,7 @@
    "sectionTitle": "What you actually pay: check your loan type",
    "url": "https://help.fabrica.land/en/articles/16280911-repaying-your-loan",
    "text": "Be careful here, because loans differ and we want you to know before you pay:\n\n- Prorated loans charge interest only for the time that has actually passed. If your loan card shows a Payoff today figure, that is exactly what you would pay today, and paying early saves you money.\n\n- Fixed-term loans owe the full repayment amount no matter when you pay. Repaying early gets your property back sooner, but it does not reduce the cost.\n\nYour loan card tells you which kind you have. If there is no Payoff today figure, assume the full amount shown next to the due date is owed. For a loan that accrues interest, the payoff quote is priced a short time ahead, so it covers the interest that accrues while your payment goes through (it never exceeds the full repayment); if you leave the window open for a while, the app refreshes the amount and asks you to review it again before paying.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:f0aa0df082ef",
@@ -6464,7 +6464,7 @@
    "sectionTitle": "Don't cut it close",
    "url": "https://help.fabrica.land/en/articles/16280911-repaying-your-loan",
    "text": "There is no grace period at the due date. If the loan is not fully repaid by then, it defaults. Set your own reminder well before the deadline. We send reminder emails, but emails can land in spam, and the responsibility to repay on time is yours. See \"What if I can't repay my loan by the due date?\" (https://help.fabrica.land/en/articles/8602900-what-happens-if-i-don-t-repay-my-loan-by-the-due-date) in this collection for what happens after a default.\n\nIf you get stuck, open the chat bubble in the corner and we'll help.\n\nLearn more: Pool lending (https://docs.fabrica.land/docs/lending-pool)",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:252f2e2e44e4",
@@ -6599,7 +6599,7 @@
    "sectionTitle": "Buying with a bank account or card",
    "url": "https://help.fabrica.land/en/articles/16280914-buying-with-a-bank-account-or-card",
    "text": "You don't need crypto to buy land on Fabrica. In the Buy property window, when Pay by shows a bank option (bank transfer, card or wire), you can pay the way you already pay for everything else. Here is what to expect.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:b3d7ae01718e",
@@ -6608,7 +6608,7 @@
    "sectionTitle": "What you can pay with",
    "url": "https://help.fabrica.land/en/articles/16280914-buying-with-a-bank-account-or-card",
    "text": "The checkout can offer three ways to pay from a bank, each with its own fee, limit and timing, shown on the option itself:\n\n- Bank transfer: \"From a bank you link.\" You connect your bank account in a few taps, and the account must be in your name.\n\n- Card: a debit or credit card. \"The card limit includes the fee.\"\n\n- Wire: \"For larger amounts. You send it from your bank.\" You get the details to wire the money, and send it from your own bank.\n\nNext to each option you see the processing fee (or \"No processing fee\") and \"Expected by\" with a date, the day the property becomes yours. An option that is switched off right now is not shown. An option whose limit is below the price is still shown, but you can't pick it, and it says so (\"Up to $N per purchase. This price is above the limit.\"). Payments are processed by Coinflow, our payment provider, and any processing fee is theirs, not Fabrica's.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:e2e4634c4246",
@@ -6617,7 +6617,7 @@
    "sectionTitle": "Verifying your identity, once",
    "url": "https://help.fabrica.land/en/articles/16280914-buying-with-a-bank-account-or-card",
    "text": "The first time you pay by bank transfer or wire (and for larger card payments), the window asks you to verify your identity. As the app puts it: \"Coinflow, our payment provider, checks these details; we keep only whether you're verified. Most people only need this form.\" You enter your name, home address, date of birth and the last four digits of your Social Security number. Outside the US, you can verify with a photo of your ID and a selfie instead. This is a one-time step, and it also covers cashing out later.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:c10d467d5043",
@@ -6626,7 +6626,7 @@
    "sectionTitle": "Paying",
    "url": "https://help.fabrica.land/en/articles/16280914-buying-with-a-bank-account-or-card",
    "text": "- Under Pay by, choose your option and click Continue to payment.\n\n- Bank transfer: connect your bank. Card: enter the card details; your bank may ask you to confirm the payment (\"Your bank wants to confirm it's you.\"). Wire: pick or enter the bank you will send it from.\n\n- Review the payment. The review shows the amount, the fee and the total, then click Pay $X. For a wire, click Get wire details instead.\n\n- For a wire, the next screen shows the Reference, Amount, Recipient, Routing and Account to use, and a Send by date. Use Copy all details, include the reference exactly, and send the wire from an account in your name. As the app warns: \"Wires without it are returned.\" The details are in your email too.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:da66ea916fba",
@@ -6635,7 +6635,7 @@
    "sectionTitle": "Timing",
    "url": "https://help.fabrica.land/en/articles/16280914-buying-with-a-bank-account-or-card",
    "text": "With a card, the property is yours once the payment goes through. With a bank transfer, you see \"Your bank payment is on its way\": the property stays the seller's until your bank clears the payment, usually by the expected date shown (\"It can take a few business days to clear.\"). The property page shows Sale pending in the meantime, with the day you'll become the owner. Then the token moves to you, and the property with it. No action is needed from you; we email you when it is in your portfolio, or if anything needs your attention. A wire shows \"Waiting for your wire\" on the property page until it lands.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:0a7bc54f475f",
@@ -6644,7 +6644,7 @@
    "sectionTitle": "If a payment is declined or returned",
    "url": "https://help.fabrica.land/en/articles/16280914-buying-with-a-bank-account-or-card",
    "text": "Declines usually come from your own bank or card issuer: daily limits, fraud holds on an unusual purchase, or insufficient funds. The app tells you what happened and what to do next, for example \"Heads up: your card was declined. Try another card or pay by bank transfer.\" If a bank account can't be used because its name doesn't match your verified identity (joint and business accounts often need the account holder's own name), try another account or pay by wire. If a bank transfer is returned after you started it, we email you about it and the property stays listed, so you can try again. Still stuck? Message us through the chat bubble in the corner and we will figure it out with you.\n\nLearn more:\n\n- Buy land, pay with your bank account (blog) (https://blog.fabrica.land/buy-land-pay-with-bank-account)\n\n- Buy now, pay later (blog) (https://blog.fabrica.land/buy-now-pay-later)",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:a47420115593",
@@ -7112,7 +7112,7 @@
    "sectionTitle": "Do I need crypto to use Fabrica?",
    "url": "https://help.fabrica.land/en/articles/16280926-do-i-need-crypto-to-use-fabrica",
    "text": "No. You can add, sell, buy, and borrow against property on Fabrica without owning any cryptocurrency or downloading any crypto apps.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:dd1052e3320f",
@@ -7121,7 +7121,7 @@
    "sectionTitle": "What happens instead",
    "url": "https://help.fabrica.land/en/articles/16280926-do-i-need-crypto-to-use-fabrica",
    "text": "- Sign in with email. Click Log in and use your email or a social account. Fabrica creates a secure account for you automatically, protected by passkeys on your device. Nothing to install, no seed phrase to guard.\n\n- Pay from your bank. When you buy a property, the checkout's Pay by options can include a bank transfer, a card or a wire, each with its fee, limit and the date the property becomes yours shown on the option. The options you see are the ones available for that purchase.\n\n- Cash out to your bank. When you sell or take a loan, the money arrives in your Fabrica account and you can send it to your bank with Cash out on your profile.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:aa9c5f7ca812",
@@ -7130,7 +7130,7 @@
    "sectionTitle": "What is a stablecoin?",
    "url": "https://help.fabrica.land/en/articles/16280926-do-i-need-crypto-to-use-fabrica",
    "text": "Money on Fabrica moves as stablecoins (digital dollars). The one Fabrica uses is called USDC. Prices are shown in US dollars, and Fabrica counts one USDC as one dollar. You will see the name in a few places, but you never need to buy it yourself or understand how it works. Think of it as the dollars in your Fabrica account.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:7fab4c65c17c",
@@ -7139,7 +7139,7 @@
    "sectionTitle": "When you would touch crypto",
    "url": "https://help.fabrica.land/en/articles/16280926-do-i-need-crypto-to-use-fabrica",
    "text": "Only if you choose to:\n\n- You already have a crypto wallet. You can connect it at login instead of using email. External wallets need to be on Ethereum Mainnet.\n\n- You pay directly from a crypto wallet. Buying with Account funds from an external wallet uses its USDC balance, and you pay a small Ethereum network processing fee (called \"gas\") on the transaction. The same applies to a few wallet actions, like approving the setup fee from an external wallet or transferring a property between your own wallets.\n\n- You use your own wallet for everyday actions. If you signed in with an external crypto wallet, some actions can need a small amount of ETH to cover processing fees. The app tells you when that is the case. Accounts that sign in with email never deal with this.\n\nIf you stick with email login and bank payments, you will never see any of that. Fabrica pays the network fees for minting your property and other platform steps.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:52b34a732248",
@@ -7148,7 +7148,7 @@
    "sectionTitle": "If you are crypto native",
    "url": "https://help.fabrica.land/en/articles/16280926-do-i-need-crypto-to-use-fabrica",
    "text": "Already comfortable with wallets? Then Fabrica works the way you would hope. You can hold your property token directly in your own wallet and use it across the wider crypto ecosystem. A Fabrica property is a standard Ethereum token, so it benefits from the same interoperability as any other token you hold.\n\nIf you get stuck, message us through the chat bubble in the corner.\n\nLearn more: Buy land, pay with your bank account (https://blog.fabrica.land/buy-land-pay-with-bank-account)",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:202fba412dc0",
@@ -7157,7 +7157,7 @@
    "sectionTitle": "Glossary: the terms you'll see on Fabrica",
    "url": "https://help.fabrica.land/en/articles/16280927-glossary-the-terms-you-ll-see-on-fabrica",
    "text": "You do not need special vocabulary to use Fabrica, but a few terms come up often. Here is what they mean in plain English.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:15db25e0e783",
@@ -7166,7 +7166,7 @@
    "sectionTitle": "APN (parcel number)",
    "url": "https://help.fabrica.land/en/articles/16280927-glossary-the-terms-you-ll-see-on-fabrica",
    "text": "An assessor's parcel number, or APN, is the ID your county's tax assessor gives your property. Different counties may call it different names, but it is the number that pins down exactly which parcel is yours. You can find it on your property tax bill or on your deed. If you cannot find it, your county assessor's office can look it up, and many have online portals. Fabrica uses the APN to find your property when you add it.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:68adbfaff2eb",
@@ -7175,7 +7175,7 @@
    "sectionTitle": "Legal description",
    "url": "https://help.fabrica.land/en/articles/16280927-glossary-the-terms-you-ll-see-on-fabrica",
    "text": "The formal, written description of your property's boundaries, found in your recorded deed. It might reference a subdivision and lot, or use measurements and landmarks (\"metes and bounds\"). Either kind is fine, as long as it accurately describes your property. Fabrica pulls this from county records when preparing your documents.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:9fdbd68fab4e",
@@ -7184,7 +7184,7 @@
    "sectionTitle": "Deed",
    "url": "https://help.fabrica.land/en/articles/16280927-glossary-the-terms-you-ll-see-on-fabrica",
    "text": "The legal document that transfers ownership of real property. Deeds are recorded at the county, which is what makes ownership public and official. Fabrica drafts, notarizes, and records real deeds. Nothing about the process skips the county.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:b1ec28b1db02",
@@ -7193,7 +7193,7 @@
    "sectionTitle": "Trust",
    "url": "https://help.fabrica.land/en/articles/16280927-glossary-the-terms-you-ll-see-on-fabrica",
    "text": "A legal container for holding property. Trusts have been used for centuries for things like privacy and estate planning. On Fabrica, each property sits in its own trust: the trust holds record title at the county, and your Property Token represents ownership of the trust. Transfer the token, and you transfer the property.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:d25cfacc645f",
@@ -7202,7 +7202,7 @@
    "sectionTitle": "Beneficiary and trustee",
    "url": "https://help.fabrica.land/en/articles/16280927-glossary-the-terms-you-ll-see-on-fabrica",
    "text": "The two roles in a trust. The beneficiary is who the trust exists for, the true owner of what it holds. The trustee is who administers it. On Fabrica, you are the beneficiary, and by default you are also your own trustee. Fabrica never holds title to your property and cannot control it.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:84e9545999ae",
@@ -7211,7 +7211,7 @@
    "sectionTitle": "USDC",
    "url": "https://help.fabrica.land/en/articles/16280927-glossary-the-terms-you-ll-see-on-fabrica",
    "text": "The stablecoin Fabrica uses: a digital dollar. Prices on Fabrica are shown in US dollars, Fabrica counts one USDC as one dollar, and money moves as USDC behind the scenes. If you use bank payments and Cash out, you never need to handle it yourself.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:56101a94ef7f",
@@ -7220,7 +7220,7 @@
    "sectionTitle": "Escrow-less settlement",
    "url": "https://help.fabrica.land/en/articles/16280927-glossary-the-terms-you-ll-see-on-fabrica",
    "text": "In a traditional sale, an escrow company holds the money while paperwork crawls along. On Fabrica there is no escrow: the buyer becomes the owner and the seller gets paid in the same transaction, at the same moment. That is why sales are final once they complete.\n\nIf a term you ran into is not here, message us through the chat bubble in the corner.\n\nLearn more: Full glossary (https://docs.fabrica.land/docs/glossary)",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:cbb75afdea19",
@@ -7454,7 +7454,7 @@
    "sectionTitle": "What are property checks?",
    "url": "https://help.fabrica.land/en/articles/16280935-what-are-property-checks",
    "text": "Property checks show you whether anything has come up on a property before you buy it, lend against it or borrow on it. Every Fabrica property page has a Property checks card listing each check, what it found and where the information comes from.\n\nProperty checks were formerly called the Provenance Score.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:9c70122394cd",
@@ -7463,7 +7463,7 @@
    "sectionTitle": "What you see on the page",
    "url": "https://help.fabrica.land/en/articles/16280935-what-are-property-checks",
    "text": "- Next to the property name, a chip sums up the result, for example \"1 to review\" or \"Paused\". When the key checks and the claims all pass, you see a shield icon instead. Either one jumps to the card.\n\n- The Property checks card shows a count in its header, such as \"11 of 12 pass\", then opens with a short verdict, such as \"All 12 checks pass\" or \"1 item to review\", and one line per group. See all 12 checks shows each check, its status and its source.\n\n- If the checks pause sales and loans, a banner at the top of the page says \"Sales and loans are paused on this property\", gives the reason and links to See property checks.\n\nEach check is titled by what it found. A check that passes reads, for example, \"Property taxes paid\"; the same check that does not pass reads \"Unpaid property taxes\", and one with no result yet reads \"Property taxes\" with the tag \"Not checked yet\".",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:979d98472bdb",
@@ -7472,7 +7472,7 @@
    "sectionTitle": "The three groups",
    "url": "https://help.fabrica.land/en/articles/16280935-what-are-property-checks",
    "text": "Key checks. The most serious checks. A failure here can pause sales and loans.\n\n- Link to the property is normal: no known recovery, theft claim, tax sale or foreclosure event has been reported on the property.\n\n- Deed checked against the county: a deed linking the title to the property's Fabrica record is on file, notarized and recorded. Source: the county recorder.\n\n- No theft reports: the property is not on Fabrica's list of flagged properties, and OpenSea, a large marketplace for digital assets, has not marked it as suspicious.\n\n- Owner not on a fraud list: the owner's account is not on public lists of accounts tied to scams.\n\nClaims on the property. These affect what the property is worth and whether it can back a loan.\n\n- Property taxes paid: the county tax collector shows no unpaid property taxes.\n\n- No mortgage found: a lien records search found no open loan secured by the property. It does not cover tax, court or contractor liens.\n\n- Fabrica fees in good standing: Fabrica fees on the property are paid, or approved for collection when the property is first sold, borrowed against, or used in another app. A pass does not mean a deferred fee, such as the setup fee, has already been collected.\n\nGood to know. About the people and paperwork, rarely a reason to walk away: whether the current and past owners verified their identity, whether the owner confirmed an email or phone number, whether the property moved between accounts in the last 7 days, and whether its records (location, trust name, legal description, deed, trust agreement) are complete.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:85002d8b11aa",
@@ -7481,7 +7481,7 @@
    "sectionTitle": "The three groups",
    "url": "https://help.fabrica.land/en/articles/16280935-what-are-property-checks",
    "text": "\"Not checked yet\" means there is no result yet. It is not a failure.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:d14a06e75bb8",
@@ -7490,7 +7490,7 @@
    "sectionTitle": "A mortgage is reported, not judged",
    "url": "https://help.fabrica.land/en/articles/16280935-what-are-property-checks",
    "text": "Most homes have a mortgage, and the owner agreed to it. When the lien search finds one, the row reads Mortgage on record with a blue \"On record\" tag instead of a failure: \"An open mortgage is recorded against this property, as with most homes. It's paid off before the property is sold or borrowed against on Fabrica.\" It is left out of the \"N of N pass\" count, which then adds \"1 on record\", and it does not change the verdict. Claims put on the property without the owner's say, such as unpaid taxes, still count as items to review.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:45bf47a5ead1",
@@ -7499,7 +7499,7 @@
    "sectionTitle": "What they mean for buying and borrowing",
    "url": "https://help.fabrica.land/en/articles/16280935-what-are-property-checks",
    "text": "- Paused sales and loans. If the link to the property is not normal, the deed has not been confirmed, or the property's checks fall below the minimum required, the property can't be bought, sold or borrowed against until that changes.\n\n- Borrowing. The Instant Liquidity card can explain problems with three checks: the deed, property taxes and Fabrica fees. Passing these checks does not by itself guarantee that borrowing is available. Taxes that are unpaid, or not yet confirmed with the county, block borrowing.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:28452ee768f5",
@@ -7508,7 +7508,7 @@
    "sectionTitle": "If you own the property",
    "url": "https://help.fabrica.land/en/articles/16280935-what-are-property-checks",
    "text": "At the top of the card, owners see a short list headed \"N things you can do\" (or \"Nothing to do\"), because buyers and lenders see these checks on your property:\n\n- Keep property taxes current. The check passes once the county shows them as paid, which can take a while.\n\n- Use Confirm email so notices about your property reach you.\n\n- If your identity is not verified, Get help opens the chat.\n\n- If the Fabrica fees check is not passing, use Authorize Fee in the Owner Toolbox.\n\n- A recent transfer clears on its own 7 days later.\n\nIf you believe a check is wrong, message us with your property link.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:6c2395fe1055",
@@ -7517,7 +7517,7 @@
    "sectionTitle": "What property checks are not",
    "url": "https://help.fabrica.land/en/articles/16280935-what-are-property-checks",
    "text": "Property checks compare the property's Fabrica record with county records, lien data and other sources. They are a starting point for your own research, not a title search or title insurance.\n\nFor lenders and developers, the card also shows a 5-digit code: the numeric encoding of Property checks. It groups the results differently from the checklist, so it is not a percentage or a grade.\n\nIf you get stuck, message us through the chat bubble in the corner.\n\nLearn more: How to read the code (developer docs) (https://docs.fabrica.land/docs/confidence-scoring-system) · Validators (https://docs.fabrica.land/docs/validators)",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:70d80a4892ef",
@@ -7526,7 +7526,7 @@
    "sectionTitle": "How do I transfer a property between my own wallets?",
    "url": "https://help.fabrica.land/en/articles/16280936-how-do-i-transfer-a-property-between-my-own-wallets",
    "text": "If you hold your property in one account address and want to move it to another address you also own, use Transfer Property. This moves the token between your own wallets. It does not change who owns the property: both addresses are yours, so you remain the owner throughout.\n\nA \"wallet\" here is just an account address on Ethereum. If you signed up with your email, Fabrica created one for you automatically. You might also have an external wallet app you prefer to hold things in.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:9786f71f8348",
@@ -7535,7 +7535,7 @@
    "sectionTitle": "Before you start",
    "url": "https://help.fabrica.land/en/articles/16280936-how-do-i-transfer-a-property-between-my-own-wallets",
    "text": "- The transfer only works between wallets that are linked to your Fabrica account and verified as yours. You cannot use it to send the property to someone else.\n\n- To link another wallet: as the dialog says, \"open the account menu at the top right of your screen, choose Account, and link another account there.\"\n\n- If you signed in with your email, there is nothing to pay: Fabrica covers the processing fee. If you are transferring from an external crypto wallet, you will need a small amount of ETH to cover processing fees, and the dialog tells you so. ETH is Ethereum's own currency, used to pay the network's small processing charge.\n\n- If the property is under a loan, transfers are disabled. The app will tell you: \"Please pay off the loan to enable property transfer.\"",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:0f97db525c56",
@@ -7544,7 +7544,7 @@
    "sectionTitle": "Steps",
    "url": "https://help.fabrica.land/en/articles/16280936-how-do-i-transfer-a-property-between-my-own-wallets",
    "text": "- Open your property page while logged in.\n\n- In the Owner Toolbox, click Transfer Property. The dialog explains what happens: \"Moves the token, and the property with it, to another account you own. No paperwork: the trust follows the token.\"\n\n- Pick the linked account you want to move the property to.\n\n- Confirm the transfer in your account and wait for it to complete. If it is still confirming, you can leave the page; the property moves once it completes. If the network did not pick up the transfer, nothing moved, and you can send it again.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:4fb09671f98a",
@@ -7553,7 +7553,7 @@
    "sectionTitle": "What this is not for",
    "url": "https://help.fabrica.land/en/articles/16280936-how-do-i-transfer-a-property-between-my-own-wallets",
    "text": "- Selling or gifting to another person: that is a sale or a private transfer, covered in the selling articles.\n\n- Recovering from a lost wallet: if you lost access to an address, see \"I lost access to my account. Is my property gone?\" (https://help.fabrica.land/en/articles/16280942-i-lost-access-to-my-account-is-my-property-gone) instead.\n\nIf you get stuck, message us through the chat bubble in the corner.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:6a5945787aa8",
@@ -7562,7 +7562,7 @@
    "sectionTitle": "What is a trust agreement upgrade?",
    "url": "https://help.fabrica.land/en/articles/16280937-what-is-a-trust-agreement-upgrade",
    "text": "Your property is held by your own trust, and the trust agreement is the legal document that defines how it works. Fabrica improves this document over time, and as an owner you can adopt the newest version for your property.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:76f05dd214f6",
@@ -7571,7 +7571,7 @@
    "sectionTitle": "Where to find it",
    "url": "https://help.fabrica.land/en/articles/16280937-what-is-a-trust-agreement-upgrade",
    "text": "On your property page, open the Records card. The trust agreement row names your trust and the version it runs on. When a newer version exists, an Upgrade agreement link appears under the rows; it is shown only to the property's holder. Click it to open the Upgrade Trust Agreement flow, which moves your trust to the latest version of the agreement.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:2ab49950f1b5",
@@ -7580,7 +7580,7 @@
    "sectionTitle": "What upgrading means",
    "url": "https://help.fabrica.land/en/articles/16280937-what-is-a-trust-agreement-upgrade",
    "text": "Each new version of the trust agreement refines the legal machinery around your ownership: clearer language, better protections, and rules for situations earlier versions did not spell out. For example, recent versions added explicit handling for what happens to the trust if a property is lost to a county tax sale.\n\nWhat does not change:\n\n- You stay the beneficiary of your trust, and by default your own trustee.\n\n- Fabrica still never holds title to your property and cannot control it.\n\n- Your rights as owner (possession, control, sale, borrowing) are unchanged.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:a88d7f8cec38",
@@ -7589,7 +7589,7 @@
    "sectionTitle": "Do I have to upgrade?",
    "url": "https://help.fabrica.land/en/articles/16280937-what-is-a-trust-agreement-upgrade",
    "text": "No. Upgrading is optional, and your property keeps working on the version it has. We recommend it, though: the newest agreement is the most complete and best-protected version, and it is the one new properties get.\n\nThe trust agreement is open source, so you can read every version yourself and see exactly what changed.\n\nIf you have questions before upgrading, message us through the chat bubble in the corner.\n\nLearn more: The Fabrica trust (https://docs.fabrica.land/docs/fabrica-trust) · OTA for your land (https://blog.fabrica.land/ota-for-your-land)",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:be7bcf5e5167",
@@ -7598,7 +7598,7 @@
    "sectionTitle": "Where are my property documents?",
    "url": "https://help.fabrica.land/en/articles/16280938-where-are-my-property-documents",
    "text": "Everything important about your property lives in two places: on your property page and in your email. Here is where to look for each document.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:6319643c6c07",
@@ -7607,7 +7607,7 @@
    "sectionTitle": "On your property page",
    "url": "https://help.fabrica.land/en/articles/16280938-where-are-my-property-documents",
    "text": "Open your property and find the Records card. It holds one row for each part of your property's legal record:\n\n- Legal description, the formal text that defines exactly which land is included. Open the row to read it in full, or copy it.\n\n- Deed into the trust, the recorded deed that put the property into your trust. The row opens the document itself.\n\n- Your trust agreement, named after your trust. The row opens the agreement, and a button next to it downloads a copy.\n\n- Any other files attached to your property.\n\n- Your token's ID, with a link to view it on Etherscan, a public record of Ethereum activity.\n\nBelow the rows, the Property, Trust and Token chips show how the three fit together: the deed puts the property into the trust, and ownership of the property goes with the token, through the trust.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:2c0e75c31883",
@@ -7616,7 +7616,7 @@
    "sectionTitle": "In your email",
    "url": "https://help.fabrica.land/en/articles/16280938-where-are-my-property-documents",
    "text": "When recording at the county completes, we email you the recorded deed and your trust agreement. Search your inbox for the property name if you cannot find them.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:f5b728f339d2",
@@ -7625,7 +7625,7 @@
    "sectionTitle": "At the county",
    "url": "https://help.fabrica.land/en/articles/16280938-where-are-my-property-documents",
    "text": "Your deed is a public record. The county recorder keeps it permanently, so you can always request a copy directly from the county where the property sits. This is true whether or not Fabrica exists. Your ownership record does not depend on us.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:bcf0dd8fb779",
@@ -7634,7 +7634,7 @@
    "sectionTitle": "Documents from a property you sold or removed",
    "url": "https://help.fabrica.land/en/articles/16280938-where-are-my-property-documents",
    "text": "There is no self-serve archive for past properties today. If you need a document from a property you sold or removed, message us in the chat bubble in the corner and we will retrieve it for you.\n\nIf you get stuck, message us in the chat bubble in the corner. Learn more about the trust in the Fabrica trust docs (https://docs.fabrica.land/docs/fabrica-trust).",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:bdf273fe88dc",
@@ -7697,7 +7697,7 @@
    "sectionTitle": "Sales are final",
    "url": "https://help.fabrica.land/en/articles/16280940-disputes-and-refunds-how-do-they-work",
    "text": "Purchases on Fabrica settle in one step: the buyer becomes the owner and the seller is paid in the same transaction. There is no escrow holding funds that can be unwound later, which is why the checkout asks you to confirm that sales are final before you buy. Once a sale completes, it cannot be reversed by Fabrica or anyone else.\n\nThat makes diligence before you buy the real protection. Every property page gives you the tools: the Records card with the full legal description, the deed into the trust and the trust agreement, the Property checks card, and any disclosure documents the checkout asks you to acknowledge. Read them. If a listing shows a duplicate-claim warning banner, take it seriously and verify before buying.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:7c76ad042163",
@@ -7706,7 +7706,7 @@
    "sectionTitle": "If a payment goes wrong",
    "url": "https://help.fabrica.land/en/articles/16280940-disputes-and-refunds-how-do-they-work",
    "text": "Bank payments are different from completed sales. If a card or bank payment fails or is returned, the purchase simply does not complete, and we email you about it. You do not lose money on a payment that never cleared. If something looks stuck, contact us.",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:614ff42ac43a",
@@ -7715,7 +7715,7 @@
    "sectionTitle": "If you have a dispute",
    "url": "https://help.fabrica.land/en/articles/16280940-disputes-and-refunds-how-do-they-work",
    "text": "Talk to us first. Message us through the chat bubble at fabrica.land (https://fabrica.land) or email [email protected], and include the property link plus what happened. Many issues turn out to be questions we can resolve directly.\n\nFor genuine disputes about a property or a transaction, the trust agreement sets out a formal dispute-resolution process, which the docs explain in detail. Fabrica is not a law firm and cannot give legal advice, so for a serious disagreement, involve your own attorney. We will cooperate with the facts, including onchain records.\n\nLearn more: Dispute resolution (https://docs.fabrica.land/docs/dispute-resolution)",
-   "updatedAt": "updated 3 weeks ago at build"
+   "updatedAt": "updated a month ago at build"
   },
   {
    "id": "help:cee24ddfc1fb",
@@ -7796,7 +7796,7 @@
    "sectionTitle": "Selling a property that has a loan on it",
    "url": "https://help.fabrica.land/en/articles/16280943-selling-a-property-that-has-a-loan-on-it",
    "text": "Yes, you can list your property for sale while it has an active loan. The sale settles your loan automatically, and you keep whatever is left.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:1c3dccb66730",
@@ -7805,7 +7805,7 @@
    "sectionTitle": "How it works",
    "url": "https://help.fabrica.land/en/articles/16280943-selling-a-property-that-has-a-loan-on-it",
    "text": "- Click Put for sale on your property page, like any other listing.\n\n- The List property for sale window shows your loan payoff alongside the price. Your price must at least cover the payoff. If it doesn't, you'll see: \"Heads up: this price wouldn't cover your loan payoff. Enter at least $X.\" (or \"Heads up: based on estimated fees, this price wouldn't cover your loan payoff…\" when the fee is still an estimate).\n\n- During listing you'll approve an extra step, Allow the loan payoff. As the app puts it: \"This lets the sale pay off your loan automatically at closing.\"\n\n- When the property sells, the proceeds first pay off the loan in full. You receive the rest, minus Fabrica's 1% marketplace fee, which is paid from the seller's proceeds.\n\nSo if you owe $8,000 on the loan and sell for $50,000, the loan is paid off at closing and the remainder comes to you. No separate payoff errand, no risk of forgetting.\n\nOnce listed, the Marketplace card on your property page reminds you: \"The sale pays off your loan at closing. Payoff today: $X.\"\n\nHow the payoff behaves depends on your loan. Some loans accrue interest over time, so the payoff keeps growing until the sale actually completes. For those, the listing screen shows two figures: the net amount you would receive today, and the amount if the property sells by your loan's due date. Other loans are fixed-term: you owe a set repayment amount no matter when it is paid, so the payoff does not grow and you will see a single net figure.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:76e59c492e84",
@@ -7814,7 +7814,7 @@
    "sectionTitle": "Keep your price above the payoff",
    "url": "https://help.fabrica.land/en/articles/16280943-selling-a-property-that-has-a-loan-on-it",
    "text": "If your loan accrues interest, set your price with enough room above the payoff, because the payoff grows over time. If interest ever catches up to your price, the app tells you the date it will happen with a note like: \"Heads up: as loan interest grows, this price will stop covering your payoff around [date].\" After that date your listing stays visible, but no one can buy it until you either re-list at a higher price or pay off the loan. Pricing comfortably above the payoff avoids this entirely. Fixed-term loans do not grow this way, so this warning does not apply to them. Either way, if you are unsure which kind you have, the Your loan card on your property page shows your exact figures.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:d27c24a4e6d9",
@@ -7823,7 +7823,7 @@
    "sectionTitle": "While the loan is active",
    "url": "https://help.fabrica.land/en/articles/16280943-selling-a-property-that-has-a-loan-on-it",
    "text": "- You can list the property for sale. If it sells, the sale pays off your loan at closing and you receive the rest.\n\n- You can't accept an offer until the loan is paid off. Buyers can still send offers, and your offers list says: \"Pay off your loan to accept an offer.\"\n\n- You can't edit the property's photos or description, transfer the property between wallets, or remove it from Fabrica until the loan is paid off. While the loan is active, the property is held as collateral, so these actions are paused.\n\n- Paying off the loan early with Pay off loan is always an option if you'd rather sell unencumbered, and it restores all of the above.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:80894ed5f070",
@@ -7832,7 +7832,7 @@
    "sectionTitle": "What buyers see",
    "url": "https://help.fabrica.land/en/articles/16280943-selling-a-property-that-has-a-loan-on-it",
    "text": "Buyers see one line in the Marketplace card: \"This property backs a loan from a DeFi lending pool. The sale pays that loan off at closing, so you don't take it over.\" They never see your payoff figures. If the listing can't be bought right now, they see a \"Buying paused\" chip with the reason, for example that the seller must pay off the loan before it can be bought, or that the asking price doesn't cover the payoff. On your side, the card says the same in your words, such as \"Heads up: your asking price is below the loan payoff, so buyers can't buy it. Raise your price to sell it.\" Setting a price that comfortably covers the payoff keeps your sale as smooth as possible.\n\nIf you get stuck, message us through the chat bubble in the corner.\n\nLearn more: Lending pool (https://docs.fabrica.land/docs/lending-pool) in our docs.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:45bdbbdae50e",
@@ -8057,7 +8057,7 @@
    "sectionTitle": "My offer or purchase is still pending. Is something wrong?",
    "url": "https://help.fabrica.land/en/articles/16280951-my-offer-or-purchase-is-still-pending-is-something-wrong",
    "text": "Usually nothing is wrong. Here is what the waiting states mean and when to expect news.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:cc21acac17c3",
@@ -8066,7 +8066,7 @@
    "sectionTitle": "If you bought with a bank payment",
    "url": "https://help.fabrica.land/en/articles/16280951-my-offer-or-purchase-is-still-pending-is-something-wrong",
    "text": "Bank transfers are not instant. After \"Your bank payment is on its way\", the payment clears with your bank, usually by the expected date the checkout showed you. While it clears, the property page shows Sale pending and the day you'll become the owner. You will get a confirmation email when the purchase completes, and we will email you sooner if anything needs your attention. If you are waiting on sale proceeds as a seller, the same clearing time applies, and the page shows the date you can expect to get paid. A wire shows \"Waiting for your wire\" until it lands.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:f280347d4193",
@@ -8075,7 +8075,7 @@
    "sectionTitle": "If you bought with account funds or a card",
    "url": "https://help.fabrica.land/en/articles/16280951-my-offer-or-purchase-is-still-pending-is-something-wrong",
    "text": "These purchases settle in one step: the confirmation screen tells you the property is yours. With account funds the confirmation email arrives right away; with a card it arrives once the payment is fully settled, which can take a little longer. If the purchase dialog seems frozen mid-step, refresh the page and check your portfolio on your profile before retrying: if the property is there, the purchase went through.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:b12c56436f78",
@@ -8084,7 +8084,7 @@
    "sectionTitle": "If you made an offer",
    "url": "https://help.fabrica.land/en/articles/16280951-my-offer-or-purchase-is-still-pending-is-something-wrong",
    "text": "An offer is not a purchase yet. The seller has to accept it.\n\n- Your offer stays open for the period you chose with \"Offer Valid For\" (1 to 60 days). If it expires without being accepted, nothing happens and no money moves.\n\n- You can withdraw an open offer any time: your offer shows as \"Your offer\" in the property's offers list with a \"Withdraw\" button.\n\n- If you offered on a property that is still completing its setup (an \"Unclaimed\" page), the owner can accept an offer only once the property is fully set up. Your offer waits in the meantime.\n\nYou will get an email if your offer is accepted, and the funds only move at that point.\n\nIf something has been pending longer than the timelines above, message us in the chat bubble in the corner with a link to the property. Learn more in the buying docs (https://docs.fabrica.land/docs/buying).",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:7ac6238dea74",
@@ -8129,7 +8129,7 @@
    "sectionTitle": "A transaction failed or seems stuck. What do I do?",
    "url": "https://help.fabrica.land/en/articles/16280954-a-transaction-failed-or-seems-stuck-what-do-i-do",
    "text": "First, the reassuring part: a failed transaction does not move your money or your property. When something goes wrong, the app stops before anything happens and shows a message inviting you to try again. Your funds stay put. In almost every case, the fix is simply to retry.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:b4617bac5313",
@@ -8138,7 +8138,7 @@
    "sectionTitle": "Signing fails while listing for sale",
    "url": "https://help.fabrica.land/en/articles/16280954-a-transaction-failed-or-seems-stuck-what-do-i-do",
    "text": "Retry from \"Put for sale\" on your property page. If you logged in with an external crypto wallet, it must be set to Ethereum Mainnet. If you saw a \"Wrong network\" message, see the article \"I got a \"Wrong network\" error. What do I do?\" (https://help.fabrica.land/en/articles/16280955-i-got-a-wrong-network-error-what-do-i-do) in this help center, switch networks, and retry.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:867644d1ba95",
@@ -8147,7 +8147,7 @@
    "sectionTitle": "Approval fails while making an offer",
    "url": "https://help.fabrica.land/en/articles/16280954-a-transaction-failed-or-seems-stuck-what-do-i-do",
    "text": "Retry the \"Allow the offer amount\" step in the offer flow. This step lets the seller collect your USDC (a stablecoin, a digital dollar) only if they accept, and it is safe to run again after a failure.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:8e006cf61436",
@@ -8156,7 +8156,7 @@
    "sectionTitle": "Errors while removing a property",
    "url": "https://help.fabrica.land/en/articles/16280954-a-transaction-failed-or-seems-stuck-what-do-i-do",
    "text": "Two messages come up during removal:\n\n- \"Connect the account that held this property's token. Only that account can authorize the deed transfer.\" You are signed in with a different account or address than the one that completed the removal step. Sign in with the right one and retry.\n\n- \"Authorization expired. Please sign again.\" The signature timed out. Sign again and the step continues.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:878ae2bf7447",
@@ -8165,7 +8165,7 @@
    "sectionTitle": "A request is taking longer than expected",
    "url": "https://help.fabrica.land/en/articles/16280954-a-transaction-failed-or-seems-stuck-what-do-i-do",
    "text": "If signing or confirming seems to hang, the app will now tell you it is \"taking longer than expected\" rather than spinning forever. Usually an earlier request is still open in your wallet. Dismiss that older request, then start the step again and approve it promptly when your wallet asks. If you logged in with your email or a social account, just try the step again; if it keeps happening, come back to this help center or message us.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:b62ee9ae02f6",
@@ -8174,7 +8174,7 @@
    "sectionTitle": "\"Still confirming\"",
    "url": "https://help.fabrica.land/en/articles/16280954-a-transaction-failed-or-seems-stuck-what-do-i-do",
    "text": "Transactions can sit in a confirming state for a few minutes while the Ethereum network processes them. Give it a little time before retrying.\n\nIf something is still stuck after a retry, message us in the chat bubble in the corner and include a link to the property. We will take it from there.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:c6f9baabd7d3",
@@ -8183,7 +8183,7 @@
    "sectionTitle": "I got a \"Wrong network\" error. What do I do?",
    "url": "https://help.fabrica.land/en/articles/16280955-i-got-a-wrong-network-error-what-do-i-do",
    "text": "If you see a message that starts with \"Heads up:\" and says your account is on a different network than the one Fabrica runs on, here is what is going on and how to fix it in about a minute. The full message reads something like \"Heads up: your account is connected to Base, but we run on Ethereum Mainnet. Switch your account to Ethereum Mainnet, then try again. Visit help.fabrica.land if this keeps happening.\" It names the network your account is actually on when it can tell, and says \"a different network\" when it cannot.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:ba76fe9bbf29",
@@ -8192,7 +8192,7 @@
    "sectionTitle": "What the error means",
    "url": "https://help.fabrica.land/en/articles/16280955-i-got-a-wrong-network-error-what-do-i-do",
    "text": "Fabrica runs on Ethereum Mainnet, the main Ethereum network. If you logged in with an external crypto wallet, that wallet can be set to other networks too, and some wallets start on a different one by default. Coinbase Wallet, for example, often starts on Base, Coinbase's own network. Your account and Fabrica are simply not on the same network yet. Nothing is wrong with your account or your property.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:d66d1618281b",
@@ -8201,7 +8201,7 @@
    "sectionTitle": "How to fix it",
    "url": "https://help.fabrica.land/en/articles/16280955-i-got-a-wrong-network-error-what-do-i-do",
    "text": "Many screens now show a button right in the dialog to fix this for you. If you see Switch and continue (or Try again), click it and approve the network switch when your wallet asks. That usually settles it. If your wallet cannot switch on its own, or you would rather do it by hand, switch the network in your wallet:\n\n- Open your wallet app or browser extension.\n\n- Find the network selector. In most wallets it is the network name shown near the top of the screen (it may say \"Base\" or something other than \"Ethereum\").\n\n- Tap or click it and choose Ethereum (sometimes shown as \"Ethereum Mainnet\").\n\n- Go back to Fabrica and retry what you were doing. The error should be gone.\n\nThe exact taps vary a little between wallets and versions:\n\n- Coinbase Wallet (phone app or browser extension): tap the network name at the top, then pick Ethereum from the list.\n\n- MetaMask: click the network menu at the top of the extension or app, then select Ethereum Mainnet.\n\nIf your wallet's screens look different, search its own help for \"switch network\".",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:a8dbb2bdf427",
@@ -8210,7 +8210,7 @@
    "sectionTitle": "If you use email login",
    "url": "https://help.fabrica.land/en/articles/16280955-i-got-a-wrong-network-error-what-do-i-do",
    "text": "You should never be asked to switch networks. Signing in with your email or a social account creates a Fabrica account that is pinned to the right network for you, so there is nothing to switch. If you would rather not deal with networks at all, email login is the simplest path.\n\nIf something goes wrong on our side while preparing your account, you may see a different message: \"Heads up: we couldn't get your account ready to continue. Please try again. Visit help.fabrica.land if this keeps happening.\" That one is not asking you to change any setting. Wait a moment and retry what you were doing. Inside a dialog, the same situation reads \"Heads up: we couldn't get your account ready for this step.\" followed by \"Please try again. If this keeps happening, chat with us below.\"\n\nIf you get stuck, message us in the chat bubble in the corner and we will walk you through it.",
-   "updatedAt": "updated 2 weeks ago at build"
+   "updatedAt": "updated 3 weeks ago at build"
   },
   {
    "id": "help:992967eed8b8",
