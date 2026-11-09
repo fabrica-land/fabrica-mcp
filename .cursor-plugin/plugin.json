@@ -23,5 +23,5 @@
   ],
   "logo": "./plugin/assets/logo.png",
   "skills": "./skills/",
-  "mcpServers": "./plugin/mcp.json"
+  "mcpServers": "./.cursor-plugin/mcp.json"
 }

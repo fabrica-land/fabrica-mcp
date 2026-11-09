@@ -191,6 +191,12 @@ async function gate(req: McpHttpRequest, res: ServerResponse, body: unknown): Pr
   return { ok: false };
 }
 
+/** The read-only profile: /mcp/read, or the query the Vercel rewrite adds. */
+export function isReadOnlyProfile(url: string | undefined): boolean {
+  const parsed = new URL(url ?? "/", "http://localhost");
+  return /^\/mcp\/read\/?$/.test(parsed.pathname) || parsed.searchParams.get("profile") === "read";
+}
+
 export async function handleMcpHttpRequest(req: McpHttpRequest, res: ServerResponse): Promise<void> {
   for (const [name, value] of Object.entries(CORS_HEADERS)) res.setHeader(name, value);
   if (req.method === "OPTIONS") {
@@ -214,7 +220,9 @@ export async function handleMcpHttpRequest(req: McpHttpRequest, res: ServerRespo
     }
     return;
   }
-  const signIn = await gate(req, res, body);
+  // The read-only profile has no personal tools, so it never asks for or reads a token.
+  const readOnly = isReadOnlyProfile(req.url);
+  const signIn: Gate = readOnly ? { ok: true } : await gate(req, res, body);
   if (!signIn.ok) return;
   const account = signIn.account;
   // Personal responses must never be shared by a cache.
@@ -224,7 +232,7 @@ export async function handleMcpHttpRequest(req: McpHttpRequest, res: ServerRespo
     sendJsonRpcError(res, 429, -32000, `find_us_parcel is limited to ${FIND_PARCEL_LIMIT_PER_MINUTE} lookups per minute per client. Wait a minute and retry.`);
     return;
   }
-  const server = createServer({ onFindParcel: usage.noteOnFabrica, account });
+  const server = createServer({ onFindParcel: usage.noteOnFabrica, account, readOnly });
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
   res.on("close", () => {
     void transport.close();

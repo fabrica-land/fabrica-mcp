@@ -150,12 +150,18 @@ export interface ServerHooks {
   onFindParcel?: (onFabrica: readonly boolean[]) => void;
   /** The connected user, once signed in: the personal tools read as them and the wallet-scoped tools default to their wallets. */
   account?: AccountAuth;
+  /**
+   * The read-only profile (/mcp/read): public reads only, for directories that list read-only
+   * servers. No sign request, owner, pool, add-property or personal tools, and no sign-in.
+   */
+  readOnly?: boolean;
 }
 
 /** A tool's arguments with its wallet argument optional, as once the person has signed in. */
 type OwnWalletArgs<A, K extends keyof A> = Omit<A, K> & { [P in K]?: string };
 
 export function createServer(hooks: ServerHooks = {}): McpServer {
+  const writes = !hooks.readOnly;
   // `instructions` belongs in the SDK's ServerOptions (second argument), not in the
   // Implementation record. Passed in the first argument it rode along inside
   // `serverInfo`, where no client reads it, so the mainnet legal notice never
@@ -167,11 +173,13 @@ export function createServer(hooks: ServerHooks = {}): McpServer {
       version: "0.2.0",
     },
     {
-      instructions: SERVER_INSTRUCTIONS
-        + (signRequestsEnabled() ? SIGN_REQUEST_INSTRUCTIONS + (poolSignRequestsEnabled() ? POOL_SIGN_REQUEST_INSTRUCTIONS : "") : "")
-        + (ownerActionsEnabled() ? OWNER_ACTION_INSTRUCTIONS : "")
-        + (hooks.account ? ACCOUNT_INSTRUCTIONS : oauthEnabled() ? SIGN_IN_INSTRUCTIONS : "")
-        + ADD_LAND_INSTRUCTIONS,
+      instructions: writes
+        ? SERVER_INSTRUCTIONS
+          + (signRequestsEnabled() ? SIGN_REQUEST_INSTRUCTIONS + (poolSignRequestsEnabled() ? POOL_SIGN_REQUEST_INSTRUCTIONS : "") : "")
+          + (ownerActionsEnabled() ? OWNER_ACTION_INSTRUCTIONS : "")
+          + (hooks.account ? ACCOUNT_INSTRUCTIONS : oauthEnabled() ? SIGN_IN_INSTRUCTIONS : "")
+          + ADD_LAND_INSTRUCTIONS
+        : SERVER_INSTRUCTIONS,
     },
   );
 
@@ -447,10 +455,12 @@ export function createServer(hooks: ServerHooks = {}): McpServer {
     },
     async (args) => jsonResult(await contactSupport(args)),
   );
-  if (signRequestsEnabled()) registerSignRequestTools(server, hooks.account);
-  // The personal tools are listed whenever Connect Fabrica is on, so an agent can call one and start the sign-in.
-  if (hooks.account || oauthEnabled()) registerAccountTools(server, hooks.account);
-  registerAddLandTools(server, hooks.account);
+  if (writes) {
+    if (signRequestsEnabled()) registerSignRequestTools(server, hooks.account);
+    // The personal tools are listed whenever Connect Fabrica is on, so an agent can call one and start the sign-in.
+    if (hooks.account || oauthEnabled()) registerAccountTools(server, hooks.account);
+    registerAddLandTools(server, hooks.account);
+  }
   registerKnowledgeResources(server);
   registerPrompts(server);
   return server;
