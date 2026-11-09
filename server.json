@@ -2,8 +2,9 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "land.fabrica/mcp",
   "title": "Fabrica",
-  "description": "US land for sale and any US parcel by address or APN: maps, Property checks, taxes, trust documents.",
-  "version": "0.2.0",
+  "description": "Buy, sell, borrow against and add US land; look up any US parcel by address or APN.",
+  "version": "0.3.0",
+  "icons": [{ "src": "https://raw.githubusercontent.com/fabrica-land/fabrica-mcp/main/docs/directory/icon-512.png", "mimeType": "image/png", "sizes": ["512x512"] }],
   "websiteUrl": "https://docs.fabrica.land/docs/ai-agents",
   "repository": { "url": "https://github.com/fabrica-land/fabrica-mcp", "source": "github" },
   "remotes": [{ "type": "streamable-http", "url": "https://mcp.fabrica.land/mcp" }]

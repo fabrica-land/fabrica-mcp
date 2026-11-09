@@ -1,6 +1,6 @@
 {
   "name": "@fabrica-land/mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "MCP server for AI agents to explore tokenized real property on the Fabrica protocol",
   "type": "module",
