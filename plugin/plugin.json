@@ -47,11 +47,7 @@
         ],
         "brandColor": "#1E28FF",
         "brandColorDark": "#8D93FF",
-        "logo": "./assets/logo.png",
-        "screenshots": [
-          "./assets/screenshot-carson-nm.png",
-          "./assets/screenshot-prescott-az.png"
-        ]
+        "logo": "./assets/logo.png"
       },
       "review": {
         "test_cases": {
