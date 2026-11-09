@@ -78,6 +78,8 @@ await writeFile(`${OUTPUT}/config.json`, JSON.stringify({
       headers: { "Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=31536000, immutable" },
       continue: true,
     },
+    // The read-only profile (public reads only) for directories that list read-only servers.
+    { src: "^/mcp/read/?$", dest: "/mcp?profile=read" },
     { src: "^/sign-requests/([^/]+)/result/?$", dest: "/sign-requests?id=$1&op=result" },
     { src: "^/sign-requests/([^/]+)/?$", dest: "/sign-requests?id=$1" },
     { src: "^/\\.well-known/mcp\\.json$", dest: "/well-known?doc=manifest" },

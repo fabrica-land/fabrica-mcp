@@ -7,10 +7,11 @@ import { createServer } from "../server.js";
 const plugin = JSON.parse(readFileSync("plugin/plugin.json", "utf8"));
 const cursor = JSON.parse(readFileSync(".cursor-plugin/plugin.json", "utf8"));
 const mcp = JSON.parse(readFileSync("plugin/mcp.json", "utf8"));
+const cursorMcp = JSON.parse(readFileSync(".cursor-plugin/mcp.json", "utf8"));
 const openai = plugin.extensions["com.openai"];
 
 async function registeredToolNames(): Promise<string[]> {
-  const server = createServer();
+  const server = createServer({ readOnly: true });
   const client = new Client({ name: "plugin-test", version: "0.0.0" });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
@@ -20,9 +21,10 @@ async function registeredToolNames(): Promise<string[]> {
 }
 
 describe("plugin package", () => {
-  it("points every manifest at the hosted mainnet server", () => {
-    expect(Object.values(mcp.mcpServers)).toEqual([{ type: "streamable-http", url: "https://mcp.fabrica.land/mcp" }]);
-    expect(cursor.mcpServers).toBe("./plugin/mcp.json");
+  it("points ChatGPT at the read-only profile and Cursor at the full mainnet server", () => {
+    expect(Object.values(mcp.mcpServers)).toEqual([{ type: "streamable-http", url: "https://mcp.fabrica.land/mcp/read" }]);
+    expect(Object.values(cursorMcp.mcpServers)).toEqual([{ type: "streamable-http", url: "https://mcp.fabrica.land/mcp" }]);
+    expect(cursor.mcpServers).toBe("./.cursor-plugin/mcp.json");
     expect(cursor.name).toBe(plugin.name);
   });
 

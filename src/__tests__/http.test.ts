@@ -56,6 +56,19 @@ describe("hosted HTTP transport", () => {
     await client.close();
   });
 
+  it("serves only read-only tools at /mcp/read and never asks for sign-in there", async () => {
+    for (const path of ["/mcp/read", "/mcp?profile=read"]) {
+      const client = new Client({ name: "http-test", version: "0.0.0" });
+      await client.connect(new StreamableHTTPClientTransport(new URL(path, url)));
+      const { tools } = await client.listTools();
+      expect(tools.length).toBeGreaterThan(15);
+      for (const tool of tools) expect(tool.annotations?.readOnlyHint, tool.name).toBe(true);
+      expect(tools.map((tool) => tool.name)).not.toEqual(expect.arrayContaining(["add_land"]));
+      expect(client.getInstructions()).toContain("read-only access");
+      await client.close();
+    }
+  });
+
   it("marks every tool read-only with a title, as the Claude connectors directory requires (add_land writes)", async () => {
     const client = new Client({ name: "http-test", version: "0.0.0" });
     await client.connect(new StreamableHTTPClientTransport(new URL(url)));
