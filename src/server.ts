@@ -47,6 +47,7 @@ import { getMyAccount, getMyProperties, getMyPropertiesInput } from "./tools/acc
 import { getMyOnRamps, getOnRampStatus, getOnRampStatusInput } from "./tools/onramps.js";
 import { addLand, addLandInput, answerAddingQuestions, answerQuestionsInput } from "./tools/add-land.js";
 import { findListingsOnWebsite, MAX_LISTINGS_RETURNED, websiteInput } from "./tools/website-import.js";
+import { findLandByOwner, ownerSearchInput } from "./tools/owner-search.js";
 import { getMyOffers, getMyOffersInput } from "./tools/offers.js";
 import { getMyLoans } from "./tools/my-loans.js";
 import { ATTENTION_TOKEN_BUDGET, whatNeedsAttention } from "./tools/attention.js";
@@ -68,10 +69,10 @@ export const POOL_SIGN_REQUEST_INSTRUCTIONS = " deposit_to_lending_pool and with
 export const ACCOUNT_TOOL_NAMES = ["get_my_account", "get_my_properties", "get_my_offers", "get_my_loans", "what_needs_attention", "get_my_properties_being_added", "get_adding_status"] as const;
 /** The tools that only answer for the connected person: the personal reads, plus answer_adding_questions and find_listings_on_website. */
 export function accountToolNames(): readonly string[] {
-  return [...ACCOUNT_TOOL_NAMES, "answer_adding_questions", "find_listings_on_website"];
+  return [...ACCOUNT_TOOL_NAMES, "answer_adding_questions", "find_listings_on_website", "find_land_by_owner"];
 }
 
-export const ADD_LAND_INSTRUCTIONS = " add_land starts adding a property to Fabrica from a listing link on another website (find_listings_on_website lists every listing page on a seller's own website), a parcel number with its state and county, or a street address: it finds the parcel, and signed in with the add-property grant it creates the property's record as the connected person (with the listing's description and photos) and returns the questions the county asks for it; answer_adding_questions saves the owner named on the deed and the answers, and returns what is still open. The questions come from Fabrica's rules for that county and kind of owner, read from the record each time, so they are asked as returned, never assumed. Not signed in, add_land returns the link that opens the parcel on fabrica.land.";
+export const ADD_LAND_INSTRUCTIONS = " add_land starts adding a property to Fabrica from a listing link on another website (find_listings_on_website lists every listing page on a seller's own website), a parcel number with its state and county (find_land_by_owner lists the parcels a county records under an owner's name, for the signed-in person), or a street address: it finds the parcel, and signed in with the add-property grant it creates the property's record as the connected person (with the listing's description and photos) and returns the questions the county asks for it; answer_adding_questions saves the owner named on the deed and the answers, and returns what is still open. The questions come from Fabrica's rules for that county and kind of owner, read from the record each time, so they are asked as returned, never assumed. Not signed in, add_land returns the link that opens the parcel on fabrica.land.";
 
 /** Added to the instructions while Connect Fabrica is on and the person has not signed in: the personal tools are listed, and calling one starts the sign-in. */
 export const SIGN_IN_INSTRUCTIONS = " The person has not connected their Fabrica account to this client yet, so every tool reads public data only and knows nothing about them. The personal tools (get_my_account, get_my_properties, get_my_offers, get_my_loans, get_my_properties_being_added, get_adding_status, what_needs_attention) read the connected person's own holdings, offers, loans and the properties they are adding. A call to one of them, or to get_land_portfolio, get_land_portfolio_map_image, get_land_activity or search_land (ownedBy) with 'me' as the wallet, is answered with a sign-in request: the client has the person sign in to Fabrica and approve read-only access, and the same call then runs. The server holds no wallet address for a person who has not signed in; the person's own wallet is known only through a personal tool or an address they give.";
@@ -761,5 +762,15 @@ function registerAddLandTools(server: McpServer, account?: AccountAuth): void {
       annotations: readOnly("Find the listings on my website"),
     },
     async (args) => (account ? jsonResult(await findListingsOnWebsite(account, args)) : signInRequired()),
+  );
+  server.registerTool(
+    "find_land_by_owner",
+    {
+      title: "Find land by owner name",
+      description: `List the parcels a county records under an owner's name (owner, as on the tax bill, usually last name first), in one county (state and county), so the person can add theirs to Fabrica (${NETWORK_LABEL}) with add_land (parcelNumber, state, county). Returns up to 10 parcels, each with its parcel number, recorded owner, address, acres, whether it is already on Fabrica and the fabrica.land link that adds it, and whether the owner has more. Reads county records only; nothing is created or changed. Meant for the person's own land. Needs the person to be signed in.`,
+      inputSchema: ownerSearchInput,
+      annotations: readOnly("Find land by owner name"),
+    },
+    async (args) => (account ? jsonResult(await findLandByOwner(account, args)) : signInRequired()),
   );
 }

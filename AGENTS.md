@@ -66,6 +66,7 @@ ui/
     onramps.ts        # get_my_properties_being_added, get_adding_status (signed in only, onramp:read); describeOnRamp and the county's questions with their answers
     add-land.ts       # add_land, answer_adding_questions: start a property from a listing link, a parcel number or an address as the connected person (onramp:write), then the owner and the county's questions read from the record
     website-import.ts # find_listings_on_website: the listing pages on a seller's website, read by the web app's site scan (server key + the person's account id), each added with add_land
+    owner-search.ts   # find_land_by_owner: the parcels a county records under an owner's name, via the web app's owner search (server key + the person's account id), each added with add_land by parcel number
     own-wallet.ts     # Signed in, fills wallet arguments from the account (omitted or "me"; portfolio:read); public reads otherwise unchanged; signerFor gives the sign request tools the account's wallets, and pickSigner (sign-requests.ts) picks the one that fits the action or asks when several do
     personal-view.ts  # Signed in, get_land_property and estimate_land_borrowing read the token with the user's token (uncached, issuer only) for personalized borrowing capacity; falls back to the public read
     inputs.ts         # zod pieces shared by the tools' input schemas (property reference, image size)
