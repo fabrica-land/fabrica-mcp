@@ -10,6 +10,7 @@ import type {
   LoanCollateralToken,
   LoanModel,
   MarketplaceOrderModel,
+  ParcelIndexToken,
   PoolLendingLiquidityModel,
   PoolLendingLiquidityWithOracle,
   PoolLendingPoolWithTicks,
@@ -332,6 +333,15 @@ export function activity(overrides: Partial<ActivityModel> = {}): ActivityModel 
     currencySymbol: null,
     usdAmount: null,
     newValue: null,
+    ...overrides,
+  };
+}
+
+/** A parcel index token (GetParcelIndex), every selected field set. */
+export function parcelIndexToken(overrides: Partial<ParcelIndexToken> & Pick<ParcelIndexToken, "tokenId">): ParcelIndexToken {
+  return {
+    name: null, vanityName: null, slug: `token-${overrides.tokenId}`, propertyLink: `https://fabrica.land/token-${overrides.tokenId}`,
+    regionCode: null, district: null, place: null, coordinates: { lat: 0, lon: 0 }, definition: null,
     ...overrides,
   };
 }

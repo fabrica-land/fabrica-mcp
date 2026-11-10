@@ -135,7 +135,7 @@ function registrarApns(propertyId: string, countyFips: string | null): string[] 
   return unprefixed ? [normalizeApn(propertyId), normalizeApn(unprefixed)] : [normalizeApn(propertyId)];
 }
 
-function toOnFabrica(token: ParcelIndexToken): ParcelOnFabrica {
+export function toOnFabrica(token: ParcelIndexToken): ParcelOnFabrica {
   return {
     tokenId: token.tokenId,
     name: token.name ?? token.vanityName ?? null,
