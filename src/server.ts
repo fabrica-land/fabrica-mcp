@@ -46,6 +46,7 @@ import type { AccountWallet } from "./clients/account.js";
 import { getMyAccount, getMyProperties, getMyPropertiesInput } from "./tools/account.js";
 import { getMyOnRamps, getOnRampStatus, getOnRampStatusInput } from "./tools/onramps.js";
 import { addLand, addLandInput, answerAddingQuestions, answerQuestionsInput } from "./tools/add-land.js";
+import { findListingsOnWebsite, MAX_LISTINGS_RETURNED, websiteInput } from "./tools/website-import.js";
 import { getMyOffers, getMyOffersInput } from "./tools/offers.js";
 import { getMyLoans } from "./tools/my-loans.js";
 import { ATTENTION_TOKEN_BUDGET, whatNeedsAttention } from "./tools/attention.js";
@@ -65,12 +66,12 @@ export const POOL_SIGN_REQUEST_INSTRUCTIONS = " deposit_to_lending_pool and with
 
 /** The tools that read the connected person's own account. A call to one without a token is answered with the sign-in challenge (http.ts). */
 export const ACCOUNT_TOOL_NAMES = ["get_my_account", "get_my_properties", "get_my_offers", "get_my_loans", "what_needs_attention", "get_my_properties_being_added", "get_adding_status"] as const;
-/** The tools that only answer for the connected person: the personal reads, plus answer_adding_questions. */
+/** The tools that only answer for the connected person: the personal reads, plus answer_adding_questions and find_listings_on_website. */
 export function accountToolNames(): readonly string[] {
-  return [...ACCOUNT_TOOL_NAMES, "answer_adding_questions"];
+  return [...ACCOUNT_TOOL_NAMES, "answer_adding_questions", "find_listings_on_website"];
 }
 
-export const ADD_LAND_INSTRUCTIONS = " add_land starts adding a property to Fabrica from a listing link on another website, a parcel number with its state and county, or a street address: it finds the parcel, and signed in with the add-property grant it creates the property's record as the connected person (with the listing's description and photos) and returns the questions the county asks for it; answer_adding_questions saves the owner named on the deed and the answers, and returns what is still open. The questions come from Fabrica's rules for that county and kind of owner, read from the record each time, so they are asked as returned, never assumed. Not signed in, add_land returns the link that opens the parcel on fabrica.land.";
+export const ADD_LAND_INSTRUCTIONS = " add_land starts adding a property to Fabrica from a listing link on another website (find_listings_on_website lists every listing page on a seller's own website), a parcel number with its state and county, or a street address: it finds the parcel, and signed in with the add-property grant it creates the property's record as the connected person (with the listing's description and photos) and returns the questions the county asks for it; answer_adding_questions saves the owner named on the deed and the answers, and returns what is still open. The questions come from Fabrica's rules for that county and kind of owner, read from the record each time, so they are asked as returned, never assumed. Not signed in, add_land returns the link that opens the parcel on fabrica.land.";
 
 /** Added to the instructions while Connect Fabrica is on and the person has not signed in: the personal tools are listed, and calling one starts the sign-in. */
 export const SIGN_IN_INSTRUCTIONS = " The person has not connected their Fabrica account to this client yet, so every tool reads public data only and knows nothing about them. The personal tools (get_my_account, get_my_properties, get_my_offers, get_my_loans, get_my_properties_being_added, get_adding_status, what_needs_attention) read the connected person's own holdings, offers, loans and the properties they are adding. A call to one of them, or to get_land_portfolio, get_land_portfolio_map_image, get_land_activity or search_land (ownedBy) with 'me' as the wallet, is answered with a sign-in request: the client has the person sign in to Fabrica and approve read-only access, and the same call then runs. The server holds no wallet address for a person who has not signed in; the person's own wallet is known only through a personal tool or an address they give.";
@@ -623,7 +624,7 @@ function registerSignRequestTools(server: McpServer, account?: AccountAuth): voi
     "get_sign_request",
     {
       title: "Get sign request status",
-      description: `Get a sign request a prepare tool returned (make_land_offer, list_land_for_sale, accept_land_offer, buy_land, cancel_land_order, borrow_against_land, repay_loan_against_land${ownerActionsEnabled() ? ", transfer_land, update_trust_agreement, update_land_description, update_land_photos" : ""}${poolSignRequestsEnabled() ? ", deposit_to_lending_pool, withdraw_from_lending_pool" : ""}) by its id: pending or completed, with the order hash, transaction hash or loan id once signed. A pending request is also checked against the live order book, the property's loans for a borrow or payoff, the property itself for an owner change, or the pool's log for a deposit or withdrawal. Requests expire 15 minutes after they are prepared; an expired id is reported as unknown.`,
+      description: `Get a sign request a prepare tool returned (make_land_offer, list_land_for_sale, accept_land_offer, buy_land, cancel_land_order, borrow_against_land, repay_loan_against_land${ownerActionsEnabled() ? ", transfer_land, update_trust_agreement, update_land_description, update_land_photos" : ""}${poolSignRequestsEnabled() ? ", deposit_to_lending_pool, withdraw_from_lending_pool" : ""}) by its id: pending or completed, with the order hash, transaction hash or loan id once signed. A pending request is also checked against the live order book, the property's loans for a borrow or payoff, the property itself for an owner change, or the pool's log for a deposit or withdrawal. Requests expire 15 minutes after they are prepared. A purchase or payoff paid on the sign page by card, bank transfer or wire shows as payment_clearing, with the payment's stage and expected date, until it lands; such requests are followed for two weeks. Other expired requests are kept a day, then reported as unknown.`,
       inputSchema: getSignRequestInput,
       annotations: readOnly("Get sign request status"),
     },
@@ -656,7 +657,7 @@ function registerAccountTools(server: McpServer, account?: AccountAuth): void {
     "get_my_account",
     {
       title: "Get my Fabrica account",
-      description: `Get the connected person's own Fabrica account on ${NETWORK_LABEL}: their email, their linked accounts (every wallet address on the account, each listed once), their verification status, and what this connection may read (its scopes and when its access token expires). Takes no input: it always answers for the person who connected, never for anyone else.`,
+      description: `Get the connected person's own Fabrica account on ${NETWORK_LABEL}: their email, their linked accounts (every wallet address on the account, each listed once), their verification status, the dollars (USDC) each account holds with a Cash out link on fabrica.land from a dollar up, and what this connection may read (its scopes and when its access token expires). Takes no input: it always answers for the person who connected, never for anyone else.`,
       inputSchema: {},
       annotations: readOnly("Get my Fabrica account"),
     },
@@ -696,7 +697,7 @@ function registerAccountTools(server: McpServer, account?: AccountAuth): void {
     "what_needs_attention",
     {
       title: "What needs my attention on Fabrica",
-      description: `One ranked list of everything waiting on the connected person on Fabrica (${NETWORK_LABEL}): loans past or near maturity and offers waiting on their properties first, then steps of properties they are adding that wait on them, then fees to approve, then checks on their live properties (property taxes, owner contact, recovery status) and removals in progress. Each item has its kind, property, title, why, due date when known, the link where it is done and who acts. Fees and checks cover up to ${ATTENTION_TOKEN_BUDGET} live properties per call. checked lists what was read, so an empty list means nothing was found there. Reads only; uses the portfolio:read and onramp:read grants and skips what the connection lacks.`,
+      description: `One ranked list of everything waiting on the connected person on Fabrica (${NETWORK_LABEL}): loans past or near maturity and offers waiting on their properties first, then steps of properties they are adding that wait on them, then fees to approve and dollars (USDC) in their accounts ready to cash out, then checks on their live properties (property taxes, owner contact, recovery status) and removals in progress. Each item has its kind, property, title, why, due date when known, the link where it is done and who acts. Fees and checks cover up to ${ATTENTION_TOKEN_BUDGET} live properties per call. checked lists what was read, so an empty list means nothing was found there. Reads only; uses the portfolio:read and onramp:read grants and skips what the connection lacks.`,
       inputSchema: {},
       annotations: readOnly("What needs my attention on Fabrica"),
     },
@@ -750,5 +751,15 @@ function registerAddLandTools(server: McpServer, account?: AccountAuth): void {
       annotations: actsForOwner("Answer the questions for a property I'm adding", false),
     },
     async (args) => (account ? jsonResult(await answerAddingQuestions(account, args)) : signInRequired()),
+  );
+  server.registerTool(
+    "find_listings_on_website",
+    {
+      title: "Find the listings on my website",
+      description: `List the property listing pages on a seller's own website (url: the site, or the page that lists their properties), so they can be added to Fabrica (${NETWORK_LABEL}) one by one with add_land (listingUrl). The site is read from its sitemap or its links; nothing is created or changed. Returns the site, each listing's link (up to ${MAX_LISTINGS_RETURNED}) and whether the list was cut short. Only for the person's own listings on their own website: add_land copies each listing's description and photos. Needs the person to be signed in.`,
+      inputSchema: websiteInput,
+      annotations: readOnly("Find the listings on my website"),
+    },
+    async (args) => (account ? jsonResult(await findListingsOnWebsite(account, args)) : signInRequired()),
   );
 }

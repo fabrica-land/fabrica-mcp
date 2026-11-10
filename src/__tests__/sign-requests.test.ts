@@ -13,6 +13,8 @@ vi.mock("../clients/graphql.js", () => {
   return {
     FabricaApiError,
     getSignContext: vi.fn(),
+    getLoanContext: vi.fn(),
+    getTokenPayments: vi.fn(),
     isTokenNotFound: (e: unknown) => e instanceof FabricaApiError && e.graphQLErrors.some(m => m.includes("No token or premint found")),
   };
 });
@@ -24,7 +26,7 @@ vi.mock("../clients/rpc.js", () => ({
   getBlockNumber: vi.fn(),
 }));
 
-import { FabricaApiError, getSignContext } from "../clients/graphql.js";
+import { FabricaApiError, getLoanContext, getSignContext, getTokenPayments } from "../clients/graphql.js";
 import { getBlockNumber, getTransaction, getTransactionReceipt } from "../clients/rpc.js";
 import {
   acceptOffer,
@@ -106,6 +108,7 @@ beforeEach(() => {
   vi.setSystemTime(NOW);
   vi.mocked(getSignContext).mockReset();
   vi.mocked(getTransaction).mockReset();
+  vi.mocked(getTokenPayments).mockReset().mockResolvedValue([]);
   store = new SignRequestStore(new MemoryBackend(), "test-secret");
   setSignRequestStore(store);
 });
@@ -182,6 +185,15 @@ describe("the sign-request store", () => {
     const loaded = await store.get(r.id);
     expect(loaded?.action).toBe("repay_land_loan");
     expect(signPageView(loaded as SignRequest).action).toBe("repay");
+  });
+
+  it("keeps a purchase or a payoff two weeks, so a payment in dollars can be followed after the link expires", async () => {
+    const r = record({ action: "buy_land", kind: "transaction", order: undefined, orderHash: HASH_A });
+    await store.create(r);
+    vi.setSystemTime(NOW + 13 * 24 * 3600_000);
+    expect(await store.get(r.id)).toEqual(r);
+    vi.setSystemTime(NOW + 14 * 24 * 3600_000 + 1);
+    expect(await store.get(r.id)).toBeNull();
   });
 
   it("marks a request expired 15 minutes after it was prepared and forgets it after a day", async () => {
@@ -345,6 +357,7 @@ describe("accept_land_offer, buy_land and cancel_land_order", () => {
     expect(result.signRequest.kind).toBe("transaction");
     expect(result.signRequest.signLink).toContain(`action=buy&order=${HASH_A}`);
     expect(result.signRequest.warnings.some(w => w.message.includes("Survey"))).toBe(true);
+    expect(result.signRequest.warnings.some(w => w.message.includes("paying in dollars by card, bank transfer or wire"))).toBe(true);
   });
 
   it("buy refuses the seller's own listing, an unbuyable encumbered one and a reserved one", async () => {
@@ -431,6 +444,96 @@ describe("results", () => {
     const result = await getSignRequest({ id: r.id });
     expect(result).toMatchObject({ status: "completed", result: { orderHash: HASH_B } });
     expect(await getSignRequest({ id: newSignRequestId() })).toHaveProperty("error");
+  });
+  describe("paid in dollars", () => {
+    const TOKEN_CONTRACT = "0x5cbeb7A0df7Ed85D82a472FD56d81ed550f3Ea95";
+    const TRANSFER_SINGLE = "0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62";
+    const topic = (address: string) => `0x${"0".repeat(24)}${address.slice(2).toLowerCase()}`;
+    const transferTo = (to: string, id = 123n, value = 1n, from = OWNER) => ({ address: TOKEN_CONTRACT, topics: [TRANSFER_SINGLE, topic(POOL), topic(from), topic(to)], data: `0x${id.toString(16).padStart(64, "0")}${value.toString(16).padStart(64, "0")}` });
+    const payment = (overrides: Record<string, unknown> = {}) => ({ id: "p1", createdAt: new Date(NOW + 120_000).toISOString(), eta: "2026-10-22T00:00:00Z", method: "ach", rail: "ach", phase: "WaitingOnBank" as const, action: "buy property", walletAddress: BUYER, total: "10012.5", status: "initiated", signature: null, ...overrides });
+    const buyRecord = () => record({ action: "buy_land", kind: "transaction", order: undefined, orderHash: HASH_A });
+
+    it("completes a purchase the card or bank processor sent, when it delivers the property to the buyer", async () => {
+      const r = buyRecord();
+      const filled = token({ marketplaceListings: [order({ side: "sell", makerAddress: OWNER, status: "filled", matchTransactionHash: TX })] });
+      vi.mocked(getTransaction).mockResolvedValue({ hash: TX, from: POOL, to: POOL, value: "0x0", blockNumber: "0x1" });
+      vi.mocked(getTransactionReceipt).mockResolvedValue({ status: "0x1", blockNumber: "0x1", gasUsed: "0x1", logs: [transferTo(OWNER)] });
+      expect(await observe(r, filled)).toBeNull();
+      vi.mocked(getTransactionReceipt).mockResolvedValue({ status: "0x1", blockNumber: "0x1", gasUsed: "0x1", logs: [transferTo(BUYER, 124n)] });
+      expect(await observe(r, filled)).toBeNull();
+      vi.mocked(getTransactionReceipt).mockResolvedValue({ status: "0x1", blockNumber: "0x1", gasUsed: "0x1", logs: [transferTo(BUYER)] });
+      expect(await observe(r, filled)).toEqual({ orderHash: HASH_A, transactionHash: TX });
+    });
+
+    it("does not count a zero, partial or returned transfer to the buyer as the purchase", async () => {
+      const r = buyRecord();
+      const filled = (supply: string) => token({ marketplaceListings: [order({ side: "sell", makerAddress: OWNER, status: "filled", matchTransactionHash: TX, supply })] });
+      vi.mocked(getTransaction).mockResolvedValue({ hash: TX, from: POOL, to: POOL, value: "0x0", blockNumber: "0x1" });
+      const receipt = (logs: ReturnType<typeof transferTo>[]) => vi.mocked(getTransactionReceipt).mockResolvedValue({ status: "0x1", blockNumber: "0x1", gasUsed: "0x1", logs });
+      receipt([transferTo(POOL), transferTo(BUYER, 123n, 0n)]);
+      expect(await observe(r, filled("1"))).toBeNull();
+      receipt([transferTo(BUYER, 123n, 1n)]);
+      expect(await observe(r, filled("2"))).toBeNull();
+      receipt([transferTo(BUYER, 123n, 1n), transferTo(POOL, 123n, 1n, BUYER)]);
+      expect(await observe(r, filled("1"))).toBeNull();
+      receipt([transferTo(BUYER, 123n, 1n), transferTo(BUYER, 123n, 1n)]);
+      expect(await observe(r, filled("2"))).toEqual({ orderHash: HASH_A, transactionHash: TX });
+    });
+
+    it("reports a bank payment still clearing after the link expired, then completes when the purchase lands", async () => {
+      const r = buyRecord();
+      await store.create(r);
+      vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceListings: [order({ side: "sell", makerAddress: OWNER })] }));
+      vi.mocked(getTokenPayments).mockResolvedValue([payment(), payment({ id: "other", walletAddress: OWNER }), payment({ id: "old", createdAt: new Date(NOW - 60_000).toISOString(), phase: "BankFailed" })]);
+      vi.setSystemTime(NOW + 2 * 24 * 3600_000);
+      const clearing = await getSignRequest({ id: r.id });
+      expect(clearing).toMatchObject({ status: "payment_clearing", payment: { method: "bank transfer", stage: "Waiting on the bank", totalUsd: "$10,012.50", expectedBy: "2026-10-22T00:00:00Z", failed: false } });
+      expect(clearing).toMatchObject({ note: expect.stringContaining("Paid by bank transfer, $10,012.50: Waiting on the bank, expected by 2026-10-22. The purchase completes once the payment clears") });
+      vi.mocked(getTokenPayments).mockResolvedValue([]);
+      vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceListings: [order({ side: "sell", makerAddress: OWNER, status: "filled", matchTransactionHash: TX })] }));
+      vi.mocked(getTransaction).mockResolvedValue({ hash: TX, from: POOL, to: POOL, value: "0x0", blockNumber: "0x1" });
+      vi.mocked(getTransactionReceipt).mockResolvedValue({ status: "0x1", blockNumber: "0x1", gasUsed: "0x1", logs: [transferTo(BUYER)] });
+      expect(await getSignRequest({ id: r.id })).toMatchObject({ status: "completed", result: { orderHash: HASH_A, transactionHash: TX } });
+    });
+
+    it("does not follow an expired payoff that never had a dollar payment, so a later request keeps its loan", async () => {
+      const r = record({ action: "repay_loan_against_land", kind: "transaction", order: undefined, loan: { loanId: "7" } });
+      await store.create(r);
+      vi.mocked(getTokenPayments).mockResolvedValue([]);
+      vi.setSystemTime(NOW + 3600_000);
+      expect(await getSignRequest({ id: r.id })).toMatchObject({ status: "expired" });
+      expect(getLoanContext).not.toHaveBeenCalled();
+    });
+
+    it("completes a purchase first asked about after its bank transfer settled and left the payment list", async () => {
+      const r = buyRecord();
+      await store.create(r);
+      vi.mocked(getTokenPayments).mockResolvedValue([]);
+      vi.setSystemTime(NOW + 3 * 24 * 3600_000);
+      vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceListings: [order({ side: "sell", makerAddress: OWNER, status: "filled", matchTransactionHash: TX })] }));
+      vi.mocked(getTransaction).mockResolvedValue({ hash: TX, from: POOL, to: POOL, value: "0x0", blockNumber: "0x1" });
+      vi.mocked(getTransactionReceipt).mockResolvedValue({ status: "0x1", blockNumber: "0x1", gasUsed: "0x1", logs: [transferTo(BUYER)] });
+      expect(await getSignRequest({ id: r.id })).toMatchObject({ status: "completed", result: { orderHash: HASH_A, transactionHash: TX } });
+    });
+
+    it("says when the payment failed, and stays expired", async () => {
+      const r = buyRecord();
+      await store.create(r);
+      vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceListings: [order({ side: "sell", makerAddress: OWNER })] }));
+      vi.mocked(getTokenPayments).mockResolvedValue([payment({ method: "creditCard", phase: "BankFailed", status: "declined" })]);
+      vi.setSystemTime(NOW + 3600_000);
+      const result = await getSignRequest({ id: r.id });
+      expect(result).toMatchObject({ status: "expired", payment: { method: "card", failed: true, expectedBy: null } });
+      expect(result).toMatchObject({ note: expect.stringContaining("did not go through") });
+    });
+
+    it("an offer still expires as before and never looks for a dollar payment", async () => {
+      const r = record();
+      await store.create(r);
+      vi.setSystemTime(NOW + 3600_000);
+      expect(await getSignRequest({ id: r.id })).toMatchObject({ status: "expired" });
+      expect(getTokenPayments).not.toHaveBeenCalled();
+    });
   });
 });
 

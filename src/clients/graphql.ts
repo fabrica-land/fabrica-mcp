@@ -11,6 +11,7 @@ import type {
   GetParcelIndexQuery,
   GetPremintSuccessorQuery,
   GetSignContextQuery,
+  GetTokenPaymentsQuery,
   GetLoanContextQuery,
   GetPropertyLinkQuery,
   GetTaxStatusQuery,
@@ -37,6 +38,7 @@ import type {
   ParcelIndexToken,
   ScoreRecord,
   SignContextToken,
+  TokenPayment,
   SignedValuationPanel,
   TaxStatusToken,
   TokenDetail,
@@ -567,6 +569,27 @@ export async function getSignContext(
     network: NETWORK,
   });
   return data.token;
+}
+
+// --- Card, bank and wire payments on a property: a purchase or a loan payoff paid in dollars ---
+
+const GET_TOKEN_PAYMENTS_QUERY = gql`
+  query GetTokenPayments($tokenId: String, $network: String) {
+    token(tokenId: $tokenId, network: $network) {
+      tokenId
+      fiatTransactions { id createdAt eta method rail phase action walletAddress total status signature }
+    }
+  }
+`;
+
+/**
+ * The card, bank transfer and wire payments open on a property (the API leaves out settled and
+ * failed bank transfers). Public: wire instructions are blanked for anyone but the payer, and this
+ * query does not ask for them. Never cached: a sign request follows the live state.
+ */
+export async function getTokenPayments(tokenId: string): Promise<TokenPayment[]> {
+  const data = await request<GetTokenPaymentsQuery>(GET_TOKEN_PAYMENTS_QUERY, { tokenId, network: NETWORK });
+  return data.token?.fiatTransactions ?? [];
 }
 
 // --- Loan context: the pool's capacity and the token's loans, for borrow/repay sign requests and get_loan_against_land ---
@@ -1143,6 +1166,7 @@ export const API_DOCUMENTS: ReadonlyArray<{ name: string; document: string }> = 
   { name: "GetOrderBook", document: GET_ORDER_BOOK_QUERY },
   { name: "GetPremintSuccessor", document: GET_PREMINT_SUCCESSOR_QUERY },
   { name: "GetSignContext", document: GET_SIGN_CONTEXT_QUERY },
+  { name: "GetTokenPayments", document: GET_TOKEN_PAYMENTS_QUERY },
   { name: "GetLoanContext", document: GET_LOAN_CONTEXT_QUERY },
   { name: "GetParcelIndex", document: GET_PARCEL_INDEX_QUERY },
   { name: "GetNetworkActivity", document: GET_NETWORK_ACTIVITY_QUERY },

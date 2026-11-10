@@ -9,8 +9,10 @@ vi.mock("../tools/account.js", () => ({ getMyProperties: vi.fn() }));
 vi.mock("../tools/my-loans.js", async (importOriginal) => ({ ...(await importOriginal<typeof import("../tools/my-loans.js")>()), getMyLoans: vi.fn() }));
 vi.mock("../tools/offers.js", () => ({ getMyOffers: vi.fn() }));
 vi.mock("../tools/onramps.js", () => ({ getMyOnRamps: vi.fn() }));
+vi.mock("../clients/rpc.js", () => ({ ethCall: vi.fn() }));
 
 import { getScoreRecord, getToken } from "../clients/graphql.js";
+import { ethCall } from "../clients/rpc.js";
 import { AccountApiError, getAccountProfile } from "../clients/account.js";
 import { getMyProperties, type MyPropertiesResult, type MyPropertyRow } from "../tools/account.js";
 import { getMyLoans, type MyLoansResult } from "../tools/my-loans.js";
@@ -53,6 +55,7 @@ beforeEach(() => {
   vi.mocked(getMyProperties).mockReset().mockResolvedValue(properties([propertyRow("1")]));
   vi.mocked(getToken).mockReset().mockResolvedValue(tokenDetail({ tokenId: "1", score: 73242, scoringCheckResults: CHECKS_OK }));
   vi.mocked(getScoreRecord).mockReset().mockResolvedValue(RECORD_OK);
+  vi.mocked(ethCall).mockReset().mockResolvedValue(`0x${"0".repeat(64)}`);
 });
 
 describe("what_needs_attention", () => {
@@ -121,10 +124,31 @@ describe("what_needs_attention", () => {
     expect(result.items[0]).toMatchObject({ kind: "loan", tokenId: "2", title: expect.stringContaining("past its maturity") });
   });
 
+  it("lists dollars waiting in an account with its Cash out link", async () => {
+    vi.mocked(ethCall).mockResolvedValue(`0x${(1_234_560_000n).toString(16).padStart(64, "0")}`);
+    const result = await whatNeedsAttention(AUTH);
+    expect(result.items).toEqual([expect.objectContaining({
+      kind: "cash",
+      title: "$1,234.56 ready to cash out from 0xaaaa…aaaa",
+      link: "https://fabrica.land/profile/0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa?action=cashout",
+      whoActs: "You",
+    })]);
+    expect(vi.mocked(ethCall).mock.calls[0]).toEqual([expect.stringMatching(/^0x/), `0x70a08231${"0".repeat(24)}${"a".repeat(40)}`]);
+  });
+
+  it("leaves dust out and says when a balance could not be read", async () => {
+    vi.mocked(ethCall).mockResolvedValueOnce(`0x${(990_000n).toString(16).padStart(64, "0")}`);
+    expect((await whatNeedsAttention(AUTH)).items).toEqual([]);
+    vi.mocked(ethCall).mockRejectedValue(new Error("rpc down"));
+    const result = await whatNeedsAttention(AUTH);
+    expect(result.checked).toContain("dollar (USDC) balances on 0 of 1 account");
+    expect(result.notes.at(-1)).toContain("not everything could be read");
+  });
+
   it("says what it checked when nothing is waiting", async () => {
     const result = await whatNeedsAttention(AUTH);
     expect(result.items).toEqual([]);
-    expect(result.checked).toHaveLength(4);
+    expect(result.checked).toHaveLength(5);
     expect(result.notes.at(-1)).toContain("Nothing is waiting on this account. Checked:");
   });
 

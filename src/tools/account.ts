@@ -9,6 +9,7 @@ import type { TokenListItem } from "../types/index.js";
 import type { ArgsOf } from "./inputs.js";
 import { isLiveOrder } from "./marketplace.js";
 import { tokenCounty } from "../county.js";
+import { CASH_OUT_NOTE, type MoneyInWallet, withMoney } from "./money.js";
 
 /**
  * Personal tools: listed while Connect Fabrica is on and read with a token, where every request
@@ -27,7 +28,7 @@ export interface MyAccountResult {
     accessExpiresAt: string;
   };
   email?: string | null;
-  wallets?: AccountWallet[];
+  wallets?: Array<AccountWallet & MoneyInWallet>;
   /** Identity verification (KYC) state. */
   verification?: string | null;
   notes: string[];
@@ -56,9 +57,10 @@ export async function getMyAccount(auth: AccountAuth): Promise<MyAccountResult> 
       return result;
     }
     result.email = profile.email;
-    result.wallets = profile.wallets;
+    result.wallets = await withMoney(profile.wallets);
     result.verification = profile.kycStatus;
     if (profile.wallets.length === 0) result.notes.push("No linked account (wallet address) is on this Fabrica account yet.");
+    if (result.wallets.some(wallet => wallet.cashOut)) result.notes.push(CASH_OUT_NOTE);
     return result;
   } catch (error) {
     if (error instanceof AccountApiError) return { ...result, error: error.message };

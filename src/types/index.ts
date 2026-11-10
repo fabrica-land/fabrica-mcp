@@ -18,6 +18,7 @@ import type {
   GetOperatingAgreementQuery,
   GetOrderBookQuery,
   GetSignContextQuery,
+  GetTokenPaymentsQuery,
   GetLoanContextQuery,
   GetParcelIndexQuery,
   GetPremintSuccessorQuery,
@@ -103,6 +104,8 @@ export type OrderBookToken = GetOrderBookQuery["token"];
 export type OrderBookOrder = NonNullable<OrderBookToken["marketplaceListings"]>[number];
 /** A token as the sign-request prepare tools check it: state, holders, estimate and order book. */
 export type SignContextToken = GetSignContextQuery["token"];
+/** A card, bank transfer or wire payment open on a property. */
+export type TokenPayment = NonNullable<NonNullable<GetTokenPaymentsQuery["token"]>["fiatTransactions"]>[number];
 /** An order as the sign-request tools read it: the order book fields plus the transaction that filled it. */
 export type SignContextOrder = NonNullable<SignContextToken["marketplaceListings"]>[number];
 /** A token as the borrow and repay tools and get_loan_against_land read it: the pool's capacity and every loan on it. */
