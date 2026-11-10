@@ -184,3 +184,63 @@ export async function importListing(url: string, account: string | null, fetchIm
   if (!parsed) throw new ListingImportError(`The listing import answered with something this server does not understand (HTTP ${response.status}). Try again shortly.`);
   return parsed;
 }
+
+// --- A seller's website: its listing pages ---
+
+const SCAN_TIMEOUT_MS = 30_000;
+const SUBJECT_HEADER = "x-listing-import-subject";
+
+/** What the web app's website scan (POST /api/site-import/scan) found on a site. */
+export type WebsiteScan =
+  | { status: "ok"; site: string; listings: string[]; truncated: boolean; partial: boolean; source: string }
+  | { status: "none"; site: string }
+  | { status: "timeout"; site: string }
+  | { status: "blocked" | "unreachable" | "invalid-url" | "rate-limited" };
+
+export function parseWebsiteScan(body: unknown): WebsiteScan | null {
+  if (!isRecord(body)) return null;
+  if (body.code === "invalid-url" || body.code === "rate-limited") return { status: body.code };
+  switch (body.status) {
+    case "ok":
+      if (typeof body.site !== "string" || !Array.isArray(body.listings)) return null;
+      return { status: "ok", site: body.site, listings: strings(body.listings).filter((url) => /^https:\/\//i.test(url)), truncated: body.truncated === true, partial: body.partial === true, source: text(body.source) ?? "links" };
+    case "none":
+    case "timeout":
+      return typeof body.site === "string" ? { status: body.status, site: body.site } : null;
+    case "blocked":
+    case "unreachable":
+      return { status: body.status };
+    default:
+      return null;
+  }
+}
+
+/**
+ * Read a seller's website for its listing pages, for the person signed in here (`subject`, their
+ * Fabrica account id, keeps them on their own hourly budget). The web app reads the pasted site
+ * only (its sitemap or its links), creates nothing, and keeps a found list for an hour. Throws
+ * ListingImportError when it cannot be reached, refuses this server, or answers something unknown.
+ */
+export async function scanWebsite(url: string, subject: string, fetchImpl: typeof fetch = fetch): Promise<WebsiteScan> {
+  const key = listingImportKey();
+  if (!key) throw new ListingImportError("Reading a website is not set up on this server.");
+  let response: Response;
+  try {
+    response = await fetchImpl(`${WEB_BASE}/api/site-import/scan`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json", [KEY_HEADER]: key, [SUBJECT_HEADER]: subject },
+      body: JSON.stringify({ url }),
+      signal: AbortSignal.timeout(SCAN_TIMEOUT_MS),
+    });
+  } catch (error) {
+    if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
+      throw new ListingImportError("Reading the website took too long. Try again shortly; a site read once is answered from memory for an hour.");
+    }
+    throw new ListingImportError("The website reader could not be reached. Try again shortly.");
+  }
+  if (response.status === 401 || response.status === 404) throw new ListingImportError("Reading a website is not available from this server right now.");
+  const body: unknown = await response.json().catch(() => null);
+  const parsed = parseWebsiteScan(body);
+  if (!parsed) throw new ListingImportError(`The website reader answered with something this server does not understand (HTTP ${response.status}). Try again shortly.`);
+  return parsed;
+}

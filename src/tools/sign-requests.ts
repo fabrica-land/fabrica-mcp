@@ -20,6 +20,7 @@ import { formatTokenAmount, hasEnded, isLiveOrder, relativeExpiry } from "./mark
 import { type ArgsOf, propertyRefInputs } from "./inputs.js";
 import { isOwnerAction, observeOwner, verifyOwnerResult } from "./owner-actions.js";
 import { isPoolAction, observePool, verifyPoolResult } from "./pool-lending.js";
+import { findDollarPayment, PAY_IN_DOLLARS_LINE, paysInDollars } from "./money.js";
 
 /** Orders are priced in USDC, which Fabrica counts one for one as dollars, with 6 decimals (as the web app builds them). */
 const CURRENCY = { symbol: "USDC", decimals: 6 } as const;
@@ -405,6 +406,7 @@ export async function prepareBuy(args: WithSigner<OrderActionArgs>): Promise<Pre
   if (Number.isFinite(dollars)) warnings.push(...priceWarning(dollars, token, "price"));
   if (order.disclosurePackage?.length) warnings.push({ level: "info", message: `The seller attached ${order.disclosurePackage.length} disclosure document${order.disclosurePackage.length === 1 ? "" : "s"}; the sign page shows them before buying: ${order.disclosurePackage.map(d => d.name).join(", ")}.` });
   if (order.encumbrance) warnings.push({ level: "info", message: "The property is collateral for a loan that the purchase pays off at settlement; the buyer receives it free of the loan." });
+  warnings.push({ level: "info", message: PAY_IN_DOLLARS_LINE });
   return {
     action: "buy_land",
     kind: "transaction",
@@ -473,11 +475,54 @@ function isAcceptingOrder(record: SignRequest, token: SignContextToken, order: S
     && (order.restrictedToAddresses ?? []).some(address => same(address, offer.makerAddress));
 }
 
-/** A transaction that succeeded and, for a purchase, was sent by the request's wallet. */
-async function transactionFills(record: SignRequest, hash: string): Promise<boolean> {
+/** TransferSingle(address,address,address,uint256,uint256) */
+const TRANSFER_SINGLE = "0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62";
+
+/**
+ * Whether the receipt moves the whole listing into the request's wallet: TransferSingle events on the
+ * property's contract and token that, net of any moved back out in the same transaction, bring the
+ * wallet at least the listing's supply. A zero or partial transfer does not count.
+ *
+ * It does not prove the transaction filled this particular order. Callers only pass the hash the order
+ * book records as this listing's fill (verifyResult checks the match first, observe needs a filled
+ * order with that hash), so a delivery in that transaction is taken as the purchase.
+ */
+function deliversTo(record: SignRequest, logs: ReadonlyArray<{ address: string; topics?: string[]; data?: string }>, supply: string | null | undefined): boolean {
+  const tokenId = record.property?.tokenId;
+  const contract = record.property?.contractAddress;
+  if (!tokenId || !contract) return false;
+  let expected: bigint;
+  let id: bigint;
+  try {
+    expected = BigInt(supply ?? "1");
+    id = BigInt(tokenId);
+  } catch {
+    return false;
+  }
+  if (expected < 1n) return false;
+  let received = 0n;
+  for (const log of logs) {
+    const topics = log.topics ?? [];
+    const data = log.data ?? "";
+    if (!same(log.address, contract) || topics[0]?.toLowerCase() !== TRANSFER_SINGLE || !topics[2] || !topics[3]) continue;
+    if (!/^0x[0-9a-fA-F]{128}$/.test(data)) continue;
+    if (BigInt(`0x${data.slice(2, 66)}`) !== id) continue;
+    const value = BigInt(`0x${data.slice(66, 130)}`);
+    if (same(`0x${topics[3].slice(-40)}`, record.wallet)) received += value;
+    if (same(`0x${topics[2].slice(-40)}`, record.wallet)) received -= value;
+  }
+  return received >= expected;
+}
+
+/**
+ * A transaction that succeeded and, for a purchase, was the buyer's: sent by the request's wallet,
+ * or, for a purchase paid in dollars (sent by the card or bank payment's processor), one that
+ * delivers the whole listing to the request's wallet.
+ */
+async function transactionFills(record: SignRequest, hash: string, supply?: string | null): Promise<boolean> {
   const [transaction, receipt] = await Promise.all([getTransaction(hash), getTransactionReceipt(hash)]);
   if (!transaction || receipt?.status !== "0x1") return false;
-  return record.action !== "buy_land" || same(transaction.from, record.wallet);
+  return record.action !== "buy_land" || same(transaction.from, record.wallet) || deliversTo(record, receipt.logs ?? [], supply);
 }
 
 /**
@@ -498,7 +543,7 @@ export async function observe(record: SignRequest, token: SignContextToken): Pro
   if (!order) return null;
   if (record.action === "cancel_land_order") return order.status === "canceled" ? { orderHash: order.marketplaceId } : null;
   if (order.status !== "filled" || !order.matchTransactionHash) return null;
-  return await transactionFills(record, order.matchTransactionHash) ? { orderHash: order.marketplaceId, transactionHash: order.matchTransactionHash } : null;
+  return await transactionFills(record, order.matchTransactionHash, order.supply) ? { orderHash: order.marketplaceId, transactionHash: order.matchTransactionHash } : null;
 }
 
 const LOAN_ACTIONS: ReadonlySet<SignRequest["action"]> = new Set(["borrow_against_land", "repay_loan_against_land", "repay_land_loan"]);
@@ -595,7 +640,7 @@ export async function verifyResult(record: SignRequest, result: SignResult): Pro
     if (record.action !== "buy_land" && record.action !== "accept_land_offer") return { ok: false, reason: `A ${record.action} sign request completes with an order hash, not a transaction.` };
     const order = record.orderHash ? findOrder(token, record.orderHash) : null;
     if (!order || order.status !== "filled" || !same(order.matchTransactionHash, result.transactionHash)) return { ok: false, reason: "The order book does not show this transaction filling the request's order (yet)." };
-    return await transactionFills(record, result.transactionHash) ? { ok: true } : { ok: false, reason: "The transaction did not succeed, or was not sent by the request's wallet." };
+    return await transactionFills(record, result.transactionHash, order.supply) ? { ok: true } : { ok: false, reason: "The transaction did not succeed, or was not sent by the request's wallet." };
   }
   const order = findOrder(token, result.orderHash);
   if (!order) return { ok: false, reason: "No order with that hash on this property." };
@@ -631,8 +676,17 @@ export async function getSignRequest({ id }: GetSignRequestArgs) {
   }
   if (!record) return { error: `No sign request ${id}: the id is unknown. get_land_order_book shows what was signed.` };
   const expired = record.status === "pending" && isExpired(record);
-  // An expired link can no longer be signed, so nothing that happens after it is this request's.
-  if (record.status === "pending" && !expired) {
+  // An expired link can no longer be signed, so nothing that happens after it is this request's,
+  // except a purchase or payoff paid in dollars on the sign page: that payment clears days after
+  // the link expires. A purchase is followed while the record is kept: its listing fills once, and
+  // only a delivery of the whole listing to this wallet completes it, which holds even when a bank
+  // transfer has settled (and left the payment list) before anyone asked. A payoff is followed only
+  // once its payment was seen, so an expired one cannot take a loan a later request pays off.
+  const followsPayment = paysInDollars(record.action);
+  let payment = record.status === "pending" && followsPayment ? await findDollarPayment(record).catch(() => null) : null;
+  if (payment && !payment.failed && !record.paymentSeenAt) record = await store.markPaymentSeen(record).catch(() => record as SignRequest);
+  const followsPastExpiry = record.action === "buy_land" || !!record.paymentSeenAt;
+  if (record.status === "pending" && (!expired || followsPastExpiry)) {
     try {
       if (isPoolAction(record)) {
         const transactionHash = await observePool(record);
@@ -650,10 +704,13 @@ export async function getSignRequest({ id }: GetSignRequestArgs) {
       // The order book check is best effort; the stored state still answers.
     }
   }
+  // Still pending: a card, bank transfer or wire payment the person started on the sign page.
+  if (record.status !== "pending") payment = null;
+  const clearing = !!payment && !payment.failed;
   return {
     network: NETWORK_LABEL,
     id: record.id,
-    status: expired ? "expired" : record.status,
+    status: record.status === "completed" ? "completed" : clearing ? "payment_clearing" : expired ? "expired" : record.status,
     action: record.action,
     ...(record.property ? { property: record.property } : {}),
     ...(record.pool ? { pool: { address: record.pool.address, tick: record.pool.tick, amountUsd: record.pool.amountUsd, wholePosition: record.pool.wholePosition, link: record.pool.link } } : {}),
@@ -662,6 +719,7 @@ export async function getSignRequest({ id }: GetSignRequestArgs) {
     signLink: record.signLink,
     expiresAt: record.expiresAt,
     ...(record.result ? { result: record.result } : {}),
+    ...(payment ? { payment } : {}),
     note: record.status === "completed"
       ? isPoolAction(record)
         ? "Signed. The pool shows the deposit or the withdrawal request; the pool page (pool.link) shows the position and any withdrawal waiting in the queue."
@@ -670,6 +728,10 @@ export async function getSignRequest({ id }: GetSignRequestArgs) {
         : isLoanAction(record)
         ? "Signed. get_loan_against_land shows the loan's state and payoff."
         : "Signed. get_land_order_book shows the order; a transaction hash can be followed with get_transaction_status."
+      : payment
+        ? payment.failed
+          ? `The ${payment.method} payment of ${payment.totalUsd} did not go through (${payment.stage}). Nothing was bought or paid off; ${expired ? "prepare a new request to try again" : "the sign link is still open to try again"}.`
+          : `Paid by ${payment.method}, ${payment.totalUsd}: ${payment.stage}${payment.expectedBy ? `, expected by ${payment.expectedBy.slice(0, 10)}` : ""}. The ${record.action === "buy_land" ? "purchase" : "payoff"} completes once the payment clears; get_sign_request shows it then.`
       : expired
         ? `Expired unsigned: links stay open for ${SIGN_REQUEST_TTL_SECONDS / 60} minutes. Prepare a new one to continue.`
         : isPoolAction(record)

@@ -57,6 +57,14 @@ export type EthereumCurrency =
 export type FeeType =
   | 'OnRamp';
 
+export type FiatTransactionPhase =
+  | 'BankFailed'
+  | 'ConvertingToUsdc'
+  | 'DepositReverted'
+  | 'EnteringTick'
+  | 'Expired'
+  | 'WaitingOnBank';
+
 export type LoanProvider =
   | 'NFTfi'
   | 'PoolLending';
@@ -178,6 +186,14 @@ export type GetSignContextQueryVariables = Exact<{
 
 
 export type GetSignContextQuery = { token: { tokenId: string, name: string | null, vanityName: string | null, propertyLink: string, contractAddress: string, network: string, isPremint: boolean, claimState: PremintClaimState | null, supersededByTokenId: string | null, offRampStatus: string | null, isBurned: boolean, supply: string, supplyUnderLoan: string, estimatedValue: string, majorityOwnerAddress: string | null, operatingAgreementName: string | null, configurationUrl: string | null, configuration: { userDescription: string | null, media: Array<{ source: string }> | null } | null, balances: Array<{ balance: string, holder: { address: string }, owner: { address: string } }> | null, marketplaceListings: Array<{ matchTransactionHash: string | null, marketplaceId: string, side: MarketplaceOrderSide, status: MarketplaceOrderStatus, price: string, usdPrice: string | null, symbol: EthereumCurrency, decimals: number, feeBps: string, supply: string, startTime: string, endTime: string | null, makerAddress: string, restrictedToAddresses: Array<string> | null, maker: { user: { displayName: string } }, disclosurePackage: Array<{ name: string, url: string }> | null, encumbrance: { buyable: boolean, blockReason: MarketplaceOrderBlockReason | null, loanId: string } | null }> | null, marketplaceBids: Array<{ matchTransactionHash: string | null, marketplaceId: string, side: MarketplaceOrderSide, status: MarketplaceOrderStatus, price: string, usdPrice: string | null, symbol: EthereumCurrency, decimals: number, feeBps: string, supply: string, startTime: string, endTime: string | null, makerAddress: string, restrictedToAddresses: Array<string> | null, maker: { user: { displayName: string } }, disclosurePackage: Array<{ name: string, url: string }> | null, encumbrance: { buyable: boolean, blockReason: MarketplaceOrderBlockReason | null, loanId: string } | null }> | null } };
+
+export type GetTokenPaymentsQueryVariables = Exact<{
+  tokenId?: string | null | undefined;
+  network?: string | null | undefined;
+}>;
+
+
+export type GetTokenPaymentsQuery = { token: { tokenId: string, fiatTransactions: Array<{ id: string, createdAt: string, eta: string, method: string, rail: string, phase: FiatTransactionPhase, action: string, walletAddress: string, total: string, status: string, signature: string | null }> } };
 
 export type GetLoanContextQueryVariables = Exact<{
   tokenId?: string | null | undefined;

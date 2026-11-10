@@ -11,6 +11,16 @@ import { z } from "zod";
 export const SIGN_REQUEST_TTL_SECONDS = 15 * 60;
 /** How long the record is kept, so the sign page can tell an expired link (410) from an unknown one (404). */
 export const SIGN_REQUEST_RETENTION_SECONDS = 24 * 60 * 60;
+/**
+ * A purchase or a loan payoff can be paid in dollars on the sign page (card, bank transfer, wire),
+ * and that payment clears days after the link expires. Those records are kept long enough to follow it.
+ */
+export const DOLLAR_PAYMENT_RETENTION_SECONDS = 14 * 24 * 60 * 60;
+
+/** How long a record of this action is kept. */
+export function retentionSeconds(action: string): number {
+  return action === "buy_land" || action === "repay_loan_against_land" ? DOLLAR_PAYMENT_RETENTION_SECONDS : SIGN_REQUEST_RETENTION_SECONDS;
+}
 
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 const HASH = /^0x[0-9a-fA-F]{64}$/;
@@ -104,6 +114,9 @@ export const signRequestSchema = z.object({
   payload: z.null(),
   createdAt: z.string(),
   expiresAt: z.string(),
+  // When a card, bank transfer or wire payment for this request was first seen: from then on the
+  // request is followed past its link's expiry, until the payment lands or the record is dropped.
+  paymentSeenAt: z.string().optional(),
   result: z.object({
     orderHash: z.string().regex(HASH).optional(),
     transactionHash: z.string().regex(HASH).optional(),
@@ -202,7 +215,7 @@ export class SignRequestStore {
 
   async create(input: SignRequest): Promise<void> {
     const record = signRequestSchema.parse(input);
-    await this.backend.set(this.key(record.id), JSON.stringify({ record, mac: this.mac(record) }), { seconds: SIGN_REQUEST_RETENTION_SECONDS });
+    await this.backend.set(this.key(record.id), JSON.stringify({ record, mac: this.mac(record) }), { seconds: retentionSeconds(record.action) });
   }
 
   /** The record, expired or not (see isExpired), or null when it is unknown or fails its integrity check. */
@@ -230,8 +243,16 @@ export class SignRequestStore {
    */
   async claimLoan(record: SignRequest, loanId: string): Promise<boolean> {
     const key = `sign-request-loan:${record.action}:${loanId}`;
-    if (await this.backend.setIfAbsent(key, record.id, { seconds: SIGN_REQUEST_RETENTION_SECONDS })) return true;
+    if (await this.backend.setIfAbsent(key, record.id, { seconds: retentionSeconds(record.action) })) return true;
     return await this.backend.get(key) === record.id;
+  }
+
+  /** Note that a dollar payment for this request was seen. Keeps the original expiry. */
+  async markPaymentSeen(record: SignRequest): Promise<SignRequest> {
+    if (record.paymentSeenAt) return record;
+    const updated: SignRequest = { ...record, paymentSeenAt: new Date().toISOString() };
+    await this.backend.set(this.key(record.id), JSON.stringify({ record: updated, mac: this.mac(updated) }), "keep");
+    return updated;
   }
 
   /** Record the signer's result. Keeps the original expiry. */

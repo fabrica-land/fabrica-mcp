@@ -4,6 +4,9 @@ import { exportJWK, generateKeyPair, SignJWT, type CryptoKey } from "jose";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
+// Dollar balances are read from the chain; here every account holds $25.
+vi.mock("../clients/rpc.js", async (importOriginal) => ({ ...(await importOriginal<typeof import("../clients/rpc.js")>()), ethCall: vi.fn(async () => `0x${(25_000_000n).toString(16).padStart(64, "0")}`) }));
+
 /**
  * Connect Fabrica on the hosted server: /mcp as an OAuth resource server with lazy sign-in, against
  * a mocked issuer (a local JWKS) and a mocked API (GET /oauth/account). Mainnet network (the test default).
@@ -408,9 +411,10 @@ describe("signed in with Connect Fabrica on", () => {
       network: "Ethereum Mainnet",
       connection: { accountId: "5f0c4f1e-1111-4222-8333-944455556666", client: "client-123", scopes: ["profile:read", "portfolio:read", "onramp:read"] },
       email: "owner@example.com",
-      wallets: [{ address: "0x1111111111111111111111111111111111111111", kind: "embedded" }],
+      wallets: [{ address: "0x1111111111111111111111111111111111111111", kind: "embedded", balanceUsd: "$25.00", cashOut: "https://fabrica.land/profile/0x1111111111111111111111111111111111111111?action=cashout" }],
       verification: "approved",
     });
+    expect(body.notes.join(" ")).toContain("Cash out on fabrica.land");
     expect(lines.length).toBeGreaterThan(0);
     expect(lines.join("\n")).not.toContain(bearer);
     expect(lines.join("\n")).not.toContain(bearer.split(".")[2]);

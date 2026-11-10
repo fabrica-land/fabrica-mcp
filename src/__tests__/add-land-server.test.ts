@@ -43,6 +43,7 @@ describe("adding a property from the server", () => {
     const on = await tools();
     expect(on.names).toContain("add_land");
     expect(on.names).not.toContain("answer_adding_questions");
+    expect(on.names).not.toContain("find_listings_on_website");
     expect(on.instructions).toContain("add_land starts adding a property");
     const jargon = /\bpre-?mints?\b|\bon-?ramp(s|ed|ing)?\b|\bmint(s|ed|ing)?\b|\btokenized\b|\bMUST\b|—/i;
     for (const tool of on.tools.filter((t) => t.name === "add_land" || t.name === "answer_adding_questions")) {
@@ -54,7 +55,10 @@ describe("adding a property from the server", () => {
     expect(on.instructions.slice(on.instructions.indexOf("add_land starts"))).not.toMatch(jargon);
     vi.stubEnv("FABRICA_OAUTH", "enabled");
     const connect = await tools();
-    expect(connect.names).toEqual(expect.arrayContaining(["add_land", "answer_adding_questions"]));
+    expect(connect.names).toEqual(expect.arrayContaining(["add_land", "answer_adding_questions", "find_listings_on_website"]));
+    const website = connect.tools.find((t) => t.name === "find_listings_on_website");
+    expect(website?.annotations?.readOnlyHint).toBe(true);
+    expect(`${website?.title} ${website?.description}`).not.toMatch(jargon);
     expect(oauthScopes()).toEqual(["profile:read", "portfolio:read", "onramp:read", "onramp:write", "premint:write"]);
     expect(accountToolNames()).toContain("answer_adding_questions");
     expect(needsAccount(JSON.parse(CALL("answer_adding_questions", { tokenId: "1" })))).toBe(true);

@@ -14,6 +14,7 @@ import { type ArgsOf, propertyRefInputs } from "./inputs.js";
 import type { AccountAuth } from "../auth/token.js";
 import { readAsViewer } from "./personal-view.js";
 import { type Blocked, holds, issue, label, lookup, pickSigner, type Prepared, propertyOf, same, shorten, signLink, usd, type WithSigner } from "./sign-requests.js";
+import { PAY_IN_DOLLARS_LINE } from "./money.js";
 
 const DAY_SECONDS = 86_400;
 /** With no loan length asked for, the one offered closest to 30 days. */
@@ -136,6 +137,7 @@ export async function prepareRepay({ tokenId, slug, loanId, wallet: signer }: Wi
   const warnings: SignRequestWarning[] = [...picked.chosen];
   const maturity = Date.parse(loan.maturityDate);
   if (Number.isFinite(maturity) && maturity < Date.now()) warnings.push({ level: "warning", message: `The loan matured on ${loan.maturityDate.slice(0, 10)}; once the pool starts its auction it can no longer be paid off.` });
+  warnings.push({ level: "info", message: PAY_IN_DOLLARS_LINE });
   return {
     action: "repay_loan_against_land",
     kind: "transaction",

@@ -5,6 +5,7 @@ import { getScoreRecord, getToken } from "../clients/graphql.js";
 import { formatFeeAmount } from "../fees.js";
 import type { ScoreRecord, TokenDetail } from "../types/index.js";
 import { getMyProperties, type MyPropertyRow } from "./account.js";
+import { withMoney } from "./money.js";
 import { getMyLoans, isOpenLoan } from "./my-loans.js";
 import { getMyOffers } from "./offers.js";
 import { getMyOnRamps } from "./onramps.js";
@@ -19,7 +20,7 @@ import { loadTaxSignals, taxSummary } from "./tax.js";
 /** Single-property lookups per call, for fees and checks. */
 export const ATTENTION_TOKEN_BUDGET = 20;
 
-export type AttentionKind = "loan" | "offer" | "adding" | "fee" | "check" | "removal";
+export type AttentionKind = "loan" | "offer" | "adding" | "fee" | "check" | "removal" | "cash";
 
 export interface AttentionItem {
   kind: AttentionKind;
@@ -39,8 +40,8 @@ export interface AttentionResult {
   notes: string[];
 }
 
-/** Money and deadlines first, then on-ramp steps, then fees, then checks. */
-const RANK: Record<AttentionKind, number> = { loan: 0, offer: 0, adding: 1, fee: 2, removal: 3, check: 3 };
+/** Money and deadlines first, then on-ramp steps, then fees and dollars to cash out, then checks. */
+const RANK: Record<AttentionKind, number> = { loan: 0, offer: 0, adding: 1, fee: 2, cash: 2, removal: 3, check: 3 };
 
 function byRank(a: AttentionItem, b: AttentionItem): number {
   return RANK[a.kind] - RANK[b.kind] || (a.dueBy ?? "￿").localeCompare(b.dueBy ?? "￿");
@@ -167,6 +168,26 @@ async function propertyItems(auth: AccountAuth, items: AttentionItem[], checked:
   if (read < looked.length) notes.push(`${looked.length - read} propert${looked.length - read === 1 ? "y" : "ies"} could not be read right now.`);
 }
 
+/** Dollars (USDC) sitting in the account's wallets, from a sale or a loan: each one can be cashed out. */
+async function cashItems(wallets: ReadonlyArray<{ address: string }>, items: AttentionItem[], checked: string[], notes: string[]): Promise<void> {
+  const funded = await withMoney([...wallets]);
+  const read = funded.filter(wallet => wallet.balanceUsd !== undefined).length;
+  checked.push(`dollar (USDC) balances on ${read} of ${wallets.length} account${wallets.length === 1 ? "" : "s"}`);
+  if (read < wallets.length) notes.push(`The dollar (USDC) balance of ${wallets.length - read} account${wallets.length - read === 1 ? "" : "s"} could not be read right now.`);
+  for (const wallet of funded) {
+    if (!wallet.cashOut) continue;
+    items.push({
+      kind: "cash",
+      tokenId: null,
+      title: `${wallet.balanceUsd} ready to cash out from ${wallet.address.slice(0, 6)}…${wallet.address.slice(-4)}`,
+      why: "Dollars from a sale or a loan stay in the account as USDC until cashed out. Cash out sends them to a bank account or card and shows the fee and arrival before anything is sent.",
+      dueBy: null,
+      link: wallet.cashOut,
+      whoActs: "You",
+    });
+  }
+}
+
 export async function whatNeedsAttention(auth: AccountAuth): Promise<AttentionResult> {
   const items: AttentionItem[] = [];
   const checked: string[] = [];
@@ -177,10 +198,13 @@ export async function whatNeedsAttention(auth: AccountAuth): Promise<AttentionRe
   }
   // Every read below starts from the account's wallets. Without them nothing can be checked, and
   // an empty list must not read as an all-clear.
+  let wallets: ReadonlyArray<{ address: string }>;
   try {
-    if (!(await getAccountProfile(auth, scope))) {
+    const profile = await getAccountProfile(auth, scope);
+    if (!profile) {
       return { network: NETWORK_LABEL, items: [], checked, notes: [`The Fabrica API on ${NETWORK_LABEL} does not serve account details yet, so nothing on this account could be checked.`] };
     }
+    wallets = profile.wallets;
   } catch (error) {
     if (error instanceof AccountApiError) return { network: NETWORK_LABEL, items: [], checked, notes: [error.message] };
     throw error;
@@ -192,6 +216,7 @@ export async function whatNeedsAttention(auth: AccountAuth): Promise<AttentionRe
   const work: Array<Promise<void>> = [];
   if (hasScope(auth, "portfolio:read")) {
     work.push(guarded("Loans", loanItems), guarded("Offers", offerItems), guarded("Fees and checks", propertyItems));
+    work.push(cashItems(wallets, items, checked, notes).catch(() => { notes.push("Dollar balances could not be read right now. Try again shortly."); }));
   } else {
     notes.push("Loans, offers, fees and checks were not read: this connection was not granted portfolio:read.");
   }
