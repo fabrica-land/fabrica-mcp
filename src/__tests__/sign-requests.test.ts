@@ -527,17 +527,47 @@ describe("results", () => {
       expect(result).toMatchObject({ note: expect.stringContaining("did not go through") });
     });
 
-    it("finds no payment in a row whose payer and dates the API left out", async () => {
+    const pendingOnly = { id: null, createdAt: null, eta: null, method: null, rail: null, phase: "WaitingOnBank" as const, action: "buy property", walletAddress: null, total: null, status: null, signature: null };
+
+    it("skips a row whose payer and dates the API left out, and still reads the payment next to it", async () => {
       const r = buyRecord();
       await store.create(r);
       vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceListings: [order({ side: "sell", makerAddress: OWNER })] }));
-      const pendingOnly = { id: null, createdAt: null, eta: null, method: null, rail: null, phase: "WaitingOnBank" as const, action: "buy property", walletAddress: null, total: null, status: null, signature: null };
-      vi.mocked(getTokenPayments).mockResolvedValue([pendingOnly]);
+      vi.mocked(getTokenPayments).mockResolvedValue([pendingOnly, payment()]);
       vi.setSystemTime(NOW + 2 * 24 * 3600_000);
       const result = await getSignRequest({ id: r.id });
-      expect(result).toMatchObject({ status: "expired" });
-      expect(result).not.toHaveProperty("payment");
+      expect(result).toMatchObject({ status: "payment_clearing", payment: { method: "bank transfer", totalUsd: "$10,012.50", failed: false, incomplete: false } });
       expect(getTokenPayments).toHaveBeenCalledWith(r.property?.tokenId, undefined);
+    });
+
+    it("reports the newest payment as incomplete when the API left out its method and amount, not an older failed one", async () => {
+      const r = buyRecord();
+      await store.create(r);
+      vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceListings: [order({ side: "sell", makerAddress: OWNER })] }));
+      const partial = payment({ id: "new", createdAt: new Date(NOW + 150_000).toISOString(), method: null, total: null });
+      const olderFailed = payment({ id: "old", createdAt: new Date(NOW + 60_000).toISOString(), phase: "BankFailed" });
+      vi.mocked(getTokenPayments).mockResolvedValue([olderFailed, partial]);
+      vi.setSystemTime(NOW + 2 * 24 * 3600_000);
+      const result = await getSignRequest({ id: r.id });
+      expect(result).toMatchObject({ status: "payment_clearing", payment: { method: null, totalUsd: null, stage: "Waiting on the bank", failed: false, incomplete: true } });
+      expect(result).toMatchObject({ note: expect.stringContaining("Paid in dollars: Waiting on the bank") });
+      expect(result).toMatchObject({ note: expect.not.stringContaining("did not go through") });
+    });
+
+    it("reports a payment it saw before as unknown when a later lookup cannot read it, not as expired unsigned", async () => {
+      const r = buyRecord();
+      await store.create(r);
+      vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceListings: [order({ side: "sell", makerAddress: OWNER })] }));
+      vi.mocked(getTokenPayments).mockResolvedValue([payment()]);
+      vi.setSystemTime(NOW + 2 * 24 * 3600_000);
+      expect(await getSignRequest({ id: r.id })).toMatchObject({ status: "payment_clearing" });
+      vi.mocked(getTokenPayments).mockResolvedValue([pendingOnly]);
+      const hidden = await getSignRequest({ id: r.id });
+      expect(hidden).toMatchObject({ status: "payment_unknown", note: expect.stringContaining("cannot read it") });
+      expect(hidden).not.toHaveProperty("payment");
+      expect(hidden).toMatchObject({ note: expect.not.stringContaining("Expired unsigned") });
+      vi.mocked(getTokenPayments).mockRejectedValue(new Error("API down"));
+      expect(await getSignRequest({ id: r.id })).toMatchObject({ status: "payment_unknown" });
     });
 
     it("reads the payments as the connected person only with portfolio:read", async () => {
