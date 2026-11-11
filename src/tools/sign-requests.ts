@@ -8,6 +8,7 @@ import { CHAIN_ID, getBlockTimestamp, getTransaction, getTransactionReceipt } fr
 import { IS_MAINNET, MAINNET_WARNING, NETWORK, NETWORK_LABEL, WEB_BASE } from "../config.js";
 import type { LoanContextLoan, LoanContextToken, SignContextOrder, SignContextToken } from "../types/index.js";
 import type { AccountWallet } from "../clients/account.js";
+import { type AccountAuth, hasScope } from "../auth/token.js";
 import {
   getSignRequestStore,
   isExpired,
@@ -665,7 +666,8 @@ export const getSignRequestInput = {
 };
 export type GetSignRequestArgs = ArgsOf<typeof getSignRequestInput>;
 
-export async function getSignRequest({ id }: GetSignRequestArgs) {
+/** `account`: the connected person, when signed in. With portfolio:read, a dollar payment is read as them. */
+export async function getSignRequest({ id }: GetSignRequestArgs, account?: AccountAuth) {
   const store = getSignRequestStore();
   if (!store) return { error: "Sign requests are not configured on this server yet." };
   let record: SignRequest | null;
@@ -683,7 +685,8 @@ export async function getSignRequest({ id }: GetSignRequestArgs) {
   // transfer has settled (and left the payment list) before anyone asked. A payoff is followed only
   // once its payment was seen, so an expired one cannot take a loan a later request pays off.
   const followsPayment = paysInDollars(record.action);
-  let payment = record.status === "pending" && followsPayment ? await findDollarPayment(record).catch(() => null) : null;
+  const paymentReader = account && hasScope(account, "portfolio:read") ? account : undefined;
+  let payment = record.status === "pending" && followsPayment ? await findDollarPayment(record, paymentReader).catch(() => null) : null;
   if (payment && !payment.failed && !record.paymentSeenAt) record = await store.markPaymentSeen(record).catch(() => record as SignRequest);
   const followsPastExpiry = record.action === "buy_land" || !!record.paymentSeenAt;
   if (record.status === "pending" && (!expired || followsPastExpiry)) {

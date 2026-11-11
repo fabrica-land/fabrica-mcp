@@ -193,7 +193,7 @@ export type GetTokenPaymentsQueryVariables = Exact<{
 }>;
 
 
-export type GetTokenPaymentsQuery = { token: { tokenId: string, fiatTransactions: Array<{ id: string, createdAt: string, eta: string, method: string, rail: string, phase: FiatTransactionPhase, action: string, walletAddress: string, total: string, status: string, signature: string | null }> } };
+export type GetTokenPaymentsQuery = { token: { tokenId: string, fiatTransactions: Array<{ id: string | null, createdAt: string | null, eta: string | null, method: string | null, rail: string | null, phase: FiatTransactionPhase, action: string, walletAddress: string | null, total: string | null, status: string | null, signature: string | null }> } };
 
 export type GetLoanContextQueryVariables = Exact<{
   tokenId?: string | null | undefined;

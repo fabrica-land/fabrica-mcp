@@ -527,6 +527,32 @@ describe("results", () => {
       expect(result).toMatchObject({ note: expect.stringContaining("did not go through") });
     });
 
+    it("finds no payment in a row whose payer and dates the API left out", async () => {
+      const r = buyRecord();
+      await store.create(r);
+      vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceListings: [order({ side: "sell", makerAddress: OWNER })] }));
+      const pendingOnly = { id: null, createdAt: null, eta: null, method: null, rail: null, phase: "WaitingOnBank" as const, action: "buy property", walletAddress: null, total: null, status: null, signature: null };
+      vi.mocked(getTokenPayments).mockResolvedValue([pendingOnly]);
+      vi.setSystemTime(NOW + 2 * 24 * 3600_000);
+      const result = await getSignRequest({ id: r.id });
+      expect(result).toMatchObject({ status: "expired" });
+      expect(result).not.toHaveProperty("payment");
+      expect(getTokenPayments).toHaveBeenCalledWith(r.property?.tokenId, undefined);
+    });
+
+    it("reads the payments as the connected person only with portfolio:read", async () => {
+      const auth = { token: "t", subject: "s", clientId: "c", scopes: ["portfolio:read"], expiresAt: 4102444800 };
+      const r = buyRecord();
+      await store.create(r);
+      vi.mocked(getSignContext).mockResolvedValue(token({ marketplaceListings: [order({ side: "sell", makerAddress: OWNER })] }));
+      vi.mocked(getTokenPayments).mockResolvedValue([payment()]);
+      vi.setSystemTime(NOW + 2 * 24 * 3600_000);
+      expect(await getSignRequest({ id: r.id }, auth)).toMatchObject({ status: "payment_clearing" });
+      expect(getTokenPayments).toHaveBeenLastCalledWith(r.property?.tokenId, auth);
+      await getSignRequest({ id: r.id }, { ...auth, scopes: ["profile:read"] });
+      expect(getTokenPayments).toHaveBeenLastCalledWith(r.property?.tokenId, undefined);
+    });
+
     it("an offer still expires as before and never looks for a dollar payment", async () => {
       const r = record();
       await store.create(r);

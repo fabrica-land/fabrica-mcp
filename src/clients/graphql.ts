@@ -584,11 +584,16 @@ const GET_TOKEN_PAYMENTS_QUERY = gql`
 
 /**
  * The card, bank transfer and wire payments open on a property (the API leaves out settled and
- * failed bank transfers). Public: wire instructions are blanked for anyone but the payer, and this
- * query does not ask for them. Never cached: a sign request follows the live state.
+ * failed bank transfers). The API gives each caller only the details it may see: with `as` (the
+ * connected person, when the connection holds portfolio:read) the read is made with their token, so
+ * the payer reads their own payment. Any field can come back null. This query does not ask for wire
+ * instructions. Never cached: a sign request follows the live state.
  */
-export async function getTokenPayments(tokenId: string): Promise<TokenPayment[]> {
-  const data = await request<GetTokenPaymentsQuery>(GET_TOKEN_PAYMENTS_QUERY, { tokenId, network: NETWORK });
+export async function getTokenPayments(tokenId: string, as?: AccountAuth): Promise<TokenPayment[]> {
+  const variables = { tokenId, network: NETWORK };
+  const data = as
+    ? await requestAs<GetTokenPaymentsQuery>(as, GET_TOKEN_PAYMENTS_QUERY, variables)
+    : await request<GetTokenPaymentsQuery>(GET_TOKEN_PAYMENTS_QUERY, variables);
   return data.token?.fiatTransactions ?? [];
 }
 

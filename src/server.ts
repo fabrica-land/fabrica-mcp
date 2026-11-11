@@ -629,7 +629,7 @@ function registerSignRequestTools(server: McpServer, account?: AccountAuth): voi
       inputSchema: getSignRequestInput,
       annotations: readOnly("Get sign request status"),
     },
-    async (args) => jsonResult(await getSignRequest(args)),
+    async (args) => jsonResult(await getSignRequest(args, account)),
   );
   server.registerTool(
     "get_transaction_status",

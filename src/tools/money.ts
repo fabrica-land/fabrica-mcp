@@ -2,6 +2,7 @@ import { IS_MAINNET } from "../config.js";
 import { getTokenPayments } from "../clients/graphql.js";
 import { ethCall } from "../clients/rpc.js";
 import { PLATFORM_URL } from "../links.js";
+import type { AccountAuth } from "../auth/token.js";
 import type { TokenPayment } from "../types/index.js";
 
 /**
@@ -81,14 +82,26 @@ export interface DollarPayment {
   expectedBy: string | null;
 }
 
-/** The newest payment the request's account started on its property while the link was open, or null. */
-export async function findDollarPayment(record: { action: string; wallet: string; createdAt: string; expiresAt: string; property?: { tokenId: string } }): Promise<DollarPayment | null> {
+/** A payment row with the fields a match needs: the API leaves them null for a caller it does not show them to. */
+type ReadablePayment = TokenPayment & { walletAddress: string; createdAt: string; method: string; total: string };
+
+function isReadable(payment: TokenPayment): payment is ReadablePayment {
+  return payment.walletAddress != null && payment.createdAt != null && payment.method != null && payment.total != null;
+}
+
+/**
+ * The newest payment the request's account started on its property while the link was open, or null.
+ * `as` reads the payments as the connected person (see getTokenPayments). A row whose payer or
+ * dates the API did not return is not this request's payment.
+ */
+export async function findDollarPayment(record: { action: string; wallet: string; createdAt: string; expiresAt: string; property?: { tokenId: string } }, as?: AccountAuth): Promise<DollarPayment | null> {
   if (!paysInDollars(record.action) || !record.property) return null;
   const actions = PAYMENT_ACTIONS[record.action];
   const from = Date.parse(record.createdAt) - 1000;
   const to = Date.parse(record.expiresAt);
-  const payments = await getTokenPayments(record.property.tokenId);
+  const payments = await getTokenPayments(record.property.tokenId, as);
   const match = payments
+    .filter(isReadable)
     .filter(p => p.walletAddress.toLowerCase() === record.wallet.toLowerCase() && actions.includes(p.action))
     .filter(p => { const at = Date.parse(p.createdAt); return at >= from && at <= to; })
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
