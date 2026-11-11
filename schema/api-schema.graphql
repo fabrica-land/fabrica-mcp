@@ -350,28 +350,28 @@ type FeesModel {
 type FiatTransactionModel {
   action: String!
   contractAddress: String
-  createdAt: String!
+  createdAt: String
   declineCode: String
   declineDescription: String
-  eta: String!
+  eta: String
   expiration: String
-  fees: String!
-  gasFees: String!
-  id: String!
+  fees: String
+  gasFees: String
+  id: String
   memo: String
-  method: String!
+  method: String
   network: String!
   phase: FiatTransactionPhase!
   poolAddress: String
-  rail: String!
+  rail: String
   signature: String
-  status: String!
-  subtotal: String!
+  status: String
+  subtotal: String
   tickRaw: String
   tokenId: String
-  total: String!
-  updatedAt: String!
-  walletAddress: String!
+  total: String
+  updatedAt: String
+  walletAddress: String
 }
 
 enum FiatTransactionPhase {

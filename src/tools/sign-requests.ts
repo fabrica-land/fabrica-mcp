@@ -8,6 +8,7 @@ import { CHAIN_ID, getBlockTimestamp, getTransaction, getTransactionReceipt } fr
 import { IS_MAINNET, MAINNET_WARNING, NETWORK, NETWORK_LABEL, WEB_BASE } from "../config.js";
 import type { LoanContextLoan, LoanContextToken, SignContextOrder, SignContextToken } from "../types/index.js";
 import type { AccountWallet } from "../clients/account.js";
+import { type AccountAuth, hasScope } from "../auth/token.js";
 import {
   getSignRequestStore,
   isExpired,
@@ -21,6 +22,9 @@ import { type ArgsOf, propertyRefInputs } from "./inputs.js";
 import { isOwnerAction, observeOwner, verifyOwnerResult } from "./owner-actions.js";
 import { isPoolAction, observePool, verifyPoolResult } from "./pool-lending.js";
 import { findDollarPayment, PAY_IN_DOLLARS_LINE, paysInDollars } from "./money.js";
+
+/** Added to a payment note when the API did not return the payment's method or amount to this reader. */
+const INCOMPLETE_PAYMENT_LINE = " The API did not return the payment's method or amount to this reader.";
 
 /** Orders are priced in USDC, which Fabrica counts one for one as dollars, with 6 decimals (as the web app builds them). */
 const CURRENCY = { symbol: "USDC", decimals: 6 } as const;
@@ -665,7 +669,8 @@ export const getSignRequestInput = {
 };
 export type GetSignRequestArgs = ArgsOf<typeof getSignRequestInput>;
 
-export async function getSignRequest({ id }: GetSignRequestArgs) {
+/** `account`: the connected person, when signed in. With portfolio:read, a dollar payment is read as them. */
+export async function getSignRequest({ id }: GetSignRequestArgs, account?: AccountAuth) {
   const store = getSignRequestStore();
   if (!store) return { error: "Sign requests are not configured on this server yet." };
   let record: SignRequest | null;
@@ -683,7 +688,8 @@ export async function getSignRequest({ id }: GetSignRequestArgs) {
   // transfer has settled (and left the payment list) before anyone asked. A payoff is followed only
   // once its payment was seen, so an expired one cannot take a loan a later request pays off.
   const followsPayment = paysInDollars(record.action);
-  let payment = record.status === "pending" && followsPayment ? await findDollarPayment(record).catch(() => null) : null;
+  const paymentReader = account && hasScope(account, "portfolio:read") ? account : undefined;
+  let payment = record.status === "pending" && followsPayment ? await findDollarPayment(record, paymentReader).catch(() => null) : null;
   if (payment && !payment.failed && !record.paymentSeenAt) record = await store.markPaymentSeen(record).catch(() => record as SignRequest);
   const followsPastExpiry = record.action === "buy_land" || !!record.paymentSeenAt;
   if (record.status === "pending" && (!expired || followsPastExpiry)) {
@@ -707,10 +713,14 @@ export async function getSignRequest({ id }: GetSignRequestArgs) {
   // Still pending: a card, bank transfer or wire payment the person started on the sign page.
   if (record.status !== "pending") payment = null;
   const clearing = !!payment && !payment.failed;
+  // A payment an earlier lookup saw, which this lookup cannot read (hidden from this reader, or the
+  // API did not answer), may still be clearing: its state is unknown, not unsigned.
+  const unreadPaymentSeenAt = record.status === "pending" && !payment ? record.paymentSeenAt : undefined;
+  const paidFor = record.action === "buy_land" ? "purchase" : "payoff";
   return {
     network: NETWORK_LABEL,
     id: record.id,
-    status: record.status === "completed" ? "completed" : clearing ? "payment_clearing" : expired ? "expired" : record.status,
+    status: record.status === "completed" ? "completed" : clearing ? "payment_clearing" : unreadPaymentSeenAt ? "payment_unknown" : expired ? "expired" : record.status,
     action: record.action,
     ...(record.property ? { property: record.property } : {}),
     ...(record.pool ? { pool: { address: record.pool.address, tick: record.pool.tick, amountUsd: record.pool.amountUsd, wholePosition: record.pool.wholePosition, link: record.pool.link } } : {}),
@@ -730,8 +740,10 @@ export async function getSignRequest({ id }: GetSignRequestArgs) {
         : "Signed. get_land_order_book shows the order; a transaction hash can be followed with get_transaction_status."
       : payment
         ? payment.failed
-          ? `The ${payment.method} payment of ${payment.totalUsd} did not go through (${payment.stage}). Nothing was bought or paid off; ${expired ? "prepare a new request to try again" : "the sign link is still open to try again"}.`
-          : `Paid by ${payment.method}, ${payment.totalUsd}: ${payment.stage}${payment.expectedBy ? `, expected by ${payment.expectedBy.slice(0, 10)}` : ""}. The ${record.action === "buy_land" ? "purchase" : "payoff"} completes once the payment clears; get_sign_request shows it then.`
+          ? `The ${payment.method ?? "dollar"} payment${payment.totalUsd ? ` of ${payment.totalUsd}` : ""} did not go through (${payment.stage}). Nothing was bought or paid off; ${expired ? "prepare a new request to try again" : "the sign link is still open to try again"}.${payment.incomplete ? INCOMPLETE_PAYMENT_LINE : ""}`
+          : `Paid ${payment.method ? `by ${payment.method}` : "in dollars"}${payment.totalUsd ? `, ${payment.totalUsd}` : ""}: ${payment.stage}${payment.expectedBy ? `, expected by ${payment.expectedBy.slice(0, 10)}` : ""}. The ${paidFor} completes once the payment clears; get_sign_request shows it then.${payment.incomplete ? INCOMPLETE_PAYMENT_LINE : ""}`
+      : unreadPaymentSeenAt
+        ? `A dollar payment for this ${paidFor} was seen on ${unreadPaymentSeenAt.slice(0, 10)}, and this lookup cannot read it: it may still be clearing. Signed in with portfolio:read as the paying account, get_sign_request shows its stage; it shows the ${paidFor} once it completes.`
       : expired
         ? `Expired unsigned: links stay open for ${SIGN_REQUEST_TTL_SECONDS / 60} minutes. Prepare a new one to continue.`
         : isPoolAction(record)

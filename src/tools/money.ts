@@ -2,6 +2,7 @@ import { IS_MAINNET } from "../config.js";
 import { getTokenPayments } from "../clients/graphql.js";
 import { ethCall } from "../clients/rpc.js";
 import { PLATFORM_URL } from "../links.js";
+import type { AccountAuth } from "../auth/token.js";
 import type { TokenPayment } from "../types/index.js";
 
 /**
@@ -73,33 +74,57 @@ export function paysInDollars(action: string): action is keyof typeof PAYMENT_AC
 
 /** A payment this request may have started: the request's account and action, made while its link was open. */
 export interface DollarPayment {
-  method: string;
+  /** null when the API did not return the method to this reader. */
+  method: string | null;
   stage: string;
   failed: boolean;
-  totalUsd: string;
+  /** null when the API did not return the amount to this reader. */
+  totalUsd: string | null;
+  /** true when the method or the amount is missing: the payment is still the current one. */
+  incomplete: boolean;
   startedAt: string;
   expectedBy: string | null;
 }
 
-/** The newest payment the request's account started on its property while the link was open, or null. */
-export async function findDollarPayment(record: { action: string; wallet: string; createdAt: string; expiresAt: string; property?: { tokenId: string } }): Promise<DollarPayment | null> {
+/** A payment row with the fields a match needs: the API leaves them null for a caller it does not show them to. */
+type IdentifiablePayment = TokenPayment & { walletAddress: string; createdAt: string };
+
+function isIdentifiable(payment: TokenPayment): payment is IdentifiablePayment {
+  return payment.walletAddress != null && payment.createdAt != null;
+}
+
+/** The API's total as dollars, or the raw text when it is not a number. */
+function totalInDollars(total: string): string {
+  const amount = Number.parseFloat(total);
+  return Number.isFinite(amount) ? dollars(amount) : total;
+}
+
+/**
+ * The newest payment the request's account started on its property while the link was open, or null.
+ * `as` reads the payments as the connected person (see getTokenPayments). A row whose payer or
+ * dates the API did not return is not this request's payment. The newest match is chosen before its
+ * display fields are read, so a newer row without a method or amount is reported as incomplete and an
+ * older payment never stands in for it.
+ */
+export async function findDollarPayment(record: { action: string; wallet: string; createdAt: string; expiresAt: string; property?: { tokenId: string } }, as?: AccountAuth): Promise<DollarPayment | null> {
   if (!paysInDollars(record.action) || !record.property) return null;
   const actions = PAYMENT_ACTIONS[record.action];
   const from = Date.parse(record.createdAt) - 1000;
   const to = Date.parse(record.expiresAt);
-  const payments = await getTokenPayments(record.property.tokenId);
+  const payments = await getTokenPayments(record.property.tokenId, as);
   const match = payments
+    .filter(isIdentifiable)
     .filter(p => p.walletAddress.toLowerCase() === record.wallet.toLowerCase() && actions.includes(p.action))
     .filter(p => { const at = Date.parse(p.createdAt); return at >= from && at <= to; })
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
   if (!match) return null;
   const failed = match.phase === "BankFailed" || match.phase === "Expired" || match.phase === "DepositReverted";
-  const total = Number.parseFloat(match.total);
   return {
-    method: METHOD[match.method] ?? match.method,
+    method: match.method == null ? null : METHOD[match.method] ?? match.method,
     stage: PHASE[match.phase] ?? match.phase,
     failed,
-    totalUsd: Number.isFinite(total) ? dollars(total) : match.total,
+    totalUsd: match.total == null ? null : totalInDollars(match.total),
+    incomplete: match.method == null || match.total == null,
     startedAt: match.createdAt,
     expectedBy: failed ? null : match.eta,
   };
