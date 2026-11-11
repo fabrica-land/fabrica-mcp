@@ -1,11 +1,11 @@
 {
- "builtAt": "2026-11-10",
+ "builtAt": "2026-11-11",
  "sources": {
   "docs": {
    "url": "https://docs.fabrica.land",
    "repo": "fabrica-land/docs",
    "ref": "v3.0",
-   "commit": "dc1b157dcc917600b8db14862ed30c08f50b71ac",
+   "commit": "1070734555772d8d8a877a09cbf50954fb5de703",
    "documents": 50
   },
   "help": {
@@ -8282,7 +8282,7 @@
    "sectionTitle": "Can I use Fabrica from my AI assistant?",
    "url": "https://help.fabrica.land/en/articles/17212021-can-i-use-fabrica-from-my-ai-assistant",
    "text": "Yes. Fabrica is in the Claude directory: open Fabrica in the Claude directory (https://claude.ai/directory/fabrica-land) and select Connect. Other AI assistants that accept outside data sources (Cursor and ChatGPT, for example) connect with one web address pasted into their settings. Either way there is nothing to install, and you can then ask about land, loans and portfolios in plain English. Sign in to Fabrica and the assistant can also answer questions about your own properties, offers and loans, and get an offer, a listing or a loan ready for you to review and sign.",
-   "updatedAt": ""
+   "updatedAt": "updated a week ago at build"
   },
   {
    "id": "help:1072033dcd9d",
@@ -8291,7 +8291,7 @@
    "sectionTitle": "What your assistant can do",
    "url": "https://help.fabrica.land/en/articles/17212021-can-i-use-fabrica-from-my-ai-assistant",
    "text": "Once connected, your assistant can look things up for you:\n\n- Find land. Search by state or county, acreage, price, distance from a place, Property checks results, whether a property is for sale or has a loan, and sort the results. Searches leave out properties that fabrica.land's marketplace would not show, the same bar the site applies; when you ask what one account owns, every property in that account is listed.\n\n- Explain one property. Legal description, estimated value and where it comes from, property tax status, Property checks and what they found, how far along its setup is, ownership, loans, listings and offers, recent activity, photos and a map, plus the legal record: the trust, the trust agreement and the recorded deed, the same documents as the Records card on the property page.\n\n- Look up any US parcel. Give it an address or a parcel number and it tells you whether that land is already on Fabrica, with a link to the property page or to the page where the owner can add it, and whether that county is set up on Fabrica. Owner names are never part of the answer.\n\n- Check borrowing options. How much a property could borrow from the DeFi lending pool and for how long, what limits the amount and what would raise it, and the details of a loan already on it, including the payoff today.",
-   "updatedAt": ""
+   "updatedAt": "updated a week ago at build"
   },
   {
    "id": "help:56f090f50949",
@@ -8300,7 +8300,7 @@
    "sectionTitle": "What your assistant can do",
    "url": "https://help.fabrica.land/en/articles/17212021-can-i-use-fabrica-from-my-ai-assistant",
    "text": "- Review an account and the market. What an account owns, its loans, open listings and offers and repayment record, with a map of its properties; the listings and offers on a property; the state of the DeFi lending pool; the activity feed for a property, an account or the whole network; and platform-wide numbers.\n\n- Answer questions about Fabrica. Ask how fees, the trust, Property checks or borrowing work, and the assistant quotes Fabrica's own documents (the developer docs, this help center and the trust agreement) with a link to each passage. If the documents don't answer, it can draft an email to our support team for you to review and send. It never sends anything itself.\n\nThe assistant may show Property checks as a 5-digit code. That code is the numeric encoding of Property checks: it groups the results differently from the checklist on fabrica.land, and it is not a percentage or a grade. The connection itself no longer calls it a score or turns it into a percentage, though an assistant may still remember the older name \"confidence score\". Property checks are a starting point for your own research, not a title search or title insurance.",
-   "updatedAt": ""
+   "updatedAt": "updated a week ago at build"
   },
   {
    "id": "help:ac5b30636ad6",
@@ -8309,7 +8309,7 @@
    "sectionTitle": "What your assistant can do",
    "url": "https://help.fabrica.land/en/articles/17212021-can-i-use-fabrica-from-my-ai-assistant",
    "text": "In assistants that can show interactive cards (Claude on the web and desktop, for example), property details appear as a card: the parcel map, the owner's photos, and key facts such as Property checks, estimated value, listing price and borrowing capacity. The card's buttons, such as \"Buy\" on a listed property, \"Make an offer\", \"Contact owner\" and \"View on Fabrica\", open the property on fabrica.land. The card itself never buys, offers or signs anything.",
-   "updatedAt": ""
+   "updatedAt": "updated a week ago at build"
   },
   {
    "id": "help:0c72d264a389",
@@ -8318,7 +8318,7 @@
    "sectionTitle": "Your own properties, offers and loans",
    "url": "https://help.fabrica.land/en/articles/17212021-can-i-use-fabrica-from-my-ai-assistant",
    "text": "Ask about your own account, for example \"What needs my attention on Fabrica?\" or \"Show my properties\", and the assistant asks you to sign in to Fabrica the first time. A fabrica.land window opens: sign in as you normally do, check what the assistant will be able to see, and select Approve. From then on it can answer from your account: your properties (including the ones you are still adding and the next step on each), the offers you received and made, your loans with their payoff today, and one list of everything waiting on you, such as a loan near maturity or an offer on your property.\n\nSigning in gives the assistant read-only access. It can see your account, but it cannot buy, sell, list, sign or borrow for you. You can disconnect it at any time from Connected apps in your account menu on fabrica.land.\n\nOn iPhone or iPad, connect from claude.ai in Safari rather than from the Claude app. The sign-in window inside the Claude app can't complete the Fabrica sign-in; once connected in Safari, the connection works in the app too.",
-   "updatedAt": ""
+   "updatedAt": "updated a week ago at build"
   },
   {
    "id": "help:fe84e9484a09",
@@ -8327,7 +8327,7 @@
    "sectionTitle": "Getting an action ready for you to sign",
    "url": "https://help.fabrica.land/en/articles/17212021-can-i-use-fabrica-from-my-ai-assistant",
    "text": "Your assistant can prepare an action for you to review and sign on fabrica.land:\n\n- Buying and selling: make an offer, list a property for sale, accept an offer, buy a listed property, or cancel your own listing or offer. You can list a property you are still adding to Fabrica: buyers can send offers right away, and the property can be bought once its setup is finished.\n\n- Borrowing: borrow against a property you own from the DeFi lending pool, or pay off a loan.\n\n- Managing your property: move a property to another account linked to your own Fabrica login, update it to the latest trust agreement, replace its description, or open its photo editor. Moving a property and updating the trust agreement are final once they go through.\n\n- Lending: deposit USDC into the DeFi lending pool, or withdraw your deposit. The pool issues deposit shares for your deposit. Interest is set by the pool, varies and is not guaranteed, and deposits are at risk: if a borrower doesn't repay and the property's sale doesn't cover the loan, deposits lose value. A withdrawal can wait until loans are repaid if the pool has lent out the funds.",
-   "updatedAt": ""
+   "updatedAt": "updated a week ago at build"
   },
   {
    "id": "help:33b21a22fabd",
@@ -8336,7 +8336,7 @@
    "sectionTitle": "Getting an action ready for you to sign",
    "url": "https://help.fabrica.land/en/articles/17212021-can-i-use-fabrica-from-my-ai-assistant",
    "text": "The assistant checks the live data first, tells you what you would be signing and warns you about anything unusual, such as a price far from the estimate or a loan on the property. Then it gives you a link that opens the matching window on fabrica.land with the numbers filled in and a note that an assistant prepared it. Nothing happens until you open the link, log in to your own account, check every amount and confirm. The link stays open for 15 minutes; an expired link says so, and you can ask for a new one or continue from the page by hand. On the real-properties connection, what you sign is real and final once it goes through.",
-   "updatedAt": ""
+   "updatedAt": "updated a week ago at build"
   },
   {
    "id": "help:76b37f912b66",
@@ -8345,7 +8345,7 @@
    "sectionTitle": "What it cannot do",
    "url": "https://help.fabrica.land/en/articles/17212021-can-i-use-fabrica-from-my-ai-assistant",
    "text": "Your assistant cannot buy, sell, list, transfer, sign or borrow on its own. It only looks things up and gets actions ready; you make every decision on fabrica.land (https://fabrica.land), in your own account, with the same confirmations as always. The assistant never sees your password or your keys. Without sign-in it reads the same public information anyone can see on fabrica.land; with sign-in, it also reads your own account, and only what you approved.",
-   "updatedAt": ""
+   "updatedAt": "updated a week ago at build"
   },
   {
    "id": "help:025292721ece",
@@ -8354,7 +8354,7 @@
    "sectionTitle": "How to connect",
    "url": "https://help.fabrica.land/en/articles/17212021-can-i-use-fabrica-from-my-ai-assistant",
    "text": "Claude: open Fabrica in the Claude directory (https://claude.ai/directory/fabrica-land) and select Connect. That's it.\n\nOther assistants:\n\n- Copy this address: https://mcp.fabrica.land/mcp\n\n- In your assistant, open the settings for connectors or integrations and add a custom connector.\n\n- Paste the address and save.\n\nThen ask a question. For example: \"Find land for sale in Nevada over 10 acres\", \"Is 123 Main Street in Flagstaff on Fabrica?\" or \"How much could this property borrow?\" with a link to the property page.\n\nThe address above connects to real properties. A second address, https://mcp-testnet.fabrica.land/mcp, connects to Fabrica's test environment, where the properties are practice data with no real-world meaning. Use it to try an offer, a listing or a loan with practice money first, or add both as separate connections. The environment is fixed per address, so the test connection can never reach real properties.",
-   "updatedAt": ""
+   "updatedAt": "updated a week ago at build"
   },
   {
    "id": "help:7b632f9393ad",
@@ -8363,7 +8363,7 @@
    "sectionTitle": "Things to keep in mind",
    "url": "https://help.fabrica.land/en/articles/17212021-can-i-use-fabrica-from-my-ai-assistant",
    "text": "- Real land, real consequences. On the real-properties connection, the assistant is told up front that Fabrica properties are real parcels of US land, and that becoming an owner means taking on the trustee role, property taxes and the other responsibilities that come with land. Read a property's documents (the Records card on its page) before you act on anything.\n\n- Not advice. What the assistant tells you is a summary of Fabrica's public data, not legal, tax or investment advice. Estimated values are a starting point, not an appraisal. Talk to a professional before you buy, sell or borrow.\n\n- Same data, same limits. If something looks wrong on fabrica.land, it will look wrong to the assistant too. Message us and we will look into it.\n\nFor developers: the connector is Fabrica's MCP server (Model Context Protocol, the open standard assistants use to plug into data sources). Setup details and the full list of what it can look up are on the AI agents page in our docs (https://docs.fabrica.land/docs/ai-agents), and the code is in the public repository at github.com/fabrica-land/fabrica-mcp (https://github.com/fabrica-land/fabrica-mcp).\n\nIf you get stuck, message us through the chat bubble in the corner.",
-   "updatedAt": ""
+   "updatedAt": "updated a week ago at build"
   },
   {
    "id": "trust-agreement:a933db5a441b",
