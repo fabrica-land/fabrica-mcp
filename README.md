@@ -54,7 +54,7 @@ Any other client that supports remote MCP servers (Streamable HTTP) works the sa
 
 ### Run locally (stdio)
 
-The hosted URLs above are the supported way to use the server; it is not published to npm. To run it on your own machine from source (Node 20 or later; Yarn 4 is pinned in `.yarn/releases`, so any `yarn` on your PATH runs the right version):
+The hosted URLs above are the supported way to use the server; it is not published to npm. To run it on your own machine from source (Node 22.23.5 or later in the Node 22 line; Yarn 4 is pinned in `.yarn/releases`, so any `yarn` on your PATH runs the right version):
 
 ```bash
 git clone https://github.com/fabrica-land/fabrica-mcp.git
