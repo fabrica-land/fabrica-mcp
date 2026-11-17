@@ -73,6 +73,22 @@ describe("explainConfidenceScore", () => {
     expect(warnings.some(w => w.includes("Title verification"))).toBe(true);
   });
 
+  // ENG-5588: the legal-description point is always awarded, so past title 3 now means
+  // only 2 of the other 4 checks pass. Before ENG-5588, 73242 had no title warning.
+  it("flags low title verification at past title 3, above the always-awarded point", async () => {
+    const r = await explainConfidenceScore({ score: 73242 }) as Record<string, unknown>;
+    const warnings = r.warnings as string[];
+    expect(warnings).toBeDefined();
+    const title = warnings.find(w => w.includes("Title verification"));
+    expect(title).toContain("past title value 3, highest is 5");
+    expect(title).toContain("1 point is always awarded");
+  });
+
+  it("does not flag title verification at past title 4", async () => {
+    const r = await explainConfidenceScore({ score: 74242 }) as Record<string, unknown>;
+    expect(r.warnings).toBeUndefined();
+  });
+
   it("labels recovery digits 4, 5 and 6 as the API defines them", async () => {
     const labels = await Promise.all([43242, 53242, 63242].map(async score => {
       const r = await explainConfidenceScore({ score }) as Record<string, unknown>;

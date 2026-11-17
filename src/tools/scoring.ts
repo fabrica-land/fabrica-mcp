@@ -4,6 +4,19 @@ import type { ArgsOf } from "./inputs.js";
 
 const MAX_SCORE = 75342;
 
+/**
+ * Past-title points every property earns. The legal-description match
+ * (claimMatchesLegalDescription) is informational since ENG-5588: its point is always
+ * awarded, whether the match passes, fails or is unknown. The maximum stays 5.
+ */
+const PAST_TITLE_ALWAYS_AWARDED = 1;
+
+/**
+ * Title verification is low when fewer than 3 of the other 4 past-title checks pass,
+ * the same bar as before ENG-5588, counted above the always-awarded point.
+ */
+const LOW_PAST_TITLE_BELOW = 3 + PAST_TITLE_ALWAYS_AWARDED;
+
 const GROUP_WEIGHTS = [
   { name: "recoveryStatus", weight: 10000, max: 7, title: "Recovery Status", description: "Recovery/integrity status of the token-property link" },
   { name: "pastTitleAndLoad", weight: 1000, max: 5, title: "Past Title & Load", description: "Level of confidence on title history up to and after tokenization" },
@@ -134,8 +147,8 @@ export async function explainConfidenceScore(args: ExplainConfidenceScoreArgs) {
       warnings.push(`Recovery status: ${recovery.label}: ${getRecoveryStatus(score)?.meaning ?? "unknown"}`);
     }
     const pastTitle = breakdown.find(d => d.name === "pastTitleAndLoad");
-    if (pastTitle && pastTitle.value < 3) {
-      warnings.push(`Title verification is low (past title value ${pastTitle.value}, highest is ${pastTitle.max}): title checks may be incomplete`);
+    if (pastTitle && pastTitle.value < LOW_PAST_TITLE_BELOW) {
+      warnings.push(`Title verification is low (past title value ${pastTitle.value}, highest is ${pastTitle.max}; ${PAST_TITLE_ALWAYS_AWARDED} point is always awarded, because the legal-description match no longer counts against a property): title checks may be incomplete`);
     }
     const result: Record<string, unknown> = {
       score,
