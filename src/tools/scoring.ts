@@ -48,15 +48,21 @@ export function getRecoveryStatus(score: number | null): { value: number; label:
   return { value, ...status };
 }
 
-export interface CheckResult {
-  check: string;
-  group: string;
-  passed: boolean;
+export type CheckResult = { check: string; group: string } & (
+  { passed: boolean } | { result: "true" | "false or unknown"; point: 1 }
+);
+
+/** GraphQL conflates false and unknown; legal-description matching always earns its point. */
+export function describeCheck(check: { checkName: string; title: string; group: string; value: boolean }): CheckResult {
+  const detail = { check: check.title, group: check.group };
+  return check.checkName === "claimMatchesLegalDescription"
+    ? { ...detail, result: check.value ? "true" : "false or unknown", point: 1 }
+    : { ...detail, passed: check.value };
 }
 
 /** Pass counts from the individual check results, which (unlike the digits) are counts. */
 export function countChecks(checks: readonly CheckResult[]): { passed: number; total: number } {
-  return { passed: checks.filter(c => c.passed).length, total: checks.length };
+  return { passed: checks.filter(c => "passed" in c && c.passed).length, total: checks.filter(c => "passed" in c).length };
 }
 
 /**
@@ -115,11 +121,7 @@ export async function explainConfidenceScore(args: ExplainConfidenceScoreArgs) {
       score = token.score ?? undefined;
       propertyName = token.name ?? token.vanityName ?? null;
       if (token.scoringCheckResults) {
-        checks = token.scoringCheckResults.map(c => ({
-          check: c.title,
-          group: c.group,
-          passed: c.value,
-        }));
+        checks = token.scoringCheckResults.map(describeCheck);
       }
     }
     if (score === undefined || score === null) {
@@ -135,7 +137,7 @@ export async function explainConfidenceScore(args: ExplainConfidenceScoreArgs) {
     }
     const pastTitle = breakdown.find(d => d.name === "pastTitleAndLoad");
     if (pastTitle && pastTitle.value < 3) {
-      warnings.push(`Title verification is low (past title value ${pastTitle.value}, highest is ${pastTitle.max}): title checks may be incomplete`);
+      warnings.push(`Title verification is low (past title value ${pastTitle.value}, highest is ${pastTitle.max}): other title checks may be incomplete. Legal-description matching contributes one point whether true, false or unknown`);
     }
     const result: Record<string, unknown> = {
       score,
@@ -159,7 +161,7 @@ export async function explainConfidenceScore(args: ExplainConfidenceScoreArgs) {
     if (warnings.length > 0) {
       result.warnings = warnings;
     }
-    result.howToRead = "This is the numeric encoding of Property checks: a 5-digit positional number, not a percentage or a grade. Each digit position represents a verification group: recovery status (ten-thousands), past title (thousands), ownership (hundreds), onchain history (tens), basic validation (ones). Higher is better. Max: 75342. Digits are category values, not counts; checksPassed counts the individual checks, like the checklist in the Fabrica app. Property checks are a starting point for your own research, not a title search or title insurance.";
+    result.howToRead = "This is the numeric encoding of Property checks: a 5-digit positional number, not a percentage or a grade. Each digit position represents a verification group: recovery status (ten-thousands), past title (thousands), ownership (hundreds), onchain history (tens), basic validation (ones). Higher is better. Max: 75342. Digits are category values, not counts. Legal-description matching contributes one past-title point whether true, false or unknown and is excluded from pass counts. checksPassed counts the remaining individual checks, like the checklist in the Fabrica app. Property checks are a starting point for your own research, not a title search or title insurance.";
     return result;
   } catch (e) {
     return { error: propertyLookupError(e, { tokenId }, "explain Property checks") };
