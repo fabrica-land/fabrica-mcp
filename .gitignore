@@ -16,3 +16,10 @@ src/ui/generated/
 !**/.env.example
 !**/.env.local.example
 **/local.json*
+
+# ENG-5546 AC15: exclude evidence, logs and config copies.
+.knowledge/
+fv-evidence/
+WORK_LOGS/
+wrap-ups/
+.scratch/
