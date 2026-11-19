@@ -17,7 +17,7 @@ src/ui/generated/
 !**/.env.local.example
 **/local.json*
 
-# ENG-5546 AC15: exclude evidence, logs and config copies.
+# Exclude evidence, logs and config copies.
 .knowledge/
 fv-evidence/
 WORK_LOGS/
