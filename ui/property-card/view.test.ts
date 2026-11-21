@@ -68,6 +68,7 @@ describe("fact lines", () => {
   it("lists the checks that did not pass and counts them", () => {
     const results = [
       { check: "Proof of Title Verified", passed: true },
+      { check: "Legal description matches", result: "false or unknown", point: 1 },
       { check: "Holding Entity Matches Owner from County Assessor", passed: false },
     ];
     expect(failedChecks(results)).toEqual(["Holding Entity Matches Owner from County Assessor"]);

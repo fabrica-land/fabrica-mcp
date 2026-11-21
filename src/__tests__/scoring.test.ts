@@ -11,6 +11,26 @@ import { explainConfidenceScore } from "../tools/scoring.js";
 import { tokenDetail } from "./fixtures.js";
 
 describe("explainConfidenceScore", () => {
+  it.each([true, false])("keeps legal-description result %s informational and other title failures counted", async value => {
+    vi.mocked(getToken).mockResolvedValueOnce(tokenDetail({
+      score: 71242,
+      scoringCheckResults: [
+        { checkName: "claimMatchesLegalDescription", title: "Legal description matches", group: "pastTitleAndLoad", value },
+        { checkName: "proofOfTitleValid", title: "Proof of title valid", group: "pastTitleAndLoad", value: false },
+        { checkName: "currentOwnersKycd", title: "Owners verified", group: "ownership", value: true },
+      ],
+    }));
+    const result = await explainConfidenceScore({ tokenId: "12345" });
+    expect(result).toHaveProperty("checks", [
+      { check: "Legal description matches", group: "pastTitleAndLoad", result: value ? "true" : "false or unknown", point: 1 },
+      { check: "Proof of title valid", group: "pastTitleAndLoad", passed: false },
+      { check: "Owners verified", group: "ownership", passed: true },
+    ]);
+    expect(result).toHaveProperty("checksPassed", { passed: 1, total: 2 });
+    expect(result).toHaveProperty("breakdown.pastTitleAndLoad.checks", { passed: 0, total: 1 });
+    expect(result).toHaveProperty("warnings", ["Title verification is low (past title value 1, highest is 5): other title checks may be incomplete. Legal-description matching contributes one point whether true, false or unknown"]);
+  });
+
   it("decomposes max score 75342 correctly", async () => {
     const result = await explainConfidenceScore({ score: 75342 });
     const r = result as Record<string, unknown>;

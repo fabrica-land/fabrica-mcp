@@ -1,11 +1,11 @@
 {
- "builtAt": "2026-11-15",
+ "builtAt": "2026-11-17",
  "sources": {
   "docs": {
    "url": "https://docs.fabrica.land",
    "repo": "fabrica-land/docs",
    "ref": "v3.0",
-   "commit": "d20f01ce3b2d64c35ad0ec1a74a073a76ccea340",
+   "commit": "2d6e045e72aea587b1d669b20296acd3b430da41",
    "documents": 50
   },
   "help": {
@@ -29,7 +29,7 @@
    "sectionTitle": "AI agents and MCP",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "Connect AI agents to Fabrica property data and documentation through hosted Model Context Protocol (MCP) servers.",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:c31810e1958f",
@@ -38,7 +38,7 @@
    "sectionTitle": "AI agents and MCP",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "### In short\n\nIn Claude, connect Fabrica from the Claude directory (https://claude.ai/directory/fabrica-land). In any other assistant that supports remote MCP servers (ChatGPT, Cursor and others), add `https://mcp.fabrica.land/mcp`. The assistant can then look up Fabrica properties, any US parcel, the lending market, portfolios and cited answers from these docs. No API key, account or wallet is needed for public data; a person who signs in to Fabrica also lets it read their own properties, offers and loans and, if they approve it, start adding a property to their account. Reading never changes anything. The server can also prepare an offer, a listing, a purchase, a loan, a payoff, a lending pool deposit or an owner's change to their property as a sign request: the person reviews it and signs on fabrica.land with their own account, and the server never signs or sends anything. A separate testnet server serves test properties for trying this first.",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:de6becd4413e",
@@ -47,7 +47,7 @@
    "sectionTitle": "AI agents and MCP",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "The Fabrica MCP server gives AI agents access to the data behind the Fabrica protocol and to Fabrica's own documentation: Fabrica properties, any US parcel by address or parcel number, the lending market and its history, account portfolios, protocol-wide statistics, parcel geometry, map images, the trust documents attached to a token, and cited answers from the docs, the help center and the trust agreement. It implements the Model Context Protocol (https://modelcontextprotocol.io) (MCP), the open standard that assistants and agent frameworks such as Claude, ChatGPT, and Cursor use to call external tools, so any MCP client that supports remote servers can connect to it.\n\nIt serves two audiences: people who use an AI assistant and want it to answer questions about Fabrica properties from live data, and developers building agents that reason over real property on Fabrica.\n\nThe public tools read data already available through the Fabrica GraphQL API or published on Fabrica's sites, and need no API key, account, or wallet. The account tools read the connected person's own account, after that person signs in to Fabrica and approves access; with the add-property grant, the add-property tools start adding a property for them. On both networks the server also prepares marketplace, borrowing, lending pool and owner actions as sign requests: the agent prepares, and the person reviews and signs on fabrica.land with their own account.",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:e2aa6a1d7e8c",
@@ -55,8 +55,8 @@
    "title": "AI agents and MCP",
    "sectionTitle": "Hosted Endpoints",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "| Network | URL | Data |\n|---|---|---|\n| Ethereum mainnet | `https://mcp.fabrica.land/mcp` | Real US parcels. Responses carry a legal notice. Read tools, the account and add-property tools after sign-in, and the sign request tools, including owner changes. |\n| Sepolia testnet | `https://mcp-testnet.fabrica.land/mcp` | Test properties only. The same read, account, add-property and sign request tools. |\n\nThe network is fixed per URL: an agent connected to the testnet server cannot reach mainnet data, and vice versa. Add both as separate servers if you want to try things on testnet before mainnet.\n\nThe hosted server is stateless. Each request is served by a fresh server instance with no session, the transport is Streamable HTTP with JSON responses, and only `POST` is accepted on the MCP path (a `GET` returns 405, and a request body over 1 MB is refused with 413). Browser-based clients can call it directly, since responses carry permissive CORS headers. The hosted endpoints are deployed from the `main` branch of the public repository, so they track its current tool set, and both serve the property card described below.",
-   "updatedAt": "2026-11-11"
+   "text": "| Network | URL | Data |\n|---|---|---|\n| Ethereum mainnet | `https://mcp.fabrica.land/mcp` | Real US parcels. Responses carry a legal notice. Read tools, the account and add-property tools after sign-in, and the sign request tools, including owner changes. |\n| Sepolia testnet | `https://mcp-testnet.fabrica.land/mcp` | Test properties only. The same read, account, add-property and sign request tools. |\n\nThe network is fixed per URL: an agent connected to the testnet server cannot reach mainnet data, and vice versa. Add both as separate servers if you want to try things on testnet before mainnet.\n\nEach host also serves a read-only profile at `/mcp/read` (`https://mcp.fabrica.land/mcp/read` and `https://mcp-testnet.fabrica.land/mcp/read`): the twenty-one public read tools only, with no sign-in and none of the account, add-property or sign request tools. It is meant for clients and directories that accept only read-only servers.\n\nThe hosted server is stateless. Each request is served by a fresh server instance with no session, the transport is Streamable HTTP with JSON responses, and only `POST` is accepted on the MCP path (a `GET` returns 405, and a request body over 1 MB is refused with 413). Browser-based clients can call it directly, since responses carry permissive CORS headers. The hosted endpoints are deployed from the `main` branch of the public repository, so they track its current tool set, and both serve the property card described below.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:044f2fde8f49",
@@ -65,7 +65,7 @@
    "sectionTitle": "Discovery",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "Each host describes itself without a registry. `https://mcp.fabrica.land/.well-known/mcp.json` gives the server URL, transport, authentication (none for public reads, plus the optional sign-in with its issuer, scopes and the tools that need it), the documentation link, the skill file and the other network's server; `/.well-known/mcp/server-card.json` adds every tool with its title and annotations, the prompts and the resource templates, read from the running server so it always matches what that host registers; and `/.well-known/ai-catalog.json` is the AI Catalog that domain-level discovery reads first, pointing at both servers' cards. The testnet host serves the same documents for itself. The repository also carries the entries for the official MCP Registry (`land.fabrica/mcp` and `land.fabrica/mcp-testnet`, remote servers with no package).",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:43ac7946d353",
@@ -74,7 +74,7 @@
    "sectionTitle": "Connecting",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "**Claude (claude.ai, the desktop app and mobile):** Fabrica is listed in the Claude directory. Open Fabrica in the Claude directory (https://claude.ai/directory/fabrica-land) and select Connect. To add it by hand, or to add the testnet server: Settings, then Connectors, then Add custom connector, and paste the URL.\n\n**Claude Code:**\n\n```bash\nclaude mcp add --transport http fabrica https://mcp.fabrica.land/mcp\nclaude mcp add --transport http fabrica-testnet https://mcp-testnet.fabrica.land/mcp\n```\n\n**Cursor:** the repository README carries a one-click \"Add to Cursor\" link for the mainnet server, or add it by hand in `.cursor/mcp.json`:\n\n```json\n{\n  \"mcpServers\": {\n    \"fabrica\": { \"url\": \"https://mcp.fabrica.land/mcp\" }\n  }\n}\n```\n\nAny other client that supports remote MCP servers over Streamable HTTP is configured the same way.",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:5610e74944bb",
@@ -83,7 +83,7 @@
    "sectionTitle": "Running Locally",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "The server also runs locally over stdio from a clone of the repository. It is not published to npm, so install from source (Node 20 or later, with Yarn; run `corepack enable` if `yarn` is not installed):\n\n```bash\ngit clone https://github.com/fabrica-land/fabrica-mcp.git\ncd fabrica-mcp\nyarn install\nyarn build\n```\n\nThen point your client at the built entry point. With Claude Code:\n\n```bash\nclaude mcp add fabrica -- node /absolute/path/to/fabrica-mcp/dist/index.js\n```\n\nWith Claude Desktop (`claude_desktop_config.json`), here selecting Sepolia:\n\n```json\n{\n  \"mcpServers\": {\n    \"fabrica\": {\n      \"command\": \"node\",\n      \"args\": [\"/absolute/path/to/fabrica-mcp/dist/index.js\"],\n      \"env\": { \"FABRICA_NETWORK\": \"sepolia\" }\n    }\n  }\n}\n```\n\nA local server connects to Ethereum mainnet unless told otherwise. All environment variables are optional:",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:2e21654b0a9f",
@@ -92,7 +92,7 @@
    "sectionTitle": "Running Locally",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "| Variable | Default | Purpose |\n|---|---|---|\n| `FABRICA_NETWORK` | `ethereum` | `ethereum` or `sepolia` |\n| `FABRICA_API_URL` | `https://api.fabrica.land/graphql` | Fabrica GraphQL API the tools read from |\n| `FABRICA_METASTREET_SUBGRAPH_URL` | selected per network | Subgraph the server reads lending-pool statistics from (the variable keeps its original name) |\n| `FABRICA_MEDIA_URL` | `https://media.fabrica.land` | Media service that renders the map images |\n| `FABRICA_MCP_APPS` | `enabled` on Sepolia, `disabled` on mainnet | `enabled` or `disabled`: whether `get_land_property` also serves the property card |\n| `FABRICA_SIGN_REQUESTS` | `enabled` on Sepolia, `disabled` on mainnet | `enabled` or `disabled`: whether the sign request tools are registered. A local server keeps pending requests in memory |\n| `FABRICA_POOL_SIGN_REQUESTS` | `enabled` on Sepolia, `disabled` on mainnet | `enabled` or `disabled`: whether `deposit_to_lending_pool` and `withdraw_from_lending_pool` are registered (only when sign requests are on) |\n| `FABRICA_LIST_WHILE_ADDING` | `enabled` | `disabled` stops `list_land_for_sale` from preparing a listing for a property its owner is still adding |\n| `FABRICA_OWNER_ACTIONS` | `enabled` on Sepolia, `disabled` on mainnet | `enabled` or `disabled`: whether the owner change tools are registered (only when sign requests are on) |",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:963d9180d609",
@@ -101,7 +101,7 @@
    "sectionTitle": "Your own account (sign-in)",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "The same URL serves public reads and the connected person's own account. Public tools answer without sign-in. The first time an account tool is called, or `me` is passed as a wallet argument, the server answers HTTP 401 with an MCP authorization challenge (OAuth 2.1 with PKCE using S256, and dynamic client registration). When dynamic client registration is enabled, the Fabrica API registers the client at `POST /oauth/register`. The client opens fabrica.land, where the consent page names the client, and the person signs in. The consent page shows one label for each scope. The `profile:read` label is \"See your email, linked accounts and verification status\". Approving sends the person back to the client: the page says it is taking them back to that client and names the host it returns to. The client then retries the same call. The connection reads only what was approved. A missing `portfolio:read` grant tells the person to approve \"See your properties, listings, offers and loans\". A missing `onramp:read` grant tells the person to approve \"See the properties you're adding to Fabrica\". The add-property tools need the grant labeled \"Start adding a property to your account\" (the `onramp:write` and `premint:write` scopes); every other tool works without it. The person can disconnect it at any time from Connected apps in their account menu on fabrica.land. A valid token on any request makes that session the person's own. A revoked grant stops on the next personal read: the Fabrica API answers 401, and the token expires within its 15-minute lifetime.",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:8dcbeb77e6e9",
@@ -110,7 +110,7 @@
    "sectionTitle": "Your own account (sign-in)",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "The API issues a refresh token and rotates it when the client uses it. The client asks for a new access token with the `refresh_token` grant. The token is never logged and never cached. A signed-in response sets `Cache-Control: no-store`.\n\nFabrica's sign-in for AI agents never asks for or receives a password. You sign in through Dynamic, and Fabrica receives only a session token.\n\nOn iPhone and iPad, connect from claude.ai in Safari: the Claude iOS app's in-app browser cannot complete the Fabrica sign-in. Once connected, the connection works in the app too.",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:0ec02ed7e897",
@@ -118,8 +118,8 @@
    "title": "AI agents and MCP",
    "sectionTitle": "Your own account (sign-in)",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "| Tool | Returns |\n|---|---|\n| `get_my_account` | Email, linked accounts (every wallet address on the account), verification status, and the scopes the connection holds with its token expiry |\n| `get_my_properties` | The person's properties across every wallet on the account: those being added first, then live properties by estimated value, with stage, status, location, acres, listing price, offers waiting, whether it is under a loan, Property checks encoding, estimated value and the property page link |\n| `get_my_offers` | Offers received on the person's properties (highest first, with whether the property is under a loan) and offers the person made |\n| `get_my_loans` | Loans against the person's properties (maturity, payoff today, APR), loans they funded, and their position in the DeFi lending pool |\n| `what_needs_attention` | One ranked list of what waits on the person: loans past or near maturity, offers, steps of properties being added, fees to approve, and checks on live properties |\n| `get_my_properties_being_added` | Properties the person is adding to Fabrica, with status, steps done, and the next step with who acts |\n| `get_adding_status` | One property being added in full: every step with its status and dates, the next step, and the actions open on it |",
-   "updatedAt": "2026-11-11"
+   "text": "| Tool | Returns |\n|---|---|\n| `get_my_account` | Email, linked accounts (every wallet address on the account), each with the dollars (USDC) it holds and, from one dollar up, a Cash out link to fabrica.land, verification status, and the scopes the connection holds with its token expiry |\n| `get_my_properties` | The person's properties across every wallet on the account: those being added first, then live properties by estimated value, with stage, status, location, acres, listing price, offers waiting, whether it is under a loan, Property checks encoding, estimated value and the property page link |\n| `get_my_offers` | Offers received on the person's properties (highest first, with whether the property is under a loan) and offers the person made |\n| `get_my_loans` | Loans against the person's properties (maturity, payoff today, APR), loans they funded, and their position in the DeFi lending pool |\n| `what_needs_attention` | One ranked list of what waits on the person: loans past or near maturity, offers, steps of properties being added, fees to approve, dollars (USDC) in the person's accounts ready to cash out, and checks on live properties |\n| `get_my_properties_being_added` | Properties the person is adding to Fabrica, with status, steps done, and the next step with who acts |\n| `get_adding_status` | One property being added in full: every step with its status and dates, the next step, and the actions open on it |",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:f0a895f82b83",
@@ -127,8 +127,8 @@
    "title": "AI agents and MCP",
    "sectionTitle": "Your own account (sign-in)",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "Public tools keep working after sign-in. `get_land_portfolio` and `get_land_portfolio_map_image` read the connected person's own wallet when `address` is left out. `get_land_activity` and `search_land` (`ownedBy`) take `me` for that wallet. Before sign-in, `me` on a wallet argument is a call that starts sign-in. Signed in, and when the connection holds `portfolio:read`, `estimate_land_borrowing` is read as the connected person, so the borrowing capacity is theirs. The amount stays an estimate. A live quote sets the rate only when the person borrows.\n\nThe account tools only read. Listing, accepting an offer, repaying and depositing are prepared by the sign request tools and signed by the person on fabrica.land.",
-   "updatedAt": "2026-11-11"
+   "text": "Public tools keep working after sign-in. `get_land_portfolio` and `get_land_portfolio_map_image` read the connected person's own wallet when `address` is left out. `get_land_activity` and `search_land` (`ownedBy`) take `me` for that wallet. Before sign-in, `me` on a wallet argument is a call that starts sign-in. Signed in, and when the connection holds `portfolio:read`, `estimate_land_borrowing` is read as the connected person, so the borrowing capacity is theirs. The amount stays an estimate. A live quote sets the rate only when the person borrows.\n\nThe account tools only read. Listing, accepting an offer, repaying and depositing are prepared by the sign request tools and signed by the person on fabrica.land. The dollar balances are read from the chain, and the Cash out link opens Cash out on the person's own profile, where they review the fee and arrival before anything is sent; the server moves no money.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:5765f12e559a",
@@ -137,7 +137,7 @@
    "sectionTitle": "Adding a property",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "Two tools write, as the connected person, to the Fabrica API's add-a-property records. They need the add-property grant, approved at sign-in as \"Start adding a property to your account\" (the `onramp:write` and `premint:write` scopes). Nothing is signed, paid or recorded by them: the setup fee is authorized and the deed and trust documents are signed on fabrica.land, as for any owner (see Add a Property).\n\n| Tool | Inputs | Does |\n\n|---|---|---|\n\n| `add_land` | one of `listingUrl` (an `https://` listing page on another website), `address` (a street address with city and state) or `parcelNumber` with `state` and `county`; `wallet` (the linked account that will hold the property, when the Fabrica account has several) | Finds the parcel and whether it is already on Fabrica. Signed in with the grant, it creates the property's record as the connected person, held by their linked account, carrying the listing's description and photos when a listing link was given, and returns where it stands: the steps, and the questions the county asks for this property. Starting the same parcel again returns the existing record. Not signed in, or without the grant, it returns `links.addToFabrica`, the fabrica.land page that adds the parcel. A listing link is read only for a signed-in person, since reading it spends the server's import budget; a parcel number or an address counts as one lookup against the same per-minute limit as `find_us_parcel`. Property in a county that cannot be added online yet gets the link to the page that says what is possible there |",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:bdeb2f2b195d",
@@ -145,17 +145,17 @@
    "title": "AI agents and MCP",
    "sectionTitle": "Adding a property",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "| `answer_adding_questions` | `tokenId`*, `owner` (who holds title on the deed: one person with first name, last name and email; an entity with its legal name, type and jurisdiction and the person who signs for it; or several people with how they hold title), `answers` (keyed by the question exactly as `add_land` or `get_adding_status` lists it; a select answer is one of its options, verbatim), `email` (where Fabrica writes about the property; defaults to the account's email) | Saves the owner named on the deed and the answers to the county's questions on a property the connected person is adding, and returns the record as `get_adding_status` does, with the questions still open. The questions are Fabrica's rules for that county, state and kind of owner, read from the property's record each time, so they can change after the owner is saved and are asked as returned, never assumed |",
-   "updatedAt": "2026-11-11"
+   "text": "| `answer_adding_questions` | `tokenId`*, `owner` (who holds title on the deed: one person with first name, last name and email; an entity with its legal name, type and jurisdiction and the person who signs for it; or several people with how they hold title), `answers` (keyed by the question exactly as `add_land` or `get_adding_status` lists it; a select answer is one of its options, verbatim), `email` (where Fabrica writes about the property; defaults to the account's email) | Saves the owner named on the deed and the answers to the county's questions on a property the connected person is adding, and returns the record as `get_adding_status` does, with the questions still open. The questions are Fabrica's rules for that county, state and kind of owner, read from the property's record each time, so they can change after the owner is saved and are asked as returned, never assumed |\n\nTwo more tools find what to add. They answer only for a signed-in person, read only, and create nothing; the property the person picks is then added with `add_land`.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:4a8ddeaedd32",
    "source": "docs",
    "title": "AI agents and MCP",
-   "sectionTitle": "What the Server Can and Cannot Do",
+   "sectionTitle": "Adding a property",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "Every read tool says so in the standard MCP way: it is registered with a human-readable `title` and with annotations `readOnlyHint: true`, `destructiveHint: false`, and `idempotentHint: true`, so a client that gates state-changing tools behind confirmation can treat a Fabrica lookup as a plain read. The server queries the public Fabrica GraphQL API (plus a lending-pool subgraph for pool statistics, the Fabrica media service for map images, a public parcel search for addresses and parcel numbers, and the chain itself for transaction status) and returns formatted results. It holds no keys, signs nothing, and submits nothing onchain. Its only writes to the Fabrica API are the two add-property tools, which act as the connected person under the grant they approved.\n\nThe sign request tools, registered on both hosts, are annotated `readOnlyHint: false` because each writes a short-lived record to the server's own store. They still move no token or funds: they check the live data and return a link to fabrica.land where the person reviews the prefilled dialog and signs with their own account. See Sign requests.",
-   "updatedAt": "2026-11-11"
+   "text": "| Tool | Inputs | Returns |\n|---|---|---|\n| `find_listings_on_website` | `url`* (the seller's own website, or the page that lists their properties) | The listing pages found on the site, read from its sitemap or its links: the site, each listing's link (up to 200), where the list was read from, and whether it was cut short or read only in part. Each listing is then added with `add_land` and its `listingUrl`. Meant for the person's own listings on their own website, since `add_land` copies each listing's description and photos. A site that refuses automated reading, cannot be reached or takes too long is reported as a plain error |\n| `find_land_by_owner` | `owner`* (the name as the county records it, usually last name first as on the tax bill; 4 to 100 characters), `state`* (two-letter code), `county`* | Up to 10 parcels the county records under that owner's name in one county, each with its parcel number, recorded owner, address, acres, whether it is already on Fabrica and the fabrica.land link that adds it, with a note when the owner has more. The parcel the person picks is then added with `add_land` (`parcelNumber`, `state`, `county`). Meant for the person's own land: a parcel recorded to them, or to an entity or trust they sign for |",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:5ee0bbdfe044",
@@ -163,8 +163,8 @@
    "title": "AI agents and MCP",
    "sectionTitle": "What the Server Can and Cannot Do",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "**Mainnet legal notice.** On the mainnet endpoint, the server's instructions carry a legal notice written as a statement of facts rather than as directions to the agent. It states that Fabrica properties are real parcels of land in the United States, each held in a trust whose beneficial interest is represented by an ERC-1155 token, and that acquiring, transferring, listing, or borrowing against a token has real-world legal and financial consequences: owning a token means owning the beneficial interest in the trust that holds the property, with the trustee designated by the token holder and by default the holder; owners can carry obligations tied to the land, such as property taxes, maintenance, and environmental liability; transfers and sales are legally binding and can trigger tax events such as capital gains or transfer taxes; the operating agreement (the trust instrument) attached to each token sets out the owner's rights and obligations, and its URL is included in property details; and the data is informational, not financial or legal advice. Property search, property detail, order book, and protocol statistics responses on mainnet also carry a one-sentence version of the notice. The testnet server states instead that its properties are test tokens with no real-world legal or financial effect, and its prompts ask the agent to label every result as test data.",
-   "updatedAt": "2026-11-11"
+   "text": "Every read tool says so in the standard MCP way: it is registered with a human-readable `title` and with annotations `readOnlyHint: true`, `destructiveHint: false`, and `idempotentHint: true`, so a client that gates state-changing tools behind confirmation can treat a Fabrica lookup as a plain read. The server queries the public Fabrica GraphQL API (plus a lending-pool subgraph for pool statistics, the Fabrica media service for map images, a public parcel search for addresses and parcel numbers, the web application's website reader and county owner search for the two signed-in find tools, and the chain itself for transaction status and dollar balances) and returns formatted results. It holds no keys, signs nothing, and submits nothing onchain. Its only writes to the Fabrica API are the two add-property tools, which act as the connected person under the grant they approved.\n\nThe sign request tools, registered on both hosts, are annotated `readOnlyHint: false` because each writes a short-lived record to the server's own store. They still move no token or funds: they check the live data and return a link to fabrica.land where the person reviews the prefilled dialog and signs with their own account. See Sign requests.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:a09ca0c24aa4",
@@ -172,8 +172,8 @@
    "title": "AI agents and MCP",
    "sectionTitle": "What the Server Can and Cannot Do",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "The instructions also tell an agent to answer questions about how Fabrica works from `ask_fabrica`, citing the URL of the passage it relied on, and to say so and point to support rather than guess when no passage matches.\n\n**Default filters.** Property searches and protocol statistics exclude retired tokens, properties still being added, and tokens below a minimum numeric encoding of Property checks, together with a small set of known spam entries. The default minimum is 72,032, the same threshold the Fabrica marketplace applies to its public listings; the API pairs any minimum with a verified-deed requirement, so the default leaves out every property the marketplace would not sell, including any whose recovery status is not Normal. The `minScore` input of `search_land` (the minimum numeric encoding) overrides the default. A search with `ownedBy` and no `minScore` lists every property in that account, as the owner's own holdings appear in the application, and `get_land_portfolio` applies no minimum.\n\n**Owner names.** The deed grantor from Fabrica's own records and a holder's chosen display name are returned where the application shows them. Owner names from third-party parcel data are never returned, and `find_us_parcel` strips them before answering.",
-   "updatedAt": "2026-11-11"
+   "text": "**Mainnet legal notice.** On the mainnet endpoint, the server's instructions carry a legal notice written as a statement of facts rather than as directions to the agent. It states that Fabrica properties are real parcels of land in the United States, each held in a trust whose beneficial interest is represented by an ERC-1155 token, and that acquiring, transferring, listing, or borrowing against a token has real-world legal and financial consequences: owning a token means owning the beneficial interest in the trust that holds the property, with the trustee designated by the token holder and by default the holder; owners can carry obligations tied to the land, such as property taxes, maintenance, and environmental liability; transfers and sales are legally binding and can trigger tax events such as capital gains or transfer taxes; the operating agreement (the trust instrument) attached to each token sets out the owner's rights and obligations, and its URL is included in property details; and the data is informational, not financial or legal advice. Property search, property detail, order book, and protocol statistics responses on mainnet also carry a one-sentence version of the notice. The testnet server states instead that its properties are test tokens with no real-world legal or financial effect, and its prompts ask the agent to label every result as test data.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:3dbcb11223fc",
@@ -181,17 +181,17 @@
    "title": "AI agents and MCP",
    "sectionTitle": "What the Server Can and Cannot Do",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "**Errors and limits.** Tools return an `error` field with a plain-language message instead of raising, and a result that carries one is flagged with the MCP `isError` marker so clients can tell failure from data. A property that does not exist is reported as such; a failure of the underlying API is reported as an API error carrying the API's own message, so an agent can tell the two apart. A request to the underlying API that does not answer within 20 seconds is reported as an error that suggests retrying, and a map image larger than 5 MB is refused with a request for smaller dimensions. The county outline in `get_land_boundary` is an extra layer: if it cannot be fetched, the parcel geometry is still returned and the failure is listed under `warnings`. `find_us_parcel` uses a metered third-party lookup, so it is limited to 30 lookups per minute per client (each query in a list counts as one), and the limit is reported as a plain error. Reads are cached briefly and responses are bounded in size; long lists are paged with `limit` and `offset`.",
-   "updatedAt": "2026-11-11"
+   "text": "The instructions also tell an agent to answer questions about how Fabrica works from `ask_fabrica`, citing the URL of the passage it relied on, and to say so and point to support rather than guess when no passage matches.\n\n**Default filters.** Property searches and protocol statistics exclude retired tokens, properties still being added, and tokens below a minimum numeric encoding of Property checks, together with a small set of known spam entries. The default minimum is 72,032, the same threshold the Fabrica marketplace applies to its public listings; the API pairs any minimum with a verified-deed requirement, so the default leaves out every property the marketplace would not sell, including any whose recovery status is not Normal. The `minScore` input of `search_land` (the minimum numeric encoding) overrides the default. A search with `ownedBy` and no `minScore` lists every property in that account, as the owner's own holdings appear in the application, and `get_land_portfolio` applies no minimum.\n\n**Owner names.** The deed grantor from Fabrica's own records and a holder's chosen display name are returned where the application shows them. Owner names from third-party parcel data are never returned by the public tools, and `find_us_parcel` strips them before answering. The one exception is `find_land_by_owner`, which answers only for a signed-in person and returns the recorded owner of each parcel it lists, so that person can pick the parcel that is theirs.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:5231e01fcf75",
    "source": "docs",
    "title": "AI agents and MCP",
-   "sectionTitle": "Tool Reference",
+   "sectionTitle": "What the Server Can and Cannot Do",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "Twenty-one public read tools on both hosts, and fifteen sign request tools on both hosts, four of them for owner changes. Seven account tools and two add-property tools answer for the connected person after sign-in; both hosts register them. Inputs marked with an asterisk are required; every other input is optional. Property tools accept either a `tokenId` or the property `slug` from its Fabrica URL (for example `us/nevada/elko-county/elko/apn-063025003`), and the id of a property record replaced when its token was issued resolves to its successor.\n\n| Tool | Inputs | Returns |\n\n|---|---|---|\n\n| `search_land` | `region` (US state code), `county`, `groupBy` (`state` or `county`), `minAcres`, `maxAcres`, `minScore`, `hasListings`, `hasLoans`, `ownedBy` (account address, or `me` once signed in), `minPrice`, `maxPrice`, `minPricePerAcre`, `maxPricePerAcre` (listed properties only), `near` (a point, with the radius), `sortBy` (`price`, `pricePerAcre`, `acres`, estimated value, Property checks, `newest`, `distance`), `sortDir`, `limit` (default 20, max 100), `offset` | Matching properties with location, acreage, the numeric encoding of Property checks, estimated value, listing price, price per acre (listing or estimate, labeled), lifecycle stage, loan flag, owner, property link and, with `near`, the straight-line distance; or, with `groupBy`, one row per state or county with the property count, the count for sale, total acres and the link to that location's page on fabrica.land. The total match count is returned for paging |",
-   "updatedAt": "2026-11-11"
+   "text": "**Errors and limits.** Tools return an `error` field with a plain-language message instead of raising, and a result that carries one is flagged with the MCP `isError` marker so clients can tell failure from data. A property that does not exist is reported as such; a failure of the underlying API is reported as an API error carrying the API's own message, so an agent can tell the two apart. A request to the underlying API that does not answer within 20 seconds is reported as an error that suggests retrying, and a map image larger than 5 MB is refused with a request for smaller dimensions. The county outline in `get_land_boundary` is an extra layer: if it cannot be fetched, the parcel geometry is still returned and the failure is listed under `warnings`. `find_us_parcel` uses a metered third-party lookup, so it is limited to 30 lookups per minute per client (each query in a list counts as one), and the limit is reported as a plain error. `find_land_by_owner` has a daily allowance per signed-in account and `find_listings_on_website` an hourly one; both report the limit the same way. Reads are cached briefly and responses are bounded in size; long lists are paged with `limit` and `offset`.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:6db87832dde7",
@@ -199,8 +199,8 @@
    "title": "AI agents and MCP",
    "sectionTitle": "Tool Reference",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "| `get_land_property` | `tokenId` or `slug`, `display` (`inline` or `fullscreen`, for hosts that render the card) | Full detail: location, legal description and trust name, operating agreement URL, Property checks (how many pass, with each check's result and the numeric encoding), property tax status, valuation with per-source pricing, ownership and holders, active loans and DeFi lending pool capacity, active listings and offers, the owner's description and photos (up to eight, with resized thumbnails) and parcel map image links in both themes, recent activity, the lifecycle stage (unclaimed, being added, live, removal in progress, removed, retired), fees assessed on the token with their approval and payment state, flags for a duplicate parcel claim or a marketplace screen, and warnings for recovery, default, or liquidation status. Boundary geometry comes from `get_land_boundary` |\n\n| `get_land_boundary` | `tokenId` or `slug`, `includeCountyBounds` (default false) | GeoJSON FeatureCollection with the parcel boundary (or a point when no boundary exists) and, on request, the county outline |\n\n| `get_land_map_image` | `tokenId` or `slug`, `theme` (`dark` by default, or `light`), `width`, `height` (100 to 1280 pixels, default 640) | Inline static map image of the parcel boundary, or a pin when no boundary exists |",
-   "updatedAt": "2026-11-11"
+   "text": "Twenty-one public read tools on both hosts, and fifteen sign request tools on both hosts, four of them for owner changes. Seven account tools, two add-property tools and the two find tools beside them answer for the connected person after sign-in; both hosts register them, which makes 47 tools on each host's `/mcp` path. Inputs marked with an asterisk are required; every other input is optional. Property tools accept either a `tokenId` or the property `slug` from its Fabrica URL (for example `us/nevada/elko-county/elko/apn-063025003`), and the id of a property record replaced when its token was issued resolves to its successor.\n\n| Tool | Inputs | Returns |\n\n|---|---|---|",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:b507615c65f5",
@@ -208,8 +208,8 @@
    "title": "AI agents and MCP",
    "sectionTitle": "Tool Reference",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "| `get_land_trust_documents` | `tokenId` or `slug`, `includeAgreementText` (default false) | The legal record: the trust that holds the property (holding entity, formation date), the trust agreement that governs the token (name, version, link, and the full text on request), the legal description, the parcel identifiers (FIPS, APN, county, state), the recorded deed reference and grantor, and the documents the owner uploaded. `trust.agreementResource` names the MCP resource that serves this token's own agreement |\n\n| `get_land_tax_status` | `tokenId` or `slug` | Whether the property's taxes are current, past due or unknown according to Property checks, which signal says so (the Property Taxes Current check, the DeFi lending pool's block reason, both, or a note that they disagree), when it was checked and when the checks expire, and whether it limits borrowing. A data lookup, not the county's own statement; the amount due and the due date are not available |\n\n| `explain_property_checks` | `tokenId` or `score` | Explains Property checks: a digit-by-digit breakdown of the numeric encoding's five groups against the 75,342 maximum, with the individual check results when a token is given. The result states that the encoding is positional, not a percentage or a grade, and no percentage is reported |",
-   "updatedAt": "2026-11-11"
+   "text": "| `search_land` | `region` (US state code), `county`, `groupBy` (`state` or `county`), `minAcres`, `maxAcres`, `minScore`, `hasListings`, `hasLoans`, `ownedBy` (account address, or `me` once signed in), `minPrice`, `maxPrice`, `minPricePerAcre`, `maxPricePerAcre` (listed properties only), `near` (a point, with the radius), `sortBy` (`price`, `pricePerAcre`, `acres`, estimated value, Property checks, `newest`, `distance`), `sortDir`, `limit` (default 20, max 100), `offset` | Matching properties with location, acreage, the numeric encoding of Property checks, estimated value, listing price, price per acre (listing or estimate, labeled), lifecycle stage, loan flag, owner, property link and, with `near`, the straight-line distance; or, with `groupBy`, one row per state or county with the property count, the count for sale, total acres and the link to that location's page on fabrica.land. The total match count is returned for paging |",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:1fb7f6235539",
@@ -217,8 +217,8 @@
    "title": "AI agents and MCP",
    "sectionTitle": "Tool Reference",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "| `get_land_valuation` | `tokenId` or `slug` | Every value the API holds for the property, each with its source, date and confidence: the estimate and the sources it comes from, the Fabrica AVM, third-party and county assessor figures, the signed valuations the DeFi lending pool reads, the pool's oracle state (feed freshness, onchain price, usable price) with the reason when a price is missing, and the valuation report link. It presents data with its provenance and suggests no price |\n\n| `estimate_land_borrowing` | `tokenId` or `slug`, `amountUsd` (a loan amount to test) | DeFi lending pool availability for the property (the advertised maximum principal in whole USDC, rounded down, subject to available pool liquidity, and the available durations), any active loan on it, the reasons when the pool shows no capacity, `limits` naming what binds the amount (pool liquidity, loan-to-value, pool limit, tax status, oracle, or an existing loan) with the collateral price, the pool's free liquidity and the highest loan-to-value, how the collateral price is derived from the valuation sources, and `toRaise`, one entry per lever (adding the property, tax status, the deed check, fees, an existing loan, price, loan-to-value, pool liquidity) with where it stands and the step that moves it. The amount is an estimate; the amount and rate are set by a live quote when borrowing. Signed in, with `portfolio:read`, this read is as the connected person |",
-   "updatedAt": "2026-11-11"
+   "text": "| `get_land_property` | `tokenId` or `slug`, `display` (`inline` or `fullscreen`, for hosts that render the card) | Full detail: location, legal description and trust name, operating agreement URL, Property checks (how many pass, with each check's result and the numeric encoding), property tax status, valuation with per-source pricing, ownership and holders, active loans and DeFi lending pool capacity, active listings and offers, the owner's description and photos (up to eight, with resized thumbnails) and parcel map image links in both themes, recent activity, the lifecycle stage (unclaimed, being added, live, removal in progress, removed, retired), fees assessed on the token with their approval and payment state, flags for a duplicate parcel claim or a marketplace screen, and warnings for recovery, default, or liquidation status. Boundary geometry comes from `get_land_boundary` |\n\n| `get_land_boundary` | `tokenId` or `slug`, `includeCountyBounds` (default false) | GeoJSON FeatureCollection with the parcel boundary (or a point when no boundary exists) and, on request, the county outline |\n\n| `get_land_map_image` | `tokenId` or `slug`, `theme` (`dark` by default, or `light`), `width`, `height` (100 to 1280 pixels, default 640) | Inline static map image of the parcel boundary, or a pin when no boundary exists |",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:b8a0fca7c1b2",
@@ -226,8 +226,8 @@
    "title": "AI agents and MCP",
    "sectionTitle": "Tool Reference",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "| `get_loan_against_land` | `tokenId` or `slug`, `loanId` | One loan against a property: status (active, repaid, liquidated), provider, principal, APR, start, maturity, the full repayment and, while active, the payoff today, with the borrower and lender accounts shortened and the property link. A property alone gives its active or latest loan; `loanId` alone is looked up across the network; `otherLoans` lists the property's other loans |\n\n| `get_land_order_book` | `tokenId` or `slug`, `status` (`active` by default, or `all`), `minOfferUsd` | The lowest active listing, all listings, and offers from highest to lowest, each with price in US dollars and in its currency, seller or buyer, expiry (ISO 8601 and relative), the marketplace fee on a listing, any buyer restriction and disclosure documents, and for a property under a loan each listing's encumbrance (whether it can be bought now and, if not, why). Expired, canceled and filled orders are included only with `status: all` |\n\n| `get_land_activity` | `tokenId`, `slug`, or `address` (or `me` once signed in); `type` (for example `loan`, `transfer`, `sale`, `mint`); `limit` | Event timeline for a property or an account: mints, transfers, sales, listings, loans started, repaid, or liquidated, and configuration changes. With no property or address, the most recent activity across the whole network |",
-   "updatedAt": "2026-11-11"
+   "text": "| `get_land_trust_documents` | `tokenId` or `slug`, `includeAgreementText` (default false) | The legal record: the trust that holds the property (holding entity, formation date), the trust agreement that governs the token (name, version, link, and the full text on request), the legal description, the parcel identifiers (FIPS, APN, county, state), the recorded deed reference and grantor, and the documents the owner uploaded. `trust.agreementResource` names the MCP resource that serves this token's own agreement |\n\n| `get_land_tax_status` | `tokenId` or `slug` | Whether the property's taxes are current, past due or unknown according to Property checks, which signal says so (the Property Taxes Current check, the DeFi lending pool's block reason, both, or a note that they disagree), when it was checked and when the checks expire, and whether it limits borrowing. A data lookup, not the county's own statement; the amount due and the due date are not available |\n\n| `explain_property_checks` | `tokenId` or `score` | Explains Property checks: a digit-by-digit breakdown of the numeric encoding's five groups against the 75,342 maximum, with the individual check results when a token is given. The result states that the encoding is positional, not a percentage or a grade, and no percentage is reported |",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:e45ea9f66877",
@@ -235,8 +235,8 @@
    "title": "AI agents and MCP",
    "sectionTitle": "Tool Reference",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "| `get_fabrica_lending_market` | `status` (`active`, `repaid`, `liquidated`, `all`), `borrower`, `lender`, `since` (ISO date), `limit` (default 20, max 100) | Market summary (loans by status, loan volume per currency, average APR of active loans), DeFi lending pool statistics (value locked, in use, available, utilization, loan counts), matching loans with their terms and venue, and the ten most recent loan events |\n\n| `get_fabrica_loan_book` | `provider` (`pool` or `peer-to-peer`), `status`, `sinceDays`, `groupBy` (`state`, `provider`, `status`, loan-to-value band, acre band), `largest` (default 10, max 25) | The lending history as a distribution: loan counts and principal by status and provider, loan-to-value bands against today's property estimates, exposure by state and acreage, APR and duration spread, repaid and liquidated counts, originations by month for the last 12 months, and the largest loans with their property pages. Where the pool data source's counters differ from the loan records, both are shown |\n\n| `get_land_portfolio` | `address` (required on a public call; once signed in, leave it out to read the connected person's own wallet), `limit` (default 50, max 200), `offset` | Properties held (paged), lending positions as borrower and as lender, credit history, marketplace activity, and total portfolio value for an account, scoped to the server's network and token contract; counts and totals always cover the whole account. The outstanding-loans total is null when a loan has no dollar price |",
-   "updatedAt": "2026-11-11"
+   "text": "| `get_land_valuation` | `tokenId` or `slug` | Every value the API holds for the property, each with its source, date and confidence: the estimate and the sources it comes from, the Fabrica AVM, third-party and county assessor figures, the signed valuations the DeFi lending pool reads, the pool's oracle state (feed freshness, onchain price, usable price) with the reason when a price is missing, and the valuation report link. It presents data with its provenance and suggests no price |\n\n| `estimate_land_borrowing` | `tokenId` or `slug`, `amountUsd` (a loan amount to test) | DeFi lending pool availability for the property (the advertised maximum principal in whole USDC, rounded down, subject to available pool liquidity, and the available durations), any active loan on it, the reasons when the pool shows no capacity, `limits` naming what binds the amount (pool liquidity, loan-to-value, pool limit, tax status, oracle, or an existing loan) with the collateral price, the pool's free liquidity and the highest loan-to-value, how the collateral price is derived from the valuation sources, and `toRaise`, one entry per lever (adding the property, tax status, the deed check, fees, an existing loan, price, loan-to-value, pool liquidity) with where it stands and the step that moves it. The amount is an estimate; the amount and rate are set by a live quote when borrowing. Signed in, with `portfolio:read`, this read is as the connected person |",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:72c424b1109e",
@@ -244,8 +244,8 @@
    "title": "AI agents and MCP",
    "sectionTitle": "Tool Reference",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "| `get_land_portfolio_map_image` | `address` (required on a public call; once signed in, leave it out to read the connected person's own wallet), `theme`, `width`, `height` | Inline static map with every property held by the account plotted as points |\n\n| `get_fabrica_stats` | none | Protocol-wide figures: token count and estimated value, states represented, loan counts and loan volume per currency, lending-pool statistics, active listings, and the token contract address (on mainnet, the retired peer-to-peer lending contracts are listed separately as historical) |\n\n| `ask_fabrica` | `question`*, `maxPassages` (1 to 10, default 5), `source` (`docs`, `help`, `trust-agreement`, or `all`) | The best matching passages from docs.fabrica.land, the help center and the US trust agreement, each with its URL, so an answer can be cited. Retrieval is lexical over an index committed in the repository, with no model call and no external service; when the question names a specific property, account or listing, the result also suggests which lookup tool to call |",
-   "updatedAt": "2026-11-11"
+   "text": "| `get_loan_against_land` | `tokenId` or `slug`, `loanId` | One loan against a property: status (active, repaid, liquidated), provider, principal, APR, start, maturity, the full repayment and, while active, the payoff today, with the borrower and lender accounts shortened and the property link. A property alone gives its active or latest loan; `loanId` alone is looked up across the network; `otherLoans` lists the property's other loans |\n\n| `get_land_order_book` | `tokenId` or `slug`, `status` (`active` by default, or `all`), `minOfferUsd` | The lowest active listing, all listings, and offers from highest to lowest, each with price in US dollars and in its currency, seller or buyer, expiry (ISO 8601 and relative), the marketplace fee on a listing, any buyer restriction and disclosure documents, and for a property under a loan each listing's encumbrance (whether it can be bought now and, if not, why). Expired, canceled and filled orders are included only with `status: all` |\n\n| `get_land_activity` | `tokenId`, `slug`, or `address` (or `me` once signed in); `type` (for example `loan`, `transfer`, `sale`, `mint`); `limit` | Event timeline for a property or an account: mints, transfers, sales, listings, loans started, repaid, or liquidated, and configuration changes. With no property or address, the most recent activity across the whole network |",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:fd9718b0f1df",
@@ -253,8 +253,8 @@
    "title": "AI agents and MCP",
    "sectionTitle": "Tool Reference",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "| `find_us_parcel` | `query` (a street address or parcel number) or `queries` (up to 10 sharing one state and county), `state`, `county` | For any US parcel: address, place, APN, state and county, and whether it is already on Fabrica (token id and property link). For a parcel not on Fabrica, `links.addToFabrica` is the fabrica.land on-ramp link for that parcel, which starts the process only when a person opens it and decides there; the tool itself creates nothing. An ambiguous query returns up to five candidates, and `state` and `county` narrow it to one. A list returns one row per query |\n\n| `check_county_coverage` | `fips` (5-digit county code), or `state` with or without `county`; `ownerType` (`individual`, `entity`, `concurrent`) | Whether the county (or state) can be added through the on-ramp (supported, not configured, or unsupported) and, for a supported county, the deed and forms the owner signs (and which are notarized), witness requirements, the questions the owner is asked, and the on-ramp steps. Answered from a table of the on-ramp rules with an as-of date, refreshed by hand; the on-ramp page is the live answer. No fee amounts and no owner data |\n\n| `contact_fabrica_support` | `summary`*, `topic`, `tokenId`, `subject`, `discloseAgent` (default true) | The help center section for the topic, the support email address, and a `mailto` link that drafts an email with the summary and the property link. Nothing is sent by the tool; the person sends the email. A summary containing a private key or seed phrase is refused |",
-   "updatedAt": "2026-11-11"
+   "text": "| `get_fabrica_lending_market` | `status` (`active`, `repaid`, `liquidated`, `all`), `borrower`, `lender`, `since` (ISO date), `limit` (default 20, max 100) | Market summary (loans by status, loan volume per currency, average APR of active loans), DeFi lending pool statistics (value locked, in use, available, utilization, loan counts), matching loans with their terms and venue, and the ten most recent loan events |\n\n| `get_fabrica_loan_book` | `provider` (`pool` or `peer-to-peer`), `status`, `sinceDays`, `groupBy` (`state`, `provider`, `status`, loan-to-value band, acre band), `largest` (default 10, max 25) | The lending history as a distribution: loan counts and principal by status and provider, loan-to-value bands against today's property estimates, exposure by state and acreage, APR and duration spread, repaid and liquidated counts, originations by month for the last 12 months, and the largest loans with their property pages. Where the pool data source's counters differ from the loan records, both are shown |\n\n| `get_land_portfolio` | `address` (required on a public call; once signed in, leave it out to read the connected person's own wallet), `limit` (default 50, max 200), `offset` | Properties held (paged), lending positions as borrower and as lender, credit history, marketplace activity, and total portfolio value for an account, scoped to the server's network and token contract; counts and totals always cover the whole account. The outstanding-loans total is null when a loan has no dollar price |",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:672a909239ca",
@@ -262,26 +262,26 @@
    "title": "AI agents and MCP",
    "sectionTitle": "Tool Reference",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "Monetary values are formatted in US dollars where the source provides a dollar figure. Activity amounts are derived from the event's own currency amount and decimals: stablecoin amounts read as dollars and other currencies in their own unit (for example WETH), and the API's dollar figure is used only as a fallback. Loan principals are stated in the loan's own currency, and loan volumes are totaled per currency rather than summed across currencies or presented as dollars. Each loan and lending event names its venue: pool loans read as the DeFi lending pool, and loans made through the former peer-to-peer integration are labeled as retired. Borrow quotes list only the DeFi lending pool, since that integration has shut down (see Peer-to-Peer Lending). Loan counts are reported by status; the server does not publish an aggregate repayment rate. This table is derived from the server source and checked against the hosted endpoints; the `tools/list` response of the deployment you are connected to is authoritative.",
-   "updatedAt": "2026-11-11"
+   "text": "| `get_land_portfolio_map_image` | `address` (required on a public call; once signed in, leave it out to read the connected person's own wallet), `theme`, `width`, `height` | Inline static map with every property held by the account plotted as points |\n\n| `get_fabrica_stats` | none | Protocol-wide figures: token count and estimated value, states represented, loan counts and loan volume per currency, lending-pool statistics, active listings, and the token contract address (on mainnet, the retired peer-to-peer lending contracts are listed separately as historical) |\n\n| `ask_fabrica` | `question`*, `maxPassages` (1 to 10, default 5), `source` (`docs`, `help`, `trust-agreement`, or `all`) | The best matching passages from docs.fabrica.land, the help center and the US trust agreement, each with its URL, so an answer can be cited. Retrieval is lexical over an index committed in the repository, with no model call and no external service; when the question names a specific property, account or listing, the result also suggests which lookup tool to call |",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:2523ab2b05cc",
    "source": "docs",
    "title": "AI agents and MCP",
-   "sectionTitle": "Sign requests",
+   "sectionTitle": "Tool Reference",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "On both hosts, nine tools prepare an action instead of reading: the marketplace's `make_land_offer`, `list_land_for_sale`, `accept_land_offer`, `buy_land` and `cancel_land_order`, borrowing from the DeFi lending pool with `borrow_against_land` and `repay_loan_against_land`, and lending to it with `deposit_to_lending_pool` and `withdraw_from_lending_pool`. The property tools take the property (`tokenId` or `slug`), the action's values, and `wallet`, the address that will sign. The tool checks the live data first (the property's token is issued, except for a listing, and it is not being removed, the wallet holds it or does not where that matters, the order is open, buyable and the wallet's own where it has to be, the property backs no active loan for a new borrow, the loan is open and the wallet is its borrower for a payoff, and the amount is within the pool's current maximum) and warns about a price far from Fabrica's estimate, an order about to expire, a listing at or below an offer, a loan on the property, or a loan past maturity. It then returns a `signRequest`: a summary of what the person will sign, the warnings, a `signLink` to the property page (or, for a deposit or withdrawal, the pool page) on fabrica.land with the matching dialog prefilled, and an `expiresAt` 15 minutes out. The request is stored in the server's own store; it never holds a key or a signature.",
-   "updatedAt": "2026-11-11"
+   "text": "| `find_us_parcel` | `query` (a street address or parcel number) or `queries` (up to 10 sharing one state and county), `state`, `county` | For any US parcel: address, place, APN, state and county, and whether it is already on Fabrica (token id and property link). For a parcel not on Fabrica, `links.addToFabrica` is the fabrica.land on-ramp link for that parcel, which starts the process only when a person opens it and decides there; the tool itself creates nothing. An ambiguous query returns up to five candidates, and `state` and `county` narrow it to one. A list returns one row per query |\n\n| `check_county_coverage` | `fips` (5-digit county code), or `state` with or without `county`; `ownerType` (`individual`, `entity`, `concurrent`) | Whether the county (or state) can be added through the on-ramp (supported, not configured, or unsupported) and, for a supported county, the deed and forms the owner signs (and which are notarized), witness requirements, the questions the owner is asked, and the on-ramp steps. Answered from a table of the on-ramp rules with an as-of date, refreshed by hand; the on-ramp page is the live answer. No fee amounts and no owner data |\n\n| `contact_fabrica_support` | `summary`*, `topic`, `tokenId`, `subject`, `discloseAgent` (default true) | The help center section for the topic, the support email address, and a `mailto` link that drafts an email with the summary and the property link. Nothing is sent by the tool; the person sends the email. A summary containing a private key or seed phrase is refused |",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:d7cdaf4c5d25",
    "source": "docs",
    "title": "AI agents and MCP",
-   "sectionTitle": "Sign requests",
+   "sectionTitle": "Tool Reference",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "The person opens the link, signs in with that account, reviews the dialog, which is marked as prepared by an agent, and signs. The sign page accepts only the account the request was prepared for, repeats every check the button it stands in for would make, and submits nothing until the person confirms; a link for another property, a gone order or an expired request falls back to the plain page with a notice. An offer, a listing and accepting an offer are signatures; a purchase, a borrow, a payoff, a deposit and a withdrawal are onchain transactions sent by the person's own account; canceling an order is a signed-in confirmation with no transaction. The `payload` field of a sign request (the typed data or unsigned transaction a wallet inside the conversation could sign) is null: the order is built on the sign page from the person's own session.\n\n| Tool | Inputs | Prepares |\n\n|---|---|---|\n\n| `make_land_offer` | property, `amountUsd`*, `expiresDays` (default 14), `wallet`* | An offer to buy a minted property, paid in USDC (one USDC counts as one dollar) |\n\n| `list_land_for_sale` | property, `priceUsd`*, `expiresDays` (default 180), `wallet`* | A listing of a property the account holds. A property its owner is still adding can be listed too: buyers can send offers at once, and the listing can be bought once the property's token is issued |",
-   "updatedAt": "2026-11-11"
+   "text": "Monetary values are formatted in US dollars where the source provides a dollar figure. Activity amounts are derived from the event's own currency amount and decimals: stablecoin amounts read as dollars and other currencies in their own unit (for example WETH), and the API's dollar figure is used only as a fallback. Loan principals are stated in the loan's own currency, and loan volumes are totaled per currency rather than summed across currencies or presented as dollars. Each loan and lending event names its venue: pool loans read as the DeFi lending pool, and loans made through the former peer-to-peer integration are labeled as retired. Borrow quotes list only the DeFi lending pool, since that integration has shut down (see Peer-to-Peer Lending). Loan counts are reported by status; the server does not publish an aggregate repayment rate. This table is derived from the server source and checked against the hosted endpoints; the `tools/list` response of the deployment you are connected to is authoritative.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:65522c806daa",
@@ -289,8 +289,8 @@
    "title": "AI agents and MCP",
    "sectionTitle": "Sign requests",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "| `accept_land_offer` | property, `orderHash`* (the `orderId` from `get_land_order_book`), `wallet`* | Accepting an open offer; signing sells the property, and the USDC less the marketplace fee shown on the sign page comes to the account at settlement |\n\n| `buy_land` | property, `orderHash`*, `wallet`* | Buying a property at its open listing; a listing on a property under a loan can be bought only once its payoff is ready, and the seller's disclosure documents are listed |\n\n| `cancel_land_order` | property, `orderHash`*, `wallet`* | Canceling the account's own open listing or offer |\n\n| `borrow_against_land` | property, `amountUsd`*, `durationDays` (the pool's offered length closest to it; default the one closest to 30 days), `wallet`* | A loan from the DeFi lending pool against a property the account holds; the rate and repayment come from the pool's live quote on the sign page |\n\n| `repay_loan_against_land` | property, `loanId` (default the property's open loan), `wallet`* | Paying off the open pool loan at the payoff amount today; a loan past maturity can be paid off until the pool's auction starts |\n\n| `deposit_to_lending_pool` | `amountUsd`*, `tick` (left out with several open, the answer lists them), `pool`, `wallet`* | A USDC deposit into one tick of the DeFi lending pool. A tick sets the largest loan it funds and the longest loan length; the pool issues deposit shares for the deposit. Interest is set by the pool, variable and not guaranteed, and deposits are at risk: a loan that is not repaid, and whose auction falls short, reduces the tick's value |",
-   "updatedAt": "2026-11-11"
+   "text": "On both hosts, nine tools prepare an action instead of reading: the marketplace's `make_land_offer`, `list_land_for_sale`, `accept_land_offer`, `buy_land` and `cancel_land_order`, borrowing from the DeFi lending pool with `borrow_against_land` and `repay_loan_against_land`, and lending to it with `deposit_to_lending_pool` and `withdraw_from_lending_pool`. The property tools take the property (`tokenId` or `slug`), the action's values, and `wallet`, the address that will sign. The tool checks the live data first (the property's token is issued, except for a listing, and it is not being removed, the wallet holds it or does not where that matters, the order is open, buyable and the wallet's own where it has to be, the property backs no active loan for a new borrow, the loan is open and the wallet is its borrower for a payoff, and the amount is within the pool's current maximum) and warns about a price far from Fabrica's estimate, an order about to expire, a listing at or below an offer, a loan on the property, or a loan past maturity. It then returns a `signRequest`: a summary of what the person will sign, the warnings, a `signLink` to the property page (or, for a deposit or withdrawal, the pool page) on fabrica.land with the matching dialog prefilled, and an `expiresAt` 15 minutes out. The request is stored in the server's own store; it never holds a key or a signature.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:916c0706ed88",
@@ -298,116 +298,143 @@
    "title": "AI agents and MCP",
    "sectionTitle": "Sign requests",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "| `withdraw_from_lending_pool` | `tick`*, `amountUsd` (default the whole position), `pool`, `wallet`* | A withdrawal from the account's deposit at a tick. It is paid from funds the tick has not lent out; the tool warns when part of it will wait in the pool's withdrawal queue, to be claimed later from the pool page |\n\n| `get_sign_request` | `id`* | Whether a request is pending or completed, with the order hash, transaction hash or loan id once signed. A pending request is also checked against the live order book, the property's loans for a borrow or payoff, or the pool's log for a deposit or withdrawal; an expired id is reported as unknown |\n\n| `get_transaction_status` | `hash`* | The status of a transaction on the server's network (not found, pending, succeeded or failed) with the block, confirmations, sender, recipient and a block explorer link. Reads the chain only |\n\nThese tools are registered on both hosts. On mainnet every signature or transaction is real and final once confirmed; on testnet it moves test tokens and test USDC only. The same sign links work for anyone, without the MCP server; see Prepared action links.",
-   "updatedAt": "2026-11-11"
+   "text": "The person opens the link, signs in with that account, reviews the dialog, which is marked as prepared by an agent, and signs. The sign page accepts only the account the request was prepared for, repeats every check the button it stands in for would make, and submits nothing until the person confirms; a link for another property, a gone order or an expired request falls back to the plain page with a notice. An offer, a listing and accepting an offer are signatures; a purchase, a borrow, a payoff, a deposit and a withdrawal are onchain transactions sent by the person's own account; canceling an order is a signed-in confirmation with no transaction. The `payload` field of a sign request (the typed data or unsigned transaction a wallet inside the conversation could sign) is null: the order is built on the sign page from the person's own session.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:cabba0a7b62b",
    "source": "docs",
    "title": "AI agents and MCP",
-   "sectionTitle": "Owner changes",
+   "sectionTitle": "Sign requests",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "Four more sign request tools prepare an owner's change to a property they hold. Each takes the property, `wallet`* and the values below, checks that the wallet holds the share the contract requires and that the property backs no loan, and returns a sign link to the property page with the matching dialog open.\n\n| Tool | Inputs | Prepares |\n|---|---|---|\n| `transfer_land` | property, `recipient`*, `wallet`* | Moving the whole property to another account linked to the owner's own Fabrica login (a sale to someone else is a listing or an accepted offer). The sign page offers only those accounts. Final once the transaction confirms |\n| `update_trust_agreement` | property, `wallet`* | Moving the property to the latest version of the Fabrica trust agreement; needs at least 70% of the property held directly. The sign page shows the latest version and says when the property already uses it. Final once confirmed: earlier versions are not offered |\n| `update_land_description` | property, `description`*, `wallet`* | Replacing the property's description; needs at least 50%. The editor opens with the text filled in and editable before saving |\n| `update_land_photos` | property, `wallet`* | Opening the property's photo editor; needs at least 50%. The owner picks, removes or reorders photos on the page; files do not pass through the server |",
-   "updatedAt": "2026-11-11"
+   "text": "**Paying in dollars.** The sign page of a purchase or a loan payoff also takes a card, a bank transfer or a wire, depending on the amount; bank transfer and wire need a one-time identity check. `buy_land` and `repay_loan_against_land` say so in their warnings. A payment in dollars completes once it clears, which can take a few business days, so `get_sign_request` keeps following such a request after its link has expired: it reports `payment_clearing` with the payment's method, stage, amount and expected date until the purchase or payoff lands, and says so when a payment did not go through. The payment is read as the connected person, so its stage shows when the paying account is signed in with `portfolio:read`; a lookup that cannot read a payment seen earlier reports `payment_unknown`, not an unsigned request.\n\n| Tool | Inputs | Prepares |\n\n|---|---|---|\n\n| `make_land_offer` | property, `amountUsd`*, `expiresDays` (default 14), `wallet`* | An offer to buy a minted property, paid in USDC (one USDC counts as one dollar) |\n\n| `list_land_for_sale` | property, `priceUsd`*, `expiresDays` (default 180), `wallet`* | A listing of a property the account holds. A property its owner is still adding can be listed too: buyers can send offers at once, and the listing can be bought once the property's token is issued |\n\n| `accept_land_offer` | property, `orderHash`* (the `orderId` from `get_land_order_book`), `wallet`* | Accepting an open offer; signing sells the property, and the USDC less the marketplace fee shown on the sign page comes to the account at settlement |",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:cec5b60873e0",
    "source": "docs",
    "title": "AI agents and MCP",
-   "sectionTitle": "Prepared action links",
+   "sectionTitle": "Sign requests",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "A property page URL, or a lending pool page URL for deposits and withdrawals, can carry an action and its values. The page opens the matching dialog filled in and marked as prepared by an agent, so an agent hands the decision to the person who signs. These links work with or without the MCP server.",
-   "updatedAt": "2026-11-11"
+   "text": "| `buy_land` | property, `orderHash`*, `wallet`* | Buying a property at its open listing; a listing on a property under a loan can be bought only once its payoff is ready, and the seller's disclosure documents are listed |\n\n| `cancel_land_order` | property, `orderHash`*, `wallet`* | Canceling the account's own open listing or offer |\n\n| `borrow_against_land` | property, `amountUsd`*, `durationDays` (the pool's offered length closest to it; default the one closest to 30 days), `wallet`* | A loan from the DeFi lending pool against a property the account holds; the rate and repayment come from the pool's live quote on the sign page |\n\n| `repay_loan_against_land` | property, `loanId` (default the property's open loan), `wallet`* | Paying off the open pool loan at the payoff amount today; a loan past maturity can be paid off until the pool's auction starts |\n\n| `deposit_to_lending_pool` | `amountUsd`*, `tick` (left out with several open, the answer lists them), `pool`, `wallet`* | A USDC deposit into one tick of the DeFi lending pool. A tick sets the largest loan it funds and the longest loan length; the pool issues deposit shares for the deposit. Interest is set by the pool, variable and not guaranteed, and deposits are at risk: a loan that is not repaid, and whose auction falls short, reduces the tick's value |",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:9004e1c92303",
    "source": "docs",
    "title": "AI agents and MCP",
-   "sectionTitle": "Prepared action links",
+   "sectionTitle": "Sign requests",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "| Action | Query string | Who uses it |\n|--------|--------------|-------------|\n| Make an offer | `?action=offer&amount=<amount>&expires=<days>` | Buyer (Buying) |\n| List for sale | `?action=list&price=<price>&expires=<days>` | Owner (Selling) |\n| Buy a listing | `?action=buy&order=<listing id>` | Buyer (Buying) |\n| Accept an offer | `?action=accept&order=<offer id>` | Owner accepting an offer (older links that buy a listing with `accept` still work) |\n| Cancel your own listing or offer | `?action=cancel&order=<order id>` | Whoever placed the order |\n| Borrow from the pool | `?action=borrow&amount=<amount>&duration=<days>` | Owner (Pool-Based Lending) |\n| Repay a pool loan | `?action=repay&loan=<loan id>` | Borrower |\n| Deposit into the pool | pool page, `?action=deposit&tick=<tick>&amount=<amount>` | Lender (Pool-Based Lending) |\n| Move to another of your accounts | `?action=transfer&to=<account>` | Owner |\n| Update the trust agreement | `?action=trust` | Owner holding at least 70% |\n| Edit the description | `?action=describe` | Owner holding at least 50% |\n| Edit the photos | `?action=media` | Owner holding at least 50% |\n| Withdraw from the pool | pool page, `?action=withdraw&tick=<tick>&amount=<amount>` (add `&max=1` for the whole position) | Lender with a deposit at that tick |\n\nBehavior:",
-   "updatedAt": "2026-11-11"
+   "text": "| `withdraw_from_lending_pool` | `tick`*, `amountUsd` (default the whole position), `pool`, `wallet`* | A withdrawal from the account's deposit at a tick. It is paid from funds the tick has not lent out; the tool warns when part of it will wait in the pool's withdrawal queue, to be claimed later from the pool page |\n\n| `get_sign_request` | `id`* | Whether a request is pending or completed, with the order hash, transaction hash or loan id once signed. A pending request is also checked against the live order book, the property's loans for a borrow or payoff, the property itself for an owner change, or the pool's log for a deposit or withdrawal. A purchase or payoff paid in dollars on the sign page shows as `payment_clearing` until it lands and is followed for two weeks; other expired requests are kept a day, then reported as unknown |\n\n| `get_transaction_status` | `hash`* | The status of a transaction on the server's network (not found, pending, succeeded or failed) with the block, confirmations, sender, recipient and a block explorer link. Reads the chain only |\n\nThese tools are registered on both hosts. On mainnet every signature or transaction is real and final once confirmed; on testnet it moves test tokens and test USDC only. The same sign links work for anyone, without the MCP server; see Prepared action links.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:dd1011322645",
    "source": "docs",
    "title": "AI agents and MCP",
-   "sectionTitle": "Prepared action links",
+   "sectionTitle": "Owner changes",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "* A signed-out visitor signs in first.\n* A link for another account, another property, or an order that is no longer open falls back to the plain page with a notice.\n* Every number is shown as it will be signed, with the same checks as the button the link stands in for (and, for borrowing, the pool's live quote).\n* Nothing is sent or signed until the person confirms.",
-   "updatedAt": "2026-11-11"
+   "text": "Four more sign request tools prepare an owner's change to a property they hold. Each takes the property, `wallet`* and the values below, checks that the wallet holds the share the contract requires and that the property backs no loan, and returns a sign link to the property page with the matching dialog open.\n\n| Tool | Inputs | Prepares |\n|---|---|---|\n| `transfer_land` | property, `recipient`*, `wallet`* | Moving the whole property to another account linked to the owner's own Fabrica login (a sale to someone else is a listing or an accepted offer). The sign page offers only those accounts. Final once the transaction confirms |\n| `update_trust_agreement` | property, `wallet`* | Moving the property to the latest version of the Fabrica trust agreement; needs at least 70% of the property held directly. The sign page shows the latest version and says when the property already uses it. Final once confirmed: earlier versions are not offered |\n| `update_land_description` | property, `description`*, `wallet`* | Replacing the property's description; needs at least 50%. The editor opens with the text filled in and editable before saving |\n| `update_land_photos` | property, `wallet`* | Opening the property's photo editor; needs at least 50%. The owner picks, removes or reorders photos on the page; files do not pass through the server |",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:d01fef72ace9",
    "source": "docs",
    "title": "AI agents and MCP",
-   "sectionTitle": "Prompts and the skill file",
+   "sectionTitle": "Prepared action links",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "Both hosts offer four MCP prompts, the standard loops written once so every client runs them in the same order and to the same standard: `due_diligence` (one property, from its record through Property checks, tax status, valuation with sources, the order book, the trust documents, the lending position and the activity, ending with what to verify independently and never a buy recommendation), `work_parcel_list` (a list of addresses or parcel numbers through `find_us_parcel`, ending in one table), `wallet_review` (holdings, loans as borrower and as lender with their maturities, and what needs attention soon) and `how_to_add_land` (the on-ramp for one parcel, with the fees and the obligations that stay with the owner). Each prompt carries the wording rules (Property checks are a starting point, not a title search; no fixed time for money moving; no buy, sell or borrow recommendation) and the network's legal notice.\n\nThe same loops, the tool list and the legal red lines are published as an Agent Skills file at `https://mcp.fabrica.land/skill.md` (source: `skills/fabrica/SKILL.md` in the repository), for agents that never connect to the server.",
-   "updatedAt": "2026-11-11"
+   "text": "A property page URL, a lending pool page URL for deposits and withdrawals, or a profile URL for a cash out, can carry an action and its values. The page opens the matching dialog filled in and marked as prepared by an agent, so an agent hands the decision to the person who signs. These links work with or without the MCP server.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:52fa6ec53048",
    "source": "docs",
    "title": "AI agents and MCP",
-   "sectionTitle": "Resources",
+   "sectionTitle": "Prepared action links",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "Fabrica's documents are registered as MCP resources, so a person can attach one to a conversation from the client's resource picker without the agent searching for it. All are `text/markdown`, and every read starts with the source URL and the content's updated date.\n\n| URI | What it is |\n|---|---|\n| `fabrica://docs/<slug>` | Every page of this documentation, by slug (the most used pages are listed first) |\n| `fabrica://help/<id>` | Every help center article, by its article id and slug |\n| `fabrica://legal/us-trust-agreement` | The current US trust agreement text |\n| `fabrica://property/{tokenId}/trust-agreement` | The operating agreement attached to one token, as the API serves it (versions differ by mint date) |\n| `fabrica://network` | The server's network, contract addresses and legal notice |\n\n`fabrica://docs/{slug}` and `fabrica://help/{id}` are also resource templates with completion. The index behind `ask_fabrica` and these resources is built from the docs, the help center and the trust agreement, committed in the repository, and refreshed by a scheduled workflow that opens a pull request when a source changes, so the hosted servers never fetch the sources at runtime.",
-   "updatedAt": "2026-11-11"
+   "text": "| Action | Query string | Who uses it |\n|--------|--------------|-------------|\n| Make an offer | `?action=offer&amount=<amount>&expires=<days>` | Buyer (Buying) |\n| List for sale | `?action=list&price=<price>&expires=<days>` | Owner (Selling) |\n| Buy a listing | `?action=buy&order=<listing id>` | Buyer (Buying) |\n| Accept an offer | `?action=accept&order=<offer id>` | Owner accepting an offer (older links that buy a listing with `accept` still work) |\n| Cancel your own listing or offer | `?action=cancel&order=<order id>` | Whoever placed the order |\n| Borrow from the pool | `?action=borrow&amount=<amount>&duration=<days>` | Owner (Pool-Based Lending) |\n| Repay a pool loan | `?action=repay&loan=<loan id>` | Borrower |\n| Deposit into the pool | pool page, `?action=deposit&tick=<tick>&amount=<amount>` | Lender (Pool-Based Lending) |\n| Move to another of your accounts | `?action=transfer&to=<account>` | Owner |\n| Update the trust agreement | `?action=trust` | Owner holding at least 70% |\n| Edit the description | `?action=describe` | Owner holding at least 50% |\n| Edit the photos | `?action=media` | Owner holding at least 50% |\n| Withdraw from the pool | pool page, `?action=withdraw&tick=<tick>&amount=<amount>` (add `&max=1` for the whole position) | Lender with a deposit at that tick |\n| Cash out | profile page, `fabrica.land/profile/<wallet>?action=cashout` | The account's owner, signed in with that wallet and holding a balance (Selling). The link carries no amount and fills nothing in: the owner reviews everything in Cash out |\n\nBehavior:",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:d9395249b9fb",
    "source": "docs",
    "title": "AI agents and MCP",
-   "sectionTitle": "Property Card (MCP App)",
+   "sectionTitle": "Prepared action links",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "In clients that support MCP Apps (https://github.com/modelcontextprotocol/ext-apps), such as Claude on the web and in the desktop app, `get_land_property` renders a property card inline in the conversation instead of a block of JSON. The card shows:\n\n- a gallery with the parcel map first, followed by the owner's photos when the property has any\n- the property name, location, and acreage\n- how many Property checks pass (for example \"16 of 18 pass\", as on fabrica.land), estimated value, listing price, and borrowing capacity\n- **Buy** (when the property is listed and its token has been issued), **Make an offer**, **Contact owner**, and **View on Fabrica** buttons\n\nEvery button opens the property's page on Fabrica, where the user completes the action and signs with their own account. The card changes how the data is shown, not what the server can do. Clients without MCP Apps support receive the same data as JSON. The card adapts to where the host shows it (a phone, inline in the conversation, or fullscreen), and the agent can ask for it fullscreen with `display: \"fullscreen\"`; the host may decline.",
-   "updatedAt": "2026-11-11"
+   "text": "* A signed-out visitor signs in first.\n* A link for another account, another property, or an order that is no longer open falls back to the plain page with a notice.\n* Every number is shown as it will be signed, with the same checks as the button the link stands in for (and, for borrowing, the pool's live quote).\n* Nothing is sent or signed until the person confirms.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:56e9c9f42ce8",
    "source": "docs",
    "title": "AI agents and MCP",
-   "sectionTitle": "Property Card (MCP App)",
+   "sectionTitle": "Prompts and the skill file",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "The card is served as an MCP resource at `ui://fabrica/property-card`, and the `get_land_property` tool points to it through its metadata; a client that supports MCP Apps picks it up automatically. It renders in the client's sandbox and loads images only from Fabrica's IPFS gateway, the Fabrica media service, and the map-tile provider behind it. Both hosted endpoints serve the card. A local server serves it by default on Sepolia and not on mainnet; set `FABRICA_MCP_APPS=enabled` to turn it on there, or `disabled` to turn it off.",
-   "updatedAt": "2026-11-11"
+   "text": "Both hosts offer four MCP prompts, the standard loops written once so every client runs them in the same order and to the same standard: `due_diligence` (one property, from its record through Property checks, tax status, valuation with sources, the order book, the trust documents, the lending position and the activity, ending with what to verify independently and never a buy recommendation), `work_parcel_list` (a list of addresses or parcel numbers through `find_us_parcel`, ending in one table), `wallet_review` (holdings, loans as borrower and as lender with their maturities, and what needs attention soon) and `how_to_add_land` (the on-ramp for one parcel, with the fees and the obligations that stay with the owner). Each prompt carries the wording rules (Property checks are a starting point, not a title search; no fixed time for money moving; no buy, sell or borrow recommendation) and the network's legal notice.\n\nThe same loops, the tool list and the legal red lines are published as an Agent Skills file at `https://mcp.fabrica.land/skill.md` (source: `skills/fabrica/SKILL.md` in the repository), for agents that never connect to the server.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:b9288c010d84",
    "source": "docs",
    "title": "AI agents and MCP",
-   "sectionTitle": "Repository",
+   "sectionTitle": "Resources",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "The server is developed in the public repository github.com/fabrica-land/fabrica-mcp (https://github.com/fabrica-land/fabrica-mcp) under the MIT license. The repository also holds a checked-in snapshot of the GraphQL schema that every query is validated against, so an upstream API change surfaces as a reviewable diff rather than a runtime failure, the committed knowledge index, a regression list that calls every tool on a hosted server, and the manifests that package the same hosted server as a ChatGPT and a Cursor plugin.",
-   "updatedAt": "2026-11-11"
+   "text": "Fabrica's documents are registered as MCP resources, so a person can attach one to a conversation from the client's resource picker without the agent searching for it. All are `text/markdown`, and every read starts with the source URL and the content's updated date.\n\n| URI | What it is |\n|---|---|\n| `fabrica://docs/<slug>` | Every page of this documentation, by slug (the most used pages are listed first) |\n| `fabrica://help/<id>` | Every help center article, by its article id and slug |\n| `fabrica://legal/us-trust-agreement` | The current US trust agreement text |\n| `fabrica://property/{tokenId}/trust-agreement` | The operating agreement attached to one token, as the API serves it (versions differ by mint date) |\n| `fabrica://network` | The server's network, contract addresses and legal notice |\n\n`fabrica://docs/{slug}` and `fabrica://help/{id}` are also resource templates with completion. The index behind `ask_fabrica` and these resources is built from the docs, the help center and the trust agreement, committed in the repository, and refreshed by a scheduled workflow that opens a pull request when a source changes, so the hosted servers never fetch the sources at runtime.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:beed9c678363",
    "source": "docs",
    "title": "AI agents and MCP",
-   "sectionTitle": "Documentation server",
+   "sectionTitle": "Property Card (MCP App)",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "`https://docs.fabrica.land/mcp` gives agents this documentation and the API reference. Add it the same way when an agent needs to answer questions about the protocol, the trust, or the API; the Fabrica server's `ask_fabrica` covers the same documentation together with the help center and the trust agreement.",
-   "updatedAt": "2026-11-11"
+   "text": "In clients that support MCP Apps (https://github.com/modelcontextprotocol/ext-apps), such as Claude on the web and in the desktop app, `get_land_property` renders a property card inline in the conversation instead of a block of JSON. The card shows:\n\n- a gallery with the parcel map first, followed by the owner's photos when the property has any\n- the property name, location, and acreage\n- how many Property checks pass (for example \"16 of 18 pass\", as on fabrica.land), estimated value, listing price, and borrowing capacity\n- **Buy** (when the property is listed and its token has been issued), **Make an offer**, **Contact owner**, and **View on Fabrica** buttons\n\nEvery button opens the property's page on Fabrica, where the user completes the action and signs with their own account. The card changes how the data is shown, not what the server can do. Clients without MCP Apps support receive the same data as JSON. The card adapts to where the host shows it (a phone, inline in the conversation, or fullscreen), and the agent can ask for it fullscreen with `display: \"fullscreen\"`; the host may decline.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:90f6d6649089",
    "source": "docs",
    "title": "AI agents and MCP",
-   "sectionTitle": "Other resources for agents",
+   "sectionTitle": "Property Card (MCP App)",
    "url": "https://docs.fabrica.land/docs/ai-agents",
-   "text": "- `fabrica.land/llms.txt` (https://fabrica.land/llms.txt): a summary of Fabrica written for language models, served as `text/markdown`, listing the hosted MCP servers, the skill file, the GraphQL endpoint, the token contract and the documentation. Every page of fabrica.land points to it with `Link: </llms.txt>; rel=\"describedby\"` and `rel=\"llms-txt\"` headers, and a request for the homepage with `Accept: text/markdown` returns it in place of the HTML (other pages are not served as markdown)\n- `mcp.fabrica.land/skill.md` (https://mcp.fabrica.land/skill.md): the Agent Skills file described above\n- GraphQL API at `https://api.fabrica.land/graphql`: public, no API key, introspection enabled",
-   "updatedAt": "2026-11-11"
+   "text": "The card is served as an MCP resource at `ui://fabrica/property-card`, and the `get_land_property` tool points to it through its metadata; a client that supports MCP Apps picks it up automatically. It renders in the client's sandbox and loads images only from Fabrica's IPFS gateway, the Fabrica media service, and the map-tile provider behind it. Both hosted endpoints serve the card. A local server serves it by default on Sepolia and not on mainnet; set `FABRICA_MCP_APPS=enabled` to turn it on there, or `disabled` to turn it off.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:62e2eedb50b3",
    "source": "docs",
    "title": "AI agents and MCP",
+   "sectionTitle": "Repository",
+   "url": "https://docs.fabrica.land/docs/ai-agents",
+   "text": "The server is developed in the public repository github.com/fabrica-land/fabrica-mcp (https://github.com/fabrica-land/fabrica-mcp) under the MIT license. The repository also holds a checked-in snapshot of the GraphQL schema that every query is validated against, so an upstream API change surfaces as a reviewable diff rather than a runtime failure, the committed knowledge index, a regression list that calls every tool on a hosted server, and the manifests that package the same hosted server as a ChatGPT and a Cursor plugin.",
+   "updatedAt": "2026-11-15"
+  },
+  {
+   "id": "docs:a14d7a1f3e37",
+   "source": "docs",
+   "title": "AI agents and MCP",
+   "sectionTitle": "Documentation server",
+   "url": "https://docs.fabrica.land/docs/ai-agents",
+   "text": "`https://docs.fabrica.land/mcp` gives agents this documentation and the API reference. Add it the same way when an agent needs to answer questions about the protocol, the trust, or the API; the Fabrica server's `ask_fabrica` covers the same documentation together with the help center and the trust agreement.",
+   "updatedAt": "2026-11-15"
+  },
+  {
+   "id": "docs:d0352013c123",
+   "source": "docs",
+   "title": "AI agents and MCP",
+   "sectionTitle": "Other resources for agents",
+   "url": "https://docs.fabrica.land/docs/ai-agents",
+   "text": "- `fabrica.land/llms.txt` (https://fabrica.land/llms.txt): a summary of Fabrica written for language models, served as `text/markdown`, listing the hosted MCP servers, the skill file, the GraphQL endpoint, the token contract and the documentation. Every page of fabrica.land points to it with `Link: </llms.txt>; rel=\"describedby\"` and `rel=\"llms-txt\"` headers, and a request for the homepage with `Accept: text/markdown` returns it in place of the HTML (other pages are not served as markdown)\n- `mcp.fabrica.land/skill.md` (https://mcp.fabrica.land/skill.md): the Agent Skills file described above\n- GraphQL API at `https://api.fabrica.land/graphql`: public, no API key, introspection enabled",
+   "updatedAt": "2026-11-15"
+  },
+  {
+   "id": "docs:98d873485333",
+   "source": "docs",
+   "title": "AI agents and MCP",
    "sectionTitle": "Related",
    "url": "https://docs.fabrica.land/docs/ai-agents",
    "text": "- Build on Fabrica, the permissionless primitives on which an agent's findings can be acted\n- Property checks, what each check tests and how to read the numeric encoding that `explain_property_checks` decodes\n- Property Valuation and Price Oracle, where the estimated values come from\n- [Fabrica API Reference](../reference/fabrica-v3-api), the REST surface alongside the GraphQL API the server reads",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:088a38e000a6",
@@ -2927,7 +2954,7 @@
    "sectionTitle": "For Capital Providers",
    "url": "https://docs.fabrica.land/docs/for-capital-providers",
    "text": "How lenders and capital allocators lend against tokenized land, through pools or by building their own underwriting on Fabrica's signals.\n\nIf you allocate capital and want exposure to real-property collateral, Fabrica lets you lend against tokenized land without originating or servicing loans yourself. The property tokens are standard ERC-1155 NFTs with a public, signed valuation feed, so capital can be deployed through a pool or through your own underwriting.",
-   "updatedAt": "2026-10-28"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:560b57af9387",
@@ -2936,7 +2963,7 @@
    "sectionTitle": "Two ways to participate",
    "url": "https://docs.fabrica.land/docs/for-capital-providers",
    "text": "* **Deposit into a lending pool (passive).** The DeFi lending pool lets you lend against the pool's collateral without diligencing each property yourself: the pool reads the signed price oracle and sets loan terms automatically. How diversified your exposure is depends on the loans in the pool at the time, so look at the pool's current loans and concentration before depositing. You choose the pool (and, where offered, the risk tranche, a slice of the pool with its own risk and return) that matches your risk appetite, and earn interest from borrowers. Rates are variable and not guaranteed, deposited capital is at risk, and returns and liquidity depend on pool composition and utilization.\n* **Build your own underwriting (active).** Because each token's estimated value and Property checks are published onchain and via API, and the value is available as an EIP-712 signed price quote, you can run your own loan-to-value policy and lend directly against tokens. This is the path for funds that want control over terms rather than a pool's automated parameters.",
-   "updatedAt": "2026-10-28"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:76b4747bd984",
@@ -2944,8 +2971,8 @@
    "title": "For Capital Providers",
    "sectionTitle": "Risk and recovery",
    "url": "https://docs.fabrica.land/docs/for-capital-providers",
-   "text": "Loans are over-collateralized against the property token. If a borrower defaults, the collateral is handled through a defined process rather than an open-ended workout; see Loan Defaults and Liquidation and Lender Protections for how UCC Article 12 control and the liquidation path work in practice. Valuations are estimates, not appraisals, and recovery outcomes are not guaranteed; size positions accordingly.",
-   "updatedAt": "2026-10-28"
+   "text": "Loans are over-collateralized against the property token. If a borrower defaults, the collateral is handled through a defined process rather than an open-ended workout; see Loan Defaults and Liquidation and Lender Protections for how UCC Article 12 control and the liquidation path work in practice. Estimated values are a starting point, not an appraisal, and recovery outcomes are not guaranteed; size positions accordingly.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:eb92f9705482",
@@ -2954,7 +2981,7 @@
    "sectionTitle": "Where to start",
    "url": "https://docs.fabrica.land/docs/for-capital-providers",
    "text": "* To deposit into a pool, go to fabrica.land/pools (https://fabrica.land/pools).\n* Review the live lending mechanics in Lending and the lending pool.\n* For integration, see the Price Oracle and Build on Fabrica.\n* Live lending and protocol statistics are on the Dune dashboard (https://dune.com/fabrica/dashboard).",
-   "updatedAt": "2026-10-28"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:19ca24bae96f",
@@ -3710,7 +3737,7 @@
    "sectionTitle": "Add a Property",
    "url": "https://docs.fabrica.land/docs/on-ramp",
    "text": "Transforming traditional property ownership into digital assets for onchain use.",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:8fc23cc41285",
@@ -3718,8 +3745,8 @@
    "title": "Add a Property",
    "sectionTitle": "In short",
    "url": "https://docs.fabrica.land/docs/on-ramp",
-   "text": "Adding a property puts your land in a Fabrica Trust and issues a token that controls it. You spend about 10 minutes online; the validator (the licensed party that reviews and maintains the property's records) reviews title, you verify your identity and sign, and the deed is recorded at the county. Your property page goes live the moment you start, so you can list it for sale while the rest completes.\n\nAdding a property (also called tokenizing it) is what unlocks everything else: once your land is a token, you can sell it or borrow against it (including land that banks won't lend on), without re-recording a deed for each transaction. Adding a property transforms traditional ownership into a digital asset that can be used onchain.\n\nYour part online takes about 10 minutes; identity verification, signing, title review and county recording follow (current timing is in the help center (https://help.fabrica.land/en/articles/8542400-how-do-i-add-a-new-property-to-fabrica)). Start here: Add your property (https://fabrica.land/go)\n\nThere are four ways in:",
-   "updatedAt": "2026-11-11"
+   "text": "Adding a property puts your land in a Fabrica Trust and issues a token that controls it. You spend about 10 minutes online; the validator (the licensed party that reviews and maintains the property's records) reviews title, you verify your identity and sign, and the deed is recorded at the county. Your property page goes live the moment you start, so you can list it for sale while the rest completes.\n\nAdding a property (also called tokenizing it) is what unlocks everything else: once your land is a token, you can sell it or borrow against it (including land that banks won't lend on), without re-recording a deed for each transaction. Adding a property transforms traditional ownership into a digital asset that can be used onchain.\n\nYour part online takes about 10 minutes; identity verification, signing, title review and county recording follow (current timing is in the help center (https://help.fabrica.land/en/articles/8542400-how-do-i-add-a-new-property-to-fabrica)). Start here: Add your property (https://fabrica.land/go)\n\nThere are five ways in:",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:6d9f62c10d09",
@@ -3728,7 +3755,7 @@
    "sectionTitle": "In short",
    "url": "https://docs.fabrica.land/docs/on-ramp",
    "text": "* **From a map.** Every US parcel lights up on the homepage map at fabrica.land (https://fabrica.land), on the state, county and place pages, and on the maps of a property page and a profile. Click a parcel that is not yet on Fabrica and the map asks whether it is your land; confirm, sign in if needed, and the property is set up and claimed for your account, then its page opens. When nothing is for sale in the area shown, the homepage also offers a **List your property** link beside the map. A parcel that already has a record on Fabrica, listed or not, opens its property page instead, and an unclaimed record is claimed in place, so a map never starts a second record for the same land.\n\n* **By search.** fabrica.land/go (https://fabrica.land/go) finds a parcel by street address, by parcel number (APN) with its state and county, by owner name within one county (signed in), or by a point on the map, and walks through the same steps one at a time. The parcel card names the parcel's address as a second check, shows its acres and labels its figure as an estimated value, and the page leads with the two things to do next: sell the land or borrow against it.",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:4a99ed96a414",
@@ -3736,26 +3763,26 @@
    "title": "Add a Property",
    "sectionTitle": "In short",
    "url": "https://docs.fabrica.land/docs/on-ramp",
-   "text": "* **From a listing you already publish.** On the same page, paste the link to your listing on another website. The app reads the page (title, price, acres, description, photos and the parcel it names), finds the parcel and opens your claimed property page, listed for sale at your asking price. That listing goes up without a signature and is confirmed with one signature later, when the token is issued or a buyer shows up; you can take it down at any time. Sign in with your email to publish, and the page says what happens next.\n\n* **From the property's own page.** A property that was started without an owner (for example from a mailed QR code, or by a visitor who did not sign in) shows **Claim this property** on its page until someone claims it. Sign in and claim it there; the page reloads in the owner view, with any pending steps. A property that has already been claimed, or whose token has been issued, never shows the button.\n\n> **Records started under an earlier trust agreement.** Claiming one opens a fresh record for the same parcel under the current agreement, with a new token id, and the old link follows to it.\n\nA property page is created the moment the process starts, and the owner can list it for sale right away (see below).\n\nAn AI agent connected to the Fabrica MCP server can also start the process for a person who has signed in to Fabrica from their assistant and approved it, and walk the county's questions with them; the fee approval and the signing stay on fabrica.land.",
-   "updatedAt": "2026-11-11"
+   "text": "* **From a listing you already publish.** On the same page, paste the link to your listing on another website. The app reads the page (title, price, acres, description, photos and the parcel it names), finds the parcel and opens your claimed property page, listed for sale at your asking price. That listing goes up without a signature and is confirmed with one signature later, when the token is issued or a buyer shows up; you can take it down at any time. Sign in with your email to publish, and the page says what happens next.\n\n* **From your own website, all at once.** If you publish your listings on a website of your own, open **Add property** on your profile and choose **Import from your website**, or paste the website's address in the same field on fabrica.land/go (https://fabrica.land/go), which sends you to your profile with the site filled in (signing in first if needed). The app finds the listing pages on your site, matches each one to its county parcel with its photos and description, and lists it for sale at your price. Properties already added are skipped, a listing whose parcel could not be matched waits with a **Find parcel** button that opens the search for it, and you can stop and resume; running it again later picks up new listings only. Keep the page open while it runs. Imports are limited per hour, and an import that reaches the limit resumes later from where it stopped. Use it only for land you own, on a website that is yours, since the description and photos are copied from it.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:40bebe06dfc1",
    "source": "docs",
    "title": "Add a Property",
-   "sectionTitle": "Process Overview",
+   "sectionTitle": "In short",
    "url": "https://docs.fabrica.land/docs/on-ramp",
-   "text": "1. **Property Submission**: The owner provides property information to Fabrica or another validator, including how title is currently held as the recorded deed states it (for example \"an unmarried person\" or \"a married person, as their sole and separate property\"); the deed into the trust names the owner the same way. Some jurisdictions ask further questions that their recording forms need.\n2. **Title Review**: The validator verifies ownership, chain of title, and encumbrances.\n3. **Identity Verification**: The owner completes KYC/AML verification (see Regulatory Framework).\n4. **Legal Wrapper Creation**: A holding entity (typically a Fabrica Trust) is created to hold the title.\n5. **Document Signing**: The owner signs deed and trust documents, normally with a remote online notary.\n6. **Recording**: The deed is recorded at the local jurisdiction, transferring title to the holding entity. Where the county supports it, recording is electronic.\n7. **Token Issuance**: An NFT is issued via the smart contract `mint()` function.",
-   "updatedAt": "2026-11-11"
+   "text": "* **From the property's own page.** A property that was started without an owner (for example from a mailed QR code, or by a visitor who did not sign in) shows **Claim this property** on its page until someone claims it. Sign in and claim it there; the page reloads in the owner view, with any pending steps. A property that has already been claimed, or whose token has been issued, never shows the button.\n\n> **Records started under an earlier trust agreement.** Claiming one opens a fresh record for the same parcel under the current agreement, with a new token id, and the old link follows to it.\n\nA property page is created the moment the process starts, and the owner can list it for sale right away (see below).\n\nAn AI agent connected to the Fabrica MCP server can also start the process for a person who has signed in to Fabrica from their assistant and approved it, find their parcels by the owner name on the county record or the listings on their website, and walk the county's questions with them; the fee approval and the signing stay on fabrica.land.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:f5f3e8b117b2",
    "source": "docs",
    "title": "Add a Property",
-   "sectionTitle": "Selling While the Property Is Being Added",
+   "sectionTitle": "Process Overview",
    "url": "https://docs.fabrica.land/docs/on-ramp",
-   "text": "The steps above do not have to finish before the property can be put to work. The property page goes live as soon as the process starts, and the owner can list the property for sale right away while title review, document preparation, and the remaining steps continue in the background.",
-   "updatedAt": "2026-11-11"
+   "text": "1. **Property Submission**: The owner provides property information to Fabrica or another validator, including how title is currently held as the recorded deed states it (for example \"an unmarried person\" or \"a married person, as their sole and separate property\"); the deed into the trust names the owner the same way. Some jurisdictions ask further questions that their recording forms need.\n2. **Title Review**: The validator verifies ownership, chain of title, and encumbrances.\n3. **Identity Verification**: The owner completes KYC/AML verification (see Regulatory Framework).\n4. **Legal Wrapper Creation**: A holding entity (typically a Fabrica Trust) is created to hold the title.\n5. **Document Signing**: The owner signs deed and trust documents, normally with a remote online notary.\n6. **Recording**: The deed is recorded at the local jurisdiction, transferring title to the holding entity. Where the county supports it, recording is electronic.\n7. **Token Issuance**: An NFT is issued via the smart contract `mint()` function.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:4bd6799c2f45",
@@ -3763,8 +3790,8 @@
    "title": "Add a Property",
    "sectionTitle": "Selling While the Property Is Being Added",
    "url": "https://docs.fabrica.land/docs/on-ramp",
-   "text": "* **Listing is immediate.** Right after the claim, the property page asks once what you want to do with the land: **Sell it** opens the listing dialog, **Borrow against it** opens the owner details step, and **Just hold it** leaves the page as it is. Set a price and go live at any point during the process. Buyers can discover the property and make offers while the remaining steps complete.\n* **Setup waits for a buyer.** Your part of setup is three steps, named the same way everywhere: **Owner details** (who holds title, as written on your deed), the **Setup fee** (authorized now, $0 today) and **Signing** (with an online notary). While the property is listed or held and no offer has arrived, the setup strip says that setup can wait; a **Get ready early** sheet explains what finishing the three steps now (about 10 minutes) brings, and opens the next step. When a buyer makes an offer, the page says **Finish setup to accept**: owner details, the setup fee, then signing. Recording and token issuance follow, at closing or sooner. Signing ahead of time is optional: completing the paperwork early issues the token sooner, which enables instant purchases of a listed property and borrowing against it.\n* **Fees stay deferred either way.** The setup fee is authorized up front, which charges nothing, and is collected once, the first time the property is sold, borrowed against, or used in another app; it is waived if the property is removed unused. The fee dialog states the amount, these three outcomes, and what the fee covers before the owner authorizes it. See Fees.",
-   "updatedAt": "2026-11-11"
+   "text": "The steps above do not have to finish before the property can be put to work. The property page goes live as soon as the process starts, and the owner can list the property for sale right away while title review, document preparation, and the remaining steps continue in the background.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:ca949ac5f539",
@@ -3772,62 +3799,71 @@
    "title": "Add a Property",
    "sectionTitle": "Selling While the Property Is Being Added",
    "url": "https://docs.fabrica.land/docs/on-ramp",
-   "text": "While these background steps run, the property page shows a compact status strip that tells the owner when a step actually needs their input and marks the steps that can wait until closing. Its progress counts the owner's own three steps (\"Your part\"), not Fabrica's research and recording, and its button opens the step's dialog directly. See Selling Your Property for how listing works during this period.",
-   "updatedAt": "2026-11-11"
+   "text": "* **Listing is immediate.** Right after the claim, the property page asks once what you want to do with the land: **Sell it** opens the listing dialog, **Borrow against it** opens the owner details step, and **Just hold it** leaves the page as it is. Set a price and go live at any point during the process. Buyers can discover the property and make offers while the remaining steps complete.\n* **Setup waits for a buyer.** Your part of setup is three steps, named the same way everywhere: **Owner details** (who holds title, as written on your deed), the **Setup fee** (authorized now, $0 today) and **Signing** (with an online notary). While the property is listed or held and no offer has arrived, the setup strip says that setup can wait; a **Get ready early** sheet explains what finishing the three steps now (about 10 minutes) brings, and opens the next step. When a buyer makes an offer, the page says **Finish setup to accept**: owner details, the setup fee, then signing. Recording and token issuance follow, at closing or sooner. Signing ahead of time is optional: completing the paperwork early issues the token sooner, which enables instant purchases of a listed property and borrowing against it.\n* **Fees stay deferred either way.** The setup fee is authorized up front, which charges nothing, and is collected once, the first time the property is sold, borrowed against, or used in another app; it is waived if the property is removed unused. The fee dialog states the amount, these three outcomes, and what the fee covers before the owner authorizes it. See Fees.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:12a4a2cfe1eb",
    "source": "docs",
    "title": "Add a Property",
-   "sectionTitle": "Title Review Process",
+   "sectionTitle": "Selling While the Property Is Being Added",
    "url": "https://docs.fabrica.land/docs/on-ramp",
-   "text": "When a user initiates tokenization, the validator conducts a comprehensive review that confirms:\n\n| Check                      | Description                                                            |\n| -------------------------- | ---------------------------------------------------------------------- |\n| **Present owner identity** | Identifies who is named as grantee on the most recently recorded deed. |\n| **Chain of title**         | Confirms deeds record transfers from grantors to grantees in a chain.  |\n| **Encumbrances**           | Identifies any liens or encumbrances that may affect the property.     |\n| **Legal description**      | Helps ensure a match between prior deeds and the onchain description.      |",
-   "updatedAt": "2026-11-11"
+   "text": "While these background steps run, the property page shows a compact status strip that tells the owner when a step actually needs their input and marks the steps that can wait until closing. Its progress counts the owner's own three steps (\"Your part\"), not Fabrica's research and recording, and its button opens the step's dialog directly. See Selling Your Property for how listing works during this period.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:451f4a990232",
    "source": "docs",
    "title": "Add a Property",
-   "sectionTitle": "Liens and Encumbrances",
+   "sectionTitle": "Title Review Process",
    "url": "https://docs.fabrica.land/docs/on-ramp",
-   "text": "Properties with existing liens can still be added, but these affect Property checks and may restrict certain features:\n\n| Encumbrance Type            | Impact                                             |\n| --------------------------- | -------------------------------------------------- |\n| Tax liens or due taxes      | Unpaid property taxes fail a Property check.       |\n| Mortgage liens              | Outstanding loans may restrict lending features.   |\n| Any other involuntary liens | Outstanding issues may affect the ability to add the property. |\n\nOwners should resolve liens so their Property checks pass and their property token keeps full utility.",
-   "updatedAt": "2026-11-11"
+   "text": "When a user initiates tokenization, the validator conducts a comprehensive review that confirms:\n\n| Check                      | Description                                                            |\n| -------------------------- | ---------------------------------------------------------------------- |\n| **Present owner identity** | Identifies who is named as grantee on the most recently recorded deed. |\n| **Chain of title**         | Confirms deeds record transfers from grantors to grantees in a chain.  |\n| **Encumbrances**           | Identifies any liens or encumbrances that may affect the property.     |\n| **Legal description**      | Helps ensure a match between prior deeds and the onchain description.      |",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:aa5285aac9a6",
    "source": "docs",
    "title": "Add a Property",
-   "sectionTitle": "Notarization and Recording",
+   "sectionTitle": "Liens and Encumbrances",
    "url": "https://docs.fabrica.land/docs/on-ramp",
-   "text": "Users receive a link to meet remotely with an online notary and sign documents. In jurisdictions where online notarization isn't available, remote or in-person notarization can be arranged.\n\nSigned documents are then:\n\n* Electronically submitted to counties via e-recording, or\n* Physically mailed to counties lacking digital processes.",
-   "updatedAt": "2026-11-11"
+   "text": "Properties with existing liens can still be added, but these affect Property checks and may restrict certain features:\n\n| Encumbrance Type            | Impact                                             |\n| --------------------------- | -------------------------------------------------- |\n| Tax liens or due taxes      | Unpaid property taxes fail a Property check.       |\n| Mortgage liens              | Outstanding loans may restrict lending features.   |\n| Any other involuntary liens | Outstanding issues may affect the ability to add the property. |\n\nOwners should resolve liens so their Property checks pass and their property token keeps full utility.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:56f7b5b60ea8",
    "source": "docs",
    "title": "Add a Property",
-   "sectionTitle": "Paper route",
+   "sectionTitle": "Notarization and Recording",
    "url": "https://docs.fabrica.land/docs/on-ramp",
-   "text": "Some counties do not accept electronic recording from Fabrica. For a property in such a county, Fabrica can switch the process to paper while the documents are under review. On the paper route:\n\n1. The documents are prepared with full notary blocks, including in jurisdictions where Fabrica otherwise uses electronic signatures only.\n2. The owner signs them in person before a notary, with no online signing session to complete.\n3. The owner records the deed at the county and returns the recorded copy to Fabrica.\n4. Fabrica checks the county index, attaches the recorded deed to the property with its instrument number and recording date, and the token is issued.\n\nA paper-route property goes through the same title review, identity verification, and fee approval as any other, and it appears on the marketplace from the moment the process starts, like every property being added.",
-   "updatedAt": "2026-11-11"
+   "text": "Users receive a link to meet remotely with an online notary and sign documents. In jurisdictions where online notarization isn't available, remote or in-person notarization can be arranged.\n\nSigned documents are then:\n\n* Electronically submitted to counties via e-recording, or\n* Physically mailed to counties lacking digital processes.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:a1fcdbac9bae",
    "source": "docs",
    "title": "Add a Property",
-   "sectionTitle": "Starting over",
+   "sectionTitle": "Paper route",
    "url": "https://docs.fabrica.land/docs/on-ramp",
-   "text": "An owner can cancel the process at any point before the token is issued, and Fabrica can reject a document set during review. In either case, starting again on the same parcel opens a fresh process under the current rules, with the owner's questions asked again and the documents generated anew, rather than resuming the old one. A setup fee that was already authorized or paid carries over, so it is never authorized or charged twice.\n\nThe final notarized and recorded deed is also attached directly to the Property Token, enabling buyers and lenders to verify the outcome and cross-check with county records.",
-   "updatedAt": "2026-11-11"
+   "text": "Some counties do not accept electronic recording from Fabrica. For a property in such a county, Fabrica can switch the process to paper while the documents are under review. On the paper route:\n\n1. The documents are prepared with full notary blocks, including in jurisdictions where Fabrica otherwise uses electronic signatures only.\n2. The owner signs them in person before a notary, with no online signing session to complete.\n3. The owner records the deed at the county and returns the recorded copy to Fabrica.\n4. Fabrica checks the county index, attaches the recorded deed to the property with its instrument number and recording date, and the token is issued.\n\nA paper-route property goes through the same title review, identity verification, and fee approval as any other, and it appears on the marketplace from the moment the process starts, like every property being added.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:ff013d7c68c4",
    "source": "docs",
    "title": "Add a Property",
+   "sectionTitle": "Starting over",
+   "url": "https://docs.fabrica.land/docs/on-ramp",
+   "text": "An owner can cancel the process at any point before the token is issued, and Fabrica can reject a document set during review. In either case, starting again on the same parcel opens a fresh process under the current rules, with the owner's questions asked again and the documents generated anew, rather than resuming the old one. A setup fee that was already authorized or paid carries over, so it is never authorized or charged twice.\n\nThe final notarized and recorded deed is also attached directly to the Property Token, enabling buyers and lenders to verify the outcome and cross-check with county records.",
+   "updatedAt": "2026-11-15"
+  },
+  {
+   "id": "docs:6c1d5dbc0bec",
+   "source": "docs",
+   "title": "Add a Property",
    "sectionTitle": "Result",
    "url": "https://docs.fabrica.land/docs/on-ramp",
    "text": "After the property is added:\n\n* The property title is held by the holding entity (e.g., Fabrica Trust).\n* The property token represents beneficial ownership of the property.\n* The token holder has full property rights as defined in the Operating Agreement.\n\nStep-by-step help: How do I add a new property to Fabrica? (https://help.fabrica.land/en/articles/8542400-how-do-i-add-a-new-property-to-fabrica)",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:b37a82a2e122",
@@ -4061,7 +4097,7 @@
    "sectionTitle": "Buying a Property",
    "url": "https://docs.fabrica.land/docs/buying",
    "text": "Purchase property tokens on Fabrica or other NFT marketplaces.",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:dec9723631d5",
@@ -4070,7 +4106,7 @@
    "sectionTitle": "In short",
    "url": "https://docs.fabrica.land/docs/buying",
    "text": "Find a property at fabrica.land (https://fabrica.land), read its Property checks, records and estimated value, then buy at the asking price or send an offer. Pay with account funds, a bank transfer, a card, a wire or a crypto wallet. When the sale completes, the token moves to you and you become the beneficial owner of the property.\n\nBuying a property on Fabrica is straightforward. Browse available listings, evaluate properties using the provided data and Property checks, and complete your purchase using your preferred payment method.",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:9708b8285bf0",
@@ -4079,7 +4115,7 @@
    "sectionTitle": "Finding Properties",
    "url": "https://docs.fabrica.land/docs/buying",
    "text": "Browse properties at fabrica.land (https://fabrica.land). Each listing includes:\n\n* **Property Details**: Location, size, legal description, and parcel information\n* **Property checks**: What each check tests and whether it passed. They are a starting point for your own research, not a title search or title insurance\n* **Valuation Data**: Third-party estimates and assessed values\n* **Documents**: Recorded deeds and trust documents attached to the token\n* **Maps and Media**: Satellite imagery, parcel boundaries, and photos",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:8fdb5d569471",
@@ -4087,8 +4123,8 @@
    "title": "Buying a Property",
    "sectionTitle": "Getting around the marketplace",
    "url": "https://docs.fabrica.land/docs/buying",
-   "text": "* **The map:** The homepage is a map of US land with the properties for sale beside it. Pan or zoom and the list follows; filter by state and sort by price or acreage. On a phone, the properties for sale come first.\n* **Area pages:** Every state, county and place has its own page (for example `fabrica.land/us/arizona` or `fabrica.land/us/arizona/coconino-county`), and a property's county and state link to them.\n* **Property cards:** Each card shows how many active offers the property has. A property in a defaulted loan's auction shows the current bid and the time left (see Loan Defaults & Liquidation).\n* **Neighboring parcels:** On a property page or a profile, a neighboring parcel on Fabrica opens its own page, and any other parcel asks whether it is your land (see Add a Property).",
-   "updatedAt": "2026-11-11"
+   "text": "* **The map:** The homepage is a map of US land with the properties for sale beside it. Pan or zoom and the list follows; filter by state and sort by price or acreage. On a phone, the properties for sale come first. Properties that share one spot on the map, such as the lots of a subdivision the county has not yet mapped separately, show as one count once you zoom in; tap it and they fan out around the spot, each with its own pin.\n* **Area pages:** Every state, county and place has its own page (for example `fabrica.land/us/arizona` or `fabrica.land/us/arizona/coconino-county`), and a property's county and state link to them.\n* **Property cards:** Each card shows how many active offers the property has. A property in a defaulted loan's auction shows the current bid and the time left (see Loan Defaults & Liquidation).\n* **Neighboring parcels:** On a property page or a profile, a neighboring parcel on Fabrica opens its own page, and any other parcel asks whether it is your land (see Add a Property).",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:d54da87371dc",
@@ -4097,7 +4133,7 @@
    "sectionTitle": "The property page",
    "url": "https://docs.fabrica.land/docs/buying",
    "text": "* **Marketplace card:** Whether the property is for sale, the asking price, the estimated value with its sources (see Property Valuation), and the Buy now and Send offer actions.\n* **When buying is paused:** The card says why (for example, the asking price does not cover the seller's loan payoff) and offers a way to message the owner.\n* **When the property backs a pool loan:** The card says so. The sale pays the loan off at closing, so the buyer never takes it over.\n* **Records card:** The legal description, the deed into the trust, the trust and its agreement, and the token.\n* **History:** A short account of what the land has been through on Fabrica: listings, sales, transfers, and each loan from start to finish. Offers below the marketplace minimum are left out.\n* **Map and 3D model:** The map can be expanded and its flyover played or paused. A property that has had a drone survey shows a **3D** button beside the map, which opens the textured 3D model of the land in a full-screen viewer with the parcel boundary draped on it (toggle it off, pause the rotation, and drag or zoom to look around); phones get a lighter version of the model.\n\n***",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:fd783751e557",
@@ -4106,7 +4142,7 @@
    "sectionTitle": "Evaluating a Property",
    "url": "https://docs.fabrica.land/docs/buying",
    "text": "Before purchasing, review:\n\n| Factor | What to Check |\n|--------|---------------|\n| **Property checks** | Which checks passed or failed, and what each one tests |\n| **Duplicate Claim** | Watch for a \"duplicate claim\" warning, which means another token claims the same legal parcel |\n| **Encumbrances** | Check for liens, easements, or other claims on the property |\n| **Property Taxes** | Review tax status and payment history |\n| **Valuation** | Compare asking price to third-party estimates |\n| **Documents** | Review the recorded deed and trust agreement |\n\nProperty checks give a quick summary, but reviewing the underlying data helps you make an informed decision.",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:068261b24060",
@@ -4115,7 +4151,7 @@
    "sectionTitle": "Duplicate claim warnings",
    "url": "https://docs.fabrica.land/docs/buying",
    "text": "When more than one token references the same county parcel (the same assessor parcel number and holding entity), Fabrica surfaces a **duplicate claim** warning so buyers are not misled. Because a single deed can belong to only one owner, at most one of those tokens represents the real property. The warning appears on the property page, as a ribbon on the property's marketplace card, on the map, and again in the purchase flow. If you see it, confirm the deed and current ownership before buying, since purchasing a duplicate may leave you without the underlying property.\n\n***",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:c47a3eb59b63",
@@ -4124,7 +4160,7 @@
    "sectionTitle": "Payment Options",
    "url": "https://docs.fabrica.land/docs/buying",
    "text": "Checkout runs on Fabrica's own payment screens. You choose how to pay, and each option shows its processing fee and the date by which the property becomes yours before you choose; totals include processing fees.\n\n| Method | Description |\n|--------|-------------|\n| **Account funds** | Stablecoins (digital dollars) already in your Fabrica account. No processing fee, and the sale settles right away |\n| **Bank transfer** | A one-time debit from a bank account you link. The property stays the seller's until the payment clears |\n| **Card** | A card payment. The limit per payment includes the fee |\n| **Wire** | For larger amounts. You send it from your bank: the app shows the recipient, routing and account details, the reference to include and a send-by date, and emails them to you. A wire sent from an account in another name, or without the reference, is returned |\n| **External wallet** | Connect an external wallet and pay with stablecoins |\n\nBank, card and wire payments are processed by Coinflow, Fabrica's payment provider, which is named on the screen. Fabrica turns each of these options on per network; an option that is switched off or paused is not offered, and the checkout says so (for example, that bank payments are paused and account funds still work). Each option has its own limit, and an option that cannot take the amount says so.",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:dbf7f67ad863",
@@ -4133,7 +4169,7 @@
    "sectionTitle": "Payment Options",
    "url": "https://docs.fabrica.land/docs/buying",
    "text": "**Identity verification.** Bank transfers and wires always need identity verification, and card payments above a threshold do too; account funds never do. Verification happens once: your name, home address, date of birth and the last four digits of your Social Security number are checked by the payment provider (occasionally with a photo of your ID and a selfie), and Fabrica keeps only whether you are verified. The same verification covers cashing out. Linked banks and cards and your verification status are managed from the Payment methods section of your profile.\n\nAll prices are displayed in USD. Payments are processed and settled in stablecoins. Buyers paying directly from their own crypto wallet pay the Ethereum network fee for the purchase transaction; bank and card buyers never touch it.\n\n**Before you pay.** The Buy now dialog shows the total you pay with the processing fee of the option you picked, says when a bank payment needs identity verification before it can start, repeats what the Property checks found on the property (including property taxes the county shows as unpaid), and confirms that the listing can still be filled before asking for any payment permission.",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:6e81957fc671",
@@ -4142,7 +4178,7 @@
    "sectionTitle": "Payment Options",
    "url": "https://docs.fabrica.land/docs/buying",
    "text": "**Confirming it is you.** Before a sensitive action (a card or bank payment, a listing, an offer, accepting an offer, a loan or its payoff, a deed authorization, or changing your email), Fabrica's sign-in provider may ask you to confirm it is you with a code sent to your email or, once you have added one, with a passkey. The account menu offers **Add a passkey** when passkeys are enabled for your account.\n\n**While a bank payment clears.** The token stays with the seller until the bank clears the payment: the property page and its cards show \"Sale pending\" for the whole time, the expected date is shown, and you are emailed when ownership moves. If the property is sold to someone else before your bank payment clears, the app tells you that your payment is being returned to your bank. A card payment completes the purchase shortly after it goes through. A declined or returned payment is explained in plain words with what to do next, and nothing is charged for a declined card.\n\n***",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:8d835f970ab6",
@@ -4150,53 +4186,62 @@
    "title": "Buying a Property",
    "sectionTitle": "Making an Offer",
    "url": "https://docs.fabrica.land/docs/buying",
-   "text": "If a property isn't listed for sale, or if you want to negotiate:\n\n1. **Submit an Offer**: Specify your offer amount and how long it stays open (30 days by default). Your account does not need to hold the amount yet: the owner sees an offer as **Funded** when your account holds the amount and has allowed it to the marketplace, and as **Not funded yet** otherwise. After sending an offer that is not funded yet, the dialog shows the address to send USDC to your account so the owner can accept\n2. **Owner Reviews**: The property owner sees your offer on their property page, with its funding state, the marketplace fee and the amount they would receive (marked as estimates until the fee is final)\n3. **Acceptance**: The owner can accept only once your offer is funded. If accepted, the sale completes onchain and the seller's dialog finishes as soon as the sale transaction is mined; for 30 days, the property page reminds you that you bought it, with the amount and date\n4. **Expiration**: Unaccepted offers expire automatically, and an offer that has passed its end can no longer be accepted\n\nYou can submit offers on any property, whether or not it's actively listed for sale. An owner whose property is still being set up collects offers and is asked to finish setup (owner details, the setup fee, then signing) to accept one. Offers below the marketplace minimum are not shown in the property's history.",
-   "updatedAt": "2026-11-11"
+   "text": "If a property isn't listed for sale, or if you want to negotiate:\n\n1. **Submit an Offer**: Specify your offer amount and how long it stays open (30 days by default). Your account does not need to hold the amount yet: the owner sees an offer as **Funded** when your account holds the amount and has allowed it to the marketplace, and as **Not funded yet** otherwise. After sending an offer that is not funded yet, the dialog shows the address to send USDC to your account so the owner can accept. The sent screen states the amount, the date until which the owner can accept, and what to keep in your account until then. Later, your own offer on the property page carries **Add funds** while your account holds less than the amount, and **Withdraw** to take the offer back at any time before it is accepted\n2. **Owner Reviews**: The property owner sees your offer on their property page, with its funding state, the marketplace fee and the amount they would receive (marked as estimates until the fee is final)\n3. **Acceptance**: The owner can accept only once your offer is funded. If accepted, the sale completes onchain and the seller's dialog finishes as soon as the sale transaction is mined; for 30 days, the property page reminds you that you bought it, with the amount and date\n4. **Expiration**: Unaccepted offers expire automatically, and an offer that has passed its end can no longer be accepted",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:a98c4efd84c5",
    "source": "docs",
    "title": "Buying a Property",
-   "sectionTitle": "Offers prepared by an AI agent",
+   "sectionTitle": "Making an Offer",
    "url": "https://docs.fabrica.land/docs/buying",
-   "text": "An AI agent connected to the Fabrica MCP server can hand you an offer or a purchase as a link. The property page opens the matching dialog filled in and marked as prepared by an agent, with every number shown as you will sign it and the same checks as the regular button. Nothing is sent until you confirm. Link format: Prepared action links.\n\n***",
-   "updatedAt": "2026-11-11"
+   "text": "You can submit offers on any property, whether or not it's actively listed for sale. An owner whose property is still being set up collects offers and is asked to finish setup (owner details, the setup fee, then signing) to accept one. Offers below the marketplace minimum are not shown in the property's history.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:67dda2aab822",
    "source": "docs",
    "title": "Buying a Property",
-   "sectionTitle": "Buy with Financing",
+   "sectionTitle": "Offers prepared by an AI agent",
    "url": "https://docs.fabrica.land/docs/buying",
-   "text": "Buying with a down payment and a loan is not offered in the app today. The supported route is to buy the property, then borrow against it from the DeFi lending pool (Pool-Based Lending), subject to available pool liquidity. See Lending for the current options.\n\n> Financed purchases were previously offered through the former NFTfi integration, now shut down. For external venues, see Peer-to-Peer Lending.\n\n***",
-   "updatedAt": "2026-11-11"
+   "text": "An AI agent connected to the Fabrica MCP server can hand you an offer or a purchase as a link. The property page opens the matching dialog filled in and marked as prepared by an agent, with every number shown as you will sign it and the same checks as the regular button. Nothing is sent until you confirm. Link format: Prepared action links.\n\n***",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:90ee234b7d2b",
    "source": "docs",
    "title": "Buying a Property",
-   "sectionTitle": "Completing the Purchase",
+   "sectionTitle": "Buy with Financing",
    "url": "https://docs.fabrica.land/docs/buying",
-   "text": "When you buy a property:\n\n1. **Transaction Executes**: Payment and token transfer happen atomically onchain (for a bank-funded purchase, once the payment clears)\n2. **Token Received**: The property token appears in your Fabrica account\n3. **Ownership Transfers**: You become the beneficial owner of the trust and property\n4. **County Notification**: Where required by the local jurisdiction, Fabrica assists with notifications. A purchase is classified as a sale before any change-of-ownership filing is prepared, so the form carries the transfer type and the price you paid\n\n**What happens now.** The confirmation lists what is yours from the day of purchase: property taxes (check with the county when the next payment is due, and settle any the county shows as unpaid), the change-of-ownership filing (Fabrica emails you if the county needs details from you), and mail sent to the property or its trust, which is scanned and emailed to you (see Mail Forwarding).\n\nRight after a purchase, listing or removing the property is held for a moment until Fabrica's records show you as the owner. If you own properties through several linked accounts, a property page tells you which of your accounts owns it and offers to switch.\n\n***",
-   "updatedAt": "2026-11-11"
+   "text": "Buying with a down payment and a loan is not offered in the app today. The supported route is to buy the property, then borrow against it from the DeFi lending pool (Pool-Based Lending), subject to available pool liquidity. See Lending for the current options.\n\n> Financed purchases were previously offered through the former NFTfi integration, now shut down. For external venues, see Peer-to-Peer Lending.\n\n***",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:6c9126142b71",
    "source": "docs",
    "title": "Buying a Property",
-   "sectionTitle": "After Purchase",
+   "sectionTitle": "Completing the Purchase",
    "url": "https://docs.fabrica.land/docs/buying",
-   "text": "As the new owner, you have full property rights:\n\n* **Use the Property**: Access, develop, or enjoy as permitted by local regulations\n* **Sell or Transfer**: List for sale or transfer to another account\n* **Borrow Against It**: Use as collateral for lending\n* **Remove a Property**: Convert back to traditional title ownership by removing the property\n\nYou also inherit property obligations including taxes and compliance. See Property Obligations for details.\n\n***",
-   "updatedAt": "2026-11-11"
+   "text": "When you buy a property:\n\n1. **Transaction Executes**: Payment and token transfer happen atomically onchain (for a bank-funded purchase, once the payment clears)\n2. **Token Received**: The property token appears in your Fabrica account\n3. **Ownership Transfers**: You become the beneficial owner of the trust and property\n4. **County Notification**: Where required by the local jurisdiction, Fabrica assists with notifications. A purchase is classified as a sale before any change-of-ownership filing is prepared, so the form carries the transfer type and the price you paid\n\n**What happens now.** The confirmation lists what is yours from the day of purchase: property taxes (check with the county when the next payment is due, and settle any the county shows as unpaid), the change-of-ownership filing (Fabrica emails you if the county needs details from you), and mail sent to the property or its trust, which is scanned and emailed to you (see Mail Forwarding).\n\nRight after a purchase, listing or removing the property is held for a moment until Fabrica's records show you as the owner. If you own properties through several linked accounts, a property page tells you which of your accounts owns it and offers to switch.\n\n***",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:c34264e380c9",
    "source": "docs",
    "title": "Buying a Property",
+   "sectionTitle": "After Purchase",
+   "url": "https://docs.fabrica.land/docs/buying",
+   "text": "As the new owner, you have full property rights:\n\n* **Use the Property**: Access, develop, or enjoy as permitted by local regulations\n* **Sell or Transfer**: List for sale or transfer to another account\n* **Borrow Against It**: Use as collateral for lending\n* **Remove a Property**: Convert back to traditional title ownership by removing the property\n\nYou also inherit property obligations including taxes and compliance. See Property Obligations for details.\n\n***",
+   "updatedAt": "2026-11-15"
+  },
+  {
+   "id": "docs:17298c3aeb3b",
+   "source": "docs",
+   "title": "Buying a Property",
    "sectionTitle": "Buying on External Marketplaces",
    "url": "https://docs.fabrica.land/docs/buying",
    "text": "Properties can also be purchased on OpenSea and other ERC-1155 compatible marketplaces. When buying externally:\n\n* You'll need a compatible wallet with sufficient funds\n* Property context and Property checks may not be displayed\n* Financing options are not available\n* Transaction fees vary by marketplace\n\nThe token functions identically regardless of where you purchase it.\n\nRepresenting a buyer? See For Real Estate Professionals.\n\nStep-by-step help: What's the process for purchasing a property on Fabrica? (https://help.fabrica.land/en/articles/8542420-what-s-the-process-for-purchasing-a-property-on-fabrica)",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:fc70628904b7",
@@ -4250,7 +4295,7 @@
    "sectionTitle": "Selling Your Property",
    "url": "https://docs.fabrica.land/docs/selling",
    "text": "List your property for sale on Fabrica or any NFT marketplace.",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:34cf10d253f0",
@@ -4259,7 +4304,7 @@
    "sectionTitle": "In short",
    "url": "https://docs.fabrica.land/docs/selling",
    "text": "List your property at an asking price, or accept an offer, from its page on fabrica.land (https://fabrica.land). The token stays in your account until a buyer pays. When the sale completes, proceeds arrive in your account as stablecoins (digital dollars), and you can cash out to a bank account or debit card in your name.\n\nFabrica property tokens can be sold directly on the Fabrica marketplace or on any NFT marketplace that supports ERC-1155 tokens. This flexibility allows property owners to reach both real estate buyers and the broader NFT market.",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:c0693b93c41e",
@@ -4268,7 +4313,7 @@
    "sectionTitle": "Selling on Fabrica",
    "url": "https://docs.fabrica.land/docs/selling",
    "text": "The Fabrica marketplace at fabrica.land (https://fabrica.land) is designed specifically for property transactions and offers the best experience for buying and selling real estate tokens.",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:22d070529d33",
@@ -4277,7 +4322,7 @@
    "sectionTitle": "Listing Your Property",
    "url": "https://docs.fabrica.land/docs/selling",
    "text": "1. **Sign In**: Log in to your Fabrica account (by email or with a wallet)\n2. **Select Your Property**: Navigate to your property and click **Put for sale** on the Marketplace card\n3. **Set Your Price**: Enter your asking price in USD\n4. **Sign the Listing**: Approve the listing with your signature\n5. **Go Live**: Your property appears in the marketplace for buyers to discover\n6. **Confirmation**: You receive an email with what was listed, the price and a link to the page, and the confirmation screen offers the property link to copy or share\n\nYour property remains in your account while listed. The listing is a signed order that authorizes the transfer only when a buyer pays your asking price.\n\n**Changing the price.** **Change price** sits beside **Cancel listing** on your Marketplace card and opens the listing dialog prefilled with the current price; the review step names the price it replaces. The old listing is taken down first and the new price signed in the same flow, so there is one price on the market at any time. On a property that has not been sold through Fabrica before, the fees list says the setup fee is collected once, at that first sale, and the proceeds shown are before it (see Fees).",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:727332428e16",
@@ -4286,7 +4331,7 @@
    "sectionTitle": "Listings prepared by an AI agent",
    "url": "https://docs.fabrica.land/docs/selling",
    "text": "An AI agent connected to the Fabrica MCP server can hand you a listing, an acceptance, or a cancellation as a link. The property page opens the matching dialog filled in and marked as prepared by an agent, and nothing is signed until you confirm. Link format: Prepared action links.",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:85622996fe76",
@@ -4295,7 +4340,7 @@
    "sectionTitle": "Photos and videos",
    "url": "https://docs.fabrica.land/docs/selling",
    "text": "Buyers see your media first, so prepare it from the property page, before or after listing.\n\n* **Add and caption** images and videos, and review the change summary before saving.\n* **Link a video you already host.** Paste a YouTube, Vimeo or X link into the media dialog instead of uploading the file. The link is stored with the property as given, and the property viewer plays it in that site's own player (YouTube in its privacy-enhanced mode, Vimeo and X with do-not-track set). A link from another site, or a page that is not a single video, is refused with a note; upload the file instead.\n* **Import a zip** of photos and videos. It is unpacked in your browser, with progress shown, and each file goes through the usual checks.\n* **Order** photos by dragging, and choose the cover buyers see first. This works while the property is being added and after the token is issued.\n* **Rejected files** (an unsupported format such as SVG, or a file over 100 MB) are named with the reason, and the others still go through.",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:c46f37f34ae7",
@@ -4304,7 +4349,7 @@
    "sectionTitle": "Listing While Your Property Is Being Added",
    "url": "https://docs.fabrica.land/docs/selling",
    "text": "You do not need to wait for the add-a-property process to finish before listing. A property that is still being added can be listed for sale as soon as its page is live, and the remaining steps (owner details, the setup fee, signing, recording, token issuance) wait until a buyer shows up or complete at closing.\n\nRight after you claim a property, its page asks what you want to do with it: **Sell it** opens the listing dialog, **Borrow against it** opens the owner details step, and **Just hold it** leaves the page as it is. While the property is listed and no offer has arrived, the setup strip on the page says that setup can wait, and a **Get ready early** sheet explains what finishing the owner's part now (about 10 minutes) brings: a faster sale, borrowing while listed where lending is available, and mail scanning once the token is issued.\n\nUntil the paperwork is signed and the token is issued, the listing is visible and buyers can make offers, but it cannot be purchased instantly; a committed sale completes the remaining paperwork at closing. When an offer arrives, the page says **Finish setup to accept**: owner details, the setup fee, then signing. Completing the paperwork ahead of a sale enables instant purchases. Once the token is issued, a listing created earlier can be confirmed with a single signature to make it instantly purchasable.",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:553e10d9cae2",
@@ -4313,7 +4358,7 @@
    "sectionTitle": "Selling While a Loan Is Active",
    "url": "https://docs.fabrica.land/docs/selling",
    "text": "While a pool loan is open, the token is held by the lending pool as collateral and you remain the beneficial owner. You can still list the property:\n\n* **Listing works.** The listing form shows the loan payoff, and the price must at least cover it.\n* **The sale pays off the loan.** If a buyer pays your listed price, the loan is repaid from the proceeds at closing and you receive the rest.\n* **Accepting offers waits for payoff.** You cannot accept an offer while the loan is open; pay off the loan first.\n* **Other actions are paused.** Transfers between your wallets, removing the property, and editing the property page resume once the loan is repaid.\n\nStep-by-step help: What can I do with my property while it's under a loan? (https://help.fabrica.land/en/articles/8602905-can-i-sell-or-transfer-my-property-token-under-a-loan)",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:5a80fb324814",
@@ -4322,7 +4367,7 @@
    "sectionTitle": "Listing Distribution",
    "url": "https://docs.fabrica.land/docs/selling",
    "text": "When you list a property on Fabrica, your listing can be federated to other marketplaces and MLSs (Multiple Listing Services) to expand its reach. This allows you to expose your property to a larger audience of potential buyers beyond the Fabrica marketplace.\n\nYour contact details stay out of the listing data. Each distributed listing carries a dedicated Fabrica contact address in its contact fields instead of your email address. When a buyer sends an inquiry through an outside site, Fabrica verifies that the message genuinely comes from that listing service and forwards it to the email on your account, with the buyer's own address set as the reply address, so answering an inquiry is as simple as replying to the email. The buyer also receives a reply pointing them to your property page on Fabrica, where they can buy or make an offer directly.\n\n> **Keep contact details out of your description.** The listing description is distributed exactly as you wrote it.",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:c3839959ae39",
@@ -4331,7 +4376,7 @@
    "sectionTitle": "Receiving Offers",
    "url": "https://docs.fabrica.land/docs/selling",
    "text": "Buyers can submit bids on your property, even if it's not listed for sale:\n\n* **Review Offers**: See all pending offers on your property page; on a property that is not listed, offers lead the Marketplace card, above **Put for sale**. Property cards show how many active offers a property has\n* **Funded or not yet**: A buyer can send an offer before their account holds the amount. Each offer is marked **Funded** (the buyer's account holds the amount and has allowed it to the marketplace) or **Not funded yet**; a not-funded offer opens as **View offer**, and the page says what the buyer still has to do\n* **Evaluate Terms**: Each offer shows the amount and expiration, and accepting one shows the marketplace fee and what you receive (marked as estimates until the fee is final)\n* **Accept**: Accept a funded offer to complete the sale; the dialog waits for the buyer's funds before anything is signed, finishes as soon as the sale transaction is mined, and then shows the amount now in your account, what happens next, and the way to cash out. An offer that has passed its end can no longer be accepted. A property that is still being set up collects offers, and the page offers **Finish setup to accept** (owner details, the setup fee, then signing) when one arrives\n* **Decline**: Let offers that don't meet your expectations expire, or place a listing at the price you want\n\nThis bid system allows buyers to express interest and negotiate, giving you flexibility to sell at the right price.",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:7cda7a428793",
@@ -4340,7 +4385,7 @@
    "sectionTitle": "How Transactions Work",
    "url": "https://docs.fabrica.land/docs/selling",
    "text": "Fabrica uses Seaport (https://github.com/ProjectOpenSea/seaport), the same protocol powering OpenSea, for secure and efficient transactions:\n\n* **Offchain Orderbook**: Listings and offers are stored on Fabrica's servers\n* **Onchain Settlement**: The actual transfer executes onchain when a sale completes\n* **No Custody**: Your token stays in your account until the moment of sale\n* **Atomic Swaps**: Payment and property transfer happen in a single transaction\n* **Any wallet type**: Listings signed by smart-account wallets (ERC-1271 signatures, including wallets upgraded under EIP-7702) are accepted alongside ordinary wallet signatures and checked through the wallet's own signature verification\n\n***",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:6a87196aa292",
@@ -4349,7 +4394,7 @@
    "sectionTitle": "Receiving Payment",
    "url": "https://docs.fabrica.land/docs/selling",
    "text": "When your property sells on Fabrica:\n\n* **Stablecoin Settlement**: Crypto-funded sales settle atomically, and proceeds arrive in your account as stablecoins right away\n* **Bank-Funded Sales**: Sales paid from a buyer's bank account or card complete when the buyer's payment clears. Until then the token stays yours and the property shows \"Sale pending\"; current timelines are in the help center under what happens when your property sells (https://help.fabrica.land/en/articles/8546153-what-happens-when-your-property-sells)\n* **Cash Out**: Move proceeds to a bank account or debit card in your name (see below)",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:7801dd41345e",
@@ -4358,7 +4403,7 @@
    "sectionTitle": "Cashing out",
    "url": "https://docs.fabrica.land/docs/selling",
    "text": "1. **Choose** an amount, a destination and a speed from your profile. Each speed shows its fee, the amount you receive and the expected date; speeds that cannot take the amount are hidden.\n2. **Approve** a one-time permission for the payment provider (Coinflow) to use that amount from your account.\n3. **Get notified** by email when the money arrives.\n\nBefore your first cash out, you verify your identity once (the same verification used for bank payments) and add a payout bank. A newly added destination is confirmed by email, and its first cash out runs at standard speed. The smallest cash out is $5; current limits are in the help center.\n\nOn your own profile, the header stripe ends with your balance in dollars and a **Cash out** button; the menu beside it holds **Cash out history** and **Payment methods** (with a $0 balance, only the menu shows). While a cash out is in progress or being returned, and for 30 days after one failed or was returned, your profile shows a one-line status for it. The full list is in the **Cash out history** dialog; each cash out opens to its fees, dates and onchain transaction.\n\n***",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:1964a99364b4",
@@ -4366,35 +4411,44 @@
    "title": "Selling Your Property",
    "sectionTitle": "Your Seller Profile",
    "url": "https://docs.fabrica.land/docs/selling",
-   "text": "Every account has a public profile page that lists its properties, with the ones for sale marked. It opens at `fabrica.land/<username>` once the account has a username (Fabrica asks for one at sign-in), and at `fabrica.land/<username>/<wallet>` for one wallet of an account that holds property in several; `fabrica.land/profile/<name>` keeps working. The header shows your name, the parcels you hold drawn as a land print with their totals (properties, acres, states, estimated value, loans repaid), and a link to copy on desktop or share on a phone. Each property page carries the same kind of link under the property name.\n\n* **Photo.** Upload a profile photo (JPEG, PNG or WebP, up to 2 MB) from the header; it is stored on IPFS and shown on every wallet of your account. Without one, the wallet's ENS avatar is used when it has one.\n* **Verified mark.** A green check after your name lists what your account has verified (email, identity) on hover or tap. Nothing shows until something is verified.\n* **Website.** Add, edit or clear your website under your name; visitors see its host and open it in a new tab.\n* **Your properties.** Filter your portfolio by **All**, **For sale** or **Not listed**, and use **Select** to take several listings down with one confirmation or to remove several properties that are still being added. An **Add property** menu sits on top.\n\n***",
-   "updatedAt": "2026-11-11"
+   "text": "Every account has a public profile page that lists its properties, with the ones for sale marked. It opens at `fabrica.land/<username>` once the account has a username (Fabrica asks for one at sign-in), and at `fabrica.land/<username>/<wallet>` for one wallet of an account that holds property in several; `fabrica.land/profile/<name>` keeps working, and `fabrica.land/profile/<username>` forwards to the short address. A username in a profile address is matched in its exact case. The header shows your name, the parcels you hold drawn as a land print with their totals (properties, acres, states, estimated value, loans repaid), and a link to copy on desktop or share on a phone. Each property page carries the same kind of link under the property name.",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:1b489f2afe4a",
    "source": "docs",
    "title": "Selling Your Property",
-   "sectionTitle": "Selling on NFT Marketplaces",
+   "sectionTitle": "Your Seller Profile",
    "url": "https://docs.fabrica.land/docs/selling",
-   "text": "As standard ERC-1155 tokens, Fabrica properties can be listed on any compatible NFT marketplace, including:\n\n* **OpenSea**: The largest NFT marketplace with broad buyer reach\n* **Other Marketplaces**: Any platform supporting ERC-1155 tokens",
-   "updatedAt": "2026-11-11"
+   "text": "* **Photo.** Upload a profile photo (JPEG, PNG or WebP, up to 2 MB) from the header; it is stored on IPFS and shown on every wallet of your account. Without one, the wallet's ENS avatar is used when it has one.\n* **Verified mark.** A green check after your name lists what your account has verified (email, identity) on hover or tap. Nothing shows until something is verified.\n* **Website.** Add, edit or clear your website under your name; visitors see its host and open it in a new tab.\n* **Your properties.** Filter your portfolio by **All**, **For sale** or **Not listed**, and use **Select** to take several listings down with one confirmation or to remove several properties that are still being added. An **Add property** menu sits on top; its **Import from your website** entry adds every listing on your own website in one run (see Add a Property).\n\n***",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:f1e3532f578f",
    "source": "docs",
    "title": "Selling Your Property",
-   "sectionTitle": "Considerations for External Marketplaces",
+   "sectionTitle": "Selling on NFT Marketplaces",
    "url": "https://docs.fabrica.land/docs/selling",
-   "text": "While selling on external marketplaces is fully supported, keep in mind:\n\n| Factor | Fabrica Marketplace | External Marketplaces |\n|--------|--------------------|-----------------------|\n| **Buyer Audience** | Real estate focused | General NFT collectors |\n| **Property Context** | Full property details, maps, documents | Basic NFT metadata |\n| **Property checks** | Displayed prominently | May not be visible |\n| **Lending Integration** | Borrow against holdings via the lending pool | Standard purchase only |\n| **Listing Distribution** | Federated to MLSs and other platforms | Single marketplace only |\n| **Support** | Fabrica team assistance | Marketplace support |\n\nExternal marketplaces work well for reaching a broader audience, but buyers may have less context about the property and the Fabrica system.\n\n***",
-   "updatedAt": "2026-11-11"
+   "text": "As standard ERC-1155 tokens, Fabrica properties can be listed on any compatible NFT marketplace, including:\n\n* **OpenSea**: The largest NFT marketplace with broad buyer reach\n* **Other Marketplaces**: Any platform supporting ERC-1155 tokens",
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:1d740e778f5c",
    "source": "docs",
    "title": "Selling Your Property",
+   "sectionTitle": "Considerations for External Marketplaces",
+   "url": "https://docs.fabrica.land/docs/selling",
+   "text": "While selling on external marketplaces is fully supported, keep in mind:\n\n| Factor | Fabrica Marketplace | External Marketplaces |\n|--------|--------------------|-----------------------|\n| **Buyer Audience** | Real estate focused | General NFT collectors |\n| **Property Context** | Full property details, maps, documents | Basic NFT metadata |\n| **Property checks** | Displayed prominently | May not be visible |\n| **Lending Integration** | Borrow against holdings via the lending pool | Standard purchase only |\n| **Listing Distribution** | Federated to MLSs and other platforms | Single marketplace only |\n| **Support** | Fabrica team assistance | Marketplace support |\n\nExternal marketplaces work well for reaching a broader audience, but buyers may have less context about the property and the Fabrica system.\n\n***",
+   "updatedAt": "2026-11-15"
+  },
+  {
+   "id": "docs:de2f589c6d06",
+   "source": "docs",
+   "title": "Selling Your Property",
    "sectionTitle": "After the Sale",
    "url": "https://docs.fabrica.land/docs/selling",
    "text": "When your property sells:\n\n1. **Automatic Transfer**: The property token transfers to the buyer's account\n2. **Ownership Update**: The buyer becomes the new beneficial owner of the trust\n3. **County Notification**: Where required by the local jurisdiction, Fabrica assists with county notifications. Fabrica classifies each token transfer before preparing a change-of-ownership filing: a sale, a gift or a loan liquidation starts one, with the transfer type and the price (the sale price or the winning auction bid) carried into the form, while a transfer between your own accounts or into a lending or custody contract does not\n4. **Validation Continues**: The property's Property checks keep running for the new owner\n\nThe new owner receives all rights and obligations associated with the property. See Property Obligations for details on what ownership entails.\n\nWorking with clients? See For Real Estate Professionals.\n\nStep-by-step help: How do I list a property for sale on Fabrica? (https://help.fabrica.land/en/articles/8542455-how-do-i-list-a-property-for-sale-on-fabrica)",
-   "updatedAt": "2026-11-11"
+   "updatedAt": "2026-11-15"
   },
   {
    "id": "docs:2e788cc3db5e",
@@ -4655,7 +4709,7 @@
    "sectionTitle": "Property checks",
    "url": "https://docs.fabrica.land/docs/confidence-scoring-system",
    "text": "What each property check tests, where its data comes from, and how the results are encoded as a 5-digit number",
-   "updatedAt": "2026-10-28"
+   "updatedAt": "2026-11-17"
   },
   {
    "id": "docs:c221f535371c",
@@ -4664,7 +4718,7 @@
    "sectionTitle": "In short",
    "url": "https://docs.fabrica.land/docs/confidence-scoring-system",
    "text": "Each property token gets a set of Property checks: is the link to the land normal, is the deed checked against the county, are taxes paid, is there an open mortgage, are the owners verified. The app shows them as a checklist; developers and lenders can also read them as a five-digit numeric encoding, whose first digit is the token's recovery status. They are a starting point for your own research, not a title search or title insurance.\n\n**Property checks** are the tests a validator runs on each property token: at issuance, on transactions, and periodically. Each check tests one thing about the token, its owners, or the property, and draws on a stated data source: county records, lien data, identity-verification records, ownership and transfer history, or Fabrica requirements. Not every check is a comparison with county records.\n\nProperty checks are a starting point for your own research, not a title search or title insurance.\n\n> Property checks were formerly called the Provenance Score (and, in earlier versions of these docs, the confidence score). The feature and its identifiers are unchanged.\n\n> Property checks are a work in progress and continue to evolve as Fabrica refines its validation approach.",
-   "updatedAt": "2026-10-28"
+   "updatedAt": "2026-11-17"
   },
   {
    "id": "docs:e7f03c1953a3",
@@ -4673,7 +4727,7 @@
    "sectionTitle": "Identifiers",
    "url": "https://docs.fabrica.land/docs/confidence-scoring-system",
    "text": "Validators also publish the results as a 5-digit number: **the numeric encoding of Property checks**. Existing identifiers keep their names for compatibility:\n\n* `score`: the numeric encoding of Property checks\n* `confidenceScore`: the numeric encoding of Property checks\n* `explain_property_checks` (MCP tool): explains the numeric encoding by group, digit by digit. Individual check results must be read separately for the token\n* `minScore` (search parameter): the minimum numeric encoding a property must have to be returned\n\nThe numeric encoding groups the results differently from the Property checks checklist in the Fabrica app, and it does not show every individual result. It is not the same list, and it is not a percentage, grade or rating.\n\nThe fastest read is the leading digit: a value starting with **7** indicates a property in normal standing, while any other leading digit signals the token-property link is compromised or under review and should be treated with caution. The rest of this page explains how each digit is composed.",
-   "updatedAt": "2026-10-28"
+   "updatedAt": "2026-11-17"
   },
   {
    "id": "docs:2af38e9b05ab",
@@ -4682,7 +4736,7 @@
    "sectionTitle": "Encoding structure",
    "url": "https://docs.fabrica.land/docs/confidence-scoring-system",
    "text": "The numeric encoding uses a **positional digit system** where each digit represents a group of checks:\n\n| Position       | Group              | Max | What the group covers                                       |\n| -------------- | ------------------ | --- | ----------------------------------------------------------- |\n| Ten-Thousands  | `recoveryStatus`   | 7   | Recovery and integrity status of the token-property link    |\n| Thousands      | `pastTitleAndLoad` | 5   | Title, legal description, liens and taxes for the property  |\n| Hundreds       | `ownership`        | 3   | Identity-verification records and contact for the owners    |\n| Tens           | `onChainHistory`   | 4   | Theft reports, flagged addresses, fees and transfer timing  |\n| Ones           | `basicValidation`  | 2   | Foundational documents and metadata the token must carry    |\n\nThe maximum possible value is **75,342**.\n\n**Example:** A value of `72101` breaks down as:\n\n* `recoveryStatus` = 7 (Normal)\n* `pastTitleAndLoad` = 2\n* `ownership` = 1\n* `onChainHistory` = 0\n* `basicValidation` = 1\n\nThe most significant digits (leftmost) represent the most critical ownership-related checks.",
-   "updatedAt": "2026-10-28"
+   "updatedAt": "2026-11-17"
   },
   {
    "id": "docs:95ce76a105cd",
@@ -4691,7 +4745,7 @@
    "sectionTitle": "Recovery Status Digit",
    "url": "https://docs.fabrica.land/docs/confidence-scoring-system",
    "text": "The most significant digit reflects the recovery status of the property. Unlike the other digits, which are computed from Property checks, this digit is set administratively based on recovery events.\n\n| Value | Status             | Description                                                                                                                                                                                                                                       |\n\n| ----- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n\n| 7     | Normal             | Default state. No recovery activity.                                                                                                                                                                                                              |\n\n| 6     | Recovery Pending   | A §10.2 Notice of Lost Token Control has been recorded by the Beneficiary to recover access. Token-property link intact; Quiet Period running.                                                                                                    |\n\n| 5     | Stolen             | The token has been reported as stolen via an unauthorized transfer.                                                                                                                                                                               |",
-   "updatedAt": "2026-10-28"
+   "updatedAt": "2026-11-17"
   },
   {
    "id": "docs:e8cd5a129fe3",
@@ -4700,7 +4754,7 @@
    "sectionTitle": "Recovery Status Digit",
    "url": "https://docs.fabrica.land/docs/confidence-scoring-system",
    "text": "| 4     | Distressed         | The Property is at material risk of loss to a third party through involuntary process (tax sale, judicial foreclosure of a pre-existing lien, eminent domain, or equivalent). The Trust still holds title and the Beneficiary may still cure. Reversible upon cure. |\n\n| 1     | Void               | The token no longer conveys beneficial ownership of the Property, following an Alternative Dissolution Event or involuntary loss of title. The status is not changed back by the scoring service. Legally, after an involuntary loss of title (Section 10.5) the Void Token still carries wind-up rights to any surplus proceeds, and the trust is reinstated if a court sets the operative instrument aside (Section 10.5.4). |\n\nA value starting with `7` indicates a property in normal standing. Any other leading digit signals that the token-property link is compromised or under review, and applications should treat the token with caution regardless of the other digits.",
-   "updatedAt": "2026-10-28"
+   "updatedAt": "2026-11-17"
   },
   {
    "id": "docs:5554848f651e",
@@ -4709,7 +4763,7 @@
    "sectionTitle": "Distressed (4) Lifecycle",
    "url": "https://docs.fabrica.land/docs/confidence-scoring-system",
    "text": "Like every recovery status, **Distressed** is set administratively: a validator assigns it after confirming that an involuntary process has been initiated against the Property that, if uncured, will result in loss of title. Status updates are not instantaneous; they follow the validator receiving and processing the evidence. Examples include:\n\n* The county has issued a tax certificate, tax sale notice, or equivalent post-delinquency instrument\n* A lienholder has commenced judicial foreclosure proceedings against the Property\n* A condemnation or eminent domain action has been filed\n\nWhile in the Distressed state, the Property is still held by the Trust and the Beneficiary may take action to cure (pay back taxes, satisfy the lien, etc.). After a successful cure, the validator can return the token to Normal (7). If the process completes and title transfers to a third party of record, the validator moves the token to Void (1).\n\nApplications surfacing a Distressed token to its Beneficiary should display a clear warning of the underlying risk and a path to cure.",
-   "updatedAt": "2026-10-28"
+   "updatedAt": "2026-11-17"
   },
   {
    "id": "docs:ea877b97e4bb",
@@ -4717,8 +4771,8 @@
    "title": "Property checks",
    "sectionTitle": "The checks",
    "url": "https://docs.fabrica.land/docs/confidence-scoring-system",
-   "text": "The thousands, hundreds and tens digits count the passing checks in their group. The ones digit (`basicValidation`) encodes two cumulative requirement levels, described below. The recovery digit is an administratively assigned status, described above. What each check tests and where its data comes from:\n\n**`pastTitleAndLoad` (thousands)**\n\n| Check | What it tests | Data source |\n| ----- | ------------- | ----------- |\n| `proofOfTitleValid` | The proof of title referenced by the token has been checked and confirmed | The recorded deed |\n| `claimMatchesLegalDescription` | The claim in the token matches the legal description on record | County records, through a third-party property data provider |\n| `holdingEntityMatchesOwnerNameAtAssessor` | The token's holding entity matches the owner name at the county assessor | County assessor records, through a third-party parcel data provider |\n| `noLiensFound` | No voluntary liens (such as a mortgage) with an open estimated balance were found. In the application a mortgage shows as \"On record\" (a claim the owner agreed to, usual for a home), not as an item to review, and it does not change the property's verdict; the check still earns no point in the numeric encoding | Lien data from a third-party property data provider |\n| `propertyTaxesCurrent` | Property taxes are up to date | County tax records |\n\n**`ownership` (hundreds)**",
-   "updatedAt": "2026-10-28"
+   "text": "The thousands digit includes one point for legal-description matching regardless of its result, plus points for the other passing checks in its group. The hundreds and tens digits count the passing checks in their group. The ones digit (`basicValidation`) encodes two cumulative requirement levels, described below. The recovery digit is an administratively assigned status, described above. What each check tests and where its data comes from:\n\n**`pastTitleAndLoad` (thousands)**\n\n| Check | What it tests | Data source |\n| ----- | ------------- | ----------- |\n| `proofOfTitleValid` | The proof of title referenced by the token has been checked and confirmed | The recorded deed |\n| `claimMatchesLegalDescription` | The claim in the token matches the legal description on record. This check contributes one point whether true, false or unknown | County records, through a third-party property data provider |\n| `holdingEntityMatchesOwnerNameAtAssessor` | The token's holding entity matches the owner name at the county assessor | County assessor records, through a third-party parcel data provider |\n| `noLiensFound` | No voluntary liens (such as a mortgage) with an open estimated balance were found. In the application a mortgage shows as \"On record\" (a claim the owner agreed to, usual for a home), not as an item to review, and it does not change the property's verdict; the check still earns no point in the numeric encoding | Lien data from a third-party property data provider |\n| `propertyTaxesCurrent` | Property taxes are up to date | County tax records |\n\n**`ownership` (hundreds)**",
+   "updatedAt": "2026-11-17"
   },
   {
    "id": "docs:f7503c11365a",
@@ -4727,7 +4781,7 @@
    "sectionTitle": "The checks",
    "url": "https://docs.fabrica.land/docs/confidence-scoring-system",
    "text": "| Check | What it tests | Data source |\n| ----- | ------------- | ----------- |\n| `currentOwnersKycd` | Every current holder has an identity-verification record | Identity-verification records |\n| `allTransfersKycd` | Every recipient of a past transfer has an identity-verification record | Transfer history and identity-verification records |\n| `ownerHasVerifiedContact` | The majority owner has a verified email or phone on file | Fabrica account records |\n\n**`onChainHistory` (tens)**\n\n| Check | What it tests | Data source |\n| ----- | ------------- | ----------- |\n| `notReportedAsStolen` | The token is not on Fabrica's flagged-token list, and OpenSea does not flag it as suspicious (when OpenSea returns a result) | Fabrica's flagged-token list and the OpenSea API |\n| `currentOwnersNotInDarklist` | No current holder's address appears on the flagged-address list Fabrica uses | MyEtherWallet's public address darklist, with a copy embedded in the validator as a fallback |\n| `feesInGoodStanding` | Platform fees are in good standing (the deferred setup fee authorization is intact) | Fabrica requirements and onchain approvals |\n| `transferCooldownMet` | The required post-transfer cooldown period has elapsed | Onchain transfer history |\n\n**`basicValidation` (ones)**",
-   "updatedAt": "2026-10-28"
+   "updatedAt": "2026-11-17"
   },
   {
    "id": "docs:bb8f7d7b030b",
@@ -4736,7 +4790,7 @@
    "sectionTitle": "The checks",
    "url": "https://docs.fabrica.land/docs/confidence-scoring-system",
    "text": "| Check | What it tests | Data source |\n| ----- | ------------- | ----------- |\n| `holdingEntityDeclared` | A holding entity (trust/LLC) is declared | Token metadata |\n| `formationDocumentAvailable` | The holding entity's formation document (operating agreement) is linked | Token metadata |\n| `deedAvailable` | A proof of title document is linked | Token metadata |\n| `legalDescriptionAvailable` | The token's claim (legal description) is defined | Token metadata |\n| `coordinatesValid` | The property's geographic coordinates are valid | Token metadata |\n\nThe `basicValidation` digit is 1 when `holdingEntityDeclared`, `legalDescriptionAvailable` and `coordinatesValid` all pass, and 2 when `deedAvailable` and `formationDocumentAvailable` also pass.",
-   "updatedAt": "2026-10-28"
+   "updatedAt": "2026-11-17"
   },
   {
    "id": "docs:14452add08b9",
@@ -4744,8 +4798,8 @@
    "title": "Property checks",
    "sectionTitle": "Reading the numeric encoding",
    "url": "https://docs.fabrica.land/docs/confidence-scoring-system",
-   "text": "Applications can read the numeric encoding from the API (`score`) or the MCP server (`explain_property_checks`) as one input to their own research before transacting.\n\nWhen reading it:\n\n* Check the recovery status digit first (ten-thousands). A value other than `7` indicates the token-property link is compromised or under review.\n* Check the next digits for ownership-critical status: title and liens (thousands) and owner verification (hundreds).\n* In the thousands, hundreds and tens positions, a higher digit means more checks in that group passed. The ones digit is a requirement level (0, 1 or 2), and the leading digit is a status, not a count.\n* Applications can parse individual digits to make decisions based on specific groups of checks, and should read the individual check results where a decision depends on one check.",
-   "updatedAt": "2026-10-28"
+   "text": "Applications can read the numeric encoding from the API (`score`) or the MCP server (`explain_property_checks`) as one input to their own research before transacting.\n\nWhen reading it:\n\n* Check the recovery status digit first (ten-thousands). A value other than `7` indicates the token-property link is compromised or under review.\n* Check the next digits for ownership-critical status: title and liens (thousands) and owner verification (hundreds).\n* In the thousands position, one point is unconditional for legal-description matching; a higher digit means more of the other checks passed. In the hundreds and tens positions, a higher digit means more checks in that group passed. The ones digit is a requirement level (0, 1 or 2), and the leading digit is a status, not a count.\n* Applications can parse individual digits to make decisions based on specific groups of checks, and should read the individual check results where a decision depends on one check.",
+   "updatedAt": "2026-11-17"
   },
   {
    "id": "docs:d2b8e50163ae",

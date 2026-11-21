@@ -74,6 +74,24 @@ function makeOrder(overrides: Partial<MarketplaceOrderModel>): MarketplaceOrderM
 }
 
 describe("getProperty formatting", () => {
+  it.each([true, false])("keeps legal-description result %s informational and other title failures counted", async value => {
+    vi.mocked(getToken).mockResolvedValueOnce(makeDetailToken({
+      score: 71242,
+      scoringCheckResults: [
+        { checkName: "claimMatchesLegalDescription", title: "Legal description matches", group: "pastTitleAndLoad", value },
+        { checkName: "proofOfTitleValid", title: "Proof of title valid", group: "pastTitleAndLoad", value: false },
+        { checkName: "currentOwnersKycd", title: "Owners verified", group: "ownership", value: true },
+      ],
+    }));
+    const result = await getProperty({ tokenId: "12345" });
+    expect(result).toHaveProperty("propertyChecks.results", [
+      { check: "Legal description matches", group: "pastTitleAndLoad", result: value ? "true" : "false or unknown", point: 1 },
+      { check: "Proof of title valid", group: "pastTitleAndLoad", passed: false },
+      { check: "Owners verified", group: "ownership", passed: true },
+    ]);
+    expect(result).toMatchObject({ propertyChecks: { passed: 1, total: 2 } });
+  });
+
   it("counts live and encumbered orders, drops ended ones, and lists a blocked listing after the buyable ones", async () => {
     vi.mocked(getToken).mockResolvedValueOnce(makeDetailToken({
       marketplaceListings: [

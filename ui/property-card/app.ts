@@ -432,8 +432,9 @@ function checkList(results: Record<string, unknown>[]): HTMLElement | null {
   if (named.length === 0) return null;
   const list = el("ul", "checklist");
   named.forEach((r) => {
-    const item = el("li", r.passed === true ? "pass" : "fail");
-    item.append(el("span", "mark", r.passed === true ? "Pass" : "Not passed"), el("span", undefined, str(r.check)));
+    const status = typeof r.passed === "boolean" ? (r.passed ? "Pass" : "Not passed") : "Informational";
+    const item = el("li", typeof r.passed === "boolean" ? (r.passed ? "pass" : "fail") : undefined);
+    item.append(el("span", "mark", status), el("span", undefined, str(r.check)));
     list.append(item);
   });
   return list;
