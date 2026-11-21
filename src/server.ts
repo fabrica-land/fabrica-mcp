@@ -749,7 +749,8 @@ function registerAddLandTools(server: McpServer, account?: AccountAuth): void {
       title: "Answer the questions for a property I'm adding",
       description: `Save, on a property the connected person is adding to Fabrica (${NETWORK_LABEL}), the owner named on the deed (owner: one person, an entity with the person who signs for it, or several people with how they hold title) and the answers to the county's questions (answers, keyed by the question exactly as add_land or get_adding_status lists it; a select takes one of its options verbatim). Returns the record as get_adding_status does, with the questions still open: the county's questions depend on the kind of owner, so after saving the owner they are read again from the answer. Needs the connection's add-property grant.`,
       inputSchema: answerQuestionsInput,
-      annotations: actsForOwner("Answer the questions for a property I'm adding", false),
+      // Overwrites answers already saved, and an empty answer clears one: marked destructive.
+      annotations: { ...actsForOwner("Answer the questions for a property I'm adding", false), destructiveHint: true },
     },
     async (args) => (account ? jsonResult(await answerAddingQuestions(account, args)) : signInRequired()),
   );
