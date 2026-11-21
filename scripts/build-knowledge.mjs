@@ -86,7 +86,7 @@ export function parseFrontmatter(markdown) {
   if (!match) return { attributes: {}, body: markdown };
   const attributes = {};
   let section = null;
-  let block = null; // { key, indent, literal, lines }
+  let block = null; // { key, indent, literal, contentIndent, lines }
   const closeBlock = () => {
     if (!block) return;
     attributes[block.key] = (block.literal ? block.lines.join("\n") : block.lines.join(" ")).trim();
@@ -94,7 +94,7 @@ export function parseFrontmatter(markdown) {
   };
   const assign = (key, value, indent) => {
     if (/^[>|][+-]?$/.test(value)) {
-      block = { key, indent, literal: value.startsWith("|"), lines: [] };
+      block = { key, indent, literal: value.startsWith("|"), contentIndent: null, lines: [] };
       return;
     }
     if (value !== "") attributes[key] = value.replace(/^['"]|['"]$/g, "");
@@ -103,7 +103,16 @@ export function parseFrontmatter(markdown) {
     const indent = line.length - line.trimStart().length;
     if (block) {
       if (line.trim() === "" || indent > block.indent) {
-        block.lines.push(line.trim());
+        if (block.literal) {
+          if (line.trim() === "") {
+            block.lines.push("");
+          } else {
+            if (block.contentIndent === null) block.contentIndent = indent;
+            block.lines.push(line.slice(Math.min(indent, block.contentIndent)));
+          }
+        } else {
+          block.lines.push(line.trim());
+        }
         continue;
       }
       closeBlock();

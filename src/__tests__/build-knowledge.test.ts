@@ -89,6 +89,26 @@ describe("build-knowledge frontmatter parser", () => {
     expect(strippedResult.attributes.excerpt).toBe("Line one.\nLine two.");
   });
 
+  it("preserves relative indentation in literal block-scalar excerpts (|)", async () => {
+    const markdown = [
+      "---",
+      "title: Nested Literal",
+      "excerpt: |",
+      "  Summary heading:",
+      "    - First indented item",
+      "      - Deeper nested item",
+      "",
+      "  Closing line.",
+      "---",
+      "Body text.",
+    ].join("\n");
+    const result = await parseFrontmatter(markdown);
+    expect(result.attributes.excerpt).toBe(
+      "Summary heading:\n  - First indented item\n    - Deeper nested item\n\nClosing line.",
+    );
+    expect(result.body).toBe("Body text.");
+  });
+
   it("keeps plain and quoted single-line excerpts unchanged", async () => {
     const plain = [
       "---",
