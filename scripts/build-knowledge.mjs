@@ -13,10 +13,12 @@
 //
 // Usage: node scripts/build-knowledge.mjs [--docs-dir <path>] [--check]
 //   --check  exits 1 when any source moved past its pin (used by the refresh workflow).
+import { realpathSync } from "node:fs";
 import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const run = promisify(execFile);
@@ -25,13 +27,6 @@ const SOURCES_FILE = "knowledge/sources.json";
 const OUTPUT_FILE = "src/knowledge/generated/index.json";
 const MAX_PASSAGE_CHARS = 1600;
 const DOCS_BASE_URL = "https://docs.fabrica.land/docs/";
-
-const args = process.argv.slice(2);
-const docsDirArg = args.includes("--docs-dir") ? args[args.indexOf("--docs-dir") + 1] : undefined;
-const docsDir = docsDirArg ?? process.env.KNOWLEDGE_DOCS_DIR;
-const checkOnly = args.includes("--check");
-
-const sources = JSON.parse(await readFile(SOURCES_FILE, "utf8"));
 
 /** Fetch with a timeout and a clear error; GitHub calls carry the token when present. */
 async function fetchText(url, init = {}) {
@@ -86,12 +81,12 @@ function htmlToText(html) {
  * as "section.key". Folded (>, >-) and literal (|, |-) block scalars are read for any key,
  * so `excerpt: >-` followed by indented lines yields the indented text, never ">-".
  */
-function parseFrontmatter(markdown) {
+export function parseFrontmatter(markdown) {
   const match = markdown.match(/^---\n([\s\S]*?)\n---\n?/);
   if (!match) return { attributes: {}, body: markdown };
   const attributes = {};
   let section = null;
-  let block = null; // { key, indent, literal, lines }
+  let block = null; // { key, indent, literal, contentIndent, lines }
   const closeBlock = () => {
     if (!block) return;
     attributes[block.key] = (block.literal ? block.lines.join("\n") : block.lines.join(" ")).trim();
@@ -99,7 +94,7 @@ function parseFrontmatter(markdown) {
   };
   const assign = (key, value, indent) => {
     if (/^[>|][+-]?$/.test(value)) {
-      block = { key, indent, literal: value.startsWith("|"), lines: [] };
+      block = { key, indent, literal: value.startsWith("|"), contentIndent: null, lines: [] };
       return;
     }
     if (value !== "") attributes[key] = value.replace(/^['"]|['"]$/g, "");
@@ -108,7 +103,16 @@ function parseFrontmatter(markdown) {
     const indent = line.length - line.trimStart().length;
     if (block) {
       if (line.trim() === "" || indent > block.indent) {
-        block.lines.push(line.trim());
+        if (block.literal) {
+          if (line.trim() === "") {
+            block.lines.push("");
+          } else {
+            if (block.contentIndent === null) block.contentIndent = indent;
+            block.lines.push(line.slice(Math.min(indent, block.contentIndent)));
+          }
+        } else {
+          block.lines.push(line.trim());
+        }
         continue;
       }
       closeBlock();
@@ -168,7 +172,7 @@ function splitLongBlocks(body) {
   return blocks;
 }
 
-function splitIntoPassages(text, pageTitle) {
+export function splitIntoPassages(text, pageTitle) {
   const sections = [];
   let current = { heading: pageTitle, lines: [] };
   for (const line of text.split("\n")) {
@@ -312,7 +316,7 @@ async function localGitHead(dir) {
   }
 }
 
-async function buildDocs() {
+async function buildDocs(sources, docsDir) {
   const config = sources.docs;
   const headSha = docsDir ? await localGitHead(docsDir) : await resolveGitHubHead(config.repo, config.ref);
   const pages = docsDir ? await readDocsFromDir(docsDir) : await readDocsFromGitHub(config.repo, headSha ?? config.ref);
@@ -343,7 +347,7 @@ async function resolveGitHubHead(repo, ref) {
 
 // ---------- help.fabrica.land ----------
 
-async function buildHelp() {
+async function buildHelp(sources) {
   const config = sources.help;
   const sitemap = await fetchText(config.sitemap);
   const urls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)]
@@ -372,7 +376,7 @@ async function buildHelp() {
 
 // ---------- the US trust agreement ----------
 
-async function buildTrustAgreement() {
+async function buildTrustAgreement(sources) {
   const config = sources["trust-agreement"];
   const headSha = await resolveGitHubHead(config.repo, config.ref);
   const markdown = await fetchText(config.rawUrl.replace("{ref}", headSha ?? config.ref));
@@ -390,40 +394,56 @@ async function buildTrustAgreement() {
 
 // ---------- main ----------
 
-const started = Date.now();
-const [docs, help, trust] = await Promise.all([buildDocs(), buildHelp(), buildTrustAgreement()]);
-
-const pins = {
-  docs: docs.commit,
-  help: help.fingerprint,
-  "trust-agreement": trust.pin,
-};
-const moved = Object.entries(pins).filter(([key, value]) => value && sources[key].pinned && sources[key].pinned !== value);
-if (checkOnly) {
-  if (moved.length === 0) {
-    console.log("knowledge: every source is at its pin");
-    process.exit(0);
+function isExecutedDirectly() {
+  if (!process.argv[1]) return false;
+  try {
+    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
   }
-  for (const [key, value] of moved) console.log(`knowledge: ${key} moved ${sources[key].pinned} -> ${value}`);
-  process.exit(1);
 }
 
-const passages = [...docs.passages, ...help.passages, ...trust.passages];
-const index = {
-  builtAt: new Date().toISOString().slice(0, 10),
-  sources: {
-    docs: { url: "https://docs.fabrica.land", repo: sources.docs.repo, ref: sources.docs.ref, commit: docs.commit, documents: docs.documents },
-    help: { url: "https://help.fabrica.land", documents: help.documents, fingerprint: help.fingerprint },
-    "trust-agreement": { url: sources["trust-agreement"].url, repo: sources["trust-agreement"].repo, commit: trust.commit, fingerprint: trust.pin, documents: 1 },
-  },
-  passages,
-};
-await mkdir(path.dirname(OUTPUT_FILE), { recursive: true });
-await writeFile(OUTPUT_FILE, `${JSON.stringify(index, null, 1)}\n`);
-for (const [key, value] of Object.entries(pins)) if (value) sources[key].pinned = value;
-await writeFile(SOURCES_FILE, `${JSON.stringify(sources, null, 2)}\n`);
-const bytes = (await stat(OUTPUT_FILE)).size;
-console.log(
-  `knowledge: ${passages.length} passages from ${docs.documents} docs pages, ${help.documents} help articles and the trust agreement; ` +
-    `${(bytes / 1024).toFixed(0)} KB in ${((Date.now() - started) / 1000).toFixed(1)} s`,
-);
+async function main() {
+  const args = process.argv.slice(2);
+  const docsDirArg = args.includes("--docs-dir") ? args[args.indexOf("--docs-dir") + 1] : undefined;
+  const docsDir = docsDirArg ?? process.env.KNOWLEDGE_DOCS_DIR;
+  const checkOnly = args.includes("--check");
+  const sources = JSON.parse(await readFile(SOURCES_FILE, "utf8"));
+  const started = Date.now();
+  const [docs, help, trust] = await Promise.all([buildDocs(sources, docsDir), buildHelp(sources), buildTrustAgreement(sources)]);
+  const pins = {
+    docs: docs.commit,
+    help: help.fingerprint,
+    "trust-agreement": trust.pin,
+  };
+  const moved = Object.entries(pins).filter(([key, value]) => value && sources[key].pinned && sources[key].pinned !== value);
+  if (checkOnly) {
+    if (moved.length === 0) {
+      console.log("knowledge: every source is at its pin");
+      process.exit(0);
+    }
+    for (const [key, value] of moved) console.log(`knowledge: ${key} moved ${sources[key].pinned} -> ${value}`);
+    process.exit(1);
+  }
+  const passages = [...docs.passages, ...help.passages, ...trust.passages];
+  const index = {
+    builtAt: new Date().toISOString().slice(0, 10),
+    sources: {
+      docs: { url: "https://docs.fabrica.land", repo: sources.docs.repo, ref: sources.docs.ref, commit: docs.commit, documents: docs.documents },
+      help: { url: "https://help.fabrica.land", documents: help.documents, fingerprint: help.fingerprint },
+      "trust-agreement": { url: sources["trust-agreement"].url, repo: sources["trust-agreement"].repo, commit: trust.commit, fingerprint: trust.pin, documents: 1 },
+    },
+    passages,
+  };
+  await mkdir(path.dirname(OUTPUT_FILE), { recursive: true });
+  await writeFile(OUTPUT_FILE, `${JSON.stringify(index, null, 1)}\n`);
+  for (const [key, value] of Object.entries(pins)) if (value) sources[key].pinned = value;
+  await writeFile(SOURCES_FILE, `${JSON.stringify(sources, null, 2)}\n`);
+  const bytes = (await stat(OUTPUT_FILE)).size;
+  console.log(
+    `knowledge: ${passages.length} passages from ${docs.documents} docs pages, ${help.documents} help articles and the trust agreement; ` +
+      `${(bytes / 1024).toFixed(0)} KB in ${((Date.now() - started) / 1000).toFixed(1)} s`,
+  );
+}
+
+if (isExecutedDirectly()) await main();
