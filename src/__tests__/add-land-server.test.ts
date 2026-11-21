@@ -48,7 +48,7 @@ describe("adding a property from the server", () => {
     const jargon = /\bpre-?mints?\b|\bon-?ramp(s|ed|ing)?\b|\bmint(s|ed|ing)?\b|\btokenized\b|\bMUST\b|—/i;
     for (const tool of on.tools.filter((t) => t.name === "add_land" || t.name === "answer_adding_questions")) {
       expect(tool.annotations?.readOnlyHint, tool.name).toBe(false);
-      expect(tool.annotations?.destructiveHint, tool.name).toBe(false);
+      expect(tool.annotations?.destructiveHint, tool.name).toBe(tool.name === "answer_adding_questions");
       expect(`${tool.title} ${tool.description}`, tool.name).not.toMatch(jargon);
     }
     // The server's own first line says "tokenized"; the added sentence must not.
