@@ -16,3 +16,10 @@ src/ui/generated/
 !**/.env.example
 !**/.env.local.example
 **/local.json*
+
+# Exclude evidence, logs and config copies.
+.knowledge/
+fv-evidence/
+WORK_LOGS/
+wrap-ups/
+.scratch/
