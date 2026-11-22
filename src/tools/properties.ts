@@ -12,7 +12,7 @@ import { haversineMiles } from "../geo.js";
 import { propertyStage, describeStage } from "../lifecycle.js";
 import { summarizeFees } from "../fees.js";
 import { loadTaxSignals, taxSummary } from "./tax.js";
-import { countChecks, getRecoveryStatus } from "./scoring.js";
+import { countChecks, describeCheck, getRecoveryStatus } from "./scoring.js";
 import { isLiveOrder } from "./marketplace.js";
 import { formatActivity, previousScores } from "./activity.js";
 import type { ActivityModel } from "../types/index.js";
@@ -456,7 +456,7 @@ export async function getProperty(args: GetPropertyArgs, as?: AccountAuth) {
     }
     const tax = await loadTaxSignals(token);
     const legal = legalDescriptionPreview(token.definition?.claim);
-    const checkResults = token.scoringCheckResults?.map(s => ({ check: s.title, group: s.group, passed: s.value })) ?? [];
+    const checkResults = token.scoringCheckResults?.map(describeCheck) ?? [];
     warnings.push(...tax.warnings);
     return {
       ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
@@ -488,7 +488,7 @@ export async function getProperty(args: GetPropertyArgs, as?: AccountAuth) {
         ...countChecks(checkResults),
         encoding: token.score,
         results: checkResults,
-        about: "Property checks are a starting point for your own research, not a title search or title insurance. encoding is their 5-digit numeric encoding (explain_property_checks decodes it).",
+        about: "Property checks are a starting point for your own research, not a title search or title insurance. encoding is their 5-digit numeric encoding (explain_property_checks decodes it). Legal-description matching contributes one past-title point whether true, false or unknown and is excluded from pass counts.",
       },
       taxes: {
         status: tax.status,
