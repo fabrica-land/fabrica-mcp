@@ -77,7 +77,7 @@ describe("hosted HTTP transport", () => {
       expect(tool.title, tool.name).toBeTruthy();
       expect(tool.annotations?.title, tool.name).toBeTruthy();
       expect(tool.annotations?.readOnlyHint, tool.name).toBe(tool.name !== "add_land");
-      expect(tool.annotations?.destructiveHint, tool.name).toBe(false);
+      expect(tool.annotations?.destructiveHint, tool.name).toBe(tool.name === "answer_adding_questions");
       expect(tool.description ?? "", tool.name).not.toMatch(/\bMUST\b|—/);
     }
     expect(client.getInstructions() ?? "").not.toMatch(/\bMUST\b|\binform the user\b|—/);
@@ -125,7 +125,7 @@ describe("hosted HTTP transport", () => {
       for (const tool of tools) {
         expect(tool.title, tool.name).toBeTruthy();
         expect(tool.annotations?.readOnlyHint, tool.name).toBe(!prepareTools.includes(tool.name));
-        expect(tool.annotations?.destructiveHint, tool.name).toBe(false);
+        expect(tool.annotations?.destructiveHint, tool.name).toBe(tool.name === "answer_adding_questions");
         expect(tool.description ?? "", tool.name).not.toMatch(/\bMUST\b|—/);
       }
       expect(tools.map((tool) => tool.name)).toEqual(expect.arrayContaining([...prepareTools, "get_sign_request", "get_transaction_status"]));
