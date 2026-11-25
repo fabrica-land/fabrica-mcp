@@ -7,7 +7,7 @@ import { NETWORK_LABEL } from "../config.js";
 import { type AccountAuth, hasScope } from "../auth/token.js";
 import type { SignContextToken } from "../types/index.js";
 import { type ArgsOf, propertyRefInputs } from "./inputs.js";
-import { ownSignerArg, signerFor } from "./own-wallet.js";
+import { getOwnWallets, ownSignerArg, signerFor } from "./own-wallet.js";
 import { label, propertyOf, same, shorten } from "./sign-requests.js";
 import { containsSecret } from "./support.js";
 
@@ -54,8 +54,12 @@ export async function contactOwner(account: AccountAuth, { tokenId, slug, messag
   const signer = await signerFor(account, wallet);
   if (typeof signer === "object" && "error" in signer) return signer;
   // The owner's wallet on the account, whichever wallet would send: writing to oneself is refused.
+  // A chosen sender is checked against the account's other wallets too; when they cannot be read, the
+  // chosen one alone is checked (the API refuses that exact match as well).
   const wallets = typeof signer === "string" ? [signer] : signer.own.map(own => own.address);
-  if (wallets.some(address => same(address, owner.address))) return { error: `${label(token)} is held by wallet ${shorten(owner.address)}, which is the connected person's own: there is nobody else to write to.` };
+  const own = typeof signer === "string" ? await getOwnWallets(account) : signer.own;
+  const everyWallet = "error" in own ? wallets : [...wallets, ...own.map(wallet => wallet.address)];
+  if (everyWallet.some(address => same(address, owner.address))) return { error: `${label(token)} is held by wallet ${shorten(owner.address)}, which is the connected person's own: there is nobody else to write to.` };
   const sender = wallets[0];
   if (!sender) return { error: "No linked account (wallet address) is on this Fabrica account yet, so there is nothing to send the message from." };
   try {

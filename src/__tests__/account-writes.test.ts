@@ -243,6 +243,9 @@ describe("contact_land_owner", () => {
     vi.mocked(getAccountProfile).mockResolvedValue({ email: null, kycStatus: null, wallets: [{ address: BUYER, kind: "embedded" }, { address: OWNER, kind: "external" }] });
     const linked = await contactOwner(WRITER, { tokenId: "77", message }) as Record<string, unknown>;
     expect(linked.error).toMatch(/the connected person's own/);
+    // A chosen sender does not get around it: the owner is still another wallet of the same account.
+    const chosen = await contactOwner(WRITER, { tokenId: "77", message, wallet: BUYER }) as Record<string, unknown>;
+    expect(chosen.error).toMatch(/the connected person's own/);
     expect(sendMessageAs).not.toHaveBeenCalled();
   });
 
@@ -256,6 +259,7 @@ describe("contact_land_owner", () => {
   });
 
   it("refuses a property nobody has claimed, a secret in the message, and relays the API's refusal", async () => {
+    vi.mocked(getAccountProfile).mockResolvedValue(profile(BUYER));
     vi.mocked(getSignContext).mockResolvedValue(token({ claimState: "UNCLAIMED", majorityOwnerAddress: null, majorityOwner: null }));
     expect(((await contactOwner(WRITER, { tokenId: "77", message })) as Record<string, unknown>).error).toMatch(/nobody has claimed it yet/);
     vi.mocked(getSignContext).mockResolvedValue(token());
