@@ -37,7 +37,7 @@ function token(overrides: Partial<SignContextToken> = {}): SignContextToken {
     offRampStatus: null, isBurned: false, supply: "1", supplyUnderLoan: "0",
     operatingAgreementName: "Trust v4.3", configurationUrl: "ipfs://QmConfigBefore",
     configuration: { userDescription: "Old text", media: [{ source: "ipfs://QmPhoto" }] },
-    estimatedValue: "10000", majorityOwnerAddress: OWNER,
+    estimatedValue: "10000", majorityOwnerAddress: OWNER, majorityOwner: null,
     balances: [{ balance: "1", holder: { address: OWNER }, owner: { address: OWNER } }],
     marketplaceListings: [], marketplaceBids: [],
     ...overrides,
@@ -116,7 +116,7 @@ describe("transfer_land", () => {
   it("completes once the recipient holds the property", async () => {
     vi.mocked(getSignContext).mockResolvedValue(token());
     const record = await stored(await transferLand({ tokenId: "123", recipient: SECOND, wallet: OWNER }));
-    vi.mocked(getSignContext).mockResolvedValue(token({ majorityOwnerAddress: SECOND, balances: [{ balance: "1", holder: { address: SECOND }, owner: { address: SECOND } }] }));
+    vi.mocked(getSignContext).mockResolvedValue(token({ majorityOwnerAddress: SECOND, majorityOwner: null, balances: [{ balance: "1", holder: { address: SECOND }, owner: { address: SECOND } }] }));
     expect(await getSignRequest({ id: record.id })).toMatchObject({ status: "completed" });
   });
 });

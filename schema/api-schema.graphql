@@ -122,6 +122,11 @@ type AuthorizationMessageModel {
   timestamp: String!
 }
 
+enum AvatarSource {
+  ENS
+  UPLOAD
+}
+
 type BalanceModel {
   balance: String!
   contractAddress: String!
@@ -185,7 +190,7 @@ type ClientCurrencyModel {
 }
 
 type ClientDynamicXyzModel {
-  cookieAuthDomain: String!
+  cookieAuthDomain: String! @deprecated(reason: "Cookie authentication is no longer used.")
   envId: String!
 }
 
@@ -317,6 +322,11 @@ type CountyBoundsModel {
   geoJson: JSONObject!
 }
 
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
 type DefinitionModel {
   claim: String!
   coordinates: CoordinatesModel!
@@ -383,10 +393,26 @@ enum FiatTransactionPhase {
   WaitingOnBank
 }
 
+enum ImportEntry {
+  go
+  server
+  site
+}
+
+enum ImportListingStatus {
+  for_sale
+  sold
+  under_contract
+}
+
 """
 The `JSONObject` scalar type represents JSON objects as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
 """
 scalar JSONObject
+
+type ListChangeSignal {
+  key: String!
+}
 
 type LoanLiquidatedEventModel {
   blockNumber: String!
@@ -556,6 +582,11 @@ enum MarketplaceOrderBlockReason {
   UNDERWATER
 }
 
+type MarketplaceOrderChangeSignal {
+  marketplaceId: String!
+  network: String!
+}
+
 type MarketplaceOrderEncumbranceModel {
   blockReason: MarketplaceOrderBlockReason
   buyable: Boolean!
@@ -563,6 +594,15 @@ type MarketplaceOrderEncumbranceModel {
   poolAddress: String!
   requiredAllowanceScaled: String!
   settlementContract: String
+}
+
+input MarketplaceOrderImportProvenanceInput {
+  entry: ImportEntry!
+  importedAt: String!
+  listingId: String
+  price: String
+  sourceUrl: String!
+  status: ImportListingStatus
 }
 
 input MarketplaceOrderInputModel {
@@ -579,6 +619,7 @@ input MarketplaceOrderInputModel {
   makerAddress: String!
   marketplace: Marketplace!
   marketplaceId: String!
+  matchOrderHash: String
   network: String!
   permalink: String
   price: String!
@@ -605,13 +646,16 @@ type MarketplaceOrderModel {
   encumbrance: MarketplaceOrderEncumbranceModel
   endTime: String
   feeBps: String!
+  fillable: Boolean!
   icon: String
+  importProvenance: OrderImportProvenance
   maker: WalletModel!
   makerAddress: String!
   marketplace: Marketplace!
   marketplaceId: String!
   matchTransactionHash: String
   network: String!
+  notFillableReason: MarketplaceOrderNotFillableReason
   permalink: String
   price: String!
   requiresConfirmation: Boolean
@@ -625,9 +669,13 @@ type MarketplaceOrderModel {
   status: MarketplaceOrderStatus!
   supply: String!
   symbol: EthereumCurrency!
-  token: TokenModel!
+  token: TokenModel
   tokenId: String!
   usdPrice: String
+}
+
+enum MarketplaceOrderNotFillableReason {
+  NEEDS_RELIST
 }
 
 enum MarketplaceOrderSide {
@@ -641,6 +689,7 @@ enum MarketplaceOrderStatus {
   encumbered
   expired
   filled
+  invalidated
   pending
 }
 
@@ -655,6 +704,8 @@ type Mutation {
   cancelMarketplaceOrder(orderHash: String!): MarketplaceOrderModel!
   cancelOffRamp(contractAddress: String!, network: String!, tokenId: String!): OffRampModel!
   createMarketplaceDisclosurePackage(disclosures: [String!]!): MarketplaceDisclosurePackageModel!
+  listPremintUnsigned(importProvenance: MarketplaceOrderImportProvenanceInput, network: String!, priceUsd: String!, tokenId: String!): MarketplaceOrderModel!
+  listPremintUnsignedForImport(importProvenance: MarketplaceOrderImportProvenanceInput!, makerAddress: String!, network: String!, priceUsd: String!, tokenId: String!): MarketplaceOrderModel!
   placeBid(amount: String!, auctionId: String!, bidder: String!, network: String!): AuctionBidTransactionModel!
   sendMessage(input: SendMessageInput!): Boolean!
   startOffRamp(contractAddress: String!, email: String!, network: String!, tokenId: String!): OffRampModel!
@@ -776,6 +827,20 @@ type OnRampStepModel {
   textCompleted: String!
   userActions: [UserActionModel!]
   visibility: Boolean!
+}
+
+type OrderImportProvenance {
+  entry: ImportEntry!
+  importedAt: DateTime!
+  listingId: String
+  price: String
+  sourceHost: String!
+
+  """
+  Untrusted page URL from the importer. Render it as a link with rel="nofollow noopener". The API does not verify the page.
+  """
+  sourceUrl: String!
+  status: ImportListingStatus
 }
 
 """
@@ -1056,6 +1121,11 @@ type PoolLendingOracleValuationModel {
   signature: String
 }
 
+type PoolLendingPoolChangeSignal {
+  address: String!
+  network: String!
+}
+
 type PoolLendingPoolModel {
   address: String!
   collateralToken: PoolLendingCollateralTokenModel!
@@ -1176,7 +1246,7 @@ type Query {
   buildUnsignedMarketplaceOrder(orderData: BuildMarketplaceOrderInputModel!): MarketplaceOrderModel!
   clientConfig: ClientConfigModel!
   countyBounds(fips: String!): CountyBoundsModel
-  getMarketplaceFulfillmentPermission(disclosurePackageId: String, orderHash: String!, taker: String!): MarketplaceFulfillmentPermissionModel!
+  getMarketplaceFulfillmentPermission(disclosurePackageId: String, orderHash: String!, taker: String!, viaCoinflow: Boolean): MarketplaceFulfillmentPermissionModel!
   getOffRampAuthorizationMessage(contractAddress: String!, network: String!, tokenId: String!): AuthorizationMessageModel!
   loanLiquidatedEvents(first: Int! = 100, network: String, networkIn: [String!], skip: Int! = 0): [LoanLiquidatedEventModel!]!
   loanRepaidEvents(first: Int! = 100, network: String, networkIn: [String!], skip: Int! = 0): [LoanRepaidEventModel!]!
@@ -1284,11 +1354,29 @@ input SendMessageInput {
   tokenId: String
 }
 
+type SocialAccount {
+  handle: String!
+  hidden: Boolean!
+  provider: String!
+  url: String!
+}
+
 type Subscription {
+  listChanged(key: String!): ListChangeSignal!
+  marketplaceOrderChanged(marketplaceId: String!, network: String!): MarketplaceOrderChangeSignal!
   offRamp(contractAddress: String!, network: String!, tokenId: String!): OffRampModel!
   onRamp(contractAddress: String!, network: String!, tokenId: String!): OnRampModel!
+  poolLendingPoolChanged(address: String!, network: String!): PoolLendingPoolChangeSignal!
   token(tokenId: String!): TokenModel!
   tokenActivity(contractAddress: String!, network: String!, tokenId: String!): ActivityModel!
+  tokenChanged(contractAddress: String!, network: String!, tokenId: String!): TokenChangeSignal!
+  walletChanged(address: String!, network: String!): WalletChangeSignal!
+}
+
+type TokenChangeSignal {
+  contractAddress: String!
+  network: String!
+  tokenId: String!
 }
 
 type TokenFeeModel {
@@ -1433,6 +1521,11 @@ type UserActionModel {
   url: String
 }
 
+enum UserClaimBy {
+  CONTACT_EMAIL
+  DOMAIN_EMAIL
+}
+
 input UserInputModel {
   avatarUrl: String
   displayName: String!
@@ -1442,13 +1535,22 @@ input UserInputModel {
 
 type UserModel {
   address: String
+  avatarSource: AvatarSource
   avatarUrl: String
+  claimBy: UserClaimBy
   contactable: Boolean!
   displayName: String!
   poolLendingDeposits(network: String!, poolAddress: String!): [PoolLendingDepositModel!]!
   profilePath: String
   profileUrl: String
+  socials: [SocialAccount!]
+  sourceDomain: String
+  unclaimed: Boolean!
   username: String
+  verifications: [UserVerification!]!
+  verifiedDomain: String
+  wallets(network: String!): [UserWalletModel!]!
+  websiteUrl: String
 }
 
 type UserProvidedFieldModel {
@@ -1470,6 +1572,24 @@ type UserProvidedFieldModel {
 type UserProvidedFieldRequirementModel {
   field: String!
   value: String!
+}
+
+enum UserVerification {
+  EMAIL
+  IDENTITY
+  WEBSITE
+}
+
+type UserWalletModel {
+  address: String!
+  ensName: String
+  profilePath: String!
+  tokenCount: String!
+}
+
+type WalletChangeSignal {
+  address: String!
+  network: String!
 }
 
 type WalletCreditHistoryModel {

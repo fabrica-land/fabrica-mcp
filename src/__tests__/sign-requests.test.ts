@@ -71,7 +71,7 @@ function order(overrides: Partial<SignContextOrder>): SignContextOrder {
     maker: { user: { displayName: "" } },
     restrictedToAddresses: null,
     disclosurePackage: null,
-    encumbrance: null,
+    encumbrance: null, signature: "0xsigned",
     matchTransactionHash: null,
     ...overrides,
   };
@@ -93,7 +93,7 @@ function token(overrides: Partial<SignContextToken> = {}): SignContextToken {
     supply: "1",
     supplyUnderLoan: "0", operatingAgreementName: "Trust v4.3", configurationUrl: "ipfs://QmConfigBefore", configuration: { userDescription: "Old text", media: [{ source: "ipfs://QmPhoto" }] },
     estimatedValue: "10000",
-    majorityOwnerAddress: OWNER,
+    majorityOwnerAddress: OWNER, majorityOwner: null,
     balances: [{ balance: "1", holder: { address: OWNER }, owner: { address: OWNER } }],
     marketplaceListings: [],
     marketplaceBids: [],
@@ -284,7 +284,7 @@ describe("list_land_for_sale", () => {
 
   it("lets the borrower list a property a lending pool holds, with the loan warning", async () => {
     vi.mocked(getSignContext).mockResolvedValue(token({
-      majorityOwnerAddress: POOL,
+      majorityOwnerAddress: POOL, majorityOwner: null,
       supplyUnderLoan: "1",
       balances: [{ balance: "1", holder: { address: POOL }, owner: { address: OWNER } }],
     }));
@@ -298,7 +298,7 @@ describe("list_land_for_sale", () => {
     const beingAdded = (claimState: "CLAIMED" | "UNCLAIMED") => token({
       isPremint: true,
       claimState,
-      majorityOwnerAddress: claimState === "CLAIMED" ? OWNER : null,
+      majorityOwnerAddress: claimState === "CLAIMED" ? OWNER : null, majorityOwner: null,
       balances: claimState === "CLAIMED" ? [{ balance: "1", holder: { address: OWNER }, owner: { address: OWNER } }] : [],
     });
 

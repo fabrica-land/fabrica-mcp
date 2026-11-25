@@ -51,7 +51,7 @@ function token(overrides: Partial<SignContextToken> = {}): SignContextToken {
     supply: "1",
     supplyUnderLoan: "0", operatingAgreementName: "Trust v4.3", configurationUrl: "ipfs://QmConfigBefore", configuration: { userDescription: "Old text", media: [{ source: "ipfs://QmPhoto" }] },
     estimatedValue: "10000",
-    majorityOwnerAddress: OWNER,
+    majorityOwnerAddress: OWNER, majorityOwner: null,
     balances: [{ balance: "1", holder: { address: OWNER }, owner: { address: OWNER } }],
     marketplaceListings: [],
     marketplaceBids: [],

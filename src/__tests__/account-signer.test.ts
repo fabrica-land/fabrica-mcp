@@ -54,7 +54,7 @@ function order(overrides: Partial<SignContextOrder> = {}): SignContextOrder {
   return {
     marketplaceId: HASH, side: "buy", status: "active", price: "10000000000", usdPrice: "10000.00", symbol: "USDC", decimals: 6, feeBps: "100", supply: "1",
     startTime: "2026-10-10T00:00:00Z", endTime: "2026-11-20T00:00:00Z", makerAddress: STRANGER, maker: { user: { displayName: "" } },
-    restrictedToAddresses: null, disclosurePackage: null, encumbrance: null, matchTransactionHash: null, ...overrides,
+    restrictedToAddresses: null, disclosurePackage: null, encumbrance: null, signature: null, matchTransactionHash: null, ...overrides,
   };
 }
 
@@ -63,7 +63,7 @@ function token(holder: string, overrides: Partial<SignContextToken> = {}): SignC
     tokenId: "123", name: "1 Test Road", vanityName: null, propertyLink: "https://fabrica.land/property/ethereum/123",
     contractAddress: "0x5cbeb7A0df7Ed85D82a472FD56d81ed550f3Ea95", network: "ethereum", isPremint: false, claimState: null,
     supersededByTokenId: null, offRampStatus: null, isBurned: false, supply: "1", supplyUnderLoan: "0", operatingAgreementName: "Trust v4.3", configurationUrl: "ipfs://QmConfigBefore", configuration: { userDescription: "Old text", media: [{ source: "ipfs://QmPhoto" }] }, estimatedValue: "10000",
-    majorityOwnerAddress: holder, balances: [{ balance: "1", holder: { address: holder }, owner: { address: holder } }],
+    majorityOwnerAddress: holder, majorityOwner: null, balances: [{ balance: "1", holder: { address: holder }, owner: { address: holder } }],
     marketplaceListings: [], marketplaceBids: [], ...overrides,
   };
 }

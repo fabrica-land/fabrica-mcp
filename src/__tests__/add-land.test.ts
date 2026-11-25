@@ -115,7 +115,7 @@ describe("add_land from a listing link", () => {
     expect(parcelAnonymous.links?.addToFabrica).toBe(GO_LINK);
     expect(parcelAnonymous.notes.at(-1)).toMatch(/Not signed in/);
     const readOnly = await addLand({ listingUrl: "https://www.landwatch.com/lot/1" }, auth(["profile:read", "onramp:read"]));
-    expect(readOnly.notes.at(-1)).toMatch(/Start adding a property to your account/);
+    expect(readOnly.notes.at(-1)).toMatch(/Start, change, or cancel adding a property to your account/);
     expect(vi.mocked(startOnRamp)).not.toHaveBeenCalled();
   });
 
@@ -261,7 +261,7 @@ describe("answer_adding_questions", () => {
   });
 
   it("needs the grant, something to save, and a record of the connected account's", async () => {
-    expect((await answerAddingQuestions(auth(["onramp:read"]), { tokenId: "11", email: "a@b.co" })).error).toMatch(/Start adding a property/);
+    expect((await answerAddingQuestions(auth(["onramp:read"]), { tokenId: "11", email: "a@b.co" })).error).toMatch(/cancel adding a property/);
     expect((await answerAddingQuestions(auth(), { tokenId: "11" })).error).toMatch(/nothing to save/);
     vi.mocked(getOnRampRecord).mockResolvedValue(null);
     expect((await answerAddingQuestions(auth(), { tokenId: "11", email: "a@b.co" })).error).toMatch(/not a property this account is adding/);

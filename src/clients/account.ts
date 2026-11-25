@@ -99,13 +99,13 @@ function apiMessage(body: unknown): string | null {
  * API's refusal message is passed on when it gave one: it says what the person must do (verify the
  * wallet, the daily limit, a record someone else is adding).
  */
-async function accountSend(auth: AccountAuth, method: "POST" | "PATCH", path: string, body: unknown, scope: string): Promise<unknown> {
+async function accountSend(auth: AccountAuth, method: "POST" | "PATCH" | "DELETE", path: string, body: unknown, scope: string): Promise<unknown> {
   let response: Response;
   try {
     response = await fetch(`${apiBase()}${path}`, {
       method,
-      headers: { Authorization: `Bearer ${auth.token}`, Accept: "application/json", "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${auth.token}`, Accept: "application/json", ...(body === undefined ? {} : { "Content-Type": "application/json" }) },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       signal: AbortSignal.timeout(ACCOUNT_TIMEOUT_MS),
     });
   } catch (error) {
@@ -371,4 +371,12 @@ export async function patchOnRamp(auth: AccountAuth, tokenId: string, body: OnRa
   const record = parseOnRamp(answer);
   if (!record) throw new AccountApiError(502, UNREADABLE_ONRAMP);
   return record;
+}
+
+/**
+ * Stop adding a property as the connected person (onramp:write): the API deletes the record and the
+ * property's page on fabrica.land is gone with it. The API refuses when the account does not hold it.
+ */
+export async function cancelOnRamp(auth: AccountAuth, tokenId: string): Promise<void> {
+  await accountSend(auth, "DELETE", `${onRampPath()}/${encodeURIComponent(tokenId)}`, undefined, "onramp:write");
 }

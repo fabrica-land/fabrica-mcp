@@ -19,10 +19,16 @@ export const MCP_PATH = "/mcp";
 
 /** The read scopes the authorization server issues. A tool names the one it needs. */
 export const OAUTH_READ_SCOPES = ["profile:read", "portfolio:read", "onramp:read"] as const;
-/** The write scopes adding a property needs (add_land, answer_adding_questions). */
-export const OAUTH_WRITE_SCOPES = ["onramp:write", "premint:write"] as const;
+/**
+ * The write scopes the tools that act as the person need: adding a property and stopping it
+ * (add_land, answer_adding_questions, cancel_adding_land: onramp:write; premint:write comes with
+ * it), listing a property being added and taking an unconfirmed listing down (list_land_for_sale,
+ * cancel_land_order, cancel_adding_land: listing:write), and writing to an owner (contact_land_owner:
+ * message:write).
+ */
+export const OAUTH_WRITE_SCOPES = ["onramp:write", "premint:write", "listing:write", "message:write"] as const;
 export type OAuthScope = (typeof OAUTH_READ_SCOPES)[number] | (typeof OAUTH_WRITE_SCOPES)[number];
-/** The scopes this server asks for at sign-in: the reads and the add-property writes. */
+/** The scopes this server asks for at sign-in: the reads and the writes above. */
 export function oauthScopes(): readonly OAuthScope[] {
   return [...OAUTH_READ_SCOPES, ...OAUTH_WRITE_SCOPES];
 }

@@ -31,7 +31,7 @@ const LIVE_OFFERS: Record<string, number> = { "202": 2, "301": 1 };
 function bid(endTime: string, makerAddress = BUYER): OrderBookOrder {
   return {
     marketplaceId: `0x${endTime}`, side: "buy", status: "active", price: "1000000000", usdPrice: "1000", symbol: "USDC", decimals: 6, feeBps: "100", supply: "1",
-    startTime: "2019-01-01T00:00:00Z", endTime, makerAddress, maker: { user: { displayName: "" } }, restrictedToAddresses: null, disclosurePackage: null, encumbrance: null,
+    startTime: "2019-01-01T00:00:00Z", endTime, makerAddress, maker: { user: { displayName: "" } }, restrictedToAddresses: null, disclosurePackage: null, encumbrance: null, signature: null,
   };
 }
 function orderBook(bids: OrderBookOrder[]): OrderBookToken {

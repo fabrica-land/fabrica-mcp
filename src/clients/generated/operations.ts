@@ -95,6 +95,7 @@ export type MarketplaceOrderStatus =
   | 'encumbered'
   | 'expired'
   | 'filled'
+  | 'invalidated'
   | 'pending';
 
 /** How a pool values its collateral. Consumers must switch on this field. Inside `Token.poolLendingLiquidity` (borrower-side), SignedQuote pools populate `oracleValuation` while OnchainOracle pools leave `oracleValuation` null by design (ENG-3894) and populate `onchainPrice`, `oracleFeed` and `onchainValuation` instead. Depositor-side reads (`Query.poolLendingPools`) leave every valuation field unset. */
@@ -107,6 +108,15 @@ export type PoolLendingPricing =
 export type PremintClaimState =
   | 'CLAIMED'
   | 'UNCLAIMED';
+
+export type SendMessageInput = {
+  contractAddress?: string | null | undefined;
+  message: string;
+  network: string;
+  recipient: string;
+  sender: string;
+  tokenId?: string | null | undefined;
+};
 
 export type TokenSortField =
   | 'price'
@@ -167,7 +177,7 @@ export type GetOperatingAgreementQueryVariables = Exact<{
 
 export type GetOperatingAgreementQuery = { token: { tokenId: string, operatingAgreementName: string | null, operatingAgreementUrl: string | null, operatingAgreement: string | null } };
 
-export type OrderBookOrderFieldsFragment = { marketplaceId: string, side: MarketplaceOrderSide, status: MarketplaceOrderStatus, price: string, usdPrice: string | null, symbol: EthereumCurrency, decimals: number, feeBps: string, supply: string, startTime: string, endTime: string | null, makerAddress: string, restrictedToAddresses: Array<string> | null, maker: { user: { displayName: string } }, disclosurePackage: Array<{ name: string, url: string }> | null, encumbrance: { buyable: boolean, blockReason: MarketplaceOrderBlockReason | null, loanId: string } | null };
+export type OrderBookOrderFieldsFragment = { marketplaceId: string, side: MarketplaceOrderSide, status: MarketplaceOrderStatus, price: string, usdPrice: string | null, symbol: EthereumCurrency, decimals: number, feeBps: string, supply: string, signature: string | null, startTime: string, endTime: string | null, makerAddress: string, restrictedToAddresses: Array<string> | null, maker: { user: { displayName: string } }, disclosurePackage: Array<{ name: string, url: string }> | null, encumbrance: { buyable: boolean, blockReason: MarketplaceOrderBlockReason | null, loanId: string } | null };
 
 export type GetOrderBookQueryVariables = Exact<{
   tokenId?: string | null | undefined;
@@ -176,7 +186,7 @@ export type GetOrderBookQueryVariables = Exact<{
 }>;
 
 
-export type GetOrderBookQuery = { token: { tokenId: string, name: string | null, vanityName: string | null, propertyLink: string, isPremint: boolean, claimState: PremintClaimState | null, supersededByTokenId: string | null, offRampStatus: string | null, isBurned: boolean, supply: string, supplyUnderLoan: string, marketplaceListings: Array<{ marketplaceId: string, side: MarketplaceOrderSide, status: MarketplaceOrderStatus, price: string, usdPrice: string | null, symbol: EthereumCurrency, decimals: number, feeBps: string, supply: string, startTime: string, endTime: string | null, makerAddress: string, restrictedToAddresses: Array<string> | null, maker: { user: { displayName: string } }, disclosurePackage: Array<{ name: string, url: string }> | null, encumbrance: { buyable: boolean, blockReason: MarketplaceOrderBlockReason | null, loanId: string } | null }> | null, marketplaceBids: Array<{ marketplaceId: string, side: MarketplaceOrderSide, status: MarketplaceOrderStatus, price: string, usdPrice: string | null, symbol: EthereumCurrency, decimals: number, feeBps: string, supply: string, startTime: string, endTime: string | null, makerAddress: string, restrictedToAddresses: Array<string> | null, maker: { user: { displayName: string } }, disclosurePackage: Array<{ name: string, url: string }> | null, encumbrance: { buyable: boolean, blockReason: MarketplaceOrderBlockReason | null, loanId: string } | null }> | null } };
+export type GetOrderBookQuery = { token: { tokenId: string, name: string | null, vanityName: string | null, propertyLink: string, isPremint: boolean, claimState: PremintClaimState | null, supersededByTokenId: string | null, offRampStatus: string | null, isBurned: boolean, supply: string, supplyUnderLoan: string, marketplaceListings: Array<{ marketplaceId: string, side: MarketplaceOrderSide, status: MarketplaceOrderStatus, price: string, usdPrice: string | null, symbol: EthereumCurrency, decimals: number, feeBps: string, supply: string, signature: string | null, startTime: string, endTime: string | null, makerAddress: string, restrictedToAddresses: Array<string> | null, maker: { user: { displayName: string } }, disclosurePackage: Array<{ name: string, url: string }> | null, encumbrance: { buyable: boolean, blockReason: MarketplaceOrderBlockReason | null, loanId: string } | null }> | null, marketplaceBids: Array<{ marketplaceId: string, side: MarketplaceOrderSide, status: MarketplaceOrderStatus, price: string, usdPrice: string | null, symbol: EthereumCurrency, decimals: number, feeBps: string, supply: string, signature: string | null, startTime: string, endTime: string | null, makerAddress: string, restrictedToAddresses: Array<string> | null, maker: { user: { displayName: string } }, disclosurePackage: Array<{ name: string, url: string }> | null, encumbrance: { buyable: boolean, blockReason: MarketplaceOrderBlockReason | null, loanId: string } | null }> | null } };
 
 export type GetSignContextQueryVariables = Exact<{
   tokenId?: string | null | undefined;
@@ -185,7 +195,32 @@ export type GetSignContextQueryVariables = Exact<{
 }>;
 
 
-export type GetSignContextQuery = { token: { tokenId: string, name: string | null, vanityName: string | null, propertyLink: string, contractAddress: string, network: string, isPremint: boolean, claimState: PremintClaimState | null, supersededByTokenId: string | null, offRampStatus: string | null, isBurned: boolean, supply: string, supplyUnderLoan: string, estimatedValue: string, majorityOwnerAddress: string | null, operatingAgreementName: string | null, configurationUrl: string | null, configuration: { userDescription: string | null, media: Array<{ source: string }> | null } | null, balances: Array<{ balance: string, holder: { address: string }, owner: { address: string } }> | null, marketplaceListings: Array<{ matchTransactionHash: string | null, marketplaceId: string, side: MarketplaceOrderSide, status: MarketplaceOrderStatus, price: string, usdPrice: string | null, symbol: EthereumCurrency, decimals: number, feeBps: string, supply: string, startTime: string, endTime: string | null, makerAddress: string, restrictedToAddresses: Array<string> | null, maker: { user: { displayName: string } }, disclosurePackage: Array<{ name: string, url: string }> | null, encumbrance: { buyable: boolean, blockReason: MarketplaceOrderBlockReason | null, loanId: string } | null }> | null, marketplaceBids: Array<{ matchTransactionHash: string | null, marketplaceId: string, side: MarketplaceOrderSide, status: MarketplaceOrderStatus, price: string, usdPrice: string | null, symbol: EthereumCurrency, decimals: number, feeBps: string, supply: string, startTime: string, endTime: string | null, makerAddress: string, restrictedToAddresses: Array<string> | null, maker: { user: { displayName: string } }, disclosurePackage: Array<{ name: string, url: string }> | null, encumbrance: { buyable: boolean, blockReason: MarketplaceOrderBlockReason | null, loanId: string } | null }> | null } };
+export type GetSignContextQuery = { token: { tokenId: string, name: string | null, vanityName: string | null, propertyLink: string, contractAddress: string, network: string, isPremint: boolean, claimState: PremintClaimState | null, supersededByTokenId: string | null, offRampStatus: string | null, isBurned: boolean, supply: string, supplyUnderLoan: string, estimatedValue: string, majorityOwnerAddress: string | null, operatingAgreementName: string | null, configurationUrl: string | null, majorityOwner: { address: string | null, displayName: string, contactable: boolean } | null, configuration: { userDescription: string | null, media: Array<{ source: string }> | null } | null, balances: Array<{ balance: string, holder: { address: string }, owner: { address: string } }> | null, marketplaceListings: Array<{ matchTransactionHash: string | null, marketplaceId: string, side: MarketplaceOrderSide, status: MarketplaceOrderStatus, price: string, usdPrice: string | null, symbol: EthereumCurrency, decimals: number, feeBps: string, supply: string, signature: string | null, startTime: string, endTime: string | null, makerAddress: string, restrictedToAddresses: Array<string> | null, maker: { user: { displayName: string } }, disclosurePackage: Array<{ name: string, url: string }> | null, encumbrance: { buyable: boolean, blockReason: MarketplaceOrderBlockReason | null, loanId: string } | null }> | null, marketplaceBids: Array<{ matchTransactionHash: string | null, marketplaceId: string, side: MarketplaceOrderSide, status: MarketplaceOrderStatus, price: string, usdPrice: string | null, symbol: EthereumCurrency, decimals: number, feeBps: string, supply: string, signature: string | null, startTime: string, endTime: string | null, makerAddress: string, restrictedToAddresses: Array<string> | null, maker: { user: { displayName: string } }, disclosurePackage: Array<{ name: string, url: string }> | null, encumbrance: { buyable: boolean, blockReason: MarketplaceOrderBlockReason | null, loanId: string } | null }> | null } };
+
+export type ListedOrderFieldsFragment = { marketplaceId: string, side: MarketplaceOrderSide, status: MarketplaceOrderStatus, price: string, usdPrice: string | null, symbol: EthereumCurrency, decimals: number, supply: string, startTime: string, endTime: string | null, makerAddress: string, signature: string | null };
+
+export type ListUnsignedMutationVariables = Exact<{
+  network: string;
+  tokenId: string;
+  priceUsd: string;
+}>;
+
+
+export type ListUnsignedMutation = { listPremintUnsigned: { marketplaceId: string, side: MarketplaceOrderSide, status: MarketplaceOrderStatus, price: string, usdPrice: string | null, symbol: EthereumCurrency, decimals: number, supply: string, startTime: string, endTime: string | null, makerAddress: string, signature: string | null } };
+
+export type CancelOrderMutationVariables = Exact<{
+  orderHash: string;
+}>;
+
+
+export type CancelOrderMutation = { cancelMarketplaceOrder: { marketplaceId: string, side: MarketplaceOrderSide, status: MarketplaceOrderStatus, price: string, usdPrice: string | null, symbol: EthereumCurrency, decimals: number, supply: string, startTime: string, endTime: string | null, makerAddress: string, signature: string | null } };
+
+export type SendMessageMutationVariables = Exact<{
+  input: SendMessageInput;
+}>;
+
+
+export type SendMessageMutation = { sendMessage: boolean };
 
 export type GetTokenPaymentsQueryVariables = Exact<{
   tokenId?: string | null | undefined;
