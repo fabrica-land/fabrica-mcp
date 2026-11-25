@@ -71,7 +71,7 @@ Set `FABRICA_NETWORK=sepolia` in the server's environment for the testnet.
 | Tool | Description |
 |---|---|
 | `search_land` | Search properties by state, county, size, Property checks, listing status, listing price and price per acre, or distance from a point; sort by price, price per acre, acres, estimated value, Property checks, date added or distance. Each row carries its lifecycle stage and price per acre; or counts per state or county, with links to the fabrica.land location pages |
-| `get_land_property` | Full property details: legal, valuation, ownership, loans, media, lifecycle stage, assessed fees, duplicate-parcel flags |
+| `get_land_property` | Full property details: legal, valuation, county assessor record (zoning, land use, assessed values, last sale, opportunity zone), ownership, loans, media, lifecycle stage, assessed fees, duplicate-parcel flags |
 | `get_fabrica_lending_market` | Lending overview: loan counts, loans, DeFi lending pool stats, average APR, events |
 | `get_fabrica_loan_book` | The lending history as a distribution: loan-to-value bands, exposure by state and acreage, APR and duration spread, repaid and liquidated counts, originations by month, largest loans |
 | `get_land_portfolio` | Wallet holdings, credit history, loan positions |

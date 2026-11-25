@@ -344,6 +344,15 @@ const TOKEN_DETAIL_FIELDS = gql`
     marketplaceBids { marketplaceId side status price usdPrice symbol supply makerAddress startTime endTime }
     activity { activity source time timestamp network tokenId transactionHash currencyAmount currencyDecimals currencySymbol usdAmount newValue }
     transfers { from { address } to { address } value transactionHash blockTimestamp }
+    parcelFacts {
+      assessor {
+        status source fetchedAt
+        zoning zoningDescription landUse landUseCode
+        assessedLand assessedImprovements assessedTotal assessmentType assessmentYear
+        lastSaleDate lastSalePrice opportunityZone censusTract
+        structure { present count yearBuilt }
+      }
+    }
   }
 `;
 

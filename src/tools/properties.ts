@@ -1,4 +1,5 @@
 import { getTokens, getToken, getCountyBounds, getPremintSuccessor, isTokenNotFound, DEFAULT_MIN_SCORE, filterSpamTokens, propertyLookupError } from "../clients/graphql.js";
+import { countyRecordOf } from "./county-record.js";
 import type { AccountAuth } from "../auth/token.js";
 import { readAsViewer } from "./personal-view.js";
 import { ownAddingStatus } from "./onramps.js";
@@ -484,6 +485,7 @@ export async function getProperty(args: GetPropertyArgs, as?: AccountAuth) {
         coordinates: token.coordinates ? { lat: token.coordinates.lat, lon: token.coordinates.lon } : null,
       },
       acres: token.acres ? parseFloat(token.acres) : null,
+      countyRecord: countyRecordOf(token.parcelFacts?.assessor),
       propertyChecks: {
         ...countChecks(checkResults),
         encoding: token.score,

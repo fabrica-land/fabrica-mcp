@@ -125,6 +125,7 @@ export function tokenDetail(overrides: Partial<TokenDetail> = {}): TokenDetail {
     marketplaceBids: [],
     activity: [],
     transfers: [],
+    parcelFacts: null,
     ...overrides,
   };
 }
