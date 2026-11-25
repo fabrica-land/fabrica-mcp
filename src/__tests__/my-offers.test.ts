@@ -25,7 +25,7 @@ function order(overrides: Partial<OrderBookOrder>): OrderBookOrder {
   return {
     marketplaceId: "0xorder", side: "buy", status: "active", price: "10000000000", usdPrice: "10000.00", symbol: "USDC", decimals: 6, feeBps: "100", supply: "1",
     startTime: "2026-10-01T00:00:00Z", endTime: "2026-11-16T00:00:00Z", makerAddress: BUYER, maker: { user: { displayName: "" } },
-    restrictedToAddresses: null, disclosurePackage: null, encumbrance: null, ...overrides,
+    restrictedToAddresses: null, disclosurePackage: null, encumbrance: null, signature: null, ...overrides,
   };
 }
 

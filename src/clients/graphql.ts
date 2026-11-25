@@ -11,6 +11,9 @@ import type {
   GetParcelIndexQuery,
   GetPremintSuccessorQuery,
   GetSignContextQuery,
+  ListUnsignedMutation,
+  CancelOrderMutation,
+  SendMessageMutation,
   GetTokenPaymentsQuery,
   GetLoanContextQuery,
   GetPropertyLinkQuery,
@@ -516,7 +519,7 @@ export async function getOperatingAgreement(tokenId: string): Promise<OperatingA
 
 const ORDER_BOOK_ORDER_FIELDS = gql`
   fragment OrderBookOrderFields on MarketplaceOrderModel {
-    marketplaceId side status price usdPrice symbol decimals feeBps supply
+    marketplaceId side status price usdPrice symbol decimals feeBps supply signature
     startTime endTime makerAddress maker { user { displayName } }
     restrictedToAddresses
     disclosurePackage { name url }
@@ -556,6 +559,7 @@ const GET_SIGN_CONTEXT_QUERY = gql`
       tokenId name vanityName propertyLink contractAddress network
       isPremint claimState supersededByTokenId offRampStatus isBurned
       supply supplyUnderLoan estimatedValue majorityOwnerAddress
+      majorityOwner { address displayName contactable }
       operatingAgreementName configurationUrl
       configuration { userDescription media { source } }
       balances { balance holder { address } owner { address } }
@@ -578,6 +582,77 @@ export async function getSignContext(
     network: NETWORK,
   });
   return data.token;
+}
+
+// --- Writes as the connected person: an unconfirmed listing, its cancellation, a message to an owner ---
+
+const LISTED_ORDER_FIELDS = gql`
+  fragment ListedOrderFields on MarketplaceOrderModel {
+    marketplaceId side status price usdPrice symbol decimals supply startTime endTime makerAddress signature
+  }
+`;
+
+const LIST_UNSIGNED_MUTATION = gql`
+  ${LISTED_ORDER_FIELDS}
+  mutation ListUnsigned($network: String!, $tokenId: String!, $priceUsd: String!) {
+    listPremintUnsigned(network: $network, tokenId: $tokenId, priceUsd: $priceUsd) { ...ListedOrderFields }
+  }
+`;
+
+const CANCEL_ORDER_MUTATION = gql`
+  ${LISTED_ORDER_FIELDS}
+  mutation CancelOrder($orderHash: String!) {
+    cancelMarketplaceOrder(orderHash: $orderHash) { ...ListedOrderFields }
+  }
+`;
+
+const SEND_MESSAGE_MUTATION = gql`
+  mutation SendMessage($input: SendMessageInput!) {
+    sendMessage(input: $input)
+  }
+`;
+
+export type ListedOrder = ListUnsignedMutation["listPremintUnsigned"];
+
+/**
+ * List a property the person is still adding to Fabrica at a dollar price, as the connected person
+ * (listing:write). The API builds the listing (USDC, one unit, open ten years) with the person's
+ * wallet that holds the property as maker and no signature: the owner confirms it on the property
+ * page later, and buyers can send offers meanwhile. priceUsd: up to ten digits and two decimals.
+ */
+export async function listUnsigned(auth: AccountAuth, params: { tokenId: string; priceUsd: string }): Promise<ListedOrder> {
+  const data = await requestAs<ListUnsignedMutation>(auth, LIST_UNSIGNED_MUTATION, { network: NETWORK, tokenId: params.tokenId, priceUsd: params.priceUsd });
+  return data.listPremintUnsigned;
+}
+
+/** Take the person's own order off the marketplace in the API (listing:write): for an order with no signature, this is all there is to cancel. */
+export async function cancelOrderAs(auth: AccountAuth, orderHash: string): Promise<ListedOrder> {
+  const data = await requestAs<CancelOrderMutation>(auth, CANCEL_ORDER_MUTATION, { orderHash });
+  return data.cancelMarketplaceOrder;
+}
+
+export interface OwnerMessage {
+  /** The person's own wallet the message is sent from; the API checks it is theirs and has an email. */
+  sender: string;
+  /** The owner's wallet. */
+  recipient: string;
+  message: string;
+  /** The property the message is about, when there is one. */
+  property?: { contractAddress: string; tokenId: string };
+}
+
+/** Email the person's message to another Fabrica user, as the connected person (message:write). The API sends it from the person's email address, so the owner can reply directly. */
+export async function sendMessageAs(auth: AccountAuth, message: OwnerMessage): Promise<boolean> {
+  const data = await requestAs<SendMessageMutation>(auth, SEND_MESSAGE_MUTATION, {
+    input: {
+      sender: message.sender,
+      recipient: message.recipient,
+      message: message.message,
+      network: NETWORK,
+      ...(message.property ? { contractAddress: message.property.contractAddress, tokenId: message.property.tokenId } : {}),
+    },
+  });
+  return data.sendMessage;
 }
 
 // --- Card, bank and wire payments on a property: a purchase or a loan payoff paid in dollars ---
@@ -1180,6 +1255,9 @@ export const API_DOCUMENTS: ReadonlyArray<{ name: string; document: string }> = 
   { name: "GetOrderBook", document: GET_ORDER_BOOK_QUERY },
   { name: "GetPremintSuccessor", document: GET_PREMINT_SUCCESSOR_QUERY },
   { name: "GetSignContext", document: GET_SIGN_CONTEXT_QUERY },
+  { name: "ListUnsigned", document: LIST_UNSIGNED_MUTATION },
+  { name: "CancelOrder", document: CANCEL_ORDER_MUTATION },
+  { name: "SendMessage", document: SEND_MESSAGE_MUTATION },
   { name: "GetTokenPayments", document: GET_TOKEN_PAYMENTS_QUERY },
   { name: "GetLoanContext", document: GET_LOAN_CONTEXT_QUERY },
   { name: "GetParcelIndex", document: GET_PARCEL_INDEX_QUERY },

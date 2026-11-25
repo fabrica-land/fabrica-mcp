@@ -59,16 +59,16 @@ describe("adding a property from the server", () => {
     const website = connect.tools.find((t) => t.name === "find_listings_on_website");
     expect(website?.annotations?.readOnlyHint).toBe(true);
     expect(`${website?.title} ${website?.description}`).not.toMatch(jargon);
-    expect(oauthScopes()).toEqual(["profile:read", "portfolio:read", "onramp:read", "onramp:write", "premint:write"]);
+    expect(oauthScopes()).toEqual(["profile:read", "portfolio:read", "onramp:read", "onramp:write", "premint:write", "listing:write", "message:write"]);
     expect(accountToolNames()).toContain("answer_adding_questions");
     expect(needsAccount(JSON.parse(CALL("answer_adding_questions", { tokenId: "1" })))).toBe(true);
     expect(needsAccount(JSON.parse(CALL("add_land", { address: "1 Main St" })))).toBe(false);
     expect(needsAccount(JSON.parse(CALL("add_land", { listingUrl: "https://x.example/1" })))).toBe(true);
     const challenge = await fetch(`${base}/mcp`, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream" }, body: CALL("answer_adding_questions", { tokenId: "1" }) });
     expect(challenge.status).toBe(401);
-    expect(challenge.headers.get("www-authenticate")).toMatch(/scope="profile:read portfolio:read onramp:read onramp:write premint:write"$/);
+    expect(challenge.headers.get("www-authenticate")).toMatch(/scope="profile:read portfolio:read onramp:read onramp:write premint:write listing:write message:write"$/);
     const metadata = await (await fetch(`${base}/.well-known/oauth-protected-resource/mcp`)).json() as { scopes_supported: string[] };
-    expect(metadata.scopes_supported).toEqual(["profile:read", "portfolio:read", "onramp:read", "onramp:write", "premint:write"]);
+    expect(metadata.scopes_supported).toEqual(["profile:read", "portfolio:read", "onramp:read", "onramp:write", "premint:write", "listing:write", "message:write"]);
   });
 
   it("answers sign_in_required from answer_adding_questions on a transport with no HTTP gate", async () => {

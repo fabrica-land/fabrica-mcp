@@ -214,7 +214,7 @@ function postRaw(url: string, body: string, headers: Record<string, string> = {}
 }
 
 describe("lazy sign-in on /mcp with Connect Fabrica on", () => {
-  const CHALLENGE = 'Bearer resource_metadata="https://mcp.fabrica.land/.well-known/oauth-protected-resource/mcp", scope="profile:read portfolio:read onramp:read onramp:write premint:write"';
+  const CHALLENGE = 'Bearer resource_metadata="https://mcp.fabrica.land/.well-known/oauth-protected-resource/mcp", scope="profile:read portfolio:read onramp:read onramp:write premint:write listing:write message:write"';
 
   it("lets a client connect and list every tool, personal ones included, without a token", async () => {
     enable();
@@ -265,7 +265,7 @@ describe("lazy sign-in on /mcp with Connect Fabrica on", () => {
       for (const body of [CALL("answer_adding_questions", { tokenId: "1" }), CALL("add_land", { address: "1 Main St" }), JSON.stringify([JSON.parse(CALL("get_fabrica_stats")), JSON.parse(CALL("add_land", { listingUrl: "https://x.example/1" }))])]) {
         const response = await postRaw(`${base}/mcp`, body, readOnly);
         expect(response.status, body).toBe(403);
-        expect(response.headers.get("www-authenticate")).toBe(`Bearer error="insufficient_scope", error_description="This call needs the onramp:write grant.", resource_metadata="https://mcp.fabrica.land/.well-known/oauth-protected-resource/mcp", scope="profile:read portfolio:read onramp:read onramp:write premint:write"`);
+        expect(response.headers.get("www-authenticate")).toBe(`Bearer error="insufficient_scope", error_description="This call needs the onramp:write grant.", resource_metadata="https://mcp.fabrica.land/.well-known/oauth-protected-resource/mcp", scope="profile:read portfolio:read onramp:read onramp:write premint:write listing:write message:write"`);
         expect(response.headers.get("cache-control")).toBe("no-store");
         const json = await response.json();
         expect(json.error.message).toContain("onramp:write");
@@ -290,7 +290,7 @@ describe("lazy sign-in on /mcp with Connect Fabrica on", () => {
     await withServer(async (base) => {
       const response = await post(`${base}/mcp`, { Authorization: `Bearer ${await token({ aud: "https://mcp-testnet.fabrica.land/mcp" })}` });
       expect(response.status).toBe(401);
-      expect(response.headers.get("www-authenticate")).toMatch(/^Bearer error="invalid_token", error_description="[^"]+", resource_metadata="https:\/\/mcp\.fabrica\.land\/\.well-known\/oauth-protected-resource\/mcp", scope="profile:read portfolio:read onramp:read onramp:write premint:write"$/);
+      expect(response.headers.get("www-authenticate")).toMatch(/^Bearer error="invalid_token", error_description="[^"]+", resource_metadata="https:\/\/mcp\.fabrica\.land\/\.well-known\/oauth-protected-resource\/mcp", scope="profile:read portfolio:read onramp:read onramp:write premint:write listing:write message:write"$/);
     });
   });
 
@@ -326,7 +326,7 @@ describe("lazy sign-in on /mcp with Connect Fabrica on", () => {
         expect(await response.json(), path).toEqual({
           resource: RESOURCE,
           authorization_servers: [mockBase],
-          scopes_supported: ["profile:read", "portfolio:read", "onramp:read", "onramp:write", "premint:write"],
+          scopes_supported: ["profile:read", "portfolio:read", "onramp:read", "onramp:write", "premint:write", "listing:write", "message:write"],
           bearer_methods_supported: ["header"],
           resource_name: "Fabrica",
           resource_documentation: "https://docs.fabrica.land/docs/ai-agents",

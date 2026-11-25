@@ -137,6 +137,8 @@ export function needsAccount(body: unknown): boolean {
 const WRITE_TOOL_SCOPES: ReadonlyMap<string, readonly OAuthScope[]> = new Map([
   ["add_land", ["onramp:write"]],
   ["answer_adding_questions", ["onramp:write"]],
+  ["cancel_adding_land", ["onramp:write"]],
+  ["contact_land_owner", ["message:write"]],
 ]);
 
 /** The scopes a message or batch needs that the token does not carry, in the server's scope order. */

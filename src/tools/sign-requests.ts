@@ -3,7 +3,7 @@
 // dialog on fabrica.land, prefilled. The person signs there with their own wallet. The server
 // holds no key, signs nothing and submits nothing: it prepares, the person decides.
 import { z } from "zod";
-import { getLoanContext, getSignContext, isTokenNotFound } from "../clients/graphql.js";
+import { cancelOrderAs, FabricaApiError, getLoanContext, getSignContext, isTokenNotFound, listUnsigned, type ListedOrder } from "../clients/graphql.js";
 import { CHAIN_ID, getBlockTimestamp, getTransaction, getTransactionReceipt } from "../clients/rpc.js";
 import { IS_MAINNET, MAINNET_WARNING, NETWORK, NETWORK_LABEL, WEB_BASE } from "../config.js";
 import type { LoanContextLoan, LoanContextToken, SignContextOrder, SignContextToken } from "../types/index.js";
@@ -299,7 +299,13 @@ export const listForSaleInput = {
 };
 export type ListForSaleArgs = ArgsOf<typeof listForSaleInput>;
 
-export async function prepareListing({ tokenId, slug, priceUsd, expiresDays, wallet: signer }: WithSigner<ListForSaleArgs>): Promise<Prepared | Blocked> {
+/** The consent line for listing:write on the Fabrica sign-in page, named when a connection lacks it. */
+export const LISTING_GRANT = "Prepare listings for you to review and confirm, and take your listings and offers off the market";
+
+type ListingChecked = { token: SignContextToken; wallet: string; warnings: SignRequestWarning[] };
+
+/** The checks every listing goes through, sign page or not: the property, the wallet that holds it, the price against the estimate and the order book. */
+async function checkListing({ tokenId, slug, priceUsd, wallet: signer }: WithSigner<ListForSaleArgs>): Promise<ListingChecked | Blocked> {
   const found = await lookup(tokenId, slug, { whileAdding: listWhileAddingEnabled() });
   if ("error" in found) return found;
   const { token } = found;
@@ -308,7 +314,6 @@ export async function prepareListing({ tokenId, slug, priceUsd, expiresDays, wal
   const { wallet } = picked;
   if (!holds(token, wallet)) return { error: `Wallet ${shorten(wallet)} does not hold ${label(token)}; only its owner can list it for sale.` };
   const now = Date.now();
-  const days = expiresDays ?? LISTING_DAYS;
   const warnings: SignRequestWarning[] = [...picked.chosen, ...priceWarning(priceUsd, token, "price")];
   const own = liveOrders(token.marketplaceListings, now).filter(order => same(order.makerAddress, wallet));
   for (const order of own) warnings.push({ level: "warning", message: `This wallet already lists it for ${orderPrice(order)} (order ${order.marketplaceId}); cancel_land_order removes that listing.` });
@@ -317,7 +322,13 @@ export async function prepareListing({ tokenId, slug, priceUsd, expiresDays, wal
     .sort((a, b) => Number.parseFloat(b.usdPrice ?? "") - Number.parseFloat(a.usdPrice ?? ""))[0];
   if (best) warnings.push({ level: "info", message: `There is an offer of ${orderPrice(best)}, at or above this price: accept_land_offer (order ${best.marketplaceId}) takes it.` });
   if (underLoan(token)) warnings.push({ level: "warning", message: "The property is collateral for an active loan: the sale pays the loan off first, so the price has to cover the payoff, and the listing can only be bought once the payoff is approved." });
-  if (token.isPremint) warnings.push({ level: "info", message: "This property is still being added to Fabrica: the listing goes on the marketplace now and buyers can send offers, but nobody can buy at this price, and no offer can be accepted, until its token is issued. get_adding_status says what is left to do." });
+  return { token, wallet, warnings };
+}
+
+/** The sign-page listing: the person signs the order on fabrica.land. */
+function buildListing({ token, wallet, warnings }: ListingChecked, { priceUsd, expiresDays }: Pick<ListForSaleArgs, "priceUsd" | "expiresDays">): Prepared {
+  const days = expiresDays ?? LISTING_DAYS;
+  if (token.isPremint) warnings = [...warnings, { level: "info", message: "This property is still being added to Fabrica: the listing goes on the marketplace now and buyers can send offers, but nobody can buy at this price, and no offer can be accepted, until its token is issued. get_adding_status says what is left to do." }];
   return {
     action: "list_land_for_sale",
     kind: "typedData",
@@ -338,6 +349,79 @@ export async function prepareListing({ tokenId, slug, priceUsd, expiresDays, wal
   };
 }
 
+export async function prepareListing(args: WithSigner<ListForSaleArgs>): Promise<Prepared | Blocked> {
+  const checked = await checkListing(args);
+  return "error" in checked ? checked : buildListing(checked, args);
+}
+
+/** A dollar amount as the API takes it: whole dollars, or cents. */
+function apiPrice(priceUsd: number): string {
+  return Number.isInteger(priceUsd) ? String(priceUsd) : priceUsd.toFixed(2);
+}
+
+/** What a listing made or taken down in the API looks like in a tool answer. */
+export function listedOrder(order: ListedOrder) {
+  return {
+    orderHash: order.marketplaceId,
+    status: order.status,
+    priceUsd: order.usdPrice,
+    price: formatTokenAmount(order.price, order.decimals, order.symbol),
+    wallet: order.makerAddress,
+    endTime: order.endTime,
+    confirmed: order.signature !== null,
+  };
+}
+
+/** The API's refusal, in the tool's answer; anything else is a server failure and is thrown. */
+function refused(error: unknown, what: string): Blocked {
+  if (error instanceof FabricaApiError) return { error: `Fabrica did not ${what}: ${error.graphQLErrors.join("; ")}` };
+  throw error;
+}
+
+/**
+ * A property still being added, listed in the API as the connected person: no signing now. The API
+ * makes the listing with the person's wallet that holds the property as maker and no signature; the
+ * owner confirms it on the property page later, and buyers can send offers meanwhile.
+ */
+async function listNow({ token, wallet, warnings }: ListingChecked, { priceUsd, expiresDays }: Pick<ListForSaleArgs, "priceUsd" | "expiresDays">, account: AccountAuth) {
+  let order: ListedOrder;
+  try {
+    order = await listUnsigned(account, { tokenId: token.tokenId, priceUsd: apiPrice(priceUsd) });
+  } catch (error) {
+    return refused(error, "list it");
+  }
+  const notes = [...warnings];
+  if (expiresDays !== undefined) notes.push({ level: "info", message: "expiresDays does not apply to a listing made this way: it stays open until the owner confirms it, takes it down, or ten years pass." });
+  if (!same(order.makerAddress, wallet)) notes.push({ level: "info", message: `The listing is under wallet ${order.makerAddress}, the account's wallet that holds the property.` });
+  return {
+    ...(MAINNET_WARNING ? { legalNotice: MAINNET_WARNING } : {}),
+    network: NETWORK_LABEL,
+    status: `Listed. ${label(token)} is on the marketplace at ${usd(priceUsd)}, under the owner's name, with nothing signed yet.`,
+    listing: listedOrder(order),
+    property: propertyOf(token),
+    warnings: notes,
+    nextSteps: [
+      `Buyers can send offers now (get_my_offers lists them), but nobody can buy at this price, and no offer can be accepted, until the property is set up and the owner confirms the listing on its property page${token.propertyLink ? ` (${token.propertyLink})` : ""}, signed in with wallet ${order.makerAddress}. get_adding_status says what is left to do.`,
+      `cancel_land_order with orderHash ${order.marketplaceId} takes the listing down; until it is confirmed, that needs no signing either.`,
+    ],
+  };
+}
+
+/**
+ * list_land_for_sale. A live property is always listed through the sign page. A property still being
+ * added is listed in the API when the person is signed in with the listing grant, and through the
+ * sign page otherwise, with a note saying what the grant would change.
+ */
+export async function listForSale(args: WithSigner<ListForSaleArgs>, account?: AccountAuth) {
+  const checked = await checkListing(args);
+  if ("error" in checked) return checked;
+  if (checked.token.isPremint) {
+    if (account && hasScope(account, "listing:write")) return listNow(checked, args, account);
+    if (account) checked.warnings.push({ level: "info", message: `This connection was not granted "${LISTING_GRANT}", so the listing goes through the sign page. Reconnect Fabrica and approve it, and list_land_for_sale puts a property being added on the marketplace directly, with nothing to sign until the owner confirms the listing.` });
+  }
+  return issue(buildListing(checked, args));
+}
+
 // --- accept_land_offer, buy_land, cancel_land_order ---
 
 export const orderActionInput = {
@@ -347,8 +431,8 @@ export const orderActionInput = {
 };
 export type OrderActionArgs = ArgsOf<typeof orderActionInput>;
 
-async function loadOrder({ tokenId, slug, orderHash }: WithSigner<OrderActionArgs>): Promise<{ token: SignContextToken; order: SignContextOrder } | { error: string }> {
-  const found = await lookup(tokenId, slug);
+async function loadOrder({ tokenId, slug, orderHash }: WithSigner<OrderActionArgs>, options: { whileAdding?: boolean } = {}): Promise<{ token: SignContextToken; order: SignContextOrder } | { error: string }> {
+  const found = await lookup(tokenId, slug, options);
   if ("error" in found) return found;
   const order = findOrder(found.token, orderHash);
   if (!order) return { error: `No order ${orderHash} on ${label(found.token)}. get_land_order_book lists its orders and their orderId.` };
@@ -428,8 +512,12 @@ export async function prepareBuy(args: WithSigner<OrderActionArgs>): Promise<Pre
   };
 }
 
-export async function prepareCancel(args: WithSigner<OrderActionArgs>): Promise<Prepared | Blocked> {
-  const loaded = await loadOrder(args);
+type CancelChecked = { token: SignContextToken; order: SignContextOrder; wallet: string; chosen: SignRequestWarning[] };
+
+/** The checks every cancellation goes through: the order is open, and the wallet made it. */
+async function checkCancel(args: WithSigner<OrderActionArgs>): Promise<CancelChecked | Blocked> {
+  // A listing on a property still being added can be canceled; buying it or accepting on it cannot.
+  const loaded = await loadOrder(args, { whileAdding: true });
   if ("error" in loaded) return loaded;
   const { token, order } = loaded;
   if (!isLiveOrder(order, Date.now()) || order.status === "pending") return { error: `Order ${args.orderHash} is no longer open (${order.status}${hasEnded(order.endTime, Date.now()) ? ", past its end time" : ""}), so there is nothing to cancel.` };
@@ -437,6 +525,10 @@ export async function prepareCancel(args: WithSigner<OrderActionArgs>): Promise<
   if ("error" in picked) return picked;
   const { wallet } = picked;
   if (!same(order.makerAddress, wallet)) return { error: `Order ${args.orderHash} was made by ${shorten(order.makerAddress)}; only its maker can cancel it.` };
+  return { token, order, wallet, chosen: picked.chosen };
+}
+
+function buildCancel({ token, order, wallet, chosen }: CancelChecked): Prepared {
   const what = order.side === "sell" ? "listing" : "offer";
   return {
     action: "cancel_land_order",
@@ -448,16 +540,52 @@ export async function prepareCancel(args: WithSigner<OrderActionArgs>): Promise<
       `Cancel the ${what} of ${orderPrice(order)} on ${label(token)}.`,
       `Confirming on the sign page (signed in with this wallet) takes the ${what} off the marketplace. No transaction and no network fee.`,
     ],
-    warnings: picked.chosen,
+    warnings: chosen,
     link: id => signLink(token.tokenId, { action: "cancel", order: order.marketplaceId }, id),
   };
 }
 
+export async function prepareCancel(args: WithSigner<OrderActionArgs>): Promise<Prepared | Blocked> {
+  const checked = await checkCancel(args);
+  return "error" in checked ? checked : buildCancel(checked);
+}
+
+/** A listing the owner has not confirmed yet (no signature): it exists only in the API, so the API takes it down. */
+export function isUnconfirmed(order: Pick<SignContextOrder, "signature">): boolean {
+  return order.signature === null || order.signature === undefined;
+}
+
+/**
+ * cancel_land_order. A listing or offer the person signed is canceled through the sign page. A
+ * listing the owner has not confirmed yet is taken down in the API as the connected person
+ * (listing:write); without that grant the answer says so, since the sign page cannot take it down.
+ */
+export async function cancelOrder(args: WithSigner<OrderActionArgs>, account?: AccountAuth) {
+  const checked = await checkCancel(args);
+  if ("error" in checked) return checked;
+  if (!isUnconfirmed(checked.order)) return issue(buildCancel(checked));
+  const { token, order, chosen } = checked;
+  if (!account) return { error: `This listing has not been confirmed by its owner yet, so it is taken down in the owner's account, not on the sign page: sign in to Fabrica in this client with "${LISTING_GRANT}" granted and call cancel_land_order again, or take it down on the property page.`, propertyLink: token.propertyLink };
+  if (!hasScope(account, "listing:write")) return { error: `This listing has not been confirmed by its owner yet, so it is taken down in the owner's account, not on the sign page. This connection was not granted "${LISTING_GRANT}": reconnect Fabrica and approve it, then call cancel_land_order again, or take it down on the property page.`, propertyLink: token.propertyLink };
+  let canceled: ListedOrder;
+  try {
+    canceled = await cancelOrderAs(account, order.marketplaceId);
+  } catch (error) {
+    return refused(error, "take the listing down");
+  }
+  return {
+    network: NETWORK_LABEL,
+    status: `Taken down. The listing of ${orderPrice(order)} on ${label(token)} is off the marketplace. Nothing was signed and no transaction was sent.`,
+    listing: listedOrder(canceled),
+    property: propertyOf(token),
+    warnings: chosen,
+    nextSteps: ["get_land_order_book shows the property's listings and offers; list_land_for_sale lists it again."],
+  };
+}
+
 export const makeOffer = async (args: WithSigner<MakeOfferArgs>) => issue(await prepareOffer(args));
-export const listForSale = async (args: WithSigner<ListForSaleArgs>) => issue(await prepareListing(args));
 export const acceptOffer = async (args: WithSigner<OrderActionArgs>) => issue(await prepareAccept(args));
 export const buy = async (args: WithSigner<OrderActionArgs>) => issue(await prepareBuy(args));
-export const cancelOrder = async (args: WithSigner<OrderActionArgs>) => issue(await prepareCancel(args));
 
 // --- results: what the sign page reports, and what the order book shows ---
 

@@ -28,7 +28,7 @@ import type { ArgsOf } from "./inputs.js";
 export const MAX_START_PHOTOS = 20;
 export const MAX_START_DESCRIPTION_CHARS = 5_000;
 
-const WRITE_GRANT_NOTE = "This connection was not granted \"Start adding a property to your account\". Reconnect Fabrica and approve it, and this tool starts the property here.";
+const WRITE_GRANT_NOTE = "This connection was not granted \"Start, change, or cancel adding a property to your account\". Reconnect Fabrica and approve it, and this tool starts the property here.";
 const SIGN_IN_NOTE = "Not signed in: the link opens the page to add this parcel on fabrica.land. Signed in to Fabrica (with the add-property grant), this tool starts it here instead and asks the county's questions.";
 const LISTING_SIGN_IN_NOTE = "Reading a listing here needs the person signed in to Fabrica: connect Fabrica in this client and call add_land again, or open the link and paste the listing there. A parcel number or an address needs no sign-in.";
 const UNSUPPORTED_NOTE = "Property in this county cannot be added to Fabrica online yet. The link opens the page that says what is possible there.";

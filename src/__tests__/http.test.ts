@@ -125,7 +125,8 @@ describe("hosted HTTP transport", () => {
       for (const tool of tools) {
         expect(tool.title, tool.name).toBeTruthy();
         expect(tool.annotations?.readOnlyHint, tool.name).toBe(!prepareTools.includes(tool.name));
-        expect(tool.annotations?.destructiveHint, tool.name).toBe(tool.name === "answer_adding_questions");
+        // cancel_land_order takes an unconfirmed listing down at once when signed in with the grant; the other prepare tools change nothing in the API.
+        expect(tool.annotations?.destructiveHint, tool.name).toBe(tool.name === "answer_adding_questions" || tool.name === "cancel_land_order");
         expect(tool.description ?? "", tool.name).not.toMatch(/\bMUST\b|—/);
       }
       expect(tools.map((tool) => tool.name)).toEqual(expect.arrayContaining([...prepareTools, "get_sign_request", "get_transaction_status"]));

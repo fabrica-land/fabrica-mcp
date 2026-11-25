@@ -13,6 +13,8 @@ import { getActivity, getActivityInput } from "./tools/activity.js";
 import { getOrderBook, getOrderBookInput } from "./tools/marketplace.js";
 import { getPropertyImage, getPortfolioImage, getPropertyImageInput, getPortfolioImageInput, type GetPortfolioImageArgs } from "./tools/images.js";
 import { ownSignerArg, ownWalletArg, signerFor, walletIfMe, walletOrOwn } from "./tools/own-wallet.js";
+import { ADDING_GRANT, cancelAdding, cancelAddingInput } from "./tools/cancel-adding.js";
+import { contactOwner, contactOwnerInput, MAX_MESSAGE_LENGTH, MESSAGE_GRANT } from "./tools/contact-owner.js";
 import { getTrustDocuments, getTrustDocumentsInput } from "./tools/documents.js";
 import { getTaxStatus, getTaxStatusInput } from "./tools/tax.js";
 import { askFabrica, askFabricaInput } from "./tools/knowledge.js";
@@ -28,6 +30,7 @@ import {
   getSignRequestInput,
   listForSale,
   listForSaleInput,
+  LISTING_GRANT,
   listWhileAddingEnabled,
   makeOffer,
   makeOfferInput,
@@ -69,10 +72,10 @@ export const POOL_SIGN_REQUEST_INSTRUCTIONS = " deposit_to_lending_pool and with
 export const ACCOUNT_TOOL_NAMES = ["get_my_account", "get_my_properties", "get_my_offers", "get_my_loans", "what_needs_attention", "get_my_properties_being_added", "get_adding_status"] as const;
 /** The tools that only answer for the connected person: the personal reads, plus answer_adding_questions and find_listings_on_website. */
 export function accountToolNames(): readonly string[] {
-  return [...ACCOUNT_TOOL_NAMES, "answer_adding_questions", "find_listings_on_website", "find_land_by_owner"];
+  return [...ACCOUNT_TOOL_NAMES, "answer_adding_questions", "find_listings_on_website", "find_land_by_owner", "cancel_adding_land", "contact_land_owner"];
 }
 
-export const ADD_LAND_INSTRUCTIONS = " add_land starts adding a property to Fabrica from a listing link on another website (find_listings_on_website lists every listing page on a seller's own website), a parcel number with its state and county (find_land_by_owner lists the parcels a county records under an owner's name, for the signed-in person), or a street address: it finds the parcel, and signed in with the add-property grant it creates the property's record as the connected person (with the listing's description and photos) and returns the questions the county asks for it; answer_adding_questions saves the owner named on the deed and the answers, and returns what is still open. The questions come from Fabrica's rules for that county and kind of owner, read from the record each time, so they are asked as returned, never assumed. Not signed in, add_land returns the link that opens the parcel on fabrica.land.";
+export const ADD_LAND_INSTRUCTIONS = " add_land starts adding a property to Fabrica from a listing link on another website (find_listings_on_website lists every listing page on a seller's own website), a parcel number with its state and county (find_land_by_owner lists the parcels a county records under an owner's name, for the signed-in person), or a street address: it finds the parcel, and signed in with the add-property grant it creates the property's record as the connected person (with the listing's description and photos) and returns the questions the county asks for it; answer_adding_questions saves the owner named on the deed and the answers, and returns what is still open. The questions come from Fabrica's rules for that county and kind of owner, read from the record each time, so they are asked as returned, never assumed. Not signed in, add_land returns the link that opens the parcel on fabrica.land. cancel_adding_land stops adding a property, as the connected person, after taking its unconfirmed listings off the marketplace. contact_land_owner emails the connected person's message to a property's owner through Fabrica, from the person's own email address, so the owner can reply directly. Signed in with the listing grant, list_land_for_sale puts a property still being added on the marketplace directly, with nothing to sign until its owner confirms the listing, and cancel_land_order takes such an unconfirmed listing down directly.";
 
 /** Added to the instructions while Connect Fabrica is on and the person has not signed in: the personal tools are listed, and calling one starts the sign-in. */
 export const SIGN_IN_INSTRUCTIONS = " The person has not connected their Fabrica account to this client yet, so every tool reads public data only and knows nothing about them. The personal tools (get_my_account, get_my_properties, get_my_offers, get_my_loans, get_my_properties_being_added, get_adding_status, what_needs_attention) read the connected person's own holdings, offers, loans and the properties they are adding. A call to one of them, or to get_land_portfolio, get_land_portfolio_map_image, get_land_activity or search_land (ownedBy) with 'me' as the wallet, is answered with a sign-in request: the client has the person sign in to Fabrica and approve read-only access, and the same call then runs. The server holds no wallet address for a person who has not signed in; the person's own wallet is known only through a personal tool or an address they give.";
@@ -137,6 +140,11 @@ function readOnly(title: string): ToolAnnotations {
 /** Prepares a sign request: writes a short-lived record to the server's own store, changes nothing onchain or in the API. */
 function prepares(title: string): ToolAnnotations {
   return { title, readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true };
+}
+
+/** Prepares a sign request, or, signed in with the grant, acts in the API as the connected person at once (list_land_for_sale, cancel_land_order). */
+function preparesOrActs(title: string, destructive: boolean): ToolAnnotations {
+  return { ...prepares(title), destructiveHint: destructive };
 }
 
 /** JSON tool result; results that carry an `error` are flagged so clients can tell failure from data. */
@@ -501,11 +509,11 @@ function registerSignRequestTools(server: McpServer, account?: AccountAuth): voi
     "list_land_for_sale",
     {
       title: "Prepare a listing",
-      description: `Prepare a listing of a property the wallet holds on Fabrica (${NETWORK_LABEL}) at a USD price paid in USDC, open for expiresDays (default 180). Checks first that the wallet holds the token, and warns when the price is far from Fabrica's estimate, when the wallet already lists it, when an offer is at or above the price, or when the property is collateral for a loan.${listWhileAddingEnabled() ? " A property its owner is still adding to Fabrica can be listed too: buyers can send offers at once, and the listing becomes buyable once its token is issued." : ""} ${SIGN_LINK_NOTE}${note}`,
+      description: `Prepare a listing of a property the wallet holds on Fabrica (${NETWORK_LABEL}) at a USD price paid in USDC, open for expiresDays (default 180). Checks first that the wallet holds the token, and warns when the price is far from Fabrica's estimate, when the wallet already lists it, when an offer is at or above the price, or when the property is collateral for a loan.${listWhileAddingEnabled() ? ` A property its owner is still adding to Fabrica can be listed too: buyers can send offers at once, and the listing becomes buyable once its token is issued. Signed in with the listing grant ("${LISTING_GRANT}"), such a property is listed directly in the owner's account instead, with nothing to sign: the answer carries the listing and its orderHash, the owner confirms it on the property page later, and expiresDays does not apply.` : ""} Otherwise, through the sign page: ${SIGN_LINK_NOTE}${note}`,
       inputSchema: input(listForSaleInput),
-      annotations: prepares("Prepare a listing"),
+      annotations: preparesOrActs("Prepare a listing", false),
     },
-    withSigner(listForSale),
+    withSigner(args => listForSale(args, account)),
   );
   server.registerTool(
     "accept_land_offer",
@@ -531,11 +539,12 @@ function registerSignRequestTools(server: McpServer, account?: AccountAuth): voi
     "cancel_land_order",
     {
       title: "Prepare canceling a listing or offer",
-      description: `Prepare canceling the wallet's own open listing or offer (orderHash: orderId from get_land_order_book) on ${NETWORK_LABEL}. Checks first that the listing or offer is open and the wallet made it. Canceling is a confirmation on the sign page, with no transaction. ${SIGN_LINK_NOTE}${note}`,
+      description: `Prepare canceling the wallet's own open listing or offer (orderHash: orderId from get_land_order_book) on ${NETWORK_LABEL}. Checks first that the listing or offer is open and the wallet made it. Canceling is a confirmation on the sign page, with no transaction. A listing the owner has not confirmed yet (one made in their account on a property being added) is taken down directly instead, signed in with the listing grant ("${LISTING_GRANT}"): the answer says it is off the marketplace, with no sign link. Otherwise, through the sign page: ${SIGN_LINK_NOTE}${note}`,
       inputSchema: input(orderActionInput),
-      annotations: prepares("Prepare canceling a listing or offer"),
+      // Signed in with listing:write, an unconfirmed listing is taken off the marketplace at once: destructive.
+      annotations: preparesOrActs("Prepare canceling a listing or offer", true),
     },
-    withSigner(cancelOrder),
+    withSigner(args => cancelOrder(args, account)),
   );
   server.registerTool(
     "borrow_against_land",
@@ -773,5 +782,25 @@ function registerAddLandTools(server: McpServer, account?: AccountAuth): void {
       annotations: readOnly("Find land by owner name"),
     },
     async (args) => (account ? jsonResult(await findLandByOwner(account, args)) : signInRequired()),
+  );
+  server.registerTool(
+    "cancel_adding_land",
+    {
+      title: "Stop adding a property to Fabrica",
+      description: `Stop adding a property the connected person is adding to Fabrica (${NETWORK_LABEL}), as that person: its record and its page on fabrica.land are deleted, and it leaves get_my_properties_being_added. Checks first that the property is still being added (a property already set up is refused), that the connected account holds it, and that no listing the owner confirmed is open on it (cancel_land_order takes one down first); a listing the owner has not confirmed yet is taken off the marketplace before the record goes, which needs the listing grant ("${LISTING_GRANT}"). Nothing was signed, paid or recorded for a property still being added, and the setup fee authorized for it is not charged. Final: add_land starts the property again from scratch. Needs the add-property grant ("${ADDING_GRANT}").`,
+      inputSchema: cancelAddingInput,
+      annotations: { ...actsForOwner("Stop adding a property to Fabrica", true), destructiveHint: true },
+    },
+    async (args) => (account ? jsonResult(await cancelAdding(account, args)) : signInRequired()),
+  );
+  server.registerTool(
+    "contact_land_owner",
+    {
+      title: "Contact a property's owner",
+      description: `Email a message from the connected person to the owner of a property on Fabrica (${NETWORK_LABEL}), through Fabrica: the message (up to ${MAX_MESSAGE_LENGTH} characters, in the person's words) goes out from the email address on the person's Fabrica account, so the owner replies to them directly, and the owner is told which property it is about. Works for a property that is set up and for one still being added once its owner has claimed it. Checks first that the owner can be reached (they have a verified email on Fabrica) and is not the person themselves. wallet is the person's own linked wallet the message is sent from (left out: the account's main wallet). A message that looks like it carries a private key or seed phrase is refused. Nothing is drafted for later: calling this tool sends the message. Needs the messaging grant ("${MESSAGE_GRANT}").`,
+      inputSchema: contactOwnerInput,
+      annotations: { ...actsForOwner("Contact a property's owner", false), openWorldHint: true },
+    },
+    async (args) => (account ? jsonResult(await contactOwner(account, args)) : signInRequired()),
   );
 }

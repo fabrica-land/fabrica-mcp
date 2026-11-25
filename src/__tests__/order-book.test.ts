@@ -39,7 +39,7 @@ function order(overrides: Partial<OrderBookOrder>): OrderBookOrder {
     maker: { user: { displayName: "" } },
     restrictedToAddresses: null,
     disclosurePackage: null,
-    encumbrance: null,
+    encumbrance: null, signature: null,
     ...overrides,
   };
 }

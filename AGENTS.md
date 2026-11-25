@@ -55,7 +55,7 @@ ui/
     parcels.ts        # find_us_parcel (Regrid type-ahead via the API, /go on-ramp link, per-client limit)
     coverage.ts       # check_county_coverage (static on-ramp rules table in src/data/onramp-coverage.json, built by scripts/build-coverage.mjs)
     support.ts        # contact_fabrica_support (help center link, support email, prefilled mailto; nothing sent)
-    sign-requests.ts  # make_land_offer, list_land_for_sale, accept_land_offer, buy_land, cancel_land_order (prepare a sign request), get_sign_request
+    sign-requests.ts  # make_land_offer, list_land_for_sale, accept_land_offer, buy_land, cancel_land_order (prepare a sign request; signed in with listing:write, a listing of a property being added is made in the API with no signature, and an unconfirmed listing is taken down there), get_sign_request
     loans.ts          # borrow_against_land, repay_loan_against_land (sign requests), get_loan_against_land (GetLoanContext, never cached)
     transactions.ts   # get_transaction_status (JSON-RPC reads only)
     account.ts        # get_my_account, get_my_properties (listed while Connect Fabrica is on; read with the connected user's own token, sign_in_required without one)
@@ -66,6 +66,8 @@ ui/
     onramps.ts        # get_my_properties_being_added, get_adding_status (signed in only, onramp:read); describeOnRamp and the county's questions with their answers
     add-land.ts       # add_land, answer_adding_questions: start a property from a listing link, a parcel number or an address as the connected person (onramp:write), then the owner and the county's questions read from the record
     website-import.ts # find_listings_on_website: the listing pages on a seller's website, read by the web app's site scan (server key + the person's account id), each added with add_land
+    cancel-adding.ts  # cancel_adding_land: stop adding a property as the connected person (onramp:write), after taking its unconfirmed listings down (listing:write); refuses while a listing the owner confirmed is open
+    contact-owner.ts  # contact_land_owner: email the person's message to a property's owner through the API (message:write), from the account's main wallet or a chosen linked one
     owner-search.ts   # find_land_by_owner: the parcels a county records under an owner's name, via the web app's owner search (server key + the person's account id), each added with add_land by parcel number
     own-wallet.ts     # Signed in, fills wallet arguments from the account (omitted or "me"; portfolio:read); public reads otherwise unchanged; signerFor gives the sign request tools the account's wallets, and pickSigner (sign-requests.ts) picks the one that fits the action or asks when several do
     personal-view.ts  # Signed in, get_land_property and estimate_land_borrowing read the token with the user's token (uncached, issuer only) for personalized borrowing capacity; falls back to the public read
@@ -81,7 +83,7 @@ ui/
   # .github/workflows/refresh-knowledge.yml open the daily refresh pull request
   clients/
     graphql.ts        # Fabrica GraphQL API client (primary data source)
-    account.ts        # personal reads with the connected user's token (never cached, never on anonymous calls); the on-ramp start and patch writes (onramp:write)
+    account.ts        # personal reads with the connected user's token (never cached, never on anonymous calls); the on-ramp start, patch and delete writes (onramp:write)
     listing-import.ts # the web app's listing import (POST /api/import-listing on fabrica.land), called with this server's key (FABRICA_LISTING_IMPORT_KEY)
     rpc.ts            # Ethereum JSON-RPC reads (transaction, receipt, block number) for get_transaction_status
     generated/        # operations.ts: one result type per gql document, from scripts/codegen.mjs (committed; yarn codegen)
@@ -255,7 +257,7 @@ Naming rule: "Property checks" is the name; the number is "the numeric encoding 
   - `FABRICA_LISTING_IMPORT_KEY`: this server's key for the web app's listing import (`x-listing-import-key`), so listing reads are counted on the server's own hourly budget; without it the import is called as an ordinary caller
   - `KV_REST_API_URL` and `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`) with `SIGN_REQUEST_SECRET`: the sign-request store. On Vercel without them the sign-request tools report "not configured"; locally an in-process map is used
   - `FABRICA_RPC_URL` (default: publicnode for the network): JSON-RPC endpoint for get_transaction_status and the sign-request result check
-  - `FABRICA_OAUTH` (default: off on both networks): Connect Fabrica. `enabled` lists the personal tools on `/mcp` and refuses a call to one without a token with 401 and an RFC 9728 challenge (lazy sign-in: the client asks the person to sign in and retries); a valid token on any request makes the session the person's own, and a valid token without the grant a write tool needs (`add_land`, `answer_adding_questions`: `onramp:write`) is refused with 403 and an `insufficient_scope` challenge so the client asks the person to approve it (step-up; 401 would make it sign in again instead); `/.well-known/oauth-protected-resource[/mcp]` serves the metadata. Off, tokens are ignored, the metadata answers 404 and `/mcp` lists public tools only
+  - `FABRICA_OAUTH` (default: off on both networks): Connect Fabrica. `enabled` lists the personal tools on `/mcp` and refuses a call to one without a token with 401 and an RFC 9728 challenge (lazy sign-in: the client asks the person to sign in and retries); a valid token on any request makes the session the person's own, and a valid token without the grant a write tool needs (`add_land`, `answer_adding_questions`, `cancel_adding_land`: `onramp:write`; `contact_land_owner`: `message:write`) is refused with 403 and an `insufficient_scope` challenge so the client asks the person to approve it (step-up; 401 would make it sign in again instead); `/.well-known/oauth-protected-resource[/mcp]` serves the metadata. Off, tokens are ignored, the metadata answers 404 and `/mcp` lists public tools only
   - `FABRICA_OAUTH_ISSUER` (default: `https://api.fabrica.land`, `https://api-test.fabrica.land` on Sepolia), `FABRICA_OAUTH_JWKS_URL` (default: the issuer's `/.well-known/jwks.json`), `FABRICA_MCP_ORIGIN` (default: `https://mcp.fabrica.land`, `https://mcp-testnet.fabrica.land` on Sepolia; the token audience is `<origin>/mcp`)
   - `FABRICA_OAUTH_JWKS` (Sepolia and local only, ignored on mainnet): inline public JWKS for the mocked issuer; `node scripts/oauth-mock-issuer.mjs` prints one with a matching access token and can serve a mock `GET /oauth/account`
 
