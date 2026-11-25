@@ -23,7 +23,7 @@ Claude Code, mainnet: `claude mcp add --transport http fabrica https://mcp.fabri
 | Tool | What it answers |
 |---|---|
 | `search_land` | Properties by location, size, Property checks, listing status, price, price per acre, distance from a point (`near`); sorted with `sortBy` |
-| `get_land_property` | One property: location, owner wallet, valuation, listing, loans, operating agreement link |
+| `get_land_property` | One property: location, owner wallet, valuation, county assessor record (zoning, land use, assessed values, last sale), listing, loans, operating agreement link |
 | `get_land_valuation` | Every value held for a property, each with its source, date and confidence, and the pool's oracle state |
 | `get_land_trust_documents` | The legal record: the trust, the trust agreement (name, version, link), legal description, parcel identifiers, deed reference and owner-uploaded documents |
 | `get_land_tax_status` | Whether the property's taxes are current, past due or unknown per Property checks, and whether that limits borrowing |
